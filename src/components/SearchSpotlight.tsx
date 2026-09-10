@@ -36,7 +36,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
   // Auto-focus input when component mounts, window gains focus or is shown
   useEffect(() => {
-    inputRef.current?.focus();
+    requestAnimationFrame(() => {
+      setIsRevealed(true);
+      inputRef.current?.focus();
+    });
     const handleFocus = () => {
       inputRef.current?.focus();
     };

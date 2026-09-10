@@ -69,9 +69,17 @@ export class WindowManager {
       this.mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
     }
 
+    // Automatically reveal spotlight input on application startup
+    this.mainWindow.once('ready-to-show', () => {
+      const isSilentStart = process.argv.includes('--hidden') || process.argv.includes('--background');
+      if (!isSilentStart) {
+        this.showSpotlight();
+      }
+    });
+
     // Hide window when it loses focus (unless devtools is active or during initial reveal)
     this.mainWindow.on('blur', () => {
-      if (Date.now() - this.lastShowTime < 600) {
+      if (Date.now() - this.lastShowTime < 1000) {
         return;
       }
       if (this.mainWindow && !this.mainWindow.webContents.isDevToolsOpened()) {
@@ -113,6 +121,7 @@ export class WindowManager {
     if (!this.mainWindow.isVisible()) {
       this.mainWindow.show();
     }
+    this.mainWindow.setAlwaysOnTop(true);
     this.mainWindow.focus();
 
     this.mainWindow.webContents.send('window-shown');

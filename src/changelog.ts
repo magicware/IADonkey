@@ -55,6 +55,7 @@ export const CHANGELOG_HISTORY: VersionEntry[] = [
  * Po dokončení denní práce se tato sekce překlopí do nové verze a navýší se číslo.
  */
 export const UPCOMING_CHANGELOG: string[] = [
+  'Automatické zobrazení vyhledávacího pole (spotlightu) při startu aplikace.',
   'Nová oficiální ikona aplikace v hlavním panelu Windows i záhlaví oken (nahrazena výchozí ikona Electronu).',
   'Integrace helpdesku MLog: rychlé otevírání požadavků (R123) i úkolů (T456) přímo z vyhledávače podle nastavené Base URL v nové záložce MLog.',
   'Integrace Gmailu: zadáním libovolné e-mailové adresy se okamžitě nabídne otevření nového konceptu zprávy v Gmailu.',
