@@ -1133,7 +1133,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   Chytré funkce
                 </h4>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
                   <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
                     <div className="flex items-center gap-2 text-emerald-400 font-semibold">
                       <span className="material-symbols-outlined text-base">calculate</span>
@@ -1151,6 +1151,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                     <p className="text-gray-400 text-[11px] leading-relaxed">
                       Napište libovolnou webovou adresu (např. <code className="bg-white/10 px-1 rounded">seznam.cz</code>). Stiskem Enter ji rovnou otevřete ve vašem výchozím prohlížeči.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                    <div className="flex items-center gap-2 text-rose-400 font-semibold">
+                      <span className="material-symbols-outlined text-base">mail</span>
+                      Gmail rychlé psaní
+                    </div>
+                    <p className="text-gray-400 text-[11px] leading-relaxed">
+                      Zadejte e-mailovou adresu (např. <code className="bg-white/10 px-1 rounded">jmeno@magicware.cz</code>). Stiskem Enter okamžitě otevřete okno nové zprávy v Gmailu s vyplněným příjemcem.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                    <div className="flex items-center gap-2 text-indigo-400 font-semibold">
+                      <span className="material-symbols-outlined text-base">support_agent</span>
+                      MLog Helpdesk
+                    </div>
+                    <p className="text-gray-400 text-[11px] leading-relaxed">
+                      Zadejte kód požadavku (např. <code className="bg-white/10 px-1 rounded">R234</code>) nebo úkolu (např. <code className="bg-white/10 px-1 rounded">T7821</code>). Stiskem Enter se přímo otevře v MLogu (vyžaduje nastavenou Base URL v záložce MLog).
                     </p>
                   </div>
 

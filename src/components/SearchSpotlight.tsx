@@ -4,6 +4,7 @@ import { MaterialIcon } from './MaterialIcon';
 import { evaluateExpression } from '../utils/calculator';
 import { detectUrl } from '../utils/urlHelper';
 import { detectMlogTicket } from '../utils/mlog';
+import { detectEmail } from '../utils/gmail';
 
 interface SearchSpotlightProps {
   items: LauncherItem[];
@@ -105,6 +106,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     const mlogItem = detectMlogTicket(trimmed, mlogBaseUrl);
     if (mlogItem) {
       list.push(mlogItem);
+    }
+
+    // 0b. Standalone Email -> Gmail compose engine (priority -1.5)
+    const emailItem = detectEmail(trimmed);
+    if (emailItem) {
+      list.push(emailItem);
     }
 
     // 1. Calculator engine (priority -1)
@@ -384,7 +391,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                     <MaterialIcon
                       icon={item.icon}
                       image={item.image}
-                      fallbackIcon={item.priority === -1 ? 'calculate' : item.priority === -2 ? 'support_agent' : 'code'}
+                      fallbackIcon={item.priority === -1.5 ? 'mail' : item.priority === -1 ? 'calculate' : item.priority === -2 ? 'support_agent' : 'code'}
                       className="w-7 h-7"
                     />
                   </div>
@@ -395,6 +402,11 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       <span className="font-semibold text-sm truncate leading-tight">
                         {item.name}
                       </span>
+                      {item.priority === -1.5 && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold">
+                          Gmail
+                        </span>
+                      )}
                       {item.priority === -2 && (
                         <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">
                           MLog
