@@ -190,6 +190,17 @@ function setupIpcHandlers() {
   ipcMain.handle('check-update', async () => {
     return await updateChecker.checkForUpdates(true);
   });
+
+  ipcMain.handle('download-update', async (_event, downloadUrl: string) => {
+    return await updateChecker.downloadUpdate(downloadUrl, (progress) => {
+      windowManager.getMainWindow()?.webContents.send('update-download-progress', progress);
+      windowManager.getSettingsWindow()?.webContents.send('update-download-progress', progress);
+    });
+  });
+
+  ipcMain.handle('install-update', (_event, filePath: string) => {
+    updateChecker.installAndRestart(filePath);
+  });
 }
 
 function startBackgroundTasks() {

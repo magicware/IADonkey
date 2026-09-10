@@ -1,6 +1,10 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { Readable } from 'node:stream';
+import { spawn } from 'node:child_process';
 import { app } from 'electron';
 import { AppStore } from './store';
-import { UpdateInfo } from '../src/types';
+import { UpdateInfo, DownloadProgress } from '../src/types';
 
 export class UpdateChecker {
   private store: AppStore;
@@ -98,4 +102,84 @@ export class UpdateChecker {
       throw err;
     }
   }
+
+  /**
+   * Downloads the update binary to temp folder, reporting progress along the way.
+   */
+  public async downloadUpdate(
+    downloadUrl: string,
+    onProgress: (progress: DownloadProgress) => void
+  ): Promise<string> {
+    const tempDir = app.getPath('temp');
+    // Extract filename from URL or default
+    let fileName = 'IADonkey-update.exe';
+    try {
+      const parsedUrl = new URL(downloadUrl);
+      const base = path.basename(parsedUrl.pathname);
+      if (base && base.endsWith('.exe')) {
+        fileName = base;
+      }
+    } catch {}
+
+    const targetPath = path.join(tempDir, fileName);
+
+    console.log(`[UpdateChecker] Starting download from ${downloadUrl} to ${targetPath}`);
+
+    const response = await fetch(downloadUrl, {
+      redirect: 'follow',
+      headers: {
+        'User-Agent': `IADonkey-Launcher/${app.getVersion() || '0.1.0'}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server při stahování vrátil kód ${response.status}`);
+    }
+
+    const total = Number(response.headers.get('content-length')) || 0;
+    const fileStream = fs.createWriteStream(targetPath);
+    let transferred = 0;
+
+    if (!response.body) {
+      throw new Error('Server neposkytl žádná data k zápisu.');
+    }
+
+    const readable = Readable.fromWeb(response.body as any);
+
+    readable.on('data', (chunk: Buffer) => {
+      transferred += chunk.length;
+      const percent = total > 0 ? Math.min(100, Math.round((transferred / total) * 100)) : 0;
+      onProgress({ percent, transferred, total });
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      readable.pipe(fileStream);
+      fileStream.on('finish', () => resolve());
+      fileStream.on('error', (err) => reject(err));
+      readable.on('error', (err) => reject(err));
+    });
+
+    console.log(`[UpdateChecker] Download complete: ${targetPath}`);
+    return targetPath;
+  }
+
+  /**
+   * Runs the downloaded update executable and terminates the current process.
+   */
+  public installAndRestart(filePath: string): void {
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`Soubor aktualizace nebyl nalezen: ${filePath}`);
+    }
+
+    console.log(`[UpdateChecker] Spawning new version: ${filePath} and closing old process`);
+
+    const child = spawn(filePath, [], {
+      detached: true,
+      stdio: 'ignore',
+    });
+    child.unref();
+
+    app.quit();
+  }
 }
+

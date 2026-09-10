@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   hideWindow: (): Promise<void> => ipcRenderer.invoke('hide-window'),
   openSettingsWindow: (): Promise<void> => ipcRenderer.invoke('open-settings-window'),
   checkUpdate: (): Promise<UpdateInfo> => ipcRenderer.invoke('check-update'),
+  downloadUpdate: (downloadUrl: string): Promise<string> => ipcRenderer.invoke('download-update', downloadUrl),
+  installUpdate: (filePath: string): Promise<void> => ipcRenderer.invoke('install-update', filePath),
   pauseGlobalHotkey: (): Promise<void> => ipcRenderer.invoke('pause-global-hotkey'),
   resumeGlobalHotkey: (): Promise<void> => ipcRenderer.invoke('resume-global-hotkey'),
 
@@ -40,6 +42,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_event: any, info: UpdateInfo) => callback(info);
     ipcRenderer.on('update-available', handler);
     return () => ipcRenderer.removeListener('update-available', handler);
+  },
+
+  onUpdateDownloadProgress: (callback: (progress: any) => void) => {
+    const handler = (_event: any, progress: any) => callback(progress);
+    ipcRenderer.on('update-download-progress', handler);
+    return () => ipcRenderer.removeListener('update-download-progress', handler);
   },
 
   onWindowShown: (callback: () => void) => {

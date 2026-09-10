@@ -4,10 +4,16 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
-## [0.1.2] - Připravuje se (Unreleased)
+## [0.1.3] - Připravuje se (Unreleased)
 *Zde se průběžně zapisují novinky během denní práce. Po skončení denní rutiny se vytvoří finální verze.*
 
 ---
+
+## [0.1.2] - 10. 9. 2026
+### Automatické aktualizace a distribuce
+- **Automatická kontrola aktualizací**: Integrovaná kontrola nových verzí aplikace přes GitHub s automatickým stažením instalátoru a upozorněním v okně.
+- **Okno novinek po aktualizaci**: Po prvním spuštění po aktualizaci se uživateli zobrazí srozumitelný přehled novinek.
+- **Automatizace releasů**: Přidán skript pro jednokrokové sestavení, verzování, tagování a publikaci na GitHub.
 
 ## [0.1.1] - 10. 9. 2026
 ### Vlastní barvy, bezpečné zkratky a správa zdrojů

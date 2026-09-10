@@ -75,3 +75,9 @@ export interface UpdateInfo {
   releaseNotes?: string;
   downloadUrl?: string;
 }
+
+export interface DownloadProgress {
+  percent: number;
+  transferred: number;
+  total: number;
+}
