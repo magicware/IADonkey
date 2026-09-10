@@ -12,6 +12,16 @@ export const CURRENT_APP_VERSION = '0.1.1';
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
   {
+    version: '0.1.2',
+    date: '10. 9. 2026',
+    title: 'Automatické aktualizace a distribuce',
+    highlights: [
+      'Integrovaná kontrola nových verzí aplikace přes GitHub s automatickým stažením aktualizace.',
+      'Přehledné okno s novinkami zobrazené po prvním spuštění po aktualizaci.',
+      'Plně automatizovaný systém přípravy a vydávání nových verzí.',
+    ],
+  },
+  {
     version: '0.1.1',
     date: '10. 9. 2026',
     title: 'Vlastní barvy, bezpečné zkratky a správa zdrojů',
