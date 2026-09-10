@@ -122,25 +122,34 @@ async function main() {
   } catch {}
 
   if (ghLoggedIn && builtExePath && fs.existsSync(builtExePath)) {
-    console.log('\n\x1b[36m=== Publikace na GitHub Releases ===\x1b[0m');
-    const doGh = await rl.question(`Detekovan prihlaseny GitHub CLI. Chcete automaticky vytvorit Release v${version} a nahrat tam ${builtExeName}? (A/n): `);
+    console.log('\n\x1b[36m=== Automatická publikace na GitHub Releases ===\x1b[0m');
+    const doGh = await rl.question(`Chcete automaticky publikovat Release v${version} a nahrat ${builtExeName} na GitHub? [A/n]: `);
     if (!doGh || doGh.toLowerCase() === 'a' || doGh.toLowerCase() === 'y') {
       try {
-        execSync(`gh release create "v${version}" "${builtExePath}" --title "v${version}" --notes "Release v${version}"`, {
-          cwd: rootDir,
-          stdio: 'inherit',
-        });
-        console.log(`\x1b[32m✓ GitHub Release v${version} byl uspesne publikovan i se souborem ${builtExeName}!\x1b[0m`);
+        console.log(`\x1b[33mNahrávám ${builtExeName} na GitHub Releases...\x1b[0m`);
+        try {
+          execSync(`gh release create "v${version}" "${builtExePath}" --title "v${version}" --notes "Release v${version}" --clobber`, {
+            cwd: rootDir,
+            stdio: 'inherit',
+          });
+        } catch {
+          // Pokud release uz existuje, uploadneme asset s prepsanim
+          execSync(`gh release upload "v${version}" "${builtExePath}" --clobber`, {
+            cwd: rootDir,
+            stdio: 'inherit',
+          });
+        }
+        console.log(`\x1b[32m✓ GitHub Release v${version} byl kompletně a automaticky publikován včetně binárky ${builtExeName}!\x1b[0m`);
       } catch (err) {
-        console.error(`\x1b[31mChyba pri nahravani na GitHub: ${err.message}\x1b[0m`);
+        console.error(`\x1b[31mChyba pri automatickem nahravani na GitHub: ${err.message}\x1b[0m`);
+        console.log(`Rucni zaloha: https://github.com/magicware/IADonkey/releases`);
       }
     }
   } else {
     console.log('\n\x1b[32m=== Dalsi kroky ===\x1b[0m');
-    console.log(`1. Pokud mate GitHub CLI, muzete se prihlasit prikazem 'gh auth login' a priste probehne nahrani automaticky.`);
+    console.log(`1. Pro 100% automaticke nahrani se jednorazove prihlaste v terminalu: gh auth login`);
     console.log(`2. Nebo na webu GitHubu v sekci Releases vytvorte release pro tag 'v${version}'.`);
     console.log(`3. Pretahnete do nej vygenerovany soubor: ${builtExePath || builtExeName}`);
-    console.log(`4. Aplikace uzivatelu pri dalsim spusteni automaticky detekuje novou verzi ${version} pres version.json!\n`);
   }
 
   rl.close();
