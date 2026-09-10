@@ -1,0 +1,5 @@
+{
+  "version": "0.1.2",
+  "releaseNotes": "• Přidána nová položka v nastavení: výběr barev aplikace s živým náhledem\n• Ochrana proti nechtěnému stisku jediné klávesy při nastavování zkratky\n• Nové přehlednější ikony pro lokální JSON soubory a tlačítka\n• Zrychlený start okna nastavení bez problikávání barev",
+  "downloadUrl": "https://github.com/iadonkey/launcher/releases/download/v0.1.2/IADonkey-Setup.exe"
+}

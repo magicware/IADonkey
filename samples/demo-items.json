@@ -1,0 +1,69 @@
+[
+  {
+    "name": "Za Sluncem",
+    "location": "https://zasluncem.istour.cz",
+    "action": "open",
+    "icon": "sunny",
+    "priority": 0,
+    "settings": "magicgate",
+    "options": [
+      {
+        "name": "Za Sluncem IS Tour",
+        "location": "https://zasluncem.istour.cz",
+        "action": "open",
+        "icon": "travel_explore",
+        "priority": 0,
+        "settings": "magicgate"
+      }
+    ]
+  },
+  {
+    "name": "Brenna",
+    "location": "https://www.brenna.cz",
+    "action": "open",
+    "icon": "travel_explore",
+    "priority": 1,
+    "settings": null,
+    "options": [
+      {
+        "name": "Brenna IS Tour",
+        "location": "https://brenna.istour.cz",
+        "action": "open",
+        "icon": "flight_takeoff",
+        "priority": 0,
+        "settings": "magicgate"
+      },
+      {
+        "name": "Brenna Web - Poptávka",
+        "location": "https://www.brenna.cz/poptavka",
+        "action": "open",
+        "icon": "mail",
+        "priority": 1
+      },
+      {
+        "name": "Brenna Administrace",
+        "location": "https://brenna.istour.cz/admin",
+        "action": "open",
+        "icon": "admin_panel_settings",
+        "priority": 2
+      }
+    ]
+  },
+  {
+    "name": "Poznámkový blok (Notepad)",
+    "location": "C:\\Windows\\notepad.exe",
+    "action": "open",
+    "icon": "edit_note",
+    "priority": 10,
+    "settings": null
+  },
+  {
+    "name": "GitHub Repozitář",
+    "location": "https://github.com/magicware",
+    "action": "open",
+    "icon": "terminal",
+    "image": "https://github.githubassets.com/favicons/favicon.png",
+    "priority": 5,
+    "settings": null
+  }
+]

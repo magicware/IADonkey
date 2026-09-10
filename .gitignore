@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Production & build outputs
+dist/
+dist-electron/
+release/
+
+# Local app data & cache
+.user_data/
+*.log
+
+# Environment & OS files
+.DS_Store
+Thumbs.db
+*.local
