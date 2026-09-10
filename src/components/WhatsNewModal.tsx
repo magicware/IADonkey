@@ -24,9 +24,21 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-white">Co je nového</h3>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onOpenFullChangelog) {
+                      onDismiss();
+                      onOpenFullChangelog();
+                    }
+                  }}
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-bold font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 transition ${
+                    onOpenFullChangelog ? 'hover:bg-indigo-500/35 hover:text-indigo-200 cursor-pointer' : ''
+                  }`}
+                  title={onOpenFullChangelog ? 'Zobrazit kompletní historii verzí (Changelog)' : undefined}
+                >
                   v{release.version}
-                </span>
+                </button>
               </div>
               <p className="text-xs text-gray-400 mt-0.5">{release.title}</p>
             </div>
@@ -57,22 +69,7 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="pt-2 border-t border-white/10 flex items-center justify-between">
-          {onOpenFullChangelog ? (
-            <button
-              onClick={() => {
-                onDismiss();
-                onOpenFullChangelog();
-              }}
-              className="text-xs text-indigo-400 hover:text-indigo-300 transition flex items-center gap-1 font-medium"
-            >
-              <span className="material-symbols-outlined text-sm">history</span>
-              Celá historie verzí
-            </button>
-          ) : (
-            <span />
-          )}
-
+        <div className="pt-2 border-t border-white/10 flex items-center justify-end">
           <button
             onClick={onDismiss}
             className="px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-lg shadow-indigo-600/30 transition"

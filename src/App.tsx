@@ -204,7 +204,6 @@ export const App: React.FC = () => {
           onClose={() => window.close()}
           onTriggerSync={handleRefreshData}
           onCheckUpdate={handleCheckUpdate}
-          onSimulateUpdate={(info) => setUpdateInfo(info)}
           isSyncing={isSyncing}
           syncProgress={syncProgress}
           updateStatusMessage={updateStatusMessage}
@@ -257,7 +256,6 @@ export const App: React.FC = () => {
           onClose={() => setShowSettings(false)}
           onTriggerSync={handleRefreshData}
           onCheckUpdate={handleCheckUpdate}
-          onSimulateUpdate={(info) => setUpdateInfo(info)}
           isSyncing={isSyncing}
           syncProgress={syncProgress}
           updateStatusMessage={updateStatusMessage}

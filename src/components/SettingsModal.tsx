@@ -11,7 +11,6 @@ interface SettingsModalProps {
   onClose: () => void;
   onTriggerSync: () => Promise<void>;
   onCheckUpdate: () => Promise<void>;
-  onSimulateUpdate?: (info: UpdateInfo) => void;
   isSyncing: boolean;
   syncProgress?: SyncProgress | null;
   updateStatusMessage?: string | null;
@@ -24,7 +23,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   onTriggerSync,
   onCheckUpdate,
-  onSimulateUpdate,
   isSyncing,
   syncProgress,
   updateStatusMessage,
@@ -265,17 +263,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="flex items-center gap-3">
           <span className="material-symbols-outlined text-indigo-400 text-2xl">settings</span>
           <h2 className="text-lg font-bold text-white tracking-wide">Nastavení IADonkey</h2>
-          <span className="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-white/10 text-indigo-300">
-            v{CURRENT_APP_VERSION}
-          </span>
           <button
             type="button"
             onClick={() => setShowChangelog(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg transition ml-2"
-            title="Zobrazit historii verzí a změn"
+            className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-white/10 hover:bg-white/20 text-indigo-300 hover:text-indigo-200 transition cursor-pointer"
+            title="Kliknutím zobrazíte historii verzí a novinky (Changelog)"
           >
-            <span className="material-symbols-outlined text-sm text-indigo-400">history_edu</span>
-            Changelog
+            v{CURRENT_APP_VERSION}
           </button>
         </div>
           <button
@@ -757,7 +751,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB MLog */}
           {activeTab === 'mlog' && (
-            <div className="space-y-6 max-w-xl">
+            <div className="space-y-6">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-indigo-400">support_agent</span>
@@ -991,16 +985,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-indigo-300">
-                      v{CURRENT_APP_VERSION}
-                    </span>
                     <button
                       type="button"
                       onClick={() => setShowChangelog(true)}
-                      className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-indigo-300 hover:text-white bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-lg transition"
+                      className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-indigo-300 hover:text-indigo-200 transition cursor-pointer flex items-center gap-1.5"
+                      title="Kliknutím zobrazíte historii verzí a novinky (Changelog)"
                     >
-                      <span className="material-symbols-outlined text-sm">history_edu</span>
-                      Kompletní changelog
+                      v{CURRENT_APP_VERSION}
                     </button>
                   </div>
                 </div>
@@ -1022,25 +1013,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     >
                       Zkontrolovat nyní
                     </button>
-                    {onSimulateUpdate && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onSimulateUpdate({
-                            hasUpdate: true,
-                            latestVersion: '0.1.2',
-                            currentVersion: CURRENT_APP_VERSION,
-                            releaseNotes: '• Přidána nová položka v nastavení: výběr barev aplikace s živým náhledem\n• Ochrana proti nechtěnému stisku jediné klávesy při nastavování zkratky\n• Nové přehlednější ikony pro lokální JSON soubory a tlačítka v nastavení\n• Zrychlený start okna nastavení bez problikávání barev',
-                            downloadUrl: 'https://github.com/magicware/IADonkey/releases',
-                          });
-                        }}
-                        title="Simulovat detekci nové verze pro otestování dialogu aktualizace"
-                        className="px-3 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 hover:text-white rounded-lg text-xs font-medium border border-indigo-500/30 transition flex items-center gap-1"
-                      >
-                        <span className="material-symbols-outlined text-sm">science</span>
-                        Simulovat aktualizaci (0.1.2)
-                      </button>
-                    )}
                   </div>
                   {updateStatusMessage && (
                     <p className="text-xs text-indigo-300 mt-2 flex items-center gap-1.5">
