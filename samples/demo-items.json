@@ -62,7 +62,7 @@
     "location": "https://github.com/magicware",
     "action": "open",
     "icon": "terminal",
-    "image": "https://github.githubassets.com/favicons/favicon.png",
+    "image": "https://github.githubassets.com/favicons/favicon-dark.svg",
     "priority": 5,
     "settings": null
   }

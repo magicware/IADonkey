@@ -63,14 +63,10 @@ async function main() {
 
   // 5. Build aplikace
   console.log('\n\x1b[36mSestavuji aplikaci (npm run build:exe)...\x1b[0m');
-  const buildResult = spawnSync(
-    process.platform === 'win32' ? 'npm.cmd' : 'npm',
-    ['run', 'build:exe'],
-    { cwd: rootDir, stdio: 'inherit' }
-  );
-
-  if (buildResult.status !== 0) {
-    console.error('\x1b[31mChyba pri kompilaci nebo baleni aplikace.\x1b[0m');
+  try {
+    execSync('npm run build:exe', { cwd: rootDir, stdio: 'inherit' });
+  } catch (err) {
+    console.error('\x1b[31mChyba pri kompilaci nebo baleni aplikace:\x1b[0m', err.message);
     rl.close();
     process.exit(1);
   }
