@@ -128,12 +128,12 @@ async function main() {
       try {
         console.log(`\x1b[33mNahrávám ${builtExeName} na GitHub Releases...\x1b[0m`);
         try {
-          execSync(`gh release create "v${version}" "${builtExePath}" --title "v${version}" --notes "Release v${version}" --clobber`, {
+          execSync(`gh release create "v${version}" "${builtExePath}" --title "v${version}" --notes "Release v${version}"`, {
             cwd: rootDir,
             stdio: 'inherit',
           });
         } catch {
-          // Pokud release uz existuje, uploadneme asset s prepsanim
+          // Pokud release uz existuje, uploadneme asset s prepsanim (--clobber plati pro upload)
           execSync(`gh release upload "v${version}" "${builtExePath}" --clobber`, {
             cwd: rootDir,
             stdio: 'inherit',
