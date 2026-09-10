@@ -1,7 +1,7 @@
 import type { LauncherItem } from '../types';
 
 /**
- * Detects MLog requirement (R<number>) or comment/sub-requirement (T<number>)
+ * Detects MLog requirement (R<number>) or task (T<number>)
  * and constructs direct URL if baseUrl is configured.
  *
  * Example matches:
@@ -24,9 +24,9 @@ export function detectMlogTicket(query: string, baseUrl?: string): LauncherItem 
   const ticketCode = `${prefix}${id}`;
   const targetUrl = `${cleanBase}/${ticketCode}`;
 
-  const isSubRequirement = prefix === 'T';
-  const label = isSubRequirement
-    ? `Otevřít komentář ${ticketCode} v MLogu`
+  const isTask = prefix === 'T';
+  const label = isTask
+    ? `Otevřít úkol ${ticketCode} v MLogu`
     : `Otevřít požadavek ${ticketCode} v MLogu`;
 
   return {

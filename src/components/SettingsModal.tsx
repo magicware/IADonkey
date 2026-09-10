@@ -766,7 +766,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <p className="text-xs text-gray-400 mt-1">
                   Nastavte základní webovou adresu (Base URL) vašeho helpdesku MLog. Po nastavení můžete ve vyhledávači
                   rovnou zadat kód požadavku (např. <strong className="font-mono text-indigo-300">R1234</strong>) nebo
-                  komentáře (např. <strong className="font-mono text-indigo-300">T5678</strong>) a stiskem Enter
+                  úkolu (např. <strong className="font-mono text-indigo-300">T5678</strong>) a stiskem Enter
                   přímo otevřít detail v prohlížeči.
                 </p>
               </div>
