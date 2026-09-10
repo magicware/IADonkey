@@ -30,6 +30,7 @@
         "location": "https://brenna.istour.cz",
         "action": "open",
         "icon": "flight_takeoff",
+        "image": "https://magicware.istour.cz/Images/M2G/Desktop/Icon.png",
         "priority": 0,
         "settings": "magicgate"
       },
