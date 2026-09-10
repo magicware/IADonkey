@@ -234,6 +234,7 @@ export const App: React.FC = () => {
       {/* Search Bar & Autocomplete list */}
       <SearchSpotlight
         items={items}
+        mlogBaseUrl={config?.mlog?.baseUrl}
         onOpenSettings={() => {
           if (window.electronAPI?.openSettingsWindow) {
             window.electronAPI.openSettingsWindow();

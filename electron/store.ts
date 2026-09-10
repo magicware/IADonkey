@@ -22,6 +22,9 @@ const DEFAULT_CONFIG: AppConfig = {
     username: '',
     password: '',
   },
+  mlog: {
+    baseUrl: '',
+  },
   updateUrl: 'https://raw.githubusercontent.com/magicware/IADonkey/main/version.json',
   lastDeclinedVersion: null,
   lastDeclinedTime: null,

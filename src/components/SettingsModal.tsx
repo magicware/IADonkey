@@ -29,7 +29,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   syncProgress,
   updateStatusMessage,
 }) => {
-  const [activeTab, setActiveTab] = useState<'sources' | 'magicgate' | 'general' | 'help'>('sources');
+  const [activeTab, setActiveTab] = useState<'sources' | 'magicgate' | 'mlog' | 'general' | 'help'>('sources');
   const [formData, setFormData] = useState<AppConfig>(config);
   const [editingSource, setEditingSource] = useState<DataSource | null>(null);
   const [isAddingSource, setIsAddingSource] = useState<'file' | 'api' | null>(null);
@@ -317,6 +317,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </span>
             </button>
           )}
+
+          {/* MLog tab */}
+          <button
+            onClick={() => setActiveTab('mlog')}
+            className={`py-3 font-medium text-sm border-b-2 transition flex items-center gap-2 ${
+              activeTab === 'mlog'
+                ? 'border-indigo-500 text-indigo-400'
+                : 'border-transparent text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            <span className="material-symbols-outlined text-lg">support_agent</span>
+            MLog
+            {formData.mlog?.baseUrl?.trim() ? (
+              <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded font-bold">
+                Aktivní
+              </span>
+            ) : null}
+          </button>
 
           <button
             onClick={() => setActiveTab('general')}
@@ -733,6 +751,74 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     placeholder="••••••••••••"
                   />
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB MLog */}
+          {activeTab === 'mlog' && (
+            <div className="space-y-6 max-w-xl">
+              <div>
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg text-indigo-400">support_agent</span>
+                  Propojení s helpdeskem MLog
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  Nastavte základní webovou adresu (Base URL) vašeho helpdesku MLog. Po nastavení můžete ve vyhledávači
+                  rovnou zadat kód požadavku (např. <strong className="font-mono text-indigo-300">R1234</strong>) nebo
+                  komentáře (např. <strong className="font-mono text-indigo-300">T5678</strong>) a stiskem Enter
+                  přímo otevřít detail v prohlížeči.
+                </p>
+              </div>
+
+              <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-300 mb-1">
+                    Základní webová adresa MLogu (Base URL)
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.mlog?.baseUrl || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        mlog: { ...formData.mlog, baseUrl: e.target.value },
+                      })
+                    }
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none font-mono"
+                    placeholder="https://mlog.magicware.cz"
+                  />
+                  <span className="text-[11px] text-gray-400 mt-1 block">
+                    Zadejte adresu včetně protokolu (např. https://mlog.magicware.cz). Pokud pole necháte prázdné, detekce je vypnutá.
+                  </span>
+                </div>
+
+                {formData.mlog?.baseUrl?.trim() ? (
+                  <div className="p-3 bg-indigo-950/30 border border-indigo-500/20 rounded-lg text-xs space-y-1.5">
+                    <p className="font-semibold text-indigo-300 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-sm">check_circle</span>
+                      Detekce je aktivní pro následující vzory:
+                    </p>
+                    <ul className="list-disc list-inside text-gray-300 space-y-0.5 pl-1">
+                      <li>
+                        Zadání <code className="text-white font-mono bg-black/30 px-1 py-0.5 rounded">R2345</code> otevře{' '}
+                        <span className="font-mono text-indigo-300">
+                          {formData.mlog.baseUrl.trim().replace(/\/+$/, '')}/R2345
+                        </span>
+                      </li>
+                      <li>
+                        Zadání <code className="text-white font-mono bg-black/30 px-1 py-0.5 rounded">T7821</code> otevře{' '}
+                        <span className="font-mono text-indigo-300">
+                          {formData.mlog.baseUrl.trim().replace(/\/+$/, '')}/T7821
+                        </span>
+                      </li>
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-white/[0.02] border border-white/5 rounded-lg text-xs text-gray-400">
+                    Detekce je v tuto chvíli vypnutá. Pro její aktivaci vyplňte webovou adresu MLogu výše.
+                  </div>
+                )}
               </div>
             </div>
           )}

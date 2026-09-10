@@ -1,6 +1,6 @@
 {
   "name": "iadonkey",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "IADonkey Launcher",
   "author": "MagicWare",
   "main": "dist-electron/main.js",
@@ -26,6 +26,7 @@
       "dist-electron"
     ],
     "win": {
+      "icon": "build/icon.ico",
       "artifactName": "${productName}-${version}.${ext}",
       "target": [
         {

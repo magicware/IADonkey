@@ -47,10 +47,15 @@ export interface MagicGateSettings {
   password: string;
 }
 
+export interface MlogSettings {
+  baseUrl: string;
+}
+
 export interface AppConfig {
   hotkey: string;
   sources: DataSource[];
   magicgate: MagicGateSettings;
+  mlog?: MlogSettings;
   updateUrl: string;
   lastDeclinedVersion: string | null;
   lastDeclinedTime: number | null;

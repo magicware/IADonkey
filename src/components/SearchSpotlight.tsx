@@ -3,9 +3,11 @@ import { LauncherItem, SyncProgress } from '../types';
 import { MaterialIcon } from './MaterialIcon';
 import { evaluateExpression } from '../utils/calculator';
 import { detectUrl } from '../utils/urlHelper';
+import { detectMlogTicket } from '../utils/mlog';
 
 interface SearchSpotlightProps {
   items: LauncherItem[];
+  mlogBaseUrl?: string;
   onOpenSettings: () => void;
   onRefreshData: () => void;
   isSyncing?: boolean;
@@ -15,6 +17,7 @@ interface SearchSpotlightProps {
 
 export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   items,
+  mlogBaseUrl,
   onOpenSettings,
   onRefreshData,
   isSyncing = false,
@@ -97,6 +100,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
     // 2. Normal main mode
     const list: LauncherItem[] = [];
+
+    // 0. MLog ticket engine (priority -2, active only if mlogBaseUrl is configured)
+    const mlogItem = detectMlogTicket(trimmed, mlogBaseUrl);
+    if (mlogItem) {
+      list.push(mlogItem);
+    }
 
     // 1. Calculator engine (priority -1)
     const calcItem = evaluateExpression(trimmed);
@@ -375,7 +384,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                     <MaterialIcon
                       icon={item.icon}
                       image={item.image}
-                      fallbackIcon={item.priority === -1 ? 'calculate' : 'code'}
+                      fallbackIcon={item.priority === -1 ? 'calculate' : item.priority === -2 ? 'support_agent' : 'code'}
                       className="w-7 h-7"
                     />
                   </div>
@@ -386,6 +395,11 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       <span className="font-semibold text-sm truncate leading-tight">
                         {item.name}
                       </span>
+                      {item.priority === -2 && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">
+                          MLog
+                        </span>
+                      )}
                       {item.priority === -1 && (
                         <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-gray-300">
                           Kalkulačka

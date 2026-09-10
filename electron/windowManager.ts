@@ -5,6 +5,14 @@ import { BrowserWindow, Tray, Menu, screen, nativeImage, app } from 'electron';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const getAppIcon = () => {
+  const ico = path.join(__dirname, '../electron/assets/icon.ico');
+  const png = path.join(__dirname, '../electron/assets/icon.png');
+  if (fs.existsSync(ico)) return ico;
+  if (fs.existsSync(png)) return png;
+  return undefined;
+};
+
 export class WindowManager {
   private mainWindow: BrowserWindow | null = null;
   private settingsWindow: BrowserWindow | null = null;
@@ -37,6 +45,7 @@ export class WindowManager {
       height,
       x,
       y,
+      icon: getAppIcon(),
       frame: false,
       transparent: true,
       backgroundColor: '#00000000',
@@ -153,6 +162,7 @@ export class WindowManager {
       minWidth: 800,
       minHeight: 560,
       title: 'IADonkey – Nastavení',
+      icon: getAppIcon(),
       autoHideMenuBar: true,
       backgroundColor: '#181920',
       show: false,

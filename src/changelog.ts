@@ -55,7 +55,9 @@ export const CHANGELOG_HISTORY: VersionEntry[] = [
  * Po dokončení denní práce se tato sekce překlopí do nové verze a navýší se číslo.
  */
 export const UPCOMING_CHANGELOG: string[] = [
-  // Zde se zapisují novinky v průběhu vývoje další verze
+  'Nová oficiální ikona aplikace v hlavním panelu Windows i záhlaví oken (nahrazena výchozí ikona Electronu).',
+  'Integrace helpdesku MLog: rychlé otevírání požadavků (R123) i komentářů (T456) přímo z vyhledávače podle nastavené Base URL v nové záložce MLog.',
+  'Pohodlné stahování aktualizací přímo uvnitř aplikace (In-App updater) s ukazatelem průběhu stahování a automatickým restartem do nové verze.',
 ];
 
 export function getLatestRelease(): VersionEntry {
