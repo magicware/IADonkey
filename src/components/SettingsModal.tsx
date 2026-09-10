@@ -945,7 +945,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             latestVersion: '0.1.2',
                             currentVersion: CURRENT_APP_VERSION,
                             releaseNotes: '• Přidána nová položka v nastavení: výběr barev aplikace s živým náhledem\n• Ochrana proti nechtěnému stisku jediné klávesy při nastavování zkratky\n• Nové přehlednější ikony pro lokální JSON soubory a tlačítka v nastavení\n• Zrychlený start okna nastavení bez problikávání barev',
-                            downloadUrl: 'https://github.com/iadonkey/launcher/releases',
+                            downloadUrl: 'https://github.com/magicware/IADonkey/releases',
                           });
                         }}
                         title="Simulovat detekci nové verze pro otestování dialogu aktualizace"

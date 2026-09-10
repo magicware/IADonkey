@@ -49,6 +49,11 @@ export class AppStore {
         const parsed = JSON.parse(raw);
         cfg = { ...DEFAULT_CONFIG, ...parsed };
       }
+
+      // Auto-migrate legacy / dummy placeholder repository URL
+      if (!cfg.updateUrl || cfg.updateUrl.includes('iadonkey/launcher')) {
+        cfg.updateUrl = DEFAULT_CONFIG.updateUrl;
+      }
     } catch (err) {
       console.error('[Store] Failed to load config, falling back to defaults:', err);
     }
