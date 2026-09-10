@@ -22,7 +22,7 @@ const DEFAULT_CONFIG: AppConfig = {
     username: '',
     password: '',
   },
-  updateUrl: 'https://raw.githubusercontent.com/iadonkey/launcher/main/version.json',
+  updateUrl: 'https://raw.githubusercontent.com/magicware/IADonkey/main/version.json',
   lastDeclinedVersion: null,
   lastDeclinedTime: null,
   autoSyncIntervalMinutes: 30,
