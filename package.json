@@ -12,6 +12,7 @@
     "build:exe": "npm run compile && electron-builder",
     "build:dir": "npm run compile && electron-builder --dir",
     "dist": "npm run compile && electron-builder",
+    "release": "powershell -ExecutionPolicy Bypass -File ./scripts/release.ps1",
     "start": "electron ."
   },
   "build": {
@@ -25,6 +26,7 @@
       "dist-electron"
     ],
     "win": {
+      "artifactName": "${productName}-${version}.${ext}",
       "target": [
         {
           "target": "portable",
