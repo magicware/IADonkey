@@ -21,16 +21,26 @@ async function main() {
   const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
   const currentVer = pkg.version || '0.1.0';
 
-  console.log(`\x1b[33mAktualni verze: ${currentVer}\x1b[0m`);
+  console.log(`\x1b[33mAktualni verze v package.json: ${currentVer}\x1b[0m`);
 
-  // Navrhnout dalsi patch verzi (napr. 0.1.1 -> 0.1.2)
+  // Zkontrolujeme, zda tag pro currentVer uz existuje na gitu
+  let tagExists = false;
+  try {
+    const existingTags = execSync('git tag -l', { cwd: rootDir, encoding: 'utf8' });
+    tagExists = existingTags.split(/\r?\n/).map(t => t.trim()).includes(`v${currentVer}`);
+  } catch {}
+
+  // Navrhnout dalsi patch verzi pro pripad, ze aktualni verze uz byla vydana
   const parts = currentVer.split('.');
   const nextPatch = parts.length === 3 
     ? `${parts[0]}.${parts[1]}.${parseInt(parts[2], 10) + 1}`
     : `${currentVer}.1`;
 
-  const inputVer = await rl.question(`Zadejte novou verzi pro release [${nextPatch}]: `);
-  const version = inputVer.trim() || nextPatch;
+  // Pokud aktualni verze jeste nebyla vydana/otagovana, nabidneme prave ji!
+  const suggestedVer = tagExists ? nextPatch : currentVer;
+
+  const inputVer = await rl.question(`Zadejte verzi pro release [${suggestedVer}]: `);
+  const version = inputVer.trim() || suggestedVer;
 
   console.log(`\n\x1b[32mPripravuji release verze ${version}...\x1b[0m`);
 
@@ -99,15 +109,27 @@ async function main() {
   if (!doGit || doGit.toLowerCase() === 'a' || doGit.toLowerCase() === 'y') {
     try {
       execSync('git add package.json src/changelog.ts version.json CHANGELOG.md', { cwd: rootDir, stdio: 'inherit' });
-      execSync(`git commit -m "chore: Release v${version}"`, { cwd: rootDir, stdio: 'inherit' });
-      execSync(`git tag -a "v${version}" -m "Release v${version}"`, { cwd: rootDir, stdio: 'inherit' });
-      console.log(`\x1b[32m✓ Git commit a tag v${version} vytvoreny.\x1b[0m`);
+      try {
+        execSync(`git commit -m "chore: Release v${version}"`, { cwd: rootDir, stdio: 'inherit' });
+      } catch {
+        console.log('\x1b[33m(Soubory již byly commitnuty)\x1b[0m');
+      }
+      try {
+        execSync(`git tag -a "v${version}" -m "Release v${version}"`, { cwd: rootDir, stdio: 'inherit' });
+        console.log(`\x1b[32m✓ Git tag v${version} vytvořen.\x1b[0m`);
+      } catch {
+        console.log(`\x1b[33m(Tag v${version} již existuje lokálně)\x1b[0m`);
+      }
 
       const doPush = await rl.question(`Chcete odeslat zmeny do vzdaleneho repozitare (git push origin main && git push origin v${version})? (A/n): `);
       if (!doPush || doPush.toLowerCase() === 'a' || doPush.toLowerCase() === 'y') {
         execSync('git push origin main', { cwd: rootDir, stdio: 'inherit' });
-        execSync(`git push origin "v${version}"`, { cwd: rootDir, stdio: 'inherit' });
-        console.log(`\x1b[32m✓ Zmeny a tag odeslany na GitHub.\x1b[0m`);
+        try {
+          execSync(`git push origin "v${version}"`, { cwd: rootDir, stdio: 'inherit' });
+          console.log(`\x1b[32m✓ Zmeny a tag odeslany na GitHub.\x1b[0m`);
+        } catch {
+          console.log(`\x1b[33m(Tag v${version} je již na GitHubu)\x1b[0m`);
+        }
       }
     } catch (err) {
       console.error(`\x1b[31mUpozorneni pri praci s Gitem:\x1b[0m`, err.message);
