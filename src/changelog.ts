@@ -5,12 +5,25 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '0.1.4';
+export const CURRENT_APP_VERSION = '0.1.5';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '0.1.5',
+    date: '10. 9. 2026',
+    title: 'Integrace MLog, Gmail, nová ikona a vylepšení UI',
+    highlights: [
+      'Automatické zobrazení vyhledávacího pole (Spotlight) ihned při spuštění aplikace s aktivním textovým kurzorem.',
+      'Nová oficiální ikona IADonkey v hlavním panelu Windows (taskbaru), systémovém panelu (tray) i v záhlaví oken.',
+      'Integrace helpdesku MLog: rychlé otevírání požadavků (R123) i úkolů (T456) z vyhledávače podle nastavené Base URL v nové záložce MLog.',
+      'Integrace Gmailu: zadáním libovolné e-mailové adresy se okamžitě nabídne otevření nového konceptu zprávy v Gmailu s předvyplněným příjemcem.',
+      'Čistější rozhraní – odstraněna přebytečná tlačítka, kliknutím na chip s číslem verze se otevře historie změn (Changelog).',
+      'Sjednocení šířky záložky MLog na 100 % plochy okna Nastavení.',
+    ],
+  },
   {
     version: '0.1.2',
     date: '10. 9. 2026',
@@ -51,16 +64,10 @@ export const CHANGELOG_HISTORY: VersionEntry[] = [
 ];
 
 /**
- * Zde se průběžně zapisují novinky pro budoucí verzi (připravuje se pro 0.1.2).
+ * Zde se průběžně zapisují novinky pro budoucí verzi.
  * Po dokončení denní práce se tato sekce překlopí do nové verze a navýší se číslo.
  */
-export const UPCOMING_CHANGELOG: string[] = [
-  'Automatické zobrazení vyhledávacího pole (spotlightu) při startu aplikace.',
-  'Nová oficiální ikona aplikace v hlavním panelu Windows i záhlaví oken (nahrazena výchozí ikona Electronu).',
-  'Integrace helpdesku MLog: rychlé otevírání požadavků (R123) i úkolů (T456) přímo z vyhledávače podle nastavené Base URL v nové záložce MLog.',
-  'Integrace Gmailu: zadáním libovolné e-mailové adresy se okamžitě nabídne otevření nového konceptu zprávy v Gmailu.',
-  'Pohodlné stahování aktualizací přímo uvnitř aplikace (In-App updater) s ukazatelem průběhu stahování a automatickým restartem do nové verze.',
-];
+export const UPCOMING_CHANGELOG: string[] = [];
 
 export function getLatestRelease(): VersionEntry {
   return CHANGELOG_HISTORY[0];
