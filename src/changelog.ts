@@ -5,12 +5,26 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '0.1.5';
+export const CURRENT_APP_VERSION = '0.1.6';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '0.1.6',
+    date: '11. 9. 2026',
+    title: 'Nativní programy Windows, Google Search a vylepšení UI',
+    highlights: [
+      'Vyhledávání a spouštění nainstalovaných programů Windows přímo ze Start menu (klasické i UWP/Store aplikace jako Adobe XD, Kalkulačka, Windows Terminal).',
+      'Extrakce originálních plnobarevných ikon aplikací v nativním rozlišení (včetně UWP aplikací).',
+      'Inteligentní řazení aplikací podle začátku jednotlivých slov (zadáním "XD" se ihned nabídne "Adobe XD").',
+      'Integrace Google Search: možnost okamžitého vyhledání dotazu na Google (priorita 100 na konci seznamu) i rychlý prefix google:.',
+      'Možnost zapnutí a vypnutí prohledávání programů i Google Search v záložce Obecné.',
+      'Sjednocení barvy ikony API zdroje v Nastavení s aktivním motivem aplikace.',
+      'Spolehlivá detekce a zobrazení záložky MagicGate i v případě, že se parametr nachází pouze ve vnořených podpoložkách.',
+    ],
+  },
   {
     version: '0.1.5',
     date: '10. 9. 2026',
