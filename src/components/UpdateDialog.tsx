@@ -185,7 +185,7 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
               <button
                 type="button"
                 onClick={handleStartDownload}
-                className="flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-lg shadow-indigo-600/30 transition"
+                className="flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition"
               >
                 <span className="material-symbols-outlined text-sm">download</span>
                 Aktualizovat nyní
@@ -207,7 +207,7 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
             <button
               type="button"
               onClick={handleInstallAndRestart}
-              className="w-full flex items-center justify-center gap-1.5 px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-600/30 transition"
+              className="w-full flex items-center justify-center gap-1.5 px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition"
             >
               <span className="material-symbols-outlined text-base">restart_alt</span>
               Restartovat a spustit novou verzi

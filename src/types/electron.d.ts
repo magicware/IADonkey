@@ -1,4 +1,4 @@
-import { AppConfig, LauncherItem, UpdateInfo, SyncProgress } from './index';
+import { AppConfig, LauncherItem, UpdateInfo, SyncProgress, DataSource } from './index';
 
 declare global {
   interface Window {
@@ -8,6 +8,8 @@ declare global {
       getItems: () => Promise<LauncherItem[]>;
       syncNow: () => Promise<LauncherItem[]>;
       selectJsonFile: () => Promise<string | null>;
+      selectXmlFile: () => Promise<string | null>;
+      inspectSource: (source: DataSource) => Promise<{ keys: string[]; sample: Record<string, any> | null }>;
       executeAction: (data: { action: string; location: string; settings?: string | null }) => Promise<void>;
       openExternal: (url: string) => Promise<void>;
       openPath: (path: string) => Promise<void>;
@@ -18,6 +20,7 @@ declare global {
       installUpdate: (filePath: string) => Promise<void>;
       pauseGlobalHotkey: () => Promise<void>;
       resumeGlobalHotkey: () => Promise<void>;
+      fetchFaviconForUrl: (url: string) => Promise<string | null>;
       onDataUpdated: (callback: (items: LauncherItem[]) => void) => () => void;
       onConfigUpdated: (callback: (config: AppConfig) => void) => () => void;
       onOpenSettingsRequest: (callback: () => void) => () => void;
@@ -26,6 +29,9 @@ declare global {
       onWindowShown: (callback: () => void) => () => void;
       onWindowHideRequest: (callback: () => void) => () => void;
       onSyncProgress: (callback: (progress: SyncProgress) => void) => () => void;
+      getSearchEngineFavicons: () => Promise<Record<string, string>>;
+      onSearchEngineFaviconsUpdated: (callback: (favicons: Record<string, string>) => void) => () => void;
+      onFocusInput: (callback: () => void) => () => void;
     };
   }
 }

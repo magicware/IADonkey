@@ -72,7 +72,7 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
         <div className="pt-2 border-t border-white/10 flex items-center justify-end">
           <button
             onClick={onDismiss}
-            className="px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-lg shadow-indigo-600/30 transition"
+            className="px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition"
           >
             Rozumím
           </button>

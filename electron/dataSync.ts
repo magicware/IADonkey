@@ -1,6 +1,7 @@
 import fs from 'node:fs';
-import type { DataSource, FileSource, ApiSource, LauncherItem } from '../src/types';
+import type { DataSource, FileSource, ApiSource, LauncherItem, SourceFieldMapping } from '../src/types';
 import { AppStore } from './store';
+import { loadMagicGateXml } from './magicGateXml';
 
 export class DataSyncManager {
   private store: AppStore;
@@ -24,23 +25,25 @@ export class DataSyncManager {
     const totalCount = enabledSources.length;
 
     if (totalCount === 0) {
+      if (config.magicgate?.xmlPath && fs.existsSync(config.magicgate.xmlPath)) {
+        try {
+          const mgItems = loadMagicGateXml(config.magicgate.xmlPath);
+          allItems.push(...mgItems);
+        } catch (err) {
+          console.error('[DataSync] Error loading MagicGate XML:', err);
+        }
+      }
+
       onProgress?.({
         total: 0,
         current: 0,
         percentage: 100,
         isComplete: true,
       });
-      const nowFormatted = new Date().toLocaleString('cs-CZ', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      });
-      this.store.saveConfig({ ...config, sources: updatedSources, lastSyncTime: nowFormatted });
-      this.store.saveItems([]);
-      return [];
+      const nowIso = new Date().toISOString();
+      this.store.saveConfig({ ...config, sources: updatedSources, lastSyncTime: nowIso });
+      this.store.saveItems(allItems);
+      return allItems;
     }
 
     onProgress?.({
@@ -64,8 +67,8 @@ export class DataSyncManager {
           items = await this.syncApiSource(src as ApiSource);
         }
 
-        // Tag items with source reference
-        const normalized = items.map((it, idx) => this.normalizeItem(it, src.id, idx));
+        // Tag items with source reference and apply mapping if configured
+        const normalized = items.map((it, idx) => this.normalizeItem(it, src.id, idx, src.mapping));
         allItems.push(...normalized);
 
         updatedSources[i] = {
@@ -93,17 +96,20 @@ export class DataSyncManager {
       });
     }
 
-    const nowFormatted = new Date().toLocaleString('cs-CZ', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
+    // Load MagicGate XML items if configured
+    if (config.magicgate?.xmlPath && fs.existsSync(config.magicgate.xmlPath)) {
+      try {
+        const mgItems = loadMagicGateXml(config.magicgate.xmlPath);
+        allItems.push(...mgItems);
+      } catch (err) {
+        console.error('[DataSync] Error loading MagicGate XML:', err);
+      }
+    }
+
+    const nowIso = new Date().toISOString();
 
     // Save updated source statistics and global sync timestamp into config
-    this.store.saveConfig({ ...config, sources: updatedSources, lastSyncTime: nowFormatted });
+    this.store.saveConfig({ ...config, sources: updatedSources, lastSyncTime: nowIso });
 
     // Save combined items into local cache
     this.store.saveItems(allItems);
@@ -112,21 +118,75 @@ export class DataSyncManager {
   }
 
   /**
-   * Reads a local JSON file
+   * Reads a local JSON file with BOM stripping, UTF-16 fallback and array unwrapping
    */
   private async syncFileSource(src: FileSource): Promise<LauncherItem[]> {
     if (!src.path || !fs.existsSync(src.path)) {
       throw new Error(`Soubor nebyl nalezen na cestě: ${src.path}`);
     }
 
-    const raw = await fs.promises.readFile(src.path, 'utf-8');
-    const parsed = JSON.parse(raw);
+    const buf = await fs.promises.readFile(src.path);
+    let raw = buf.toString('utf-8').replace(/^\uFEFF/, '').trim();
 
-    if (!Array.isArray(parsed)) {
+    // If UTF-8 produced replacement characters \uFFFD, try Windows-1250 / ANSI
+    if (raw.includes('\uFFFD')) {
+      try {
+        const win1250 = new TextDecoder('windows-1250').decode(buf).replace(/^\uFEFF/, '').trim();
+        if (!win1250.includes('\uFFFD')) {
+          raw = win1250;
+        }
+      } catch {}
+    }
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (err: any) {
+      // 1. Try fallback reading as UTF-16LE
+      try {
+        parsed = JSON.parse(buf.toString('utf16le').replace(/^\uFEFF/, '').trim());
+      } catch {
+        // 2. Try Windows-1250 decoding
+        try {
+          const win1250 = new TextDecoder('windows-1250').decode(buf).replace(/^\uFEFF/, '').trim();
+          parsed = JSON.parse(win1250);
+        } catch {
+          // 3. Try removing trailing commas
+          try {
+            const stripped = raw.replace(/,\s*([}\]])/g, '$1');
+            parsed = JSON.parse(stripped);
+          } catch {
+            throw new Error(`Neplatný formát JSON souboru: ${err?.message || err}`);
+          }
+        }
+      }
+    }
+
+    // Unwrap array if root object has data, items, results, etc.
+    let itemsArray: any[] | null = null;
+    if (Array.isArray(parsed)) {
+      itemsArray = parsed;
+    } else if (parsed && typeof parsed === 'object') {
+      if (Array.isArray(parsed.data)) itemsArray = parsed.data;
+      else if (Array.isArray(parsed.items)) itemsArray = parsed.items;
+      else if (Array.isArray(parsed.results)) itemsArray = parsed.results;
+      else if (Array.isArray(parsed.records)) itemsArray = parsed.records;
+      else if (Array.isArray(parsed.values)) itemsArray = parsed.values;
+      else {
+        for (const val of Object.values(parsed)) {
+          if (Array.isArray(val)) {
+            itemsArray = val;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!itemsArray) {
       throw new Error('Soubor neobsahuje pole JSON objektů [{ ... }]');
     }
 
-    return parsed;
+    return itemsArray;
   }
 
   /**
@@ -163,15 +223,30 @@ export class DataSyncManager {
     const parsed = await response.json();
 
     // Handle response if wrapped in data or directly an array
+    let itemsArray: any[] | null = null;
     if (Array.isArray(parsed)) {
-      return parsed;
-    } else if (parsed && Array.isArray(parsed.data)) {
-      return parsed.data;
-    } else if (parsed && Array.isArray(parsed.items)) {
-      return parsed.items;
-    } else {
+      itemsArray = parsed;
+    } else if (parsed && typeof parsed === 'object') {
+      if (Array.isArray(parsed.data)) itemsArray = parsed.data;
+      else if (Array.isArray(parsed.items)) itemsArray = parsed.items;
+      else if (Array.isArray(parsed.results)) itemsArray = parsed.results;
+      else if (Array.isArray(parsed.records)) itemsArray = parsed.records;
+      else if (Array.isArray(parsed.values)) itemsArray = parsed.values;
+      else {
+        for (const val of Object.values(parsed)) {
+          if (Array.isArray(val)) {
+            itemsArray = val;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!itemsArray) {
       throw new Error('API nevrátilo pole objektů [{ ... }]');
     }
+
+    return itemsArray;
   }
 
   /**
@@ -229,31 +304,86 @@ export class DataSyncManager {
   }
 
   /**
-   * Ensures default values according to specifications (including recursive subitems under options)
+   * Reads the first record of a source and returns available keys and a sample record for mapping
+   */
+  public async inspectSource(src: DataSource): Promise<{ keys: string[]; sample: Record<string, any> | null }> {
+    let rawItems: any[] = [];
+    if (src.type === 'file') {
+      rawItems = await this.syncFileSource(src as FileSource);
+    } else if (src.type === 'api') {
+      rawItems = await this.syncApiSource(src as ApiSource);
+    }
+
+    if (!Array.isArray(rawItems) || rawItems.length === 0) {
+      return { keys: [], sample: null };
+    }
+
+    // Collect all unique keys from up to first 20 records
+    const keySet = new Set<string>();
+    let firstValidSample: Record<string, any> | null = null;
+
+    for (const item of rawItems.slice(0, 20)) {
+      if (item && typeof item === 'object') {
+        if (!firstValidSample && Object.keys(item).length > 0) {
+          firstValidSample = item;
+        }
+        for (const k of Object.keys(item)) {
+          if (typeof item[k] !== 'function') {
+            keySet.add(k);
+          }
+        }
+      }
+    }
+
+    const keys = Array.from(keySet);
+    const sample = firstValidSample || (rawItems[0] && typeof rawItems[0] === 'object' ? rawItems[0] : null);
+    return { keys, sample };
+  }
+
+  /**
+   * Ensures default values according to specifications (including recursive subitems under options),
+   * applying custom field mapping if configured on the source.
    */
   private normalizeItem(
     raw: any,
     sourceId: string,
     index: number,
-    parentId?: string,
-    parentSettings?: string | null
+    mapping?: SourceFieldMapping,
+    parentId?: string
   ): LauncherItem {
+    const getValue = (field: keyof SourceFieldMapping, fallback: any) => {
+      const rule = mapping?.[field];
+      if (!rule) return raw[field] !== undefined ? raw[field] : fallback;
+      if (rule.type === 'fixed') return rule.value;
+      if (rule.type === 'field' && rule.value) {
+        const val = raw[rule.value];
+        return val !== undefined ? val : fallback;
+      }
+      return raw[field] !== undefined ? raw[field] : fallback;
+    };
+
     const id = raw.id || `${sourceId}-${parentId ? `${parentId}-` : ''}${index}`;
-    const effectiveSettings = raw.settings !== undefined ? raw.settings : (parentSettings || null);
+    const effectiveSettings = getValue('settings', raw.settings !== undefined ? raw.settings : null);
     const subOptions = Array.isArray(raw.options)
       ? raw.options.map((opt: any, optIdx: number) =>
-          this.normalizeItem(opt, sourceId, optIdx, id, effectiveSettings)
+          this.normalizeItem(opt, sourceId, optIdx, mapping, id)
         )
       : undefined;
 
+    const rawPriority = getValue('priority', raw.priority);
+    const parsedPriority = typeof rawPriority === 'number' ? rawPriority : (Number(rawPriority) || 0);
+
+    const rawAction = getValue('action', raw.action || 'open');
+    const normalizedAction = rawAction === 'snippet' ? 'copy' : rawAction;
+
     return {
       id,
-      name: String(raw.name || 'Položka bez názvu'),
-      location: raw.location !== undefined ? raw.location : null,
-      action: raw.action || 'open',
-      icon: raw.icon || 'code',
-      image: raw.image || null,
-      priority: typeof raw.priority === 'number' ? raw.priority : 0,
+      name: String(getValue('name', raw.name || 'Položka bez názvu')),
+      location: getValue('location', raw.location !== undefined ? raw.location : null),
+      action: normalizedAction,
+      icon: getValue('icon', raw.icon || 'code'),
+      image: getValue('image', raw.image || null),
+      priority: isNaN(parsedPriority) ? 0 : parsedPriority,
       settings: effectiveSettings === 'magicgate' ? 'magicgate' : effectiveSettings || null,
       sourceId,
       options: subOptions,

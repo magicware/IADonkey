@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import electronPkg from 'electron';
-const app = (electronPkg as any)?.app || (electronPkg as any)?.default?.app;
+import { app } from 'electron';
 import type { AppConfig, LauncherItem } from '../src/types';
 
 const USER_DATA_PATH = app?.getPath
@@ -31,6 +30,9 @@ const DEFAULT_CONFIG: AppConfig = {
   autoSyncIntervalMinutes: 30,
   primaryColor: '#6366f1',
   lastSeenVersion: null,
+  searchInstalledApps: true,
+  searchGoogle: true,
+  defaultSearchEngine: 'google',
 };
 
 import { tryImportWoxCredentials } from './magicGate';
@@ -51,6 +53,11 @@ export class AppStore {
         const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
         cfg = { ...DEFAULT_CONFIG, ...parsed };
+      }
+
+      // Backward compatibility / migration for default search engine
+      if (cfg.defaultSearchEngine === undefined) {
+        cfg.defaultSearchEngine = cfg.searchGoogle === false ? 'none' : 'google';
       }
 
       // Auto-migrate legacy / dummy placeholder repository URL

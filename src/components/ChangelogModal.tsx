@@ -102,7 +102,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose }) => {
           </span>
           <button
             onClick={onClose}
-            className="px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-lg shadow-indigo-600/30 transition"
+            className="px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition"
           >
             Zavřít
           </button>

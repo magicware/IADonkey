@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getItems: (): Promise<LauncherItem[]> => ipcRenderer.invoke('get-items'),
   syncNow: (): Promise<LauncherItem[]> => ipcRenderer.invoke('sync-now'),
   selectJsonFile: (): Promise<string | null> => ipcRenderer.invoke('select-json-file'),
+  selectXmlFile: (): Promise<string | null> => ipcRenderer.invoke('select-xml-file'),
+  inspectSource: (source: any): Promise<{ keys: string[]; sample: any }> =>
+    ipcRenderer.invoke('inspect-source', source),
   executeAction: (data: { action: string; location: string; settings?: string | null }): Promise<void> =>
     ipcRenderer.invoke('execute-action', data),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('open-external', url),
@@ -18,6 +21,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   installUpdate: (filePath: string): Promise<void> => ipcRenderer.invoke('install-update', filePath),
   pauseGlobalHotkey: (): Promise<void> => ipcRenderer.invoke('pause-global-hotkey'),
   resumeGlobalHotkey: (): Promise<void> => ipcRenderer.invoke('resume-global-hotkey'),
+  fetchFaviconForUrl: (url: string): Promise<string | null> => ipcRenderer.invoke('fetch-favicon-for-url', url),
 
   // Event subscriptions from main process
   onDataUpdated: (callback: (items: LauncherItem[]) => void) => {
@@ -66,5 +70,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_event: any, progress: any) => callback(progress);
     ipcRenderer.on('sync-progress', handler);
     return () => ipcRenderer.removeListener('sync-progress', handler);
+  },
+
+  getSearchEngineFavicons: (): Promise<Record<string, string>> => ipcRenderer.invoke('get-search-engine-favicons'),
+  onSearchEngineFaviconsUpdated: (callback: (favicons: Record<string, string>) => void) => {
+    const handler = (_event: any, favicons: Record<string, string>) => callback(favicons);
+    ipcRenderer.on('search-engine-favicons-updated', handler);
+    return () => ipcRenderer.removeListener('search-engine-favicons-updated', handler);
+  },
+
+  onFocusInput: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('focus-input', handler);
+    return () => ipcRenderer.removeListener('focus-input', handler);
   },
 });

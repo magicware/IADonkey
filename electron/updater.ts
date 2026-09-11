@@ -35,18 +35,20 @@ export class UpdateChecker {
    */
   public async checkForUpdates(isManual = false): Promise<UpdateInfo> {
     const config = this.store.getConfig();
-    const currentVersion = app.getVersion() || '0.1.1';
-
-    if (!config.updateUrl) {
-      return {
-        hasUpdate: false,
-        currentVersion,
-        latestVersion: currentVersion,
-      };
-    }
+    let currentVersion = app.getVersion() || '0.1.1';
+    try {
+      if (!app.isPackaged) {
+        const pkgPath = path.join(app.getAppPath(), 'package.json');
+        if (fs.existsSync(pkgPath)) {
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+          if (pkg.version) currentVersion = pkg.version;
+        }
+      }
+    } catch {}
+    const updateUrl = config.updateUrl || 'https://raw.githubusercontent.com/magicware/IADonkey/main/version.json';
 
     try {
-      const res = await fetch(config.updateUrl, {
+      const res = await fetch(updateUrl, {
         headers: {
           'Accept': 'application/json',
           'User-Agent': `IADonkey-Launcher/${currentVersion}`,

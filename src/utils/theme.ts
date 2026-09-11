@@ -83,11 +83,22 @@ export function applyPrimaryColor(hexColor?: string) {
     .bg-indigo-600\\/30 {
       background-color: rgba(${r}, ${g}, ${b}, 0.28) !important;
     }
+    .border-indigo-500\\/50,
     .border-indigo-500\\/40 {
       border-color: rgba(${r}, ${g}, ${b}, 0.5) !important;
     }
+    .hover\\:border-indigo-500:hover,
+    .hover\\:border-indigo-400:hover {
+      border-color: ${fullHex} !important;
+    }
 
-    /* Subitems chips & option badges */
+    /* Subitems chips, option badges & outline buttons */
+    .bg-indigo-500\\/10 {
+      background-color: rgba(${r}, ${g}, ${b}, 0.1) !important;
+    }
+    .hover\\:bg-indigo-500\\/20:hover {
+      background-color: rgba(${r}, ${g}, ${b}, 0.2) !important;
+    }
     .bg-indigo-500\\/20 {
       background-color: rgba(${r}, ${g}, ${b}, 0.2) !important;
     }
@@ -95,6 +106,7 @@ export function applyPrimaryColor(hexColor?: string) {
       background-color: rgba(${r}, ${g}, ${b}, 0.35) !important;
     }
     .border-indigo-500\\/30,
+    .border-indigo-500\\/25,
     .border-indigo-500\\/20 {
       border-color: rgba(${r}, ${g}, ${b}, 0.35) !important;
     }
@@ -114,12 +126,7 @@ export function applyPrimaryColor(hexColor?: string) {
       --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
     }
 
-    /* Shadows & rings */
-    .shadow-indigo-600\\/30,
-    .shadow-indigo-600\\/20,
-    .shadow-indigo-500\\/20 {
-      --tw-shadow-color: rgba(${r}, ${g}, ${b}, 0.35) !important;
-    }
+    /* Rings */
     .ring-indigo-500\\/50 {
       --tw-ring-color: rgba(${r}, ${g}, ${b}, 0.5) !important;
     }

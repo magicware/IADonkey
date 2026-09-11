@@ -21,6 +21,8 @@ const DEFAULT_CONFIG: AppConfig = {
   autoSyncIntervalMinutes: 30,
   primaryColor: '#6366f1',
   lastSeenVersion: null,
+  searchGoogle: true,
+  defaultSearchEngine: 'google',
 };
 
 export const App: React.FC = () => {
@@ -126,6 +128,8 @@ export const App: React.FC = () => {
       try {
         const freshItems = await window.electronAPI.syncNow();
         setItems(freshItems || []);
+        const freshConfig = await window.electronAPI.getConfig();
+        if (freshConfig) setConfig(freshConfig);
       } catch (err) {
         console.error('Sync failed:', err);
       } finally {
@@ -207,6 +211,7 @@ export const App: React.FC = () => {
           isSyncing={isSyncing}
           syncProgress={syncProgress}
           updateStatusMessage={updateStatusMessage}
+          updateInfo={updateInfo}
         />
         {/* Update Dialog in settings view if simulated */}
         {updateInfo && (
@@ -234,6 +239,8 @@ export const App: React.FC = () => {
       <SearchSpotlight
         items={items}
         mlogBaseUrl={config?.mlog?.baseUrl}
+        searchGoogle={config.searchGoogle !== false}
+        defaultSearchEngine={config.defaultSearchEngine}
         onOpenSettings={() => {
           if (window.electronAPI?.openSettingsWindow) {
             window.electronAPI.openSettingsWindow();
@@ -245,6 +252,7 @@ export const App: React.FC = () => {
         isSyncing={isSyncing}
         syncProgress={syncProgress}
         lastSyncTime={config.lastSyncTime}
+        snippets={config.snippets}
       />
 
       {/* Fallback modal if not in dedicated window */}
@@ -253,12 +261,16 @@ export const App: React.FC = () => {
           config={config}
           items={items}
           onSaveConfig={handleSaveConfig}
-          onClose={() => setShowSettings(false)}
+          onClose={() => {
+            setShowSettings(false);
+            window.dispatchEvent(new CustomEvent('focus-search-input'));
+          }}
           onTriggerSync={handleRefreshData}
           onCheckUpdate={handleCheckUpdate}
           isSyncing={isSyncing}
           syncProgress={syncProgress}
           updateStatusMessage={updateStatusMessage}
+          updateInfo={updateInfo}
         />
       )}
 

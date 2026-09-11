@@ -1,11 +1,13 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, dialog, shell } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, dialog, shell, clipboard } from 'electron';
 import path from 'node:path';
 import { AppStore } from './store';
 import { DataSyncManager } from './dataSync';
 import { UpdateChecker } from './updater';
 import { WindowManager } from './windowManager';
-import { AppConfig } from '../src/types';
+import { AppScanner } from './appScanner';
+import { AppConfig, LauncherItem } from '../src/types';
 import { getMagicGateAutoLoginUrl } from './magicGate';
+import { faviconService } from './faviconService';
 
 // Enforce single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
@@ -18,9 +20,20 @@ let store: AppStore;
 let syncManager: DataSyncManager;
 let updateChecker: UpdateChecker;
 let windowManager: WindowManager;
+let appScanner: AppScanner;
 let currentHotkey = 'Ctrl+Alt+Space';
 let syncIntervalTimer: NodeJS.Timeout | null = null;
 let updateIntervalTimer: NodeJS.Timeout | null = null;
+
+function getCombinedItems(): LauncherItem[] {
+  const customItems = store ? store.getItems() : [];
+  const config = store ? store.getConfig() : null;
+  if (!config || config.searchInstalledApps !== false) {
+    const apps = appScanner ? appScanner.getCachedApps() : [];
+    return [...customItems, ...apps];
+  }
+  return customItems;
+}
 
 let lastHotkeyToggle = 0;
 function registerGlobalHotkey(hotkey: string) {
@@ -69,6 +82,22 @@ function setupIpcHandlers() {
       registerGlobalHotkey(newConfig.hotkey);
     }
 
+    // If searchInstalledApps setting changed, refresh items in UI
+    if (newConfig.searchInstalledApps !== oldConfig.searchInstalledApps) {
+      const allItems = getCombinedItems();
+      windowManager.getMainWindow()?.webContents.send('data-updated', allItems);
+      windowManager.getSettingsWindow()?.webContents.send('data-updated', allItems);
+    }
+
+    // If MagicGate XML path changed, trigger sync to update launcher items
+    if (newConfig.magicgate?.xmlPath !== oldConfig.magicgate?.xmlPath) {
+      syncManager.syncAll().then(() => {
+        const allItems = getCombinedItems();
+        windowManager.getMainWindow()?.webContents.send('data-updated', allItems);
+        windowManager.getSettingsWindow()?.webContents.send('data-updated', allItems);
+      });
+    }
+
     windowManager.getMainWindow()?.webContents.send('config-updated', newConfig);
     windowManager.getSettingsWindow()?.webContents.send('config-updated', newConfig);
 
@@ -102,20 +131,25 @@ function setupIpcHandlers() {
   });
 
   ipcMain.handle('get-items', () => {
-    return store.getItems();
+    return getCombinedItems();
   });
 
   ipcMain.handle('sync-now', async () => {
-    const items = await syncManager.syncAll((progress) => {
+    await syncManager.syncAll((progress) => {
       windowManager.getMainWindow()?.webContents.send('sync-progress', progress);
       windowManager.getSettingsWindow()?.webContents.send('sync-progress', progress);
     });
     const updatedConfig = store.getConfig();
+    const allItems = getCombinedItems();
     windowManager.getMainWindow()?.webContents.send('config-updated', updatedConfig);
     windowManager.getSettingsWindow()?.webContents.send('config-updated', updatedConfig);
-    windowManager.getMainWindow()?.webContents.send('data-updated', items);
-    windowManager.getSettingsWindow()?.webContents.send('data-updated', items);
-    return items;
+    windowManager.getMainWindow()?.webContents.send('data-updated', allItems);
+    windowManager.getSettingsWindow()?.webContents.send('data-updated', allItems);
+    return allItems;
+  });
+
+  ipcMain.handle('inspect-source', async (_, source: any) => {
+    return await syncManager.inspectSource(source);
   });
 
   ipcMain.handle('select-json-file', async () => {
@@ -132,6 +166,23 @@ function setupIpcHandlers() {
     return null;
   });
 
+  ipcMain.handle('select-xml-file', async () => {
+    const win = windowManager.getSettingsWindow() || windowManager.getMainWindow();
+    const result = await dialog.showOpenDialog(win || (undefined as any), {
+      title: 'Vyberte MagicGate XML soubor konfigurace',
+      filters: [
+        { name: 'XML soubory', extensions: ['xml'] },
+        { name: 'Všechny soubory', extensions: ['*'] },
+      ],
+      properties: ['openFile'],
+    });
+
+    if (!result.canceled && result.filePaths.length > 0) {
+      return result.filePaths[0];
+    }
+    return null;
+  });
+
   ipcMain.handle('execute-action', async (_event, data: { action: string; location: string; settings?: string | null }) => {
     const { action, location, settings } = data;
     if (!location) return;
@@ -139,6 +190,12 @@ function setupIpcHandlers() {
     try {
       const trimmed = location.trim();
       const isUrl = /^https?:\/\//i.test(trimmed) || /^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}/i.test(trimmed);
+
+      if (action === 'paste' || action === 'copy') {
+        clipboard.writeText(location);
+        windowManager.hideImmediately();
+        return;
+      }
 
       if (action === 'open' || !action) {
         if (isUrl) {
@@ -204,6 +261,18 @@ function setupIpcHandlers() {
 }
 
 function startBackgroundTasks() {
+  // 0. Initial scan of installed Windows applications
+  appScanner.scanApps().then(() => {
+    const config = store.getConfig();
+    if (config.searchInstalledApps !== false) {
+      const allItems = getCombinedItems();
+      windowManager.getMainWindow()?.webContents.send('data-updated', allItems);
+      windowManager.getSettingsWindow()?.webContents.send('data-updated', allItems);
+    }
+  }).catch((err) => {
+    console.warn('[Main] AppScanner error on startup:', err);
+  });
+
   // 1. Silent sync interval
   const config = store.getConfig();
   const intervalMs = Math.max(5, config.autoSyncIntervalMinutes || 30) * 60 * 1000;
@@ -213,15 +282,16 @@ function startBackgroundTasks() {
     if (store.getConfig().sources.length > 0) {
       try {
         console.log('[Main] Running startup silent sync...');
-        const items = await syncManager.syncAll((progress) => {
+        await syncManager.syncAll((progress) => {
           windowManager.getMainWindow()?.webContents.send('sync-progress', progress);
           windowManager.getSettingsWindow()?.webContents.send('sync-progress', progress);
         });
         const updatedConfig = store.getConfig();
+        const allItems = getCombinedItems();
         windowManager.getMainWindow()?.webContents.send('config-updated', updatedConfig);
         windowManager.getSettingsWindow()?.webContents.send('config-updated', updatedConfig);
-        windowManager.getMainWindow()?.webContents.send('data-updated', items);
-        windowManager.getSettingsWindow()?.webContents.send('data-updated', items);
+        windowManager.getMainWindow()?.webContents.send('data-updated', allItems);
+        windowManager.getSettingsWindow()?.webContents.send('data-updated', allItems);
       } catch (err) {
         console.error('[Main] Startup sync error:', err);
       }
@@ -232,15 +302,16 @@ function startBackgroundTasks() {
     if (store.getConfig().sources.length > 0) {
       try {
         console.log('[Main] Running scheduled background sync...');
-        const items = await syncManager.syncAll((progress) => {
+        await syncManager.syncAll((progress) => {
           windowManager.getMainWindow()?.webContents.send('sync-progress', progress);
           windowManager.getSettingsWindow()?.webContents.send('sync-progress', progress);
         });
         const updatedConfig = store.getConfig();
+        const allItems = getCombinedItems();
         windowManager.getMainWindow()?.webContents.send('config-updated', updatedConfig);
         windowManager.getSettingsWindow()?.webContents.send('config-updated', updatedConfig);
-        windowManager.getMainWindow()?.webContents.send('data-updated', items);
-        windowManager.getSettingsWindow()?.webContents.send('data-updated', items);
+        windowManager.getMainWindow()?.webContents.send('data-updated', allItems);
+        windowManager.getSettingsWindow()?.webContents.send('data-updated', allItems);
       } catch (err) {
         console.error('[Main] Scheduled sync error:', err);
       }
@@ -255,6 +326,10 @@ function startBackgroundTasks() {
         const win = windowManager.getMainWindow();
         if (win && !win.isDestroyed()) {
           win.webContents.send('update-available', updateInfo);
+        }
+        const settingsWin = windowManager.getSettingsWindow();
+        if (settingsWin && !settingsWin.isDestroyed()) {
+          settingsWin.webContents.send('update-available', updateInfo);
         }
       }
     } catch (err) {
@@ -271,6 +346,7 @@ app.whenReady().then(() => {
   store = new AppStore();
   syncManager = new DataSyncManager(store);
   updateChecker = new UpdateChecker(store);
+  appScanner = new AppScanner();
 
   const initialConfig = store.getConfig();
   currentHotkey = initialConfig.hotkey || 'Ctrl+Alt+Space';
@@ -278,15 +354,16 @@ app.whenReady().then(() => {
   windowManager = new WindowManager(
     // onSyncRequest from Tray
     async () => {
-      const items = await syncManager.syncAll((progress) => {
+      await syncManager.syncAll((progress) => {
         windowManager.getMainWindow()?.webContents.send('sync-progress', progress);
         windowManager.getSettingsWindow()?.webContents.send('sync-progress', progress);
       });
       const updatedConfig = store.getConfig();
+      const allItems = getCombinedItems();
       windowManager.getMainWindow()?.webContents.send('config-updated', updatedConfig);
       windowManager.getSettingsWindow()?.webContents.send('config-updated', updatedConfig);
-      windowManager.getMainWindow()?.webContents.send('data-updated', items);
-      windowManager.getSettingsWindow()?.webContents.send('data-updated', items);
+      windowManager.getMainWindow()?.webContents.send('data-updated', allItems);
+      windowManager.getSettingsWindow()?.webContents.send('data-updated', allItems);
     },
     // onSettingsRequest from Tray
     () => {
@@ -300,6 +377,14 @@ app.whenReady().then(() => {
   setupIpcHandlers();
   registerGlobalHotkey(currentHotkey);
   startBackgroundTasks();
+
+  // Background refresh of search engine favicons from baseUrl metadata
+  faviconService.refreshFavicons((favicons) => {
+    windowManager.getMainWindow()?.webContents.send('search-engine-favicons-updated', favicons);
+    windowManager.getSettingsWindow()?.webContents.send('search-engine-favicons-updated', favicons);
+  }).catch((err) => {
+    console.warn('[Main] Favicon refresh error:', err);
+  });
 });
 
 app.on('second-instance', () => {

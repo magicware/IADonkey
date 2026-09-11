@@ -118,6 +118,9 @@ export class WindowManager {
       this.mainWindow.setBounds({ x, y, width, height });
     }
 
+    if (this.mainWindow.isMinimized()) {
+      this.mainWindow.restore();
+    }
     if (!this.mainWindow.isVisible()) {
       this.mainWindow.show();
     }
@@ -198,6 +201,10 @@ export class WindowManager {
 
     this.settingsWindow.on('closed', () => {
       this.settingsWindow = null;
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.showSpotlight();
+        this.mainWindow.webContents.send('focus-input');
+      }
     });
 
     return this.settingsWindow;

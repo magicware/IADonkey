@@ -22,12 +22,30 @@
   transform: scale(1) translateY(0);
 }
 
+@keyframes sync-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-sync-spin {
+  animation: sync-spin 0.85s linear infinite;
+}
+
+@layer base {
+  .material-symbols-outlined {
+    font-size: 24px;
+  }
+}
+
 @layer utilities {
   .material-symbols-outlined {
     font-family: 'Material Symbols Outlined';
     font-weight: normal;
     font-style: normal;
-    font-size: 24px;
     line-height: 1;
     letter-spacing: normal;
     text-transform: none;
