@@ -5,12 +5,26 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '0.1.6';
+export const CURRENT_APP_VERSION = '0.1.7';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '0.1.7',
+    date: '11. 9. 2026',
+    title: 'Samostatné aktualizace, detekce a mapování JSON zdrojů',
+    highlights: [
+      'Samostatná záložka Aktualizace v nastavení s možností ruční kontroly nových verzí a zobrazením historie změn.',
+      'Inteligentní detekce struktury JSON: automatické načtení struktury a mapování vlastních polí (název, odkaz, ikona, priorita apod.) na libovolné klíče JSONu.',
+      'Možnost zadání fixní hodnoty pro všechny položky zdroje (např. jednotná ikona pro celý importovaný zdroj) s živým náhledem prvního záznamu.',
+      'Rychlé kopírování URL adresy API endpointů do schránky jedním kliknutím v seznamu zdrojů.',
+      'Nové přehledné zobrazení a formátování času poslední synchronizace v českém genitivu (např. 5. května 11:24:24) se zarovnáním v levém menu.',
+      'Okamžité automatické ukládání všech změn v nastavení bez nutnosti potvrzovacího tlačítka v patičce.',
+      'Vizuální zjemnění přepínačů, odstranění duplicitních nadpisů a optimalizace rozložení okna nastavení.',
+    ],
+  },
   {
     version: '0.1.6',
     date: '11. 9. 2026',
