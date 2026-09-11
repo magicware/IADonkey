@@ -5,12 +5,27 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '0.1.7';
+export const CURRENT_APP_VERSION = '1.0.1';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.0.1',
+    date: '11. 9. 2026',
+    title: 'Kompletní seznam položek, vyhledávání bez diakritiky a MagicGate XML',
+    highlights: [
+      'Nový Kompletní seznam v nastavení: přehledné modální okno zobrazující všechny indexované položky seřazené prioritně (shodně se Spotlightem) s filtry a počítadly.',
+      'Plná podpora vyhledávání bez diakritiky: psaní s háčky i bez nich (např. "prik" spolehlivě najde "Příkazový řádek") s prioritním řazením podle začátků slov.',
+      'Import serverové konfigurace MagicGate z deploy XML souboru (včetně instancí a dílčích aplikací Administrace, Web, API, BO).',
+      'Globální podpora zástupného symbolu {favicon} pro položky i podpoložky s automatickým stahováním a mezipamětí.',
+      'Integrace vyhledávače Centrum.cz s rychlými prefixy c: a centrum:.',
+      'Systémové textové snippety s prefixem : (datum, čas, guid, rok, podpis), prioritou 0 a tyrkysovými čipy zkratek.',
+      'Vizuální sjednocení velikosti a perfektní vycentrování ikon v seznamu položek.',
+      'Automatické obnovení fokusu vyhledávacího pole po zavření okna nastavení.',
+    ],
+  },
   {
     version: '0.1.7',
     date: '11. 9. 2026',
