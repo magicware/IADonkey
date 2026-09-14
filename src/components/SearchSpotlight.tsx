@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LauncherItem, SyncProgress } from '../types';
+import { LauncherItem, LauncherAction, SyncProgress } from '../types';
 import { MaterialIcon } from './MaterialIcon';
 import { evaluateExpression } from '../utils/calculator';
 import { detectUrl } from '../utils/urlHelper';
@@ -15,6 +15,8 @@ interface SearchSpotlightProps {
   mlogBaseUrl?: string;
   searchGoogle?: boolean;
   defaultSearchEngine?: string;
+  defaultCloneDir?: string;
+  vscodeEnabled?: boolean;
   onOpenSettings: () => void;
   onRefreshData: () => void;
   isSyncing?: boolean;
@@ -28,6 +30,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   mlogBaseUrl,
   searchGoogle = true,
   defaultSearchEngine,
+  defaultCloneDir,
+  vscodeEnabled = false,
   onOpenSettings,
   onRefreshData,
   isSyncing = false,
@@ -39,6 +43,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isRevealed, setIsRevealed] = useState(false);
   const [parentItem, setParentItem] = useState<LauncherItem | null>(null);
+  const [actionsParentItem, setActionsParentItem] = useState<LauncherItem | null>(null);
+  const [selectedActionIndex, setSelectedActionIndex] = useState<number>(0);
+  const [existingClonedRepos, setExistingClonedRepos] = useState<Set<string>>(new Set());
+  const [copiedInfoKey, setCopiedInfoKey] = useState<string | null>(null);
   const [savedQueryBeforeSubitems, setSavedQueryBeforeSubitems] = useState<string>('');
   const [savedIndexBeforeSubitems, setSavedIndexBeforeSubitems] = useState<number>(0);
   const [engineFavicons, setEngineFavicons] = useState<Record<string, string>>({});
@@ -71,6 +79,21 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       window.removeEventListener('focus-search-input', handleFocus);
     };
   }, []);
+
+  // Fetch existing cloned repos for instant VS Code action availability
+  const refreshExistingClonedRepos = () => {
+    if (window.electronAPI?.getExistingClonedRepos) {
+      window.electronAPI.getExistingClonedRepos(defaultCloneDir).then((repos) => {
+        if (repos && Array.isArray(repos)) {
+          setExistingClonedRepos(new Set(repos.map((r) => r.toLowerCase())));
+        }
+      });
+    }
+  };
+
+  useEffect(() => {
+    refreshExistingClonedRepos();
+  }, [defaultCloneDir]);
 
   // Sync icon rotation & smooth check status animation
   const [syncStatus, setSyncStatus] = useState<'idle' | 'spinning' | 'success'>('idle');
@@ -149,6 +172,15 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     window.addEventListener('focus', handleFocus);
 
     const cleanupShown = window.electronAPI?.onWindowShown?.(() => {
+      refreshExistingClonedRepos();
+      requestAnimationFrame(() => {
+        setIsRevealed(true);
+      });
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+
+    const cleanupFocusInput = window.electronAPI?.onFocusInput?.(() => {
       requestAnimationFrame(() => {
         setIsRevealed(true);
       });
@@ -159,18 +191,21 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     const cleanupHide = window.electronAPI?.onWindowHideRequest?.(() => {
       setIsRevealed(false);
       setParentItem(null);
+      setActionsParentItem(null);
     });
 
     return () => {
       window.removeEventListener('focus', handleFocus);
       cleanupShown?.();
+      cleanupFocusInput?.();
       cleanupHide?.();
     };
-  }, []);
+  }, [defaultCloneDir]);
 
   // Enter subitems mode
   const enterSubitems = (item: LauncherItem) => {
     if (!item.options || item.options.length === 0) return;
+    setActionsParentItem(null);
     setSavedQueryBeforeSubitems(query);
     setSavedIndexBeforeSubitems(selectedIndex);
     setParentItem(item);
@@ -185,6 +220,102 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     setQuery(savedQueryBeforeSubitems);
     setSelectedIndex(savedIndexBeforeSubitems);
     inputRef.current?.focus();
+  };
+
+  // Extract folder name of repository
+  const getRepoFolderName = (item?: LauncherItem | null): string | null => {
+    if (!item) return null;
+    if (item.settings === 'git' || item.sourceId === 'github' || item.sourceId === 'git') {
+      if (item.shortcuts && item.shortcuts[0]) {
+        return item.shortcuts[0];
+      }
+      const parts = (item.name || '').split(/[/\\\\]/);
+      return parts[parts.length - 1] || null;
+    }
+    if (item.settings === 'magicgate' || item.sourceId === 'magicgate' || item.sourceId === 'magicgate-xml') {
+      return item.name || null;
+    }
+    return null;
+  };
+
+  // Resolve local directory path if repository is already cloned
+  const getLocalRepoPath = (item?: LauncherItem | null): string | null => {
+    if (!item || !defaultCloneDir) return null;
+    const folderName = getRepoFolderName(item);
+    if (!folderName) return null;
+    if (existingClonedRepos.has(folderName.toLowerCase())) {
+      const sep = defaultCloneDir.includes('/') ? '/' : '\\';
+      return `${defaultCloneDir.replace(/[\\/]+$/, '')}${sep}${folderName}`;
+    }
+    return null;
+  };
+
+  // Dynamically resolve actions for an item, inserting 'Otevřít ve VS Code' if repository exists locally
+  const getItemActions = (item?: LauncherItem | null): LauncherAction[] => {
+    if (!item) return [];
+    const baseActions = item.actions ? [...item.actions] : [];
+
+    if (vscodeEnabled) {
+      const localPath = getLocalRepoPath(item);
+      if (localPath) {
+        const hasVscodeAction = baseActions.some((a) => a.action === 'vscode');
+        if (!hasVscodeAction) {
+          baseActions.unshift({
+            name: 'Otevřít ve VS Code',
+            action: 'vscode',
+            location: localPath,
+            icon: 'code',
+            settings: 'vscode',
+          });
+        }
+      }
+    }
+
+    return baseActions;
+  };
+
+  const hasItemActions = (item?: LauncherItem | null) =>
+    Boolean(getItemActions(item).length > 0);
+
+  const hasItemInfo = (item?: LauncherItem | null) =>
+    Boolean(item?.info && typeof item.info === 'object' && Object.keys(item.info).length > 0);
+
+  const hasItemActionsOrInfo = (item?: LauncherItem | null) =>
+    hasItemActions(item) || hasItemInfo(item);
+
+  // Enter actions / info mode for an item
+  const enterActions = (item: LauncherItem) => {
+    if (!hasItemActionsOrInfo(item)) return;
+    refreshExistingClonedRepos();
+    setActionsParentItem(item);
+    setSelectedActionIndex(0);
+  };
+
+  // Return from actions mode back to search results
+  const exitActions = () => {
+    setActionsParentItem(null);
+    setSelectedActionIndex(0);
+    inputRef.current?.focus();
+  };
+
+  const handleCopyInfoValue = async (key: string, value: string) => {
+    if (!value) return;
+    try {
+      if (window.electronAPI) {
+        await window.electronAPI.executeAction({
+          action: 'copy',
+          location: value,
+        });
+      } else {
+        await navigator.clipboard.writeText(value);
+      }
+      setCopiedInfoKey(key);
+      setTimeout(() => {
+        setCopiedInfoKey(null);
+      }, 1500);
+    } catch (err) {
+      console.error('Failed to copy info value:', err);
+    }
   };
 
   // Filter and prioritize results (or display parentItem.options if in subitems mode)
@@ -225,6 +356,139 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       return [...dynamicSnippets, ...customSnippets];
     }
 
+    // Prefix "git:": searches exclusively in git repositories
+    const gitPrefixMatch = trimmed.match(/^git:\s*(.*)$/i);
+    if (gitPrefixMatch) {
+      const gitQuery = gitPrefixMatch[1].trim();
+      const gitItems = items.filter(
+        (item) => item.settings === 'git' || item.sourceId === 'github' || item.sourceId === 'git'
+      );
+
+      if (!gitQuery) {
+        return [...gitItems].sort((a, b) => {
+          const pA = a.priority ?? 0;
+          const pB = b.priority ?? 0;
+          if (pA !== pB) return pA - pB;
+          return (a.name || '').localeCompare(b.name || '');
+        });
+      }
+
+      const normGitQuery = removeDiacritics(gitQuery).toLowerCase();
+      const matchedGit = gitItems.filter((item) => {
+        const itemNameNorm = removeDiacritics(item.name || '').toLowerCase();
+        const itemLocNorm = removeDiacritics(item.location || '').toLowerCase();
+        const nameMatch = itemNameNorm.includes(normGitQuery);
+        const locMatch = itemLocNorm.includes(normGitQuery);
+        const optionsMatch = item.options?.some((opt) => {
+          const optNameNorm = removeDiacritics(opt.name || '').toLowerCase();
+          const optLocNorm = removeDiacritics(opt.location || '').toLowerCase();
+          return optNameNorm.includes(normGitQuery) || optLocNorm.includes(normGitQuery);
+        });
+        const infoMatch =
+          item.info &&
+          Object.values(item.info).some((v) => {
+            if (typeof v === 'string') {
+              return removeDiacritics(v).toLowerCase().includes(normGitQuery);
+            }
+            return false;
+          });
+        return nameMatch || locMatch || Boolean(optionsMatch) || Boolean(infoMatch);
+      });
+
+      matchedGit.sort((a, b) => {
+        const pA = a.priority ?? 0;
+        const pB = b.priority ?? 0;
+        if (pA !== pB) return pA - pB;
+
+        const aNorm = removeDiacritics(a.name || '').toLowerCase();
+        const bNorm = removeDiacritics(b.name || '').toLowerCase();
+
+        const aStarts = aNorm.startsWith(normGitQuery);
+        const bStarts = bNorm.startsWith(normGitQuery);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+
+        const aWordStarts = aNorm.split(/[\s\-_\/]+/).some((w) => w.startsWith(normGitQuery));
+        const bWordStarts = bNorm.split(/[\s\-_\/]+/).some((w) => w.startsWith(normGitQuery));
+        if (aWordStarts && !bWordStarts) return -1;
+        if (!aWordStarts && bWordStarts) return 1;
+
+        return (a.name || '').localeCompare(b.name || '');
+      });
+
+      return matchedGit;
+    }
+
+    // Prefix "magicgate:" (or "mg:"): searches exclusively in MagicGate items
+    const mgPrefixMatch = trimmed.match(/^(?:magicgate|mg):\s*(.*)$/i);
+    if (mgPrefixMatch) {
+      const mgQuery = mgPrefixMatch[1].trim();
+      const mgItems = items.filter(
+        (item) =>
+          item.settings === 'magicgate' ||
+          item.sourceId === 'magicgate' ||
+          Boolean(item.id?.startsWith('mg-')) ||
+          Boolean(item.options?.some((opt) => opt.settings === 'magicgate' || opt.id?.startsWith('mg-')))
+      );
+
+      if (!mgQuery) {
+        return [...mgItems].sort((a, b) => {
+          const pA = a.priority ?? 0;
+          const pB = b.priority ?? 0;
+          if (pA !== pB) return pA - pB;
+          return (a.name || '').localeCompare(b.name || '');
+        });
+      }
+
+      const normMgQuery = removeDiacritics(mgQuery).toLowerCase();
+      const matchedMg = mgItems.filter((item) => {
+        const itemNameNorm = removeDiacritics(item.name || '').toLowerCase();
+        const itemLocNorm = removeDiacritics(item.location || '').toLowerCase();
+        const nameMatch = itemNameNorm.includes(normMgQuery);
+        const locMatch = itemLocNorm.includes(normMgQuery);
+        const shortcutsMatch = item.shortcuts?.some((sc) =>
+          removeDiacritics(sc).toLowerCase().includes(normMgQuery)
+        );
+        const optionsMatch = item.options?.some((opt) => {
+          const optNameNorm = removeDiacritics(opt.name || '').toLowerCase();
+          const optLocNorm = removeDiacritics(opt.location || '').toLowerCase();
+          return optNameNorm.includes(normMgQuery) || optLocNorm.includes(normMgQuery);
+        });
+        const infoMatch =
+          item.info &&
+          Object.values(item.info).some((v) => {
+            if (typeof v === 'string') {
+              return removeDiacritics(v).toLowerCase().includes(normMgQuery);
+            }
+            return false;
+          });
+        return nameMatch || locMatch || Boolean(shortcutsMatch) || Boolean(optionsMatch) || Boolean(infoMatch);
+      });
+
+      matchedMg.sort((a, b) => {
+        const pA = a.priority ?? 0;
+        const pB = b.priority ?? 0;
+        if (pA !== pB) return pA - pB;
+
+        const aNorm = removeDiacritics(a.name || '').toLowerCase();
+        const bNorm = removeDiacritics(b.name || '').toLowerCase();
+
+        const aStarts = aNorm.startsWith(normMgQuery);
+        const bStarts = bNorm.startsWith(normMgQuery);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+
+        const aWordStarts = aNorm.split(/[\s\-_\/]+/).some((w) => w.startsWith(normMgQuery));
+        const bWordStarts = bNorm.split(/[\s\-_\/]+/).some((w) => w.startsWith(normMgQuery));
+        if (aWordStarts && !bWordStarts) return -1;
+        if (!aWordStarts && bWordStarts) return 1;
+
+        return (a.name || '').localeCompare(b.name || '');
+      });
+
+      return matchedMg;
+    }
+
     // Prefix search across all registered SEARCH_ENGINES (e.g. g:, google:, s:, seznam:, w:, wiki:, ...)
     for (const engine of SEARCH_ENGINES) {
       const prefixPattern = new RegExp(`^(?:${engine.prefixes.join('|')}):\\s*(.*)$`, 'i');
@@ -248,10 +512,101 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       }
     }
 
-    // 0. MLog ticket engine (priority -2, active only if mlogBaseUrl is configured)
+    // Prefix "mlog:": searches exclusively in MLog tickets and related items
+    const mlogPrefixMatch = trimmed.match(/^mlog:\s*(.*)$/i);
+    if (mlogPrefixMatch) {
+      const mlogQuery = mlogPrefixMatch[1].trim();
+      const mlogList: LauncherItem[] = [];
+
+      if (mlogBaseUrl) {
+        const cleanBase = mlogBaseUrl.trim().replace(/\/+$/, '');
+        if (mlogQuery) {
+          const directTicket = detectMlogTicket(mlogQuery, mlogBaseUrl);
+          if (directTicket) {
+            mlogList.push(directTicket);
+          } else {
+            const numOnly = mlogQuery.match(/^(\d+)$/);
+            if (numOnly) {
+              const id = numOnly[1];
+              mlogList.push({
+                id: `mlog-R${id}`,
+                name: `Otevřít požadavek R${id} v MLogu`,
+                location: `${cleanBase}/R${id}`,
+                action: 'open',
+                icon: 'support_agent',
+                image: null,
+                priority: -2,
+                settings: null,
+              });
+              mlogList.push({
+                id: `mlog-T${id}`,
+                name: `Otevřít úkol T${id} v MLogu`,
+                location: `${cleanBase}/T${id}`,
+                action: 'open',
+                icon: 'support_agent',
+                image: null,
+                priority: -2,
+                settings: null,
+              });
+            }
+          }
+        } else {
+          mlogList.push({
+            id: 'mlog-home',
+            name: 'Otevřít MLog Helpdesk',
+            location: cleanBase,
+            action: 'open',
+            icon: 'support_agent',
+            image: null,
+            priority: -2,
+            settings: null,
+          });
+        }
+      }
+
+      // Also filter any items that mention MLog or this ticket
+      if (mlogQuery) {
+        const norm = removeDiacritics(mlogQuery).toLowerCase();
+        const extraMlog = items.filter((it) => {
+          const n = removeDiacritics(it.name || '').toLowerCase();
+          const l = removeDiacritics(it.location || '').toLowerCase();
+          const infoM =
+            it.info &&
+            Object.values(it.info).some(
+              (v) => typeof v === 'string' && removeDiacritics(v).toLowerCase().includes(norm)
+            );
+          return (
+            (it.sourceId === 'mlog' || it.settings === 'mlog' || n.includes('mlog') || Boolean(infoM)) &&
+            (n.includes(norm) || l.includes(norm) || Boolean(infoM))
+          );
+        });
+        mlogList.push(...extraMlog);
+      }
+
+      return mlogList;
+    }
+
+    // 0. MLog ticket engine (e.g. T1, T12, T123, R54201 - active when mlogBaseUrl is configured)
     const mlogItem = detectMlogTicket(trimmed, mlogBaseUrl);
     if (mlogItem) {
       list.push(mlogItem);
+      // Also look for items that specifically reference this ticket in info
+      const normTicket = removeDiacritics(trimmed.replace(/\s+/g, '')).toLowerCase();
+      const referencingItems = items.filter((it) => {
+        if (it.info) {
+          const hasInfoTicket = Object.values(it.info).some((v) => {
+            if (typeof v === 'string') {
+              const cleaned = removeDiacritics(v.replace(/\s+/g, '')).toLowerCase();
+              return cleaned.includes(normTicket);
+            }
+            return false;
+          });
+          if (hasInfoTicket) return true;
+        }
+        return false;
+      });
+      list.push(...referencingItems);
+      return list;
     }
 
     // 0b. Standalone Email -> Gmail compose engine (priority -1.5)
@@ -356,21 +711,33 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     setSelectedIndex(0);
   }, [results]);
 
-  // Scroll selected item into view
+  // Scroll selected item or action into view
   useEffect(() => {
     if (listRef.current) {
-      const activeEl = listRef.current.querySelector('[data-selected="true"]');
-      if (activeEl) {
-        activeEl.scrollIntoView({ block: 'nearest' });
+      if (actionsParentItem) {
+        if (selectedActionIndex === 0) {
+          listRef.current.scrollTop = 0;
+        } else {
+          const activeEl = listRef.current.querySelector('[data-action-selected="true"]');
+          if (activeEl) {
+            activeEl.scrollIntoView({ block: 'nearest' });
+          }
+        }
+      } else {
+        const activeEl = listRef.current.querySelector('[data-selected="true"]');
+        if (activeEl) {
+          activeEl.scrollIntoView({ block: 'nearest' });
+        }
       }
     }
-  }, [selectedIndex]);
+  }, [selectedIndex, selectedActionIndex, actionsParentItem]);
 
   // Smooth close helper - fades out in CSS before hiding native window
   const handleClose = () => {
     setIsRevealed(false);
     setTimeout(() => {
       setParentItem(null);
+      setActionsParentItem(null);
       window.electronAPI?.hideWindow?.();
     }, 90);
   };
@@ -408,14 +775,15 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       const trimmed = target.trim();
       const isUrl = /^https?:\/\//i.test(trimmed) || /^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}/i.test(trimmed);
 
-      // Fetch favicon on execution for items using {favicon} placeholder or web URLs
-      if (isUrl && (item.image === '{favicon}' || item.settings === 'magicgate')) {
+      // Revalidate favicon on execution for items using {favicon} placeholder or web URLs
+      if (isUrl && (item.image === '{favicon}' || item.settings === 'magicgate' || item.settings === 'git' || item.sourceId === 'github')) {
         const fetchUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
         try {
           const origin = new URL(fetchUrl).origin;
-          if (!localStorage.getItem(`favicon:${origin}`)) {
-            window.electronAPI?.fetchFaviconForUrl?.(fetchUrl).then((dataUrl) => {
-              if (dataUrl) {
+          window.electronAPI?.fetchFaviconForUrl?.(fetchUrl).then((dataUrl) => {
+            if (dataUrl) {
+              const currentCached = localStorage.getItem(`favicon:${origin}`);
+              if (dataUrl !== currentCached) {
                 try {
                   localStorage.setItem(`favicon:${origin}`, dataUrl);
                   window.dispatchEvent(new CustomEvent('favicon-cached', { detail: { origin, dataUrl } }));
@@ -423,8 +791,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                   // ignore localStorage quota error
                 }
               }
-            });
-          }
+            }
+          });
         } catch {
           // ignore URL parsing error
         }
@@ -449,8 +817,125 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     handleClose();
   };
 
+  // Execute action from actions mode
+  const handleExecuteAction = async (parent: LauncherItem, actionItem: LauncherAction) => {
+    const actionType = actionItem.action;
+    const effectiveSettings = actionItem.settings || parent.settings;
+    const effectiveLocation = actionItem.location || parent.location || '';
+
+    if (actionType === 'clone' || actionType === 'clonerecursive') {
+      exitActions();
+      window.electronAPI?.openGitCloneWindow?.({
+        repoName: parent.name,
+        repoUrl: effectiveLocation,
+        initialRecursive: actionType === 'clonerecursive',
+      });
+      setTimeout(() => {
+        window.electronAPI?.hideWindow?.();
+      }, 60);
+      return;
+    }
+
+    if (actionType === 'mgclone' || actionType === 'mgclonerecursive') {
+      exitActions();
+      window.electronAPI?.openGitCloneWindow?.({
+        repoName: parent.name,
+        adminUrl: effectiveLocation,
+        isInstanceMode: true,
+        initialRecursive: actionType === 'mgclonerecursive',
+      });
+      setTimeout(() => {
+        window.electronAPI?.hideWindow?.();
+      }, 60);
+      return;
+    }
+
+    if (actionType === 'copy') {
+      if (window.electronAPI) {
+        try {
+          await window.electronAPI.executeAction({
+            action: 'copy',
+            location: effectiveLocation,
+            settings: effectiveSettings,
+          });
+        } catch (err) {
+          console.error('Clipboard copy error via electronAPI:', err);
+        }
+      } else {
+        await navigator.clipboard.writeText(effectiveLocation);
+      }
+      exitActions();
+      handleClose();
+      return;
+    }
+
+    if (actionType === 'vscode') {
+      exitActions();
+      if (window.electronAPI?.openInVscode) {
+        window.electronAPI.openInVscode(effectiveLocation);
+      }
+      setTimeout(() => {
+        handleClose();
+      }, 60);
+      return;
+    }
+
+    // Default / 'open' action
+    if (actionType === 'open' || !actionType) {
+      exitActions();
+      await handleExecute({
+        name: actionItem.name,
+        location: effectiveLocation,
+        action: 'open',
+        settings: effectiveSettings,
+      });
+      return;
+    }
+
+    // Any other action
+    if (window.electronAPI) {
+      await window.electronAPI.executeAction({
+        action: actionType,
+        location: effectiveLocation,
+        settings: effectiveSettings,
+      });
+    }
+    exitActions();
+    handleClose();
+  };
+
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // If in actions mode
+    if (actionsParentItem) {
+      const actionsList = getItemActions(actionsParentItem);
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedActionIndex((prev) => (actionsList.length > 0 ? (prev + 1) % actionsList.length : 0));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedActionIndex((prev) => (actionsList.length > 0 ? (prev - 1 + actionsList.length) % actionsList.length : 0));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const chosen = actionsList[selectedActionIndex];
+        if (chosen) {
+          handleExecuteAction(actionsParentItem, chosen);
+        }
+      } else if (e.key === 'Escape' || e.key === 'Backspace') {
+        e.preventDefault();
+        exitActions();
+      }
+      return;
+    }
+
+    // Ctrl+Backspace -> completely clear search query string
+    if (e.key === 'Backspace' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      setQuery('');
+      setSelectedIndex(0);
+      return;
+    }
+
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setSelectedIndex((prev) => (results.length > 0 ? (prev + 1) % results.length : 0));
@@ -464,10 +949,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       const currentItem = results[selectedIndex];
       if (!currentItem) return;
 
-      // 1. Shift + Enter -> Enter subitems navigation
+      // 1. Shift + Enter -> Enter ACTIONS & INFO mode
       if (e.shiftKey) {
-        if (currentItem.options && currentItem.options.length > 0) {
-          enterSubitems(currentItem);
+        if (hasItemActionsOrInfo(currentItem)) {
+          enterActions(currentItem);
         }
         return;
       }
@@ -480,10 +965,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         return;
       }
 
-      // 3. Alt + Enter -> Directly execute 2nd subitem
+      // 3. Alt + Enter -> Enter SUBITEMS navigation (old Shift+Enter behavior, 2nd subitem removed)
       if (e.altKey) {
-        if (currentItem.options && currentItem.options.length > 1) {
-          handleExecute(currentItem.options[1]);
+        if (currentItem.options && currentItem.options.length > 0) {
+          enterSubitems(currentItem);
         }
         return;
       }
@@ -502,10 +987,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
   // Click on result item (supporting Shift, Ctrl, and Alt modifiers)
   const handleItemClick = (item: LauncherItem, e: React.MouseEvent) => {
-    // 1. Shift + Click -> Enter subitems navigation
+    // 1. Shift + Click -> Enter ACTIONS & INFO mode
     if (e.shiftKey) {
-      if (item.options && item.options.length > 0) {
-        enterSubitems(item);
+      if (hasItemActionsOrInfo(item)) {
+        enterActions(item);
       }
       return;
     }
@@ -518,10 +1003,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       return;
     }
 
-    // 3. Alt + Click -> Execute 2nd subitem
+    // 3. Alt + Click -> Enter SUBITEMS navigation
     if (e.altKey) {
-      if (item.options && item.options.length > 1) {
-        handleExecute(item.options[1]);
+      if (item.options && item.options.length > 0) {
+        enterSubitems(item);
       }
       return;
     }
@@ -547,15 +1032,13 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     }
 
     const sub1 = item.options?.[0];
-    const sub2 = item.options?.[1];
 
-    if (!sub1 && !sub2) {
+    if (!sub1) {
       return <span className="text-gray-400 truncate">{item.location || ''}</span>;
     }
 
     const isSub1Active = isSelected && isCtrlDown && Boolean(sub1);
-    const isSub2Active = isSelected && isAltDown && Boolean(sub2);
-    const isMainActive = !isSub1Active && !isSub2Active;
+    const isMainActive = !isSub1Active;
 
     return (
       <div className="flex items-center gap-1.5 min-w-0 w-full overflow-hidden">
@@ -587,25 +1070,16 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             </span>
           </>
         )}
-
-        {sub2 && (
-          <>
-            <span className="text-gray-600 shrink-0 select-none">|</span>
-            <span
-              title={`${sub2.name}${sub2.location ? `: ${sub2.location}` : ''}`}
-              className={`transition-colors duration-150 ${
-                isSub2Active
-                  ? `shrink-0 whitespace-nowrap ${isSelected ? 'text-white font-medium' : 'text-gray-300 font-medium'}`
-                  : 'truncate min-w-0 text-gray-500'
-              }`}
-            >
-              {sub2.name}{sub2.location ? `: ${sub2.location}` : ''}
-            </span>
-          </>
-        )}
       </div>
     );
   };
+
+  const trimmedQuery = query.trim();
+  const isGitPrefix = Boolean(trimmedQuery.match(/^git:/i));
+  const isMagicGatePrefix = Boolean(trimmedQuery.match(/^(?:magicgate|mg):/i));
+  const isMlogMode = Boolean(
+    mlogBaseUrl?.trim() && trimmedQuery.match(/^(?:mlog:|[rRtT]\s*\d+)/i)
+  );
 
   return (
     <div
@@ -616,28 +1090,69 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       {/* Top Search Input Bar */}
       <div
         className={`flex items-center px-4 py-3.5 gap-3 bg-white/[0.02] ${
-          results.length > 0 || parentItem ? 'border-b border-white/10' : ''
+          results.length > 0 || parentItem || actionsParentItem ? 'border-b border-white/10' : ''
         }`}
       >
-        <span className="material-symbols-outlined text-indigo-400 select-none text-2xl">
-          {parentItem ? 'subdirectory_arrow_right' : 'search'}
+        <span
+          className={`material-symbols-outlined select-none text-2xl ${
+            actionsParentItem
+              ? 'text-purple-400'
+              : isMlogMode
+              ? 'text-indigo-400'
+              : isGitPrefix
+              ? 'text-purple-400'
+              : isMagicGatePrefix
+              ? 'text-amber-400'
+              : 'text-indigo-400'
+          }`}
+        >
+          {actionsParentItem
+            ? 'bolt'
+            : parentItem
+            ? 'subdirectory_arrow_right'
+            : isMlogMode
+            ? 'support_agent'
+            : isGitPrefix
+            ? 'folder_code'
+            : isMagicGatePrefix
+            ? 'security'
+            : 'search'}
         </span>
         <input
           ref={inputRef}
           type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          value={actionsParentItem ? '' : query}
+          readOnly={Boolean(actionsParentItem)}
+          onChange={(e) => {
+            if (!actionsParentItem) setQuery(e.target.value);
+          }}
           onKeyDown={handleKeyDown}
           placeholder={
-            parentItem
+            actionsParentItem
+              ? `Akce položky: „${actionsParentItem.name}“`
+              : parentItem
               ? `Hledat v podpoložkách „${parentItem.name}“...`
-              : "Hledejte (min. 2 znaky), zadejte výpočet nebo URL..."
+              : isMlogMode
+              ? 'Otevřít v MLog helpdesku...'
+              : isMagicGatePrefix
+              ? 'Hledat v MagicGate instancích...'
+              : isGitPrefix
+              ? 'Hledat v repozitářích...'
+              : 'Hledejte (min. 2 znaky), zadejte výpočet nebo URL...'
           }
           className="flex-1 bg-transparent text-lg text-white placeholder-gray-400 placeholder:italic placeholder:font-normal outline-none font-medium tracking-wide"
           autoFocus
           spellCheck={false}
         />
-        {query.length > 0 && (
+        {actionsParentItem ? (
+          <button
+            onClick={exitActions}
+            className="w-8 h-8 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center cursor-pointer shrink-0"
+            title="Zavřít nabídku akcí (Esc)"
+          >
+            <span className="material-symbols-outlined text-[19px] leading-none select-none">close</span>
+          </button>
+        ) : query.length > 0 ? (
           <button
             onClick={() => setQuery('')}
             className="w-8 h-8 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center cursor-pointer shrink-0"
@@ -645,7 +1160,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           >
             <span className="material-symbols-outlined text-[19px] leading-none select-none">close</span>
           </button>
-        )}
+        ) : null}
 
         <div className="h-5 w-[1px] bg-white/15 mx-0.5 shrink-0 self-center" />
 
@@ -715,216 +1230,478 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         </div>
       )}
 
-      {/* Subitems Parent Back Navigation Banner */}
-      {parentItem && (
-        <div
-          onClick={exitSubitems}
-          className="flex items-center justify-between px-4 py-2 bg-indigo-950/40 border-b border-indigo-500/20 text-xs text-indigo-300 hover:bg-indigo-900/40 cursor-pointer transition select-none"
-          title="Klikněte pro návrat zpět (Esc)"
-        >
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-base text-indigo-400">arrow_back</span>
-            <span>Podpoložky položky: <strong className="text-white font-semibold">{parentItem.name}</strong></span>
-          </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono">
-            <kbd className="px-1.5 py-0.5 bg-white/10 rounded text-gray-300">Esc</kbd>
-            <span>Zpět</span>
-          </div>
-        </div>
-      )}
-
-      {/* Results List & Footer (only displayed when results.length > 0) */}
-      {results.length > 0 && (
+      {/* Actions Mode View */}
+      {actionsParentItem ? (
         <>
+          {/* Actions & Info Banner */}
+          <div
+            onClick={exitActions}
+            className="flex items-center justify-between px-4 py-2 bg-purple-950/40 border-b border-purple-500/20 text-xs text-purple-300 hover:bg-purple-900/40 cursor-pointer transition select-none"
+            title="Klikněte pro návrat zpět do vyhledávání (Esc)"
+          >
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-base text-purple-400">arrow_back</span>
+              <span>
+                {hasItemActions(actionsParentItem) && hasItemInfo(actionsParentItem)
+                  ? 'Akce a informace:'
+                  : hasItemActions(actionsParentItem)
+                  ? 'Akce položky:'
+                  : 'Informace o položce:'}{' '}
+                <strong className="text-white font-semibold">{actionsParentItem.name}</strong>
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono">
+              <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none whitespace-nowrap">Esc</kbd>
+              <span>Zpět</span>
+            </div>
+          </div>
+
+          {/* Unified Actions & Info Scrollable View */}
           <div
             ref={listRef}
-            className="max-h-[430px] overflow-y-auto divide-y divide-white/[0.04] p-1.5 focus:outline-none"
+            className="max-h-[430px] overflow-y-auto p-2 focus:outline-none space-y-2"
           >
-            {results.map((item, idx) => {
-              const isSelected = idx === selectedIndex;
-              const hasOptions = Array.isArray(item.options) && item.options.length > 0;
-              return (
-                <div
-                  key={item.id || `${item.name}-${idx}`}
-                  data-selected={isSelected}
-                  onClick={(e) => handleItemClick(item, e)}
-                  onMouseEnter={() => setSelectedIndex(idx)}
-                  className={`flex items-center px-3 py-2.5 rounded-xl cursor-pointer transition-colors duration-150 gap-3 ${
-                    isSelected
-                      ? 'bg-indigo-600/30 border border-indigo-500/40 text-white shadow-md'
-                      : 'hover:bg-white/[0.05] text-gray-200 border border-transparent'
-                  }`}
-                >
-                  {/* Column 1: Icon or Image with subitems badge & subtle 1px divider */}
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className="relative flex-shrink-0">
-                      <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
-                        <MaterialIcon
-                          icon={item.icon}
-                          image={item.image}
-                          location={item.location}
-                          fallbackIcon={
-                            item.sourceId === 'snippet'
-                              ? 'content_paste'
-                              : item.priority === 99
-                              ? 'apps'
-                              : item.priority === -1.5
-                              ? 'mail'
-                              : item.priority === -1
-                              ? 'calculate'
-                              : item.priority === -2
-                              ? 'support_agent'
-                              : 'code'
-                          }
-                          className="w-7 h-7"
-                        />
-                      </div>
-                      {hasOptions && (
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            enterSubitems(item);
-                          }}
-                          title={`Zobrazit ${item.options!.length} podpoložek`}
-                          className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white flex items-center justify-center shadow-md cursor-pointer border border-[#1c1d24] transition-transform hover:scale-110 select-none"
-                          style={{ backgroundColor: 'var(--color-primary-hex, #6366f1)' }}
-                        >
-                          {item.options!.length}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className={`h-6 w-[1px] shrink-0 self-center transition-colors ${isSelected ? 'bg-white/20' : 'bg-white/[0.08]'}`} />
+            {/* 1. Compact Info Section (BEFORE actions) */}
+            {hasItemInfo(actionsParentItem) && (
+              <div className="p-2 rounded-xl bg-white/[0.02] border border-white/5 space-y-1.5">
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-purple-300">
+                    <span className="material-symbols-outlined text-sm text-purple-400">info</span>
+                    <span>Informace o položce</span>
                   </div>
-
-                  {/* Column 2: Name <br> Location */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-center pl-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm truncate leading-tight">
-                        {item.name}
-                      </span>
-                      {item.sourceId === 'snippet' && item.shortcuts && item.shortcuts.length > 0 ? (
-                        <div className="flex items-center gap-1 flex-wrap">
-                          {item.shortcuts.map((shortcut) => (
-                            <span
-                              key={shortcut}
-                              className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-teal-500/15 text-teal-300 border border-teal-500/25 font-medium select-none"
-                            >
-                              {shortcut}
-                            </span>
-                          ))}
-                        </div>
-                      ) : item.sourceId === 'snippet' ? (
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 font-medium">
-                          Snippet
-                        </span>
-                      ) : null}
-                      {item.priority === -1.5 && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold">
-                          Gmail
-                        </span>
-                      )}
-                      {item.priority === -2 && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">
-                          MLog
-                        </span>
-                      )}
-                      {item.priority === -1 && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-gray-300">
-                          Kalkulačka
-                        </span>
-                      )}
-                      {item.priority === 99 && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-medium">
-                          Aplikace
-                        </span>
-                      )}
-                      {(() => {
-                        if (item.sourceId?.startsWith('engine-')) {
-                          const engineId = item.sourceId.replace('engine-', '');
-                          const engine = SEARCH_ENGINES.find((e) => e.id === engineId);
-                          if (engine) {
-                            return (
-                              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-medium ${engine.chipClass}`}>
-                                {engine.chipLabel}
-                              </span>
-                            );
-                          }
-                        }
-                        return null;
-                      })()}
-                      {item.settings === 'magicgate' && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                          MagicGate
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs mt-0.5 font-mono flex items-center gap-1.5 flex-nowrap min-w-0 w-full overflow-hidden">
-                      {renderSubtitle(item, isSelected)}
-                    </div>
-                  </div>
-
-                  {/* Action icon on selection */}
-                  {isSelected && (
-                    <div className="flex-shrink-0 text-xs text-indigo-300 flex items-center gap-1.5 opacity-80">
-                      {isShiftDown && hasOptions ? (
-                        <>
-                          <span>Zobrazit</span>
-                          <span className="material-symbols-outlined text-sm">folder</span>
-                        </>
-                      ) : isCtrlDown && item.options?.[0] ? (
-                        <>
-                          <span>{item.options[0].action === 'copy' ? 'Kopírovat' : 'Otevřít'}</span>
-                          <span className="material-symbols-outlined text-sm">
-                            {item.options[0].action === 'copy' ? 'content_copy' : 'arrow_forward'}
-                          </span>
-                        </>
-                      ) : isAltDown && item.options?.[1] ? (
-                        <>
-                          <span>{item.options[1].action === 'copy' ? 'Kopírovat' : 'Otevřít'}</span>
-                          <span className="material-symbols-outlined text-sm">
-                            {item.options[1].action === 'copy' ? 'content_copy' : 'arrow_forward'}
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <span>{item.action === 'copy' || item.action === 'paste' ? 'Kopírovat' : 'Otevřít'}</span>
-                          <span className="material-symbols-outlined text-sm">
-                            {item.action === 'copy' || item.action === 'paste' ? 'content_copy' : 'arrow_forward'}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  )}
+                  <span className="text-[10px] text-gray-400 font-mono">
+                    kliknutím zkopírovat
+                  </span>
                 </div>
-              );
-            })}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {Object.entries(actionsParentItem.info!).map(([key, val]) => {
+                    const strVal = val !== null && val !== undefined ? String(val) : '—';
+                    const isCopied = copiedInfoKey === key;
+                    return (
+                      <div
+                        key={key}
+                        onClick={() => handleCopyInfoValue(key, strVal)}
+                        title={`Kliknutím zkopírujete „${strVal}“ do schránky`}
+                        className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border transition cursor-pointer min-w-0 ${
+                          isCopied
+                            ? 'bg-emerald-500/10 border-emerald-500/40'
+                            : 'bg-black/30 border-white/5 hover:border-purple-500/30 hover:bg-white/[0.04]'
+                        }`}
+                      >
+                        <span className="text-[11px] text-gray-400 truncate shrink-0 max-w-[45%] select-none font-medium">
+                          {key}
+                        </span>
+                        <span
+                          className={`text-xs font-mono truncate select-all ${
+                            isCopied ? 'text-emerald-400 font-semibold' : 'text-gray-200'
+                          }`}
+                          title={strVal}
+                        >
+                          {isCopied ? 'Zkopírováno!' : strVal}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 2. Actions List */}
+            {hasItemActions(actionsParentItem) && (
+              <div className="divide-y divide-white/[0.04]">
+                {getItemActions(actionsParentItem).map((action, idx) => {
+                  const isSelected = idx === selectedActionIndex;
+                  const isVscode = action.settings === 'vscode' || action.action === 'vscode';
+                  const isGit = action.settings === 'git';
+
+                  return (
+                    <div
+                      key={`${action.name}-${idx}`}
+                      data-selected={isSelected}
+                      data-action-selected={isSelected}
+                      onClick={() => handleExecuteAction(actionsParentItem, action)}
+                      onMouseEnter={() => setSelectedActionIndex(idx)}
+                      className={`flex items-center px-3 py-2 rounded-xl cursor-pointer transition-colors duration-150 gap-3 border ${
+                        isSelected
+                          ? isVscode
+                            ? 'bg-cyan-800/40 border-cyan-500/50 text-white shadow-md'
+                            : 'bg-purple-600/30 border-purple-500/40 text-white shadow-md'
+                          : isVscode
+                          ? 'hover:bg-cyan-950/30 text-gray-200 border-white/5 bg-black/20 hover:border-cyan-500/30'
+                          : 'hover:bg-white/[0.05] text-gray-200 border-white/5 bg-black/20 hover:border-purple-500/30'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div
+                          className={`w-8 h-8 rounded-full border flex items-center justify-center ${
+                            isVscode
+                              ? 'bg-cyan-900/40 border-cyan-500/50 text-cyan-300'
+                              : 'bg-purple-600/20 border-purple-500/30 text-purple-300'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-lg">
+                            {action.icon || (action.action === 'clone' ? 'download' : action.action === 'clonerecursive' ? 'folder_zip' : action.action === 'copy' ? 'content_copy' : 'open_in_new')}
+                          </span>
+                        </div>
+                        <div className={`h-5 w-[1px] shrink-0 self-center transition-colors ${isSelected ? (isVscode ? 'bg-cyan-400/40' : 'bg-white/20') : 'bg-white/[0.08]'}`} />
+                      </div>
+
+                      <div className="flex-1 min-w-0 flex flex-col justify-center pl-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm truncate leading-tight">
+                            {action.name}
+                          </span>
+                          <span
+                            className={`text-[10px] font-mono px-1.5 py-0.5 rounded border font-medium uppercase ${
+                              isVscode
+                                ? 'bg-cyan-950/70 border-cyan-500/50 text-cyan-300'
+                                : isGit
+                                ? 'bg-purple-500/20 border-purple-500/30 text-purple-300'
+                                : 'bg-white/5 border-white/10 text-gray-400'
+                            }`}
+                          >
+                            {isVscode ? 'VS Code' : action.action}
+                          </span>
+                        </div>
+                        <div className="text-xs mt-0.5 font-mono text-gray-400 truncate">
+                          {action.location || actionsParentItem.location || ''}
+                        </div>
+                      </div>
+
+                      {isSelected && (
+                        <div className={`flex-shrink-0 text-xs flex items-center gap-1.5 opacity-90 ${isVscode ? 'text-cyan-300' : 'text-purple-300'}`}>
+                          <span>Provést</span>
+                          <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none whitespace-nowrap">Enter</kbd>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Footer bar */}
+          {/* Actions & Info Footer */}
           <div className="px-4 py-2 bg-black/30 border-t border-white/5 flex items-center justify-between text-[11px] text-gray-400">
-            <div className="flex items-center gap-2">
-              {parentItem && (
-                <button
-                  type="button"
-                  onClick={exitSubitems}
-                  className="flex items-center gap-1 text-gray-400 hover:text-white transition"
-                >
-                  <span className="material-symbols-outlined text-sm">arrow_back</span>
-                  <span>Zpět na hlavní výběr</span>
-                </button>
+            <button
+              type="button"
+              onClick={exitActions}
+              className="flex items-center gap-1 text-gray-400 hover:text-white transition cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-sm">arrow_back</span>
+              <span>Zpět do vyhledávání</span>
+            </button>
+            <div className="flex items-center gap-2 font-mono">
+              {hasItemActions(actionsParentItem) && (
+                <span>{actionsParentItem.actions!.length} akcí</span>
               )}
-            </div>
-            <div className="flex items-center gap-3">
-              {lastSyncTime && (
-                <span className="text-gray-400 font-mono">Sync: {formatLastSyncDate(lastSyncTime)}</span>
-              )}
-              <span>
-                {parentItem ? `${results.length} podpoložek` : `${items.length} položek v mezipaměti`}
-              </span>
             </div>
           </div>
         </>
+      ) : (
+        /* Regular Results List & Footer */
+        results.length > 0 && (
+          <>
+            {/* Subitems Parent Back Navigation Banner */}
+            {parentItem && (
+              <div
+                onClick={exitSubitems}
+                className="flex items-center justify-between px-4 py-2 bg-indigo-950/40 border-b border-indigo-500/20 text-xs text-indigo-300 hover:bg-indigo-900/40 cursor-pointer transition select-none"
+                title="Klikněte pro návrat zpět (Esc)"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base text-indigo-400">arrow_back</span>
+                  <span>Podpoložky položky: <strong className="text-white font-semibold">{parentItem.name}</strong></span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono">
+                  <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none whitespace-nowrap">Esc</kbd>
+                  <span>Zpět</span>
+                </div>
+              </div>
+            )}
+
+            <div
+              ref={listRef}
+              className="max-h-[430px] overflow-y-auto divide-y divide-white/[0.04] p-1.5 focus:outline-none"
+            >
+              {results.map((item, idx) => {
+                const isSelected = idx === selectedIndex;
+                const hasOptions = Array.isArray(item.options) && item.options.length > 0;
+                const hasActions = hasItemActions(item);
+                const hasInfo = hasItemInfo(item);
+                const hasActionsOrInfo = hasActions || hasInfo;
+                const hasAnyChip = Boolean(
+                  item.settings === 'git' ||
+                  item.settings === 'magicgate' ||
+                  item.sourceId === 'snippet' ||
+                  item.priority === -1.5 ||
+                  item.priority === -2 ||
+                  item.priority === -1 ||
+                  item.priority === 99 ||
+                  item.sourceId?.startsWith('engine-')
+                );
+
+                return (
+                  <div
+                    key={item.id || `${item.name}-${idx}`}
+                    data-selected={isSelected}
+                    onClick={(e) => handleItemClick(item, e)}
+                    onMouseEnter={() => setSelectedIndex(idx)}
+                    className={`flex items-center px-3 py-2.5 rounded-xl cursor-pointer transition-colors duration-150 gap-3 ${
+                      isSelected
+                        ? 'bg-indigo-600/30 border border-indigo-500/40 text-white shadow-md'
+                        : 'hover:bg-white/[0.05] text-gray-200 border border-transparent'
+                    }`}
+                  >
+                    {/* Column 1: Icon or Image with subitems badge & subtle 1px divider */}
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="relative flex-shrink-0">
+                        <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
+                          <MaterialIcon
+                            icon={item.icon}
+                            image={item.image}
+                            location={item.location}
+                            fallbackIcon={
+                              item.sourceId === 'snippet'
+                                ? 'content_paste'
+                                : item.priority === 99
+                                ? 'apps'
+                                : item.priority === -1.5
+                                ? 'mail'
+                                : item.priority === -1
+                                ? 'calculate'
+                                : item.priority === -2
+                                ? 'support_agent'
+                                : 'code'
+                            }
+                            className="w-7 h-7"
+                          />
+                        </div>
+                        {hasOptions && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              enterSubitems(item);
+                            }}
+                            title={`Zobrazit ${item.options!.length} podpoložek (Alt+Enter)`}
+                            className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white flex items-center justify-center shadow-md cursor-pointer border border-[#1c1d24] transition-transform hover:scale-110 select-none"
+                            style={{ backgroundColor: 'var(--color-primary-hex, #6366f1)' }}
+                          >
+                            {item.options!.length}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className={`h-6 w-[1px] shrink-0 self-center transition-colors ${isSelected ? 'bg-white/20' : 'bg-white/[0.08]'}`} />
+                    </div>
+
+                    {/* Column 2: Name <br> Location */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-center pl-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-sm truncate leading-tight">
+                          {item.name}
+                        </span>
+
+                        {/* Standalone action/info chip only when item has actions or info but NO other chip */}
+                        {hasActionsOrInfo && !hasAnyChip && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              enterActions(item);
+                            }}
+                            className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 transition cursor-pointer select-none flex items-center gap-1"
+                            title={hasActions ? 'Zobrazit akce a informace (Shift+Enter)' : 'Zobrazit informace (Shift+Enter)'}
+                          >
+                            <span className="material-symbols-outlined text-[11px] leading-none">
+                              {hasActions ? 'bolt' : 'info'}
+                            </span>
+                            <span>{hasActions ? 'Akce' : 'Info'}</span>
+                          </button>
+                        )}
+
+                        {item.settings === 'git' && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              if (hasActionsOrInfo) {
+                                e.stopPropagation();
+                                enterActions(item);
+                              }
+                            }}
+                            className={`text-[10px] font-medium px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1 select-none ${
+                              hasActionsOrInfo ? 'hover:bg-purple-500/30 cursor-pointer' : 'cursor-default'
+                            }`}
+                            title={hasActionsOrInfo ? 'Git položka – klikněte nebo stiskněte Shift+Enter pro akce a informace' : 'Git položka'}
+                          >
+                            {hasActionsOrInfo && (
+                              <span className="material-symbols-outlined text-[11px] leading-none">
+                                {hasActions ? 'bolt' : 'info'}
+                              </span>
+                            )}
+                            <span>Git</span>
+                          </button>
+                        )}
+
+                        {item.sourceId === 'snippet' && item.shortcuts && item.shortcuts.length > 0 ? (
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {item.shortcuts.map((shortcut) => (
+                              <span
+                                key={shortcut}
+                                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-teal-500/15 text-teal-300 border border-teal-500/25 font-medium select-none"
+                              >
+                                {shortcut}
+                              </span>
+                            ))}
+                          </div>
+                        ) : item.sourceId === 'snippet' ? (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 font-medium">
+                            Snippet
+                          </span>
+                        ) : null}
+                        {item.priority === -1.5 && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold">
+                            Gmail
+                          </span>
+                        )}
+                        {item.priority === -2 && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">
+                            MLog
+                          </span>
+                        )}
+                        {item.priority === -1 && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-gray-300">
+                            Kalkulačka
+                          </span>
+                        )}
+                        {item.priority === 99 && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-medium">
+                            Aplikace
+                          </span>
+                        )}
+                        {(() => {
+                          if (item.sourceId?.startsWith('engine-')) {
+                            const engineId = item.sourceId.replace('engine-', '');
+                            const engine = SEARCH_ENGINES.find((e) => e.id === engineId);
+                            if (engine) {
+                              return (
+                                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-medium ${engine.chipClass}`}>
+                                  {engine.chipLabel}
+                                </span>
+                              );
+                            }
+                          }
+                          return null;
+                        })()}
+                        {item.settings === 'magicgate' && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              if (hasActionsOrInfo) {
+                                e.stopPropagation();
+                                enterActions(item);
+                              }
+                            }}
+                            className={`text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 select-none ${
+                              hasActionsOrInfo ? 'hover:bg-amber-500/30 cursor-pointer' : 'cursor-default'
+                            }`}
+                            title={hasActionsOrInfo ? 'MagicGate položka – klikněte nebo stiskněte Shift+Enter pro podrobné informace o serveru' : 'MagicGate'}
+                          >
+                            {hasActionsOrInfo && (
+                              <span className="material-symbols-outlined text-[11px] leading-none">
+                                {hasActions ? 'bolt' : 'info'}
+                              </span>
+                            )}
+                            <span>MagicGate</span>
+                          </button>
+                        )}
+                      </div>
+                      <div className="text-xs mt-0.5 font-mono flex items-center gap-1.5 flex-nowrap min-w-0 w-full overflow-hidden">
+                        {renderSubtitle(item, isSelected)}
+                      </div>
+                    </div>
+
+                    {/* Action icon on selection */}
+                    {isSelected && (
+                      <div className={`flex-shrink-0 text-xs flex items-center gap-1.5 opacity-80 ${isShiftDown && hasActionsOrInfo ? 'text-purple-300' : 'text-indigo-300'}`}>
+                        {isShiftDown && hasActionsOrInfo ? (
+                          <>
+                            <span>{hasActions ? 'Akce' : 'Info'}</span>
+                            <span className="material-symbols-outlined text-sm">
+                              {hasActions ? 'bolt' : 'info'}
+                            </span>
+                          </>
+                        ) : isAltDown && hasOptions ? (
+                          <>
+                            <span>Subpoložky</span>
+                            <span className="material-symbols-outlined text-sm">subdirectory_arrow_right</span>
+                          </>
+                        ) : isCtrlDown && item.options?.[0] ? (
+                          <>
+                            <span>{item.options[0].action === 'copy' ? 'Kopírovat' : 'Otevřít'}</span>
+                            <span className="material-symbols-outlined text-sm">
+                              {item.options[0].action === 'copy' ? 'content_copy' : 'arrow_forward'}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span>{item.action === 'copy' || item.action === 'paste' ? 'Kopírovat' : 'Otevřít'}</span>
+                            <span className="material-symbols-outlined text-sm">
+                              {item.action === 'copy' || item.action === 'paste' ? 'content_copy' : 'arrow_forward'}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer bar */}
+            <div className="px-4 py-2 bg-black/30 border-t border-white/5 flex items-center justify-between text-[11px] text-gray-400">
+              <div className="flex items-center gap-2">
+                {parentItem ? (
+                  <button
+                    type="button"
+                    onClick={exitSubitems}
+                    className="flex items-center gap-1 text-gray-400 hover:text-white transition cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm">arrow_back</span>
+                    <span>Zpět na hlavní výběr</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-3 text-[11px] text-gray-400">
+                    <span className="flex items-center gap-1.5">
+                      <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none whitespace-nowrap">Enter</kbd> Otevřít
+                    </span>
+                    {hasItemActionsOrInfo(results[selectedIndex]) && (
+                      <span className="flex items-center gap-1.5 text-purple-300">
+                        <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded font-mono text-[10px] leading-none whitespace-nowrap">Shift+Enter</kbd>{' '}
+                        {hasItemActions(results[selectedIndex]) && hasItemInfo(results[selectedIndex])
+                          ? 'Akce a info'
+                          : hasItemActions(results[selectedIndex])
+                          ? 'Akce'
+                          : 'Info'}
+                      </span>
+                    )}
+                    {results[selectedIndex]?.options && results[selectedIndex].options!.length > 0 && (
+                      <span className="flex items-center gap-1.5 text-indigo-300/90">
+                        <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded font-mono text-[10px] leading-none whitespace-nowrap">Alt+Enter</kbd> Subpoložky
+                      </span>
+                    )}
+                    {results[selectedIndex]?.options?.[0] && (
+                      <span className="flex items-center gap-1.5 text-teal-300/90">
+                        <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-teal-500/20 text-teal-300 border border-teal-500/30 rounded font-mono text-[10px] leading-none whitespace-nowrap">Ctrl+Enter</kbd> {results[selectedIndex].options![0].action === 'copy' ? 'Kopírovat' : '1. volba'}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )
       )}
     </div>
   );

@@ -104,6 +104,60 @@ export function parseMagicGateXml(xmlContent: string): LauncherItem[] {
         };
       });
 
+      // Extract detailed info from server and instance
+      const serverLocation = getAttribute(serverAttrs, 'ServerLocation');
+      const dbServer = getAttribute(serverAttrs, 'DbServer');
+      const providerName = getAttribute(serverAttrs, 'ProviderName');
+      const rootPath = getAttribute(serverAttrs, 'RootPath');
+      const webService = getAttribute(serverAttrs, 'WebService');
+      const ftpUrl = getAttribute(serverAttrs, 'FtpUrl');
+      const dbBackupPath = getAttribute(serverAttrs, 'DBServerBackupPath');
+      const subReqId = getAttribute(instanceAttrs, 'DeploySubRequirementID');
+      const keepBackup = getAttribute(instanceAttrs, 'KeepBackupForDays');
+      const backupDownload = getAttribute(instanceAttrs, 'BackupDownload');
+      const storageBackup = getAttribute(instanceAttrs, 'StorageBackupDownload');
+      const perflog = getAttribute(instanceAttrs, 'PerflogPrefix');
+
+      // Find Administration app URL for API operations (CmsFsContentHandler.ashx)
+      const adminApp = validApps.find((app) => app.name.trim().toUpperCase() === 'A') || validApps[0];
+      const adminUrl = adminApp?.url || '';
+
+      const actions = adminUrl
+        ? [
+            {
+              name: 'Klonovat repozitáře instance (git clone)...',
+              action: 'mgclone',
+              location: adminUrl,
+              settings: 'magicgate',
+              icon: 'cloud_download',
+            },
+            {
+              name: 'Klonovat repozitáře rekurzivně (git clone --recursive)...',
+              action: 'mgclonerecursive',
+              location: adminUrl,
+              settings: 'magicgate',
+              icon: 'cloud_sync',
+            },
+          ]
+        : undefined;
+
+      const info: Record<string, any> = {};
+      if (serverName) info['Server'] = serverName;
+      if (instanceName) info['Instance'] = instanceName;
+      if (adminUrl) info['Admin URL'] = adminUrl;
+      if (dbServer) info['DB Server'] = dbServer;
+      if (serverLocation) info['Umístění serveru'] = serverLocation;
+      if (providerName) info['Provider'] = providerName;
+      if (subReqId) info['MLog Požadavek'] = `R${subReqId}`;
+      if (rootPath) info['Root Path'] = rootPath;
+      if (webService) info['Web Service'] = webService;
+      if (ftpUrl) info['FTP'] = ftpUrl;
+      if (keepBackup) info['Zálohy (dny)'] = keepBackup;
+      if (backupDownload) info['Stahování záloh'] = backupDownload;
+      if (storageBackup) info['Zálohy úložiště'] = storageBackup;
+      if (dbBackupPath) info['Cesta záloh DB'] = dbBackupPath;
+      if (perflog) info['Perflog Prefix'] = perflog;
+
       items.push({
         id: `mg-xml-${instanceName.toLowerCase()}`,
         name: instanceName,
@@ -114,7 +168,9 @@ export function parseMagicGateXml(xmlContent: string): LauncherItem[] {
         icon: 'public',
         image: 'https://magicware.istour.cz/Images/M2G/Desktop/Icon.png',
         sourceId: 'magicgate-xml',
+        actions,
         options: options.length > 0 ? options : undefined,
+        info: Object.keys(info).length > 0 ? info : undefined,
       });
     }
   }

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { AppConfig, DataSource, FileSource, ApiSource, LauncherItem, SyncProgress, UpdateInfo, SourceFieldMapping, MappingTargetKey } from '../types';
-import { applyPrimaryColor } from '../utils/theme';
+import { AppConfig, DataSource, FileSource, ApiSource, LauncherItem, SyncProgress, UpdateInfo, SourceFieldMapping, MappingTargetKey, BannedItem } from '../types';
+import { applyPrimaryColor, applyActionsColor, APP_COLOR_PRESETS } from '../utils/theme';
 import { formatLastSyncDate } from '../utils/dateHelper';
 import { CURRENT_APP_VERSION } from '../changelog';
 import { ChangelogModal } from './ChangelogModal';
 import { SearchItemsViewerModal } from './SearchItemsViewerModal';
+import { DataSourcesGuideModal } from './DataSourcesGuideModal';
 import { SEARCH_ENGINES } from '../constants/searchEngines';
 import { getDynamicSnippets } from '../utils/snippets';
 
@@ -21,6 +22,79 @@ interface SettingsModalProps {
   updateInfo?: UpdateInfo | null;
 }
 
+interface ColorPickerSectionProps {
+  title: string;
+  description: string;
+  icon: string;
+  iconColorClass: string;
+  value: string;
+  fallbackColor: string;
+  onColorChange: (newColor: string) => void;
+}
+
+const ColorPickerSection: React.FC<ColorPickerSectionProps> = ({
+  title,
+  description,
+  icon,
+  iconColorClass,
+  value,
+  fallbackColor,
+  onColorChange,
+}) => {
+  const effectiveColor = value || fallbackColor;
+  const currentPreset = APP_COLOR_PRESETS.find(
+    (preset) => preset.hex.toLowerCase() === effectiveColor.toLowerCase()
+  );
+
+  return (
+    <div className="space-y-3 pt-4 border-t border-white/10">
+      <div>
+        <h4 className="font-semibold text-sm text-white flex items-center gap-2">
+          <span className={`material-symbols-outlined text-lg ${iconColorClass}`}>{icon}</span>
+          {title}
+        </h4>
+        <p className="text-[13px] text-gray-400 mt-1">{description}</p>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white/[0.02] border border-white/5 p-4 rounded-xl">
+        {/* Active color preview indicator (left) */}
+        <div className="flex items-center gap-3">
+          <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-white/20 shadow-inner flex items-center justify-center">
+            <div
+              className="w-full h-full"
+              style={{ backgroundColor: effectiveColor }}
+            />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-mono text-sm text-white font-semibold">
+              {currentPreset?.name || effectiveColor.toUpperCase()}
+            </span>
+            <span className="text-xs text-gray-400">Vybraný odstín</span>
+          </div>
+        </div>
+
+        {/* 10 Preset quick colors (right) */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {APP_COLOR_PRESETS.map((preset) => (
+            <button
+              key={preset.hex}
+              type="button"
+              onClick={() => onColorChange(preset.hex)}
+              title={preset.name}
+              className={`w-7 h-7 rounded-full transition transform hover:scale-110 flex items-center justify-center cursor-pointer ${
+                effectiveColor.toLowerCase() === preset.hex.toLowerCase()
+                  ? 'ring-2 ring-white ring-offset-2 ring-offset-[#181920]'
+                  : 'opacity-70 hover:opacity-100'
+              }`}
+              style={{ backgroundColor: preset.hex }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   config,
   items,
@@ -33,13 +107,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   updateStatusMessage,
   updateInfo,
 }) => {
-  const [activeTab, setActiveTab] = useState<'sources' | 'magicgate' | 'mlog' | 'general' | 'updates' | 'help'>('sources');
+  const [activeTab, setActiveTab] = useState<'sources' | 'extensions' | 'magicgate' | 'mlog' | 'github' | 'vscode' | 'general' | 'updates' | 'help'>('sources');
   const [formData, setFormData] = useState<AppConfig>(config);
   const [editingSource, setEditingSource] = useState<DataSource | null>(null);
   const [isAddingSource, setIsAddingSource] = useState<'file' | 'api' | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
   const [showItemsViewer, setShowItemsViewer] = useState(false);
+  const [showDataSourcesGuide, setShowDataSourcesGuide] = useState(false);
   const [isRecordingHotkey, setIsRecordingHotkey] = useState(false);
   const [recordedModifiers, setRecordedModifiers] = useState<string[]>([]);
   const [hotkeyError, setHotkeyError] = useState<string | null>(null);
@@ -49,9 +124,50 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [sampleRecord, setSampleRecord] = useState<Record<string, any> | null>(null);
   const [isInspecting, setIsInspecting] = useState(false);
   const [inspectError, setInspectError] = useState<string | null>(null);
+  const [isTestingGitHub, setIsTestingGitHub] = useState(false);
+  const [gitHubTestResult, setGitHubTestResult] = useState<{
+    ok: boolean;
+    user?: { login: string; name?: string; avatar_url?: string };
+    orgs?: string[];
+    repoCount?: number;
+    error?: string;
+  } | null>(null);
+  const [showGitHubToken, setShowGitHubToken] = useState(false);
   const pressedKeysRef = useRef<Set<string>>(new Set());
   const maxComboRef = useRef<string[]>([]);
   const originalHotkeyRef = useRef<string>(config.hotkey || 'Ctrl+Alt+Space');
+
+  const activeExtensionsCount = useMemo(() => {
+    let count = 0;
+    if (formData.extensions?.magicgate) count++;
+    if (formData.extensions?.mlog) count++;
+    if (formData.extensions?.github) count++;
+    if (formData.extensions?.vscode) count++;
+    return count;
+  }, [formData.extensions]);
+
+  const handleTestGitHub = async () => {
+    if (!formData.github?.token?.trim()) return;
+    setIsTestingGitHub(true);
+    setGitHubTestResult(null);
+    try {
+      if (window.electronAPI?.testGitHubConnection) {
+        const res = await window.electronAPI.testGitHubConnection({
+          username: formData.github.username,
+          token: formData.github.token,
+          org: formData.github.org,
+          apiUrl: formData.github.apiUrl,
+        });
+        setGitHubTestResult(res);
+      } else {
+        setGitHubTestResult({ ok: false, error: 'Funkce není dostupná mimo aplikaci Electron.' });
+      }
+    } catch (err: any) {
+      setGitHubTestResult({ ok: false, error: err?.message || 'Chyba při volání testu připojení.' });
+    } finally {
+      setIsTestingGitHub(false);
+    }
+  };
 
   // Compute indexed search items counts (main items, subitems, dynamic system snippets, and total)
   const { mainItemsCount, subItemsCount, snippetsCount, totalIndexedCount } = useMemo(() => {
@@ -74,6 +190,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
     if (config.primaryColor) {
       applyPrimaryColor(config.primaryColor);
+    }
+    if (config.actionsColor) {
+      applyActionsColor(config.actionsColor);
     }
   }, [config, isRecordingHotkey]);
 
@@ -125,6 +244,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onSaveConfig(toSave);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
+  };
+
+  const handleBanItem = (itemToBan: LauncherItem) => {
+    const banlist = formData.banlist || [];
+    const alreadyBanned = banlist.some(
+      (b) =>
+        (b.id && itemToBan.id && b.id === itemToBan.id) ||
+        (b.location && itemToBan.location && b.location === itemToBan.location) ||
+        (b.name === itemToBan.name && b.sourceId === itemToBan.sourceId)
+    );
+    if (alreadyBanned) return;
+
+    const newBanned: BannedItem = {
+      id: itemToBan.id,
+      name: itemToBan.name,
+      location: itemToBan.location,
+      sourceId: itemToBan.sourceId,
+      bannedAt: new Date().toISOString(),
+    };
+    const updated = {
+      ...formData,
+      banlist: [...banlist, newBanned],
+    };
+    setFormData(updated);
+    handleSave(updated);
+    onTriggerSync();
+  };
+
+  const handleUnbanItem = (bannedItem: BannedItem) => {
+    const banlist = formData.banlist || [];
+    const updatedBanlist = banlist.filter((b) => {
+      if (bannedItem.id && b.id) return b.id !== bannedItem.id;
+      if (bannedItem.location && b.location) return b.location !== bannedItem.location;
+      return b.name !== bannedItem.name;
+    });
+    const updated = {
+      ...formData,
+      banlist: updatedBanlist,
+    };
+    setFormData(updated);
+    handleSave(updated);
+    onTriggerSync();
   };
 
   const triggerInspectSource = async (targetSource?: DataSource) => {
@@ -804,47 +965,98 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </span>
           </button>
 
-          {/* MagicGate tab */}
+          {/* Extensions tab */}
           <button
             type="button"
-            onClick={() => setActiveTab('magicgate')}
+            onClick={() => setActiveTab('extensions')}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer ${
-              activeTab === 'magicgate'
+              activeTab === 'extensions'
                 ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <span className="material-symbols-outlined text-xl text-indigo-400">security</span>
-              <span>MagicGate</span>
+              <span className="material-symbols-outlined text-xl text-indigo-400">extension</span>
+              <span>Rozšíření</span>
             </div>
-            {formData.magicgate?.username?.trim() || formData.magicgate?.xmlPath?.trim() ? (
-              <span className="text-[11px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-bold">
-                Aktivní
+            {activeExtensionsCount > 0 && (
+              <span className="text-[11px] px-1.5 py-0.5 rounded bg-white/10 text-gray-300 font-mono">
+                {activeExtensionsCount}
               </span>
-            ) : null}
+            )}
           </button>
 
-          {/* MLog tab */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('mlog')}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer ${
-              activeTab === 'mlog'
-                ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <span className="material-symbols-outlined text-xl text-indigo-400">support_agent</span>
-              <span>MLog</span>
-            </div>
-            {formData.mlog?.baseUrl?.trim() ? (
-              <span className="text-[11px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-bold">
-                Aktivní
-              </span>
-            ) : null}
-          </button>
+          {/* MagicGate tab - visible only when extension is enabled */}
+          {formData.extensions?.magicgate && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('magicgate')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer pl-6 ${
+                activeTab === 'magicgate'
+                  ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-xl text-indigo-400">security</span>
+                <span>MagicGate</span>
+              </div>
+            </button>
+          )}
+
+          {/* MLog tab - visible only when extension is enabled */}
+          {formData.extensions?.mlog && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('mlog')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer pl-6 ${
+                activeTab === 'mlog'
+                  ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-xl text-indigo-400">support_agent</span>
+                <span>MLog</span>
+              </div>
+            </button>
+          )}
+
+          {/* GitHub tab - visible only when extension is enabled */}
+          {formData.extensions?.github && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('github')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer pl-6 ${
+                activeTab === 'github'
+                  ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-xl text-indigo-400">folder_code</span>
+                <span>GitHub</span>
+              </div>
+            </button>
+          )}
+
+          {/* VS Code tab - visible only when extension is enabled */}
+          {formData.extensions?.vscode && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('vscode')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer pl-6 ${
+                activeTab === 'vscode'
+                  ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-xl text-indigo-400">code</span>
+                <span>VS Code</span>
+              </div>
+            </button>
+          )}
 
           {/* General tab */}
           <button
@@ -922,16 +1134,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div>
             <h2 className="text-base font-bold text-white tracking-wide">
               {activeTab === 'sources' && 'Zdroje dat a mezipaměť'}
+              {activeTab === 'extensions' && 'Doplňková rozšíření a integrace'}
               {activeTab === 'magicgate' && 'MagicGate přihlašovací údaje'}
               {activeTab === 'mlog' && 'MLog Helpdesk'}
+              {activeTab === 'github' && 'GitHub repozitáře'}
+              {activeTab === 'vscode' && 'Visual Studio Code (VS Code)'}
               {activeTab === 'general' && 'Obecné nastavení aplikace'}
               {activeTab === 'updates' && 'Aktualizace aplikace'}
               {activeTab === 'help' && 'Nápověda a klávesové zkratky'}
             </h2>
             <p className="text-[13px] text-gray-400 mt-1">
               {activeTab === 'sources' && 'Správa lokálních JSON souborů a vzdálených API endpointů'}
+              {activeTab === 'extensions' && 'Správa doplňkových modulů, firemních nástrojů a externích služeb'}
               {activeTab === 'magicgate' && 'Konfigurace tichého přihlášení pro instanci IS Tour'}
               {activeTab === 'mlog' && 'Nastavení Base URL pro rychlé otevírání požadavků a úkolů'}
+              {activeTab === 'github' && 'Přístup k osobním i firemním repozitářům a rychlému klonování'}
+              {activeTab === 'vscode' && 'Konfigurace cesty k editoru VS Code pro otevírání repozitářů a projektů'}
               {activeTab === 'general' && 'Globální klávesová zkratka, barva motivu a vyhledávání programů'}
               {activeTab === 'updates' && 'Kontrola nových verzí a historie změn IADonkey'}
               {activeTab === 'help' && 'Přehled všech klávesových zkratek a chytrých funkcí'}
@@ -1234,6 +1452,280 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
+          {/* TAB: Extensions */}
+          {activeTab === 'extensions' && (
+            <div className="space-y-6 animate-fade-in max-w-4xl">
+              <div>
+                <h3 className="font-semibold text-white text-base flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg text-indigo-400">extension</span>
+                  Doplňková rozšíření a integrace
+                </h3>
+                <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
+                  Rozšíření umožňují propojit IADonkey s dalšími nástroji a firemními systémy. Vypnutím rozšíření se nesmaže vaše konfigurace, pouze se skryje záložka v levém menu a pozastaví se zobrazování výsledků ve vyhledávači.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                {/* 1. MagicGate */}
+                <div className="p-5 bg-white/[0.03] border border-white/10 rounded-2xl flex flex-col justify-between gap-4 transition hover:border-white/20">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 text-amber-400">
+                        <span className="material-symbols-outlined text-2xl">security</span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-bold text-white tracking-wide">MagicGate (IS Tour)</h3>
+                          {formData.magicgate?.username?.trim() || formData.magicgate?.xmlPath?.trim() ? (
+                            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-medium">
+                              Nakonfigurováno
+                            </span>
+                          ) : (
+                            <span className="text-[10px] bg-white/5 text-gray-400 border border-white/10 px-1.5 py-0.5 rounded font-medium">
+                              Nenakonfigurováno
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                          Automatické a bezpečné tiché přihlašování do instancí IS Tour a načítání serverových konfigurací aplikací (Administrace, Web, API, BO) z deploy XML souboru.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={formData.extensions?.magicgate ?? false}
+                          onChange={(e) => {
+                            const updated = {
+                              ...formData,
+                              extensions: {
+                                ...formData.extensions,
+                                magicgate: e.target.checked,
+                                mlog: formData.extensions?.mlog ?? false,
+                                github: formData.extensions?.github ?? false,
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                        />
+                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+                      </label>
+                    </div>
+                  </div>
+                  {formData.extensions?.magicgate && (
+                    <div className="pt-3 border-t border-white/5 flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Záložka je dostupná v levém menu</span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('magicgate')}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Nastavení MagicGate</span>
+                        <span className="material-symbols-outlined text-sm">navigate_next</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. MLog */}
+                <div className="p-5 bg-white/[0.03] border border-white/10 rounded-2xl flex flex-col justify-between gap-4 transition hover:border-white/20">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 text-indigo-400">
+                        <span className="material-symbols-outlined text-2xl">support_agent</span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-bold text-white tracking-wide">MLog Helpdesk</h3>
+                          {formData.mlog?.baseUrl?.trim() ? (
+                            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-medium">
+                              Nakonfigurováno
+                            </span>
+                          ) : (
+                            <span className="text-[10px] bg-white/5 text-gray-400 border border-white/10 px-1.5 py-0.5 rounded font-medium">
+                              Nenakonfigurováno
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                          Rychlé rozpoznávání kódů požadavků (<code className="bg-white/10 px-1 rounded">R1234</code>) a úkolů (<code className="bg-white/10 px-1 rounded">T5678</code>) a jejich okamžité otevírání v helpdesku MLog.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={formData.extensions?.mlog ?? false}
+                          onChange={(e) => {
+                            const updated = {
+                              ...formData,
+                              extensions: {
+                                ...formData.extensions,
+                                magicgate: formData.extensions?.magicgate ?? false,
+                                mlog: e.target.checked,
+                                github: formData.extensions?.github ?? false,
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                        />
+                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+                      </label>
+                    </div>
+                  </div>
+                  {formData.extensions?.mlog && (
+                    <div className="pt-3 border-t border-white/5 flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Záložka je dostupná v levém menu</span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('mlog')}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Nastavení MLog</span>
+                        <span className="material-symbols-outlined text-sm">navigate_next</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. GitHub */}
+                <div className="p-5 bg-white/[0.03] border border-white/10 rounded-2xl flex flex-col justify-between gap-4 transition hover:border-white/20">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0 text-purple-400">
+                        <span className="material-symbols-outlined text-2xl">folder_code</span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-bold text-white tracking-wide">GitHub repozitáře</h3>
+                          {formData.github?.token?.trim() ? (
+                            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-medium">
+                              Nakonfigurováno
+                            </span>
+                          ) : (
+                            <span className="text-[10px] bg-white/5 text-gray-400 border border-white/10 px-1.5 py-0.5 rounded font-medium">
+                              Nenakonfigurováno
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                          Automatická indexace a vyhledávání vašich osobních i firemních repozitářů na GitHubu s možností okamžitého zkopírování příkazu <code className="bg-white/10 px-1 rounded">git clone</code>.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={formData.extensions?.github ?? false}
+                          onChange={(e) => {
+                            const updated = {
+                              ...formData,
+                              extensions: {
+                                ...formData.extensions,
+                                magicgate: formData.extensions?.magicgate ?? false,
+                                mlog: formData.extensions?.mlog ?? false,
+                                github: e.target.checked,
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                        />
+                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+                      </label>
+                    </div>
+                  </div>
+                  {formData.extensions?.github && (
+                    <div className="pt-3 border-t border-white/5 flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Záložka je dostupná v levém menu</span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('github')}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Nastavení GitHub</span>
+                        <span className="material-symbols-outlined text-sm">navigate_next</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. VS Code */}
+                <div className="p-5 bg-white/[0.03] border border-white/10 rounded-2xl flex flex-col justify-between gap-4 transition hover:border-white/20">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0 text-cyan-400">
+                        <span className="material-symbols-outlined text-2xl">code</span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-bold text-white tracking-wide">Visual Studio Code (VS Code)</h3>
+                          {formData.vscode?.path?.trim() ? (
+                            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-medium">
+                              Nakonfigurováno
+                            </span>
+                          ) : (
+                            <span className="text-[10px] bg-white/5 text-gray-400 border border-white/10 px-1.5 py-0.5 rounded font-medium">
+                              Výchozí instalace
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                          Okamžité otevírání lokálně naklonovaných repozitářů a projektových složek přímo v editoru Visual Studio Code ze seznamu akcí.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={formData.extensions?.vscode ?? false}
+                          onChange={(e) => {
+                            const updated = {
+                              ...formData,
+                              extensions: {
+                                ...formData.extensions,
+                                magicgate: formData.extensions?.magicgate ?? false,
+                                mlog: formData.extensions?.mlog ?? false,
+                                github: formData.extensions?.github ?? false,
+                                vscode: e.target.checked,
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                        />
+                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+                      </label>
+                    </div>
+                  </div>
+                  {formData.extensions?.vscode && (
+                    <div className="pt-3 border-t border-white/5 flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Záložka je dostupná v levém menu</span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('vscode')}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Nastavení VS Code</span>
+                        <span className="material-symbols-outlined text-sm">navigate_next</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB 2: MagicGate Credentials */}
           {activeTab === 'magicgate' && (
             <div className="space-y-6">
@@ -1261,7 +1753,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       setFormData(updated);
                       handleSave(updated);
                     }}
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 outline-none"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
                     placeholder="Uživatelské jméno pro MagicGate"
                   />
                 </div>
@@ -1278,7 +1770,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       setFormData(updated);
                       handleSave(updated);
                     }}
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 outline-none"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
                     placeholder="••••••••••••"
                   />
                 </div>
@@ -1431,6 +1923,476 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
+          {/* TAB: GitHub */}
+          {activeTab === 'github' && (
+            <div className="space-y-6 animate-fade-in max-w-2xl">
+              <div>
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg text-indigo-400">folder_code</span>
+                  Přihlašovací údaje k profilu GitHub
+                </h3>
+                <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
+                  Zadejte Personal Access Token (PAT). Launcher automaticky načte vaše osobní i firemní repozitáře, umožní v nich bleskově vyhledávat a kopírovat příkazy pro klonování.
+                </p>
+              </div>
+
+              {/* Box 1: Credentials */}
+              <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-4">
+                <div>
+                  <h4 className="font-semibold text-sm text-white flex items-center gap-2 mb-1">
+                    <span className="material-symbols-outlined text-lg text-indigo-400">key</span>
+                    Přihlašovací údaje (PAT)
+                  </h4>
+                  <p className="text-[13px] text-gray-400 leading-relaxed">
+                    Zadejte vaše uživatelské jméno a Personal Access Token pro přístup k vašim repozitářům.
+                  </p>
+                </div>
+
+                {/* Username field */}
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+                    Uživatelské jméno (Username) <span className="text-gray-500 font-normal text-xs">(osobní profil)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.github?.username || ''}
+                    onChange={(e) => {
+                      const updated = {
+                        ...formData,
+                        github: {
+                          ...formData.github,
+                          username: e.target.value,
+                          token: formData.github?.token || '',
+                          org: formData.github?.org || '',
+                          apiUrl: formData.github?.apiUrl || 'https://api.github.com',
+                          defaultCloneDir: formData.github?.defaultCloneDir || '',
+                        },
+                      };
+                      setFormData(updated);
+                      handleSave(updated);
+                    }}
+                    placeholder="např. petrkulhanek"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none font-mono"
+                  />
+                  <p className="text-xs text-gray-400 mt-1.5">
+                    Vaše osobní uživatelské jméno na GitHubu.
+                  </p>
+                </div>
+
+                {/* Token field */}
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+                    Personal Access Token (PAT) <span className="text-rose-400">*</span>
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      type={showGitHubToken ? 'text' : 'password'}
+                      value={formData.github?.token || ''}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          github: {
+                            ...formData.github,
+                            username: formData.github?.username || '',
+                            token: e.target.value,
+                            org: formData.github?.org || '',
+                            apiUrl: formData.github?.apiUrl || 'https://api.github.com',
+                            defaultCloneDir: formData.github?.defaultCloneDir || '',
+                          },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      placeholder="ghp_... nebo github_pat_..."
+                      className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 pr-10 text-sm text-white focus:border-indigo-500 outline-none font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowGitHubToken(!showGitHubToken)}
+                      className="absolute right-3 text-gray-400 hover:text-gray-200 transition cursor-pointer"
+                      title={showGitHubToken ? 'Skrýt token' : 'Zobrazit token'}
+                    >
+                      <span className="material-symbols-outlined text-lg">
+                        {showGitHubToken ? 'visibility_off' : 'visibility'}
+                      </span>
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
+                    Token můžete vygenerovat v{' '}
+                    <button
+                      type="button"
+                      onClick={() => window.electronAPI?.openExternal?.('https://github.com/settings/tokens')}
+                      className="text-indigo-400 hover:underline cursor-pointer inline-flex items-center gap-0.5"
+                    >
+                      GitHub Settings &rarr; Personal access tokens
+                      <span className="material-symbols-outlined text-[11px]">open_in_new</span>
+                    </button>
+                    . Pro soukromé repozitáře zaškrtněte rozsah <code className="bg-white/10 px-1 rounded text-indigo-300">repo</code> a pro organizace <code className="bg-white/10 px-1 rounded text-indigo-300">read:org</code>.
+                  </p>
+                </div>
+              </div>
+
+              {/* Box 2: Organization */}
+              <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-3">
+                <div>
+                  <h4 className="font-semibold text-sm text-white flex items-center gap-2 mb-1">
+                    <span className="material-symbols-outlined text-lg text-indigo-400">corporate_fare</span>
+                    Organizace / Společnost <span className="text-gray-500 font-normal text-xs">(volitelné)</span>
+                  </h4>
+                  <p className="text-[13px] text-gray-400 mb-3 leading-relaxed">
+                    Pokud pole necháte prázdné, repozitáře se automaticky načtou ze všech vašich organizací i osobního profilu.
+                  </p>
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    value={formData.github?.org || ''}
+                    onChange={(e) => {
+                      const updated = {
+                        ...formData,
+                        github: {
+                          ...formData.github,
+                          username: formData.github?.username || '',
+                          token: formData.github?.token || '',
+                          org: e.target.value,
+                          apiUrl: formData.github?.apiUrl || 'https://api.github.com',
+                          defaultCloneDir: formData.github?.defaultCloneDir || '',
+                        },
+                      };
+                      setFormData(updated);
+                      handleSave(updated);
+                    }}
+                    placeholder="např. magicware"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Box 3: Custom API URL */}
+              <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-3">
+                <div>
+                  <h4 className="font-semibold text-sm text-white flex items-center gap-2 mb-1">
+                    <span className="material-symbols-outlined text-lg text-indigo-400">cloud</span>
+                    GitHub API URL <span className="text-gray-500 font-normal text-xs">(volitelné)</span>
+                  </h4>
+                  <p className="text-[13px] text-gray-400 mb-3 leading-relaxed">
+                    Výchozí je <code className="bg-white/10 px-1 rounded text-gray-300">https://api.github.com</code>. Vyplňte pouze při použití vlastního GitHub Enterprise Serveru.
+                  </p>
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    value={formData.github?.apiUrl || ''}
+                    onChange={(e) => {
+                      const updated = {
+                        ...formData,
+                        github: {
+                          ...formData.github,
+                          username: formData.github?.username || '',
+                          token: formData.github?.token || '',
+                          org: formData.github?.org || '',
+                          apiUrl: e.target.value,
+                          defaultCloneDir: formData.github?.defaultCloneDir || '',
+                        },
+                      };
+                      setFormData(updated);
+                      handleSave(updated);
+                    }}
+                    placeholder="https://api.github.com"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Box 4: Default Clone Directory */}
+              <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-3">
+                <div>
+                  <h4 className="font-semibold text-sm text-white flex items-center gap-2 mb-1">
+                    <span className="material-symbols-outlined text-lg text-indigo-400">folder_open</span>
+                    Výchozí složka pro klonování repozitářů <span className="text-gray-500 font-normal text-xs">(volitelné)</span>
+                  </h4>
+                  <p className="text-[13px] text-gray-400 mb-3 leading-relaxed">
+                    Pokud je nastavena, dialog pro stažení repozitáře (akce Klonovat repozitář na <kbd className="bg-white/10 px-1 rounded font-mono text-[10px]">Shift+Enter</kbd>) ji automaticky předvyplní jako cílové umístění.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-300 mb-1.5">Cesta k cílové složce</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={formData.github?.defaultCloneDir || ''}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          github: {
+                            ...formData.github,
+                            username: formData.github?.username || '',
+                            token: formData.github?.token || '',
+                            org: formData.github?.org || '',
+                            apiUrl: formData.github?.apiUrl || 'https://api.github.com',
+                            defaultCloneDir: e.target.value,
+                          },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      placeholder="např. C:\Projekty nebo D:\Git"
+                      className="h-[38px] flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (window.electronAPI?.selectDirectory) {
+                          const dir = await window.electronAPI.selectDirectory();
+                          if (dir) {
+                            const updated = {
+                              ...formData,
+                              github: {
+                                ...formData.github,
+                                username: formData.github?.username || '',
+                                token: formData.github?.token || '',
+                                org: formData.github?.org || '',
+                                apiUrl: formData.github?.apiUrl || 'https://api.github.com',
+                                defaultCloneDir: dir,
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }
+                        }
+                      }}
+                      className="h-[38px] px-3.5 border border-indigo-500/40 hover:border-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-white rounded-lg text-[13px] font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                    >
+                      <span className="material-symbols-outlined text-base">folder_open</span>
+                      Procházet...
+                    </button>
+                    {formData.github?.defaultCloneDir && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = {
+                            ...formData,
+                            github: {
+                              ...formData.github,
+                              username: formData.github?.username || '',
+                              token: formData.github?.token || '',
+                              org: formData.github?.org || '',
+                              apiUrl: formData.github?.apiUrl || 'https://api.github.com',
+                              defaultCloneDir: '',
+                            },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                        className="w-[38px] h-[38px] flex items-center justify-center text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg transition cursor-pointer shrink-0"
+                        title="Vymazat cestu"
+                      >
+                        <span className="material-symbols-outlined text-[18px] leading-none">delete</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Test connection button & results (outside/below boxes) */}
+              <div className="pt-2 flex flex-col gap-3">
+                <button
+                  type="button"
+                  disabled={!formData.github?.token?.trim() || isTestingGitHub}
+                  onClick={handleTestGitHub}
+                  className={`px-4 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 transition cursor-pointer w-fit ${
+                    !formData.github?.token?.trim() || isTestingGitHub
+                      ? 'bg-white/5 border-white/5 text-gray-500 cursor-not-allowed'
+                      : 'bg-indigo-600/20 text-indigo-300 border-indigo-500/30 hover:bg-indigo-600/30'
+                  }`}
+                >
+                  {isTestingGitHub ? (
+                    <>
+                      <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                      <span>Testuji připojení...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-sm">wifi_tethering</span>
+                      <span>Otestovat připojení</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Result card */}
+                {gitHubTestResult && (
+                  <div
+                    className={`p-4 rounded-xl border text-xs leading-relaxed animate-fade-in ${
+                      gitHubTestResult.ok
+                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                        : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+                    }`}
+                  >
+                    {gitHubTestResult.ok ? (
+                      <div className="flex items-start gap-3">
+                        {gitHubTestResult.user?.avatar_url ? (
+                          <img
+                            src={gitHubTestResult.user.avatar_url}
+                            alt={gitHubTestResult.user.login}
+                            className="w-10 h-10 rounded-full border border-emerald-500/30 shrink-0"
+                          />
+                        ) : (
+                          <span className="material-symbols-outlined text-2xl text-emerald-400">check_circle</span>
+                        )}
+                        <div className="space-y-1">
+                          <div className="font-semibold text-emerald-200">
+                            Připojení k GitHubu bylo úspěšné!
+                          </div>
+                          <div className="text-gray-300">
+                            Přihlášený profil:{' '}
+                            <span className="font-mono font-medium text-emerald-300">
+                              @{gitHubTestResult.user?.login}
+                            </span>{' '}
+                            {gitHubTestResult.user?.name && `(${gitHubTestResult.user.name})`}
+                          </div>
+                          {gitHubTestResult.orgs && gitHubTestResult.orgs.length > 0 && (
+                            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                              <span className="text-gray-400">Nalezené organizace:</span>
+                              {gitHubTestResult.orgs.map((org) => (
+                                <span
+                                  key={org}
+                                  className="bg-emerald-500/20 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono text-[11px]"
+                                >
+                                  {org}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="text-emerald-400 font-medium pt-0.5">
+                            ✓ Nalezeno celkem {gitHubTestResult.repoCount ?? 0} repozitářů
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-2.5">
+                        <span className="material-symbols-outlined text-xl text-rose-400 shrink-0 mt-0.5">error</span>
+                        <div>
+                          <div className="font-semibold text-rose-200">Připojení se nezdařilo</div>
+                          <div className="text-rose-300/80 mt-0.5">{gitHubTestResult.error}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: Visual Studio Code */}
+          {activeTab === 'vscode' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg text-sky-400">code</span>
+                  Visual Studio Code (VS Code)
+                </h3>
+                <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
+                  Konfigurace editoru Visual Studio Code pro rychlé otevírání naklonovaných repozitářů a projektových složek přímo z akcí vyhledávače nebo z modálního okna klonování.
+                </p>
+              </div>
+
+              <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-4">
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+                    Cesta ke spustitelnému souboru VS Code (Code.exe / code.cmd)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={formData.vscode?.path || ''}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          vscode: { ...formData.vscode, path: e.target.value },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      className="h-[38px] flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-sky-500 outline-none font-mono"
+                      placeholder="Automatická detekce (např. C:\Users\...\Code.exe)"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (window.electronAPI?.selectVscodePath) {
+                          const selected = await window.electronAPI.selectVscodePath();
+                          if (selected) {
+                            const updated = {
+                              ...formData,
+                              vscode: { ...formData.vscode, path: selected },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }
+                        }
+                      }}
+                      className="h-[38px] px-3.5 border border-sky-500/40 hover:border-sky-400 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 hover:text-white rounded-lg text-[13px] font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                    >
+                      <span className="material-symbols-outlined text-base">folder_open</span>
+                      <span>Procházet...</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (window.electronAPI?.detectVscodePath) {
+                          const detected = await window.electronAPI.detectVscodePath();
+                          if (detected) {
+                            const updated = {
+                              ...formData,
+                              vscode: { ...formData.vscode, path: detected },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }
+                        }
+                      }}
+                      className="h-[38px] px-3.5 border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-lg text-[13px] font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                      title="Prohledat standardní instalační složky a PATH"
+                    >
+                      <span className="material-symbols-outlined text-base">search</span>
+                      <span>Automaticky detekovat</span>
+                    </button>
+                    {formData.vscode?.path && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = {
+                            ...formData,
+                            vscode: { ...formData.vscode, path: '' },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                        className="w-[38px] h-[38px] flex items-center justify-center text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg transition cursor-pointer shrink-0"
+                        title="Vymazat cestu (použije se automatická detekce)"
+                      >
+                        <span className="material-symbols-outlined text-[18px] leading-none">delete</span>
+                      </button>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-400 mt-2 block leading-relaxed">
+                    Pokud necháte pole prázdné, aplikace zkusí VS Code automaticky nalézt ve standardních složkách uživatele nebo v systémovém příkazu <code className="bg-white/10 px-1 rounded text-cyan-300 font-mono">code</code>.
+                  </span>
+                </div>
+
+                <div className="p-3.5 bg-cyan-950/30 border border-cyan-500/25 rounded-xl text-xs text-cyan-200/90 flex items-start gap-2.5">
+                  <span className="material-symbols-outlined text-base text-cyan-400 shrink-0 mt-0.5">info</span>
+                  <div className="space-y-1">
+                    <div className="font-semibold text-white">Jak to funguje ve vyhledávači:</div>
+                    <p className="text-gray-300 leading-relaxed">
+                      Když u repozitáře ve Spotlight vyhledávači stisknete <kbd className="px-1.5 py-0.5 bg-white/10 border border-white/15 rounded text-[10px] font-mono text-white">Shift+Enter</kbd> a repozitář již existuje ve vaší cílové složce, zobrazí se na prvním místě akce <strong>Otevřít ve VS Code</strong>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB 3: General & Updates */}
           {activeTab === 'general' && (
             <div className="space-y-6">
@@ -1491,84 +2453,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {/* Primary Color Accent Section */}
-              <div className="space-y-3 pt-4 border-t border-white/10">
-                <div>
-                  <h4 className="font-semibold text-sm text-white flex items-center gap-2">
-                    <span className="material-symbols-outlined text-lg text-indigo-400">palette</span>
-                    Hlavní barva aplikace (Zvýraznění)
-                  </h4>
-                  <p className="text-[13px] text-gray-400 mt-1">
-                    Nastavení barvy tlačítek, aktivních záložek a prvků. Semaforové stavové barvy (zelená, červená, oranžová) zůstávají beze změny.
-                  </p>
-                </div>
+              <ColorPickerSection
+                title="Hlavní barva aplikace (Zvýraznění)"
+                description="Nastavení barvy tlačítek, aktivních záložek a prvků. Semaforové stavové barvy (zelená, červená, oranžová) zůstávají beze změny."
+                icon="palette"
+                iconColorClass="text-indigo-400"
+                value={formData.primaryColor || '#6366f1'}
+                fallbackColor="#6366f1"
+                onColorChange={(val) => {
+                  const updated = { ...formData, primaryColor: val };
+                  setFormData(updated);
+                  applyPrimaryColor(val);
+                  handleSave(updated);
+                }}
+              />
 
-                <div className="flex flex-wrap items-center gap-4 bg-white/[0.02] border border-white/5 p-4 rounded-xl">
-                  {/* Native color picker box */}
-                  <div className="flex items-center gap-3">
-                    <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-white/20 shadow-inner flex items-center justify-center cursor-pointer hover:scale-105 transition">
-                      <input
-                        type="color"
-                        value={formData.primaryColor || '#6366f1'}
-                        onInput={(e) => {
-                          const val = (e.target as HTMLInputElement).value;
-                          setFormData((prev) => ({ ...prev, primaryColor: val }));
-                          applyPrimaryColor(val);
-                          handleSave({ ...formData, primaryColor: val });
-                        }}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          const updated = { ...formData, primaryColor: val };
-                          setFormData(updated);
-                          applyPrimaryColor(val);
-                          handleSave(updated);
-                        }}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      />
-                      <div
-                        className="w-full h-full"
-                        style={{ backgroundColor: formData.primaryColor || '#6366f1' }}
-                      />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-mono text-sm text-white font-semibold">
-                        {(formData.primaryColor || '#6366f1').toUpperCase()}
-                      </span>
-                      <span className="text-xs text-gray-400">Vyberte odstín</span>
-                    </div>
-                  </div>
-
-                  {/* Preset quick colors */}
-                  <div className="flex items-center gap-2 pl-2 border-l border-white/10">
-                    {[
-                      { name: 'Indigo', hex: '#6366f1' },
-                      { name: 'Modrá', hex: '#3b82f6' },
-                      { name: 'Fialová', hex: '#8b5cf6' },
-                      { name: 'Růžová', hex: '#ec4899' },
-                      { name: 'Tyrkysová', hex: '#06b6d4' },
-                      { name: 'Smaragdová', hex: '#10b981' },
-                      { name: 'Oranžová', hex: '#f97316' },
-                    ].map((preset) => (
-                      <button
-                        key={preset.hex}
-                        type="button"
-                        onClick={() => {
-                          const updated = { ...formData, primaryColor: preset.hex };
-                          setFormData(updated);
-                          applyPrimaryColor(preset.hex);
-                          handleSave(updated);
-                        }}
-                        title={preset.name}
-                        className={`w-6 h-6 rounded-full transition transform hover:scale-110 flex items-center justify-center ${
-                          (formData.primaryColor || '#6366f1').toLowerCase() === preset.hex.toLowerCase()
-                            ? 'ring-2 ring-white ring-offset-2 ring-offset-[#181920]'
-                            : 'opacity-70 hover:opacity-100'
-                        }`}
-                        style={{ backgroundColor: preset.hex }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
+              {/* Actions Color Accent Section */}
+              <ColorPickerSection
+                title="Barva akcí a informací (Sekundární)"
+                description="Nastavení barvy pro nabídku Akcí a podrobných informací (Shift+Enter), štítků akcí a dialogu pro stahování Git repozitářů."
+                icon="bolt"
+                iconColorClass="text-purple-400"
+                value={formData.actionsColor || '#a855f7'}
+                fallbackColor="#a855f7"
+                onColorChange={(val) => {
+                  const updated = { ...formData, actionsColor: val };
+                  setFormData(updated);
+                  applyActionsColor(val);
+                  handleSave(updated);
+                }}
+              />
 
               {/* Installed Apps Section */}
               <div className="space-y-3 pt-4 border-t border-white/10">
@@ -1751,6 +2665,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* TAB 4: Help & Shortcuts */}
           {activeTab === 'help' && (
             <div className="space-y-6 animate-fade-in">
+              {/* Top Banner / Button: Jak na zdroje dat */}
+              <div className="p-4 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-transparent border border-indigo-500/20 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+                    <span className="material-symbols-outlined text-2xl">menu_book</span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">Jak na zdroje dat (JSON schémata)</h4>
+                    <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
+                      Kompletní dokumentace TypeScript modelu, podporované akce, subpoložky, metadata a kopírovatelné ukázky.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDataSourcesGuide(true)}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shrink-0 self-start sm:self-center cursor-pointer shadow-sm"
+                >
+                  <span className="material-symbols-outlined text-base">code</span>
+                  <span>Jak na zdroje dat</span>
+                </button>
+              </div>
+
               {/* Section 1: Shortcuts */}
               <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
                 <h4 className="text-sm font-semibold text-indigo-300 flex items-center gap-2">
@@ -1764,31 +2701,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <span className="font-medium text-white">Otevřít / Spustit položku</span>
                       <p className="text-gray-400 text-xs mt-0.5">Provede výchozí akci (otevření URL, spuštění programu, kopírování výsledku).</p>
                     </div>
-                    <kbd className="px-2.5 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm">Enter</kbd>
+                    <kbd className="px-2.5 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm whitespace-nowrap">Enter</kbd>
                   </div>
 
                   <div className="py-3 flex items-center justify-between">
                     <div>
-                      <span className="font-medium text-white">Vstup do podpoložek</span>
-                      <p className="text-gray-400 text-xs mt-0.5">Rozbalí vnořené možnosti (options) vybrané položky se samostatným vyhledáváním.</p>
+                      <span className="font-medium text-white">Akce položky</span>
+                      <p className="text-gray-400 text-xs mt-0.5">Zobrazí nabídku dostupných akcí položky (např. klonování repozitáře, otevření na GitHubu).</p>
                     </div>
-                    <kbd className="px-2.5 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm">Shift + Enter</kbd>
+                    <kbd className="px-2.5 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm whitespace-nowrap">Shift + Enter</kbd>
                   </div>
 
                   <div className="py-3 flex items-center justify-between">
                     <div>
-                      <span className="font-medium text-white">Rychlé spuštění 1. podpoložky</span>
-                      <p className="text-gray-400 text-xs mt-0.5">Okamžitě provede akci první podpoložky (lze také podržet Ctrl a kliknout myší).</p>
+                      <span className="font-medium text-white">Vstup do subpoložek (options)</span>
+                      <p className="text-gray-400 text-xs mt-0.5">Rozbalí vnořené subpoložky a volby vybrané položky se samostatným vyhledáváním.</p>
                     </div>
-                    <kbd className="px-2.5 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm">Ctrl + Enter</kbd>
+                    <kbd className="px-2.5 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm whitespace-nowrap">Alt + Enter</kbd>
                   </div>
 
                   <div className="py-3 flex items-center justify-between">
                     <div>
-                      <span className="font-medium text-white">Rychlé spuštění 2. podpoložky</span>
-                      <p className="text-gray-400 text-xs mt-0.5">Okamžitě provede akci druhé podpoložky (lze také podržet Alt a kliknout myší).</p>
+                      <span className="font-medium text-white">Rychlé spuštění 1. subpoložky</span>
+                      <p className="text-gray-400 text-xs mt-0.5">Okamžitě provede první subpoložku položky (lze také podržet Ctrl a kliknout myší).</p>
                     </div>
-                    <kbd className="px-2.5 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm">Alt + Enter</kbd>
+                    <kbd className="px-2.5 py-1 bg-white/10 rounded-lg font-mono text-gray-200 text-xs font-semibold shadow-sm whitespace-nowrap">Ctrl + Enter</kbd>
                   </div>
 
                   <div className="py-3 flex items-center justify-between">
@@ -1796,7 +2733,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <span className="font-medium text-white">Zpět / Zavřít okno</span>
                       <p className="text-gray-400 text-xs mt-0.5">V podpoložkách vás vrátí zpět na původní hledání, v hlavním seznamu skryje IADonkey.</p>
                     </div>
-                    <kbd className="px-2.5 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm">Escape</kbd>
+                    <kbd className="px-2.5 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm whitespace-nowrap">Escape</kbd>
                   </div>
 
                   <div className="py-3 flex items-center justify-between">
@@ -1805,8 +2742,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <p className="text-gray-400 text-xs mt-0.5">Listování nahoru a dolů v seznamu nalezených výsledků.</p>
                     </div>
                     <div className="flex gap-1.5">
-                      <kbd className="px-2 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm">↑</kbd>
-                      <kbd className="px-2 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm">↓</kbd>
+                      <kbd className="px-2 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm whitespace-nowrap">↑</kbd>
+                      <kbd className="px-2 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm whitespace-nowrap">↓</kbd>
                     </div>
                   </div>
 
@@ -1815,7 +2752,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <span className="font-medium text-white">Zkopírování systémového snippetu</span>
                       <p className="text-gray-400 text-xs mt-0.5">Napište dvojtečku a klíčové slovo (např. :today, :now, :cas, :guid, :podpis) pro zkopírování hodnoty do schránky.</p>
                     </div>
-                    <kbd className="px-2.5 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm">:klicove_slovo</kbd>
+                    <kbd className="px-2.5 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm whitespace-nowrap">:klicove_slovo</kbd>
                   </div>
 
                   <div className="py-3 flex items-center justify-between">
@@ -1878,28 +2815,56 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </p>
                   </div>
 
-                  <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
-                    <div className="flex items-center gap-2 text-indigo-400 font-semibold">
-                      <span className="material-symbols-outlined text-base">support_agent</span>
-                      MLog Helpdesk
+                  {formData.extensions?.mlog !== false && !!formData.mlog?.baseUrl?.trim() && (
+                    <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                      <div className="flex items-center gap-2 text-indigo-400 font-semibold">
+                        <span className="material-symbols-outlined text-base">support_agent</span>
+                        MLog Helpdesk
+                      </div>
+                      <p className="text-gray-400 text-xs leading-relaxed">
+                        Zadejte kód požadavku (např. <code className="bg-white/10 px-1 rounded">R234</code>) nebo úkolu (např. <code className="bg-white/10 px-1 rounded">T7821</code>). Stiskem Enter se přímo otevře v MLogu.
+                      </p>
                     </div>
-                    <p className="text-gray-400 text-xs leading-relaxed">
-                      Zadejte kód požadavku (např. <code className="bg-white/10 px-1 rounded">R234</code>) nebo úkolu (např. <code className="bg-white/10 px-1 rounded">T7821</code>). Stiskem Enter se přímo otevře v MLogu (vyžaduje nastavenou Base URL v záložce MLog).
-                    </p>
-                  </div>
+                  )}
+
+                  {formData.extensions?.magicgate !== false && (!!formData.magicgate?.username?.trim() || !!formData.magicgate?.xmlPath?.trim()) && (
+                    <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                      <div className="flex items-center gap-2 text-amber-400 font-semibold">
+                        <span className="material-symbols-outlined text-base">security</span>
+                        MagicGate přihlášení a vyhledávání
+                      </div>
+                      <p className="text-gray-400 text-xs leading-relaxed">
+                        Pro vyhledávání výhradně v instancích MagicGate použijte prefix <code className="bg-white/10 px-1 rounded">magicgate:</code> nebo <code className="bg-white/10 px-1 rounded">mg:</code> (např. <code className="bg-white/10 px-1 rounded">magicgate:</code> pro zobrazení všech instancí nebo <code className="bg-white/10 px-1 rounded">magicgate: ostrava</code>). U položek se <code className="bg-white/10 px-1 rounded">settings: "magicgate"</code> aplikace provede tichý handshake a otevře instanci IS Tour v prohlížeči již plně přihlášenou.
+                      </p>
+                    </div>
+                  )}
+
+                  {formData.extensions?.github !== false && (
+                    <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                      <div className="flex items-center gap-2 text-purple-400 font-semibold">
+                        <span className="material-symbols-outlined text-base">folder_code</span>
+                        GitHub repozitáře
+                      </div>
+                      <p className="text-gray-400 text-xs leading-relaxed">
+                        Vyhledejte repozitář podle názvu. Pro vyhledávání výhradně v repozitářích použijte prefix <code className="bg-white/10 px-1 rounded">git:</code> (např. <code className="bg-white/10 px-1 rounded">git:</code> pro všechny nebo <code className="bg-white/10 px-1 rounded">git: iadonkey</code>). Stiskem Enter jej otevřete na GitHubu v prohlížeči, stiskem <kbd className="bg-white/10 px-1 rounded font-mono text-[11px] whitespace-nowrap">Shift+Enter</kbd> otevřete nabídku Akcí pro přímé stažení nebo rekurzivní klonování do zvolené složky.
+                      </p>
+                    </div>
+                  )}
+
+                  {formData.extensions?.vscode && (
+                    <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                      <div className="flex items-center gap-2 text-cyan-400 font-semibold">
+                        <span className="material-symbols-outlined text-base">code</span>
+                        Visual Studio Code
+                      </div>
+                      <p className="text-gray-400 text-xs leading-relaxed">
+                        Pokud existuje repozitář nebo projekt v lokální cílové složce, v nabídce akcí (<kbd className="bg-white/10 px-1 rounded font-mono text-[11px] whitespace-nowrap">Shift+Enter</kbd>) jej můžete okamžitě otevřít přímo v editoru VS Code.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
-                    <div className="flex items-center gap-2 text-amber-400 font-semibold">
-                      <span className="material-symbols-outlined text-base">security</span>
-                      MagicGate přihlášení
-                    </div>
-                    <p className="text-gray-400 text-xs leading-relaxed">
-                      U položek se <code className="bg-white/10 px-1 rounded">settings: "magicgate"</code> aplikace provede tichý handshake a otevře instanci IS Tour v prohlížeči již plně přihlášenou.
-                    </p>
-                  </div>
-
-                  <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
-                    <div className="flex items-center gap-2 text-amber-400 font-semibold">
+                    <div className="flex items-center gap-2 text-fuchsia-400 font-semibold">
                       <span className="material-symbols-outlined text-base">travel_explore</span>
                       Internetové vyhledávače
                     </div>
@@ -1937,6 +2902,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           items={items}
           sources={formData.sources}
           snippetsConfig={formData.snippets}
+          banlist={formData.banlist || []}
+          onBanItem={handleBanItem}
+          onUnbanItem={handleUnbanItem}
+        />
+      )}
+
+      {/* Data Sources Guide Modal */}
+      {showDataSourcesGuide && (
+        <DataSourcesGuideModal
+          isOpen={showDataSourcesGuide}
+          onClose={() => setShowDataSourcesGuide(false)}
+          magicGateEnabled={formData.extensions?.magicgate !== false}
         />
       )}
     </div>

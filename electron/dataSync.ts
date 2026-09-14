@@ -1,7 +1,21 @@
 import fs from 'node:fs';
-import type { DataSource, FileSource, ApiSource, LauncherItem, SourceFieldMapping } from '../src/types';
+import type { DataSource, FileSource, ApiSource, LauncherItem, SourceFieldMapping, BannedItem } from '../src/types';
 import { AppStore } from './store';
 import { loadMagicGateXml } from './magicGateXml';
+import { fetchGitHubRepos } from './githubService';
+import { faviconService } from './faviconService';
+
+function isItemBanned(item: LauncherItem, banlist?: BannedItem[]): boolean {
+  if (!banlist || banlist.length === 0) return false;
+  return banlist.some((b) => {
+    if (b.id && item.id && b.id === item.id) return true;
+    if (b.location && item.location && b.location.trim().toLowerCase() === item.location.trim().toLowerCase()) return true;
+    if (b.name && item.name && b.name.trim().toLowerCase() === item.name.trim().toLowerCase()) {
+      if (!b.sourceId || b.sourceId === item.sourceId) return true;
+    }
+    return false;
+  });
+}
 
 export class DataSyncManager {
   private store: AppStore;
@@ -25,12 +39,22 @@ export class DataSyncManager {
     const totalCount = enabledSources.length;
 
     if (totalCount === 0) {
-      if (config.magicgate?.xmlPath && fs.existsSync(config.magicgate.xmlPath)) {
+      if (config.extensions?.magicgate !== false && config.magicgate?.xmlPath && fs.existsSync(config.magicgate.xmlPath)) {
         try {
           const mgItems = loadMagicGateXml(config.magicgate.xmlPath);
           allItems.push(...mgItems);
         } catch (err) {
           console.error('[DataSync] Error loading MagicGate XML:', err);
+        }
+      }
+
+      if (config.extensions?.github !== false && config.github?.token?.trim()) {
+        try {
+          const ghItems = await fetchGitHubRepos(config.github);
+          allItems.push(...ghItems);
+          faviconService.fetchFaviconForUrl('https://github.com').catch(() => {});
+        } catch (err) {
+          console.error('[DataSync] Error loading GitHub repos:', err);
         }
       }
 
@@ -42,8 +66,9 @@ export class DataSyncManager {
       });
       const nowIso = new Date().toISOString();
       this.store.saveConfig({ ...config, sources: updatedSources, lastSyncTime: nowIso });
-      this.store.saveItems(allItems);
-      return allItems;
+      const filteredItems = allItems.filter((it) => !isItemBanned(it, config.banlist));
+      this.store.saveItems(filteredItems);
+      return filteredItems;
     }
 
     onProgress?.({
@@ -96,8 +121,8 @@ export class DataSyncManager {
       });
     }
 
-    // Load MagicGate XML items if configured
-    if (config.magicgate?.xmlPath && fs.existsSync(config.magicgate.xmlPath)) {
+    // Load MagicGate XML items if configured and enabled
+    if (config.extensions?.magicgate !== false && config.magicgate?.xmlPath && fs.existsSync(config.magicgate.xmlPath)) {
       try {
         const mgItems = loadMagicGateXml(config.magicgate.xmlPath);
         allItems.push(...mgItems);
@@ -106,15 +131,27 @@ export class DataSyncManager {
       }
     }
 
+    // Load GitHub repositories if configured and enabled
+    if (config.extensions?.github !== false && config.github?.token?.trim()) {
+      try {
+        const ghItems = await fetchGitHubRepos(config.github);
+        allItems.push(...ghItems);
+        faviconService.fetchFaviconForUrl('https://github.com').catch(() => {});
+      } catch (err) {
+        console.error('[DataSync] Error loading GitHub repos:', err);
+      }
+    }
+
     const nowIso = new Date().toISOString();
 
     // Save updated source statistics and global sync timestamp into config
     this.store.saveConfig({ ...config, sources: updatedSources, lastSyncTime: nowIso });
 
-    // Save combined items into local cache
-    this.store.saveItems(allItems);
+    // Filter out banned items before saving into local cache
+    const filteredItems = allItems.filter((it) => !isItemBanned(it, config.banlist));
+    this.store.saveItems(filteredItems);
 
-    return allItems;
+    return filteredItems;
   }
 
   /**
@@ -376,6 +413,23 @@ export class DataSyncManager {
     const rawAction = getValue('action', raw.action || 'open');
     const normalizedAction = rawAction === 'snippet' ? 'copy' : rawAction;
 
+    const rawActions = Array.isArray(raw.actions)
+      ? raw.actions
+          .filter((act: any) => act && typeof act === 'object')
+          .map((act: any) => ({
+            name: String(act.name || 'Akce'),
+            action: act.action || 'open',
+            location: act.location !== undefined ? act.location : null,
+            icon: act.icon || null,
+            settings: act.settings || null,
+          }))
+      : undefined;
+
+    const rawInfo =
+      raw.info && typeof raw.info === 'object' && !Array.isArray(raw.info)
+        ? raw.info
+        : undefined;
+
     return {
       id,
       name: String(getValue('name', raw.name || 'Položka bez názvu')),
@@ -387,6 +441,8 @@ export class DataSyncManager {
       settings: effectiveSettings === 'magicgate' ? 'magicgate' : effectiveSettings || null,
       sourceId,
       options: subOptions,
+      actions: rawActions && rawActions.length > 0 ? rawActions : undefined,
+      info: rawInfo && Object.keys(rawInfo).length > 0 ? rawInfo : undefined,
     };
   }
 }

@@ -16,6 +16,7 @@ const getAppIcon = () => {
 export class WindowManager {
   private mainWindow: BrowserWindow | null = null;
   private settingsWindow: BrowserWindow | null = null;
+  private gitCloneWindow: BrowserWindow | null = null;
   private tray: Tray | null = null;
   private isQuitting = false;
   private lastShowTime = 0;
@@ -208,6 +209,97 @@ export class WindowManager {
     });
 
     return this.settingsWindow;
+  }
+
+  public getGitCloneWindow(): BrowserWindow | null {
+    return this.gitCloneWindow;
+  }
+
+  public openGitCloneWindow(params: {
+    repoName: string;
+    repoUrl?: string;
+    initialRecursive?: boolean;
+    isInstanceMode?: boolean;
+    adminUrl?: string;
+  }): BrowserWindow {
+    const isRecursive = Boolean(params.initialRecursive);
+    const isInstanceMode = Boolean(params.isInstanceMode);
+    const adminUrl = params.adminUrl || '';
+
+    const query = new URLSearchParams({
+      name: params.repoName || '',
+      url: params.repoUrl || '',
+      recursive: isRecursive ? '1' : '0',
+      isInstanceMode: isInstanceMode ? '1' : '0',
+      adminUrl,
+    }).toString();
+
+    const payload = {
+      repoName: params.repoName || '',
+      repoUrl: params.repoUrl || '',
+      recursive: isRecursive,
+      initialRecursive: isRecursive,
+      isInstanceMode,
+      adminUrl,
+    };
+
+    if (this.gitCloneWindow && !this.gitCloneWindow.isDestroyed()) {
+      if (this.gitCloneWindow.isMinimized()) this.gitCloneWindow.restore();
+      this.gitCloneWindow.show();
+      this.gitCloneWindow.focus();
+      this.gitCloneWindow.webContents.send('git-clone-params', payload);
+      return this.gitCloneWindow;
+    }
+
+    const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
+      ? path.join(__dirname, 'preload.cjs')
+      : fs.existsSync(path.join(__dirname, 'preload.mjs'))
+      ? path.join(__dirname, 'preload.mjs')
+      : path.join(__dirname, 'preload.js');
+
+    this.gitCloneWindow = new BrowserWindow({
+      width: 640,
+      height: 560,
+      minWidth: 540,
+      minHeight: 480,
+      title: isInstanceMode
+        ? `IADonkey – Klonovat repozitáře instance (${params.repoName})`
+        : `IADonkey – Klonovat repozitář${params.repoName ? ` (${params.repoName})` : ''}`,
+      icon: getAppIcon(),
+      autoHideMenuBar: true,
+      backgroundColor: '#181920',
+      show: false,
+      webPreferences: {
+        preload: preloadPath,
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    if (process.env.VITE_DEV_SERVER_URL) {
+      this.gitCloneWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#git-clone?${query}`);
+    } else {
+      this.gitCloneWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash: `git-clone?${query}` });
+    }
+
+    this.gitCloneWindow.once('ready-to-show', () => {
+      if (this.gitCloneWindow && !this.gitCloneWindow.isDestroyed()) {
+        this.gitCloneWindow.show();
+        this.gitCloneWindow.focus();
+        this.gitCloneWindow.webContents.send('git-clone-params', payload);
+      }
+    });
+
+    this.gitCloneWindow.on('closed', () => {
+      this.gitCloneWindow = null;
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.showSpotlight();
+        this.mainWindow.webContents.send('focus-input');
+      }
+    });
+
+    return this.gitCloneWindow;
   }
 
   public createTray(hotkeyLabel: string): void {

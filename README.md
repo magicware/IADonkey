@@ -94,6 +94,8 @@ npm run dev
 npm run build
 ```
 
+Kompletní pravidla vývoje, postup verzování, průběžná správa changelogu a závazné UI standardy jsou popsány v [DEVELOPMENT.md](DEVELOPMENT.md).
+
 ---
 
 ## Struktura projektu

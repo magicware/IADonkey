@@ -1,5 +1,7 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, dialog, shell, clipboard } from 'electron';
 import path from 'node:path';
+import fs from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
 import { AppStore } from './store';
 import { DataSyncManager } from './dataSync';
 import { UpdateChecker } from './updater';
@@ -7,7 +9,9 @@ import { WindowManager } from './windowManager';
 import { AppScanner } from './appScanner';
 import { AppConfig, LauncherItem } from '../src/types';
 import { getMagicGateAutoLoginUrl } from './magicGate';
+import { testGitHubConnection } from './githubService';
 import { faviconService } from './faviconService';
+import { fetchInstanceSectionRepos, runMultiRepoClone, MagicGateSectionRepo } from './magicGateService';
 
 // Enforce single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
@@ -89,8 +93,18 @@ function setupIpcHandlers() {
       windowManager.getSettingsWindow()?.webContents.send('data-updated', allItems);
     }
 
-    // If MagicGate XML path changed, trigger sync to update launcher items
-    if (newConfig.magicgate?.xmlPath !== oldConfig.magicgate?.xmlPath) {
+    // If MagicGate or GitHub settings/extensions changed, trigger sync to update launcher items
+    const magicgateChanged =
+      newConfig.magicgate?.xmlPath !== oldConfig.magicgate?.xmlPath ||
+      newConfig.extensions?.magicgate !== oldConfig.extensions?.magicgate;
+    const githubChanged =
+      newConfig.extensions?.github !== oldConfig.extensions?.github ||
+      newConfig.github?.username !== oldConfig.github?.username ||
+      newConfig.github?.token !== oldConfig.github?.token ||
+      newConfig.github?.org !== oldConfig.github?.org ||
+      newConfig.github?.apiUrl !== oldConfig.github?.apiUrl;
+
+    if (magicgateChanged || githubChanged) {
       syncManager.syncAll().then(() => {
         const allItems = getCombinedItems();
         windowManager.getMainWindow()?.webContents.send('data-updated', allItems);
@@ -111,6 +125,40 @@ function setupIpcHandlers() {
       if (cfg.hotkey) {
         registerGlobalHotkey(cfg.hotkey);
       }
+    });
+  });
+
+  ipcMain.handle('open-git-clone-window', (_event, params: {
+    repoName: string;
+    repoUrl?: string;
+    initialRecursive?: boolean;
+    isInstanceMode?: boolean;
+    adminUrl?: string;
+  }) => {
+    windowManager.openGitCloneWindow(params);
+  });
+
+  ipcMain.handle('magicgate-get-repos', async (_event, params: { adminUrl: string }) => {
+    const config = store.getConfig();
+    const username = config.magicgate?.username;
+    const password = config.magicgate?.password;
+    return fetchInstanceSectionRepos(params.adminUrl, username, password);
+  });
+
+  ipcMain.handle('magicgate-clone-start', async (event, params: {
+    repos: MagicGateSectionRepo[];
+    targetDir: string;
+    recursive?: boolean;
+    rawJson?: string;
+  }) => {
+    const sender = event.sender;
+    return runMultiRepoClone({
+      ...params,
+      onProgress: (data) => {
+        if (!sender.isDestroyed()) {
+          sender.send('magicgate-clone-progress', data);
+        }
+      },
     });
   });
 
@@ -183,6 +231,91 @@ function setupIpcHandlers() {
     return null;
   });
 
+  ipcMain.handle('select-directory', async () => {
+    const win = windowManager.getSettingsWindow() || windowManager.getMainWindow();
+    const result = await dialog.showOpenDialog(win || (undefined as any), {
+      title: 'Vyberte složku pro klonování repozitářů',
+      properties: ['openDirectory', 'createDirectory'],
+    });
+
+    if (!result.canceled && result.filePaths.length > 0) {
+      return result.filePaths[0];
+    }
+    return null;
+  });
+
+  ipcMain.handle('run-git-clone', async (_event, data: { repoUrl: string; targetDir: string; recursive?: boolean }) => {
+    const { repoUrl, targetDir, recursive } = data;
+    if (!repoUrl || !targetDir) {
+      return { success: false, targetPath: '', error: 'Chybí URL repozitáře nebo cílová složka.' };
+    }
+
+    return new Promise((resolve) => {
+      // Determine folder name from repository url
+      const cleanUrl = repoUrl.trim().replace(/\.git$/i, '');
+      const parts = cleanUrl.split(/[/\\\\]/);
+      const repoName = parts[parts.length - 1] || 'repository';
+      const targetPath = path.join(targetDir, repoName);
+
+      const args = ['clone'];
+      if (recursive) {
+        args.push('--recursive');
+      }
+      args.push(repoUrl, targetPath);
+
+      const gitProcess = spawn('git', args, {
+        cwd: targetDir,
+        shell: true,
+        windowsHide: true,
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      gitProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      gitProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      gitProcess.on('close', (code) => {
+        if (code === 0) {
+          resolve({ success: true, targetPath, output: stdout });
+        } else {
+          const combinedErr = stderr || stdout || `Příkaz git clone selhal s kódem ${code}`;
+          const isAlreadyExists =
+            /already exists and is not an empty directory/i.test(combinedErr) ||
+            /již existuje a není prázdná/i.test(combinedErr);
+
+          if (isAlreadyExists) {
+            resolve({
+              success: true,
+              targetPath,
+              alreadyExists: true,
+              output: `Repozitář již existuje v cílové složce.`,
+            });
+          } else {
+            resolve({
+              success: false,
+              targetPath,
+              error: combinedErr,
+            });
+          }
+        }
+      });
+
+      gitProcess.on('error', (err) => {
+        resolve({
+          success: false,
+          targetPath,
+          error: err.message || 'Nepodařilo se spustit příkaz git. Ujistěte se, že máte Git nainstalovaný a v systémové cestě PATH.',
+        });
+      });
+    });
+  });
+
   ipcMain.handle('execute-action', async (_event, data: { action: string; location: string; settings?: string | null }) => {
     const { action, location, settings } = data;
     if (!location) return;
@@ -201,7 +334,7 @@ function setupIpcHandlers() {
         if (isUrl) {
           let fullUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 
-          if (settings === 'magicgate') {
+          if (settings === 'magicgate' && store.getConfig().extensions?.magicgate !== false) {
             try {
               const config = store.getConfig();
               const autoLoginUrl = await getMagicGateAutoLoginUrl(fullUrl, config);
@@ -225,6 +358,10 @@ function setupIpcHandlers() {
     } catch (err) {
       console.error('[Main] Failed to execute action:', err);
     }
+  });
+
+  ipcMain.handle('test-github-connection', async (_event, settings) => {
+    return await testGitHubConnection(settings);
   });
 
   ipcMain.handle('open-external', async (_event, url: string) => {
@@ -258,6 +395,126 @@ function setupIpcHandlers() {
   ipcMain.handle('install-update', (_event, filePath: string) => {
     updateChecker.installAndRestart(filePath);
   });
+
+  // VS Code integration handlers
+  ipcMain.handle('open-in-vscode', async (_event, folderPath: string) => {
+    if (!folderPath) {
+      return { success: false, error: 'Chybí cesta ke složce.' };
+    }
+    return await openPathInVscode(folderPath);
+  });
+
+  ipcMain.handle('select-vscode-path', async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'Vyberte spustitelný soubor VS Code (Code.exe)',
+      properties: ['openFile'],
+      filters: [
+        { name: 'Spustitelné soubory (*.exe, *.cmd)', extensions: ['exe', 'cmd'] },
+        { name: 'Všechny soubory', extensions: ['*'] },
+      ],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+    return result.filePaths[0];
+  });
+
+  ipcMain.handle('detect-vscode-path', () => {
+    return detectDefaultVscodePath();
+  });
+
+  ipcMain.handle('get-existing-cloned-repos', (_event, baseDir?: string) => {
+    const config = store.getConfig();
+    const targetDir = baseDir?.trim() || config.github?.defaultCloneDir?.trim();
+    if (!targetDir || !fs.existsSync(targetDir)) {
+      return [];
+    }
+    try {
+      const entries = fs.readdirSync(targetDir, { withFileTypes: true });
+      const repoNames: string[] = [];
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const subPath = path.join(targetDir, entry.name);
+          try {
+            const subEntries = fs.readdirSync(subPath);
+            if (subEntries.length > 0) {
+              repoNames.push(entry.name.toLowerCase());
+            }
+          } catch {}
+        }
+      }
+      return repoNames;
+    } catch (err) {
+      console.warn('[Main] Error reading existing cloned repos:', err);
+      return [];
+    }
+  });
+}
+
+function detectDefaultVscodePath(): string | null {
+  const localAppData = process.env.LOCALAPPDATA || '';
+  const progFiles = process.env['ProgramFiles'] || 'C:\\Program Files';
+  const progFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+
+  const candidates = [
+    path.join(localAppData, 'Programs', 'Microsoft VS Code', 'Code.exe'),
+    path.join(progFiles, 'Microsoft VS Code', 'Code.exe'),
+    path.join(progFilesX86, 'Microsoft VS Code', 'Code.exe'),
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  // Check if 'code' or 'code.cmd' is available in PATH
+  try {
+    const check = spawnSync('where', ['code.cmd'], { windowsHide: true, encoding: 'utf-8' });
+    if (check.status === 0 && check.stdout) {
+      const firstLine = check.stdout.split(/\r?\n/)[0]?.trim();
+      if (firstLine && fs.existsSync(firstLine)) {
+        return firstLine;
+      }
+    }
+  } catch {}
+
+  return null;
+}
+
+async function openPathInVscode(folderPath: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const config = store.getConfig();
+    let vscodeExe = config.vscode?.path?.trim();
+
+    if (!vscodeExe || !fs.existsSync(vscodeExe)) {
+      const detected = detectDefaultVscodePath();
+      if (detected) {
+        vscodeExe = detected;
+      }
+    }
+
+    if (vscodeExe && fs.existsSync(vscodeExe)) {
+      const child = spawn(`"${vscodeExe}"`, [`"${folderPath}"`], {
+        shell: true,
+        detached: true,
+        windowsHide: true,
+      });
+      child.unref();
+      return { success: true };
+    }
+
+    // Fallback: spawn code directly via shell
+    const child = spawn('code', [`"${folderPath}"`], {
+      shell: true,
+      detached: true,
+      windowsHide: true,
+    });
+    child.unref();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Nepodařilo se spustit VS Code.' };
+  }
 }
 
 function startBackgroundTasks() {

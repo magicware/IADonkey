@@ -1,3 +1,11 @@
+export interface LauncherAction {
+  name: string;
+  action: 'open' | 'clone' | 'clonerecursive' | 'copy' | string;
+  location?: string | null;
+  icon?: string | null;
+  settings?: 'git' | string | null;
+}
+
 export interface LauncherItem {
   id?: string;
   name: string;
@@ -6,10 +14,12 @@ export interface LauncherItem {
   icon?: string | null;
   image?: string | null;
   priority?: number | null;
-  settings?: 'magicgate' | string | null;
+  settings?: 'magicgate' | 'git' | string | null;
   sourceId?: string;
   options?: LauncherItem[];
   shortcuts?: string[];
+  actions?: LauncherAction[];
+  info?: Record<string, any>;
 }
 
 export type SourceType = 'file' | 'api';
@@ -71,17 +81,49 @@ export interface MlogSettings {
   baseUrl: string;
 }
 
+export interface ExtensionsConfig {
+  magicgate: boolean;
+  mlog: boolean;
+  github: boolean;
+  vscode?: boolean;
+}
+
+export interface VscodeSettings {
+  path?: string;
+}
+
+export interface GithubSettings {
+  username?: string;
+  token: string;
+  org?: string;
+  apiUrl?: string;
+  defaultCloneDir?: string;
+}
+
+export interface BannedItem {
+  id?: string;
+  name: string;
+  location?: string | null;
+  sourceId?: string | null;
+  bannedAt: string;
+}
+
 export interface AppConfig {
   hotkey: string;
   sources: DataSource[];
   magicgate: MagicGateSettings;
   mlog?: MlogSettings;
+  github?: GithubSettings;
+  vscode?: VscodeSettings;
+  extensions?: ExtensionsConfig;
+  banlist?: BannedItem[];
   updateUrl: string;
   lastDeclinedVersion: string | null;
   lastDeclinedTime: number | null;
   autoSyncIntervalMinutes: number;
   lastSyncTime?: string | null;
   primaryColor?: string;
+  actionsColor?: string;
   lastSeenVersion?: string | null;
   searchInstalledApps?: boolean;
   searchGoogle?: boolean;

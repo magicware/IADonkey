@@ -24,11 +24,27 @@ const DEFAULT_CONFIG: AppConfig = {
   mlog: {
     baseUrl: '',
   },
+  github: {
+    username: '',
+    token: '',
+    org: '',
+    apiUrl: 'https://api.github.com',
+  },
+  vscode: {
+    path: '',
+  },
+  extensions: {
+    magicgate: false,
+    mlog: false,
+    github: false,
+    vscode: false,
+  },
   updateUrl: 'https://raw.githubusercontent.com/magicware/IADonkey/main/version.json',
   lastDeclinedVersion: null,
   lastDeclinedTime: null,
   autoSyncIntervalMinutes: 30,
   primaryColor: '#6366f1',
+  actionsColor: '#a855f7',
   lastSeenVersion: null,
   searchInstalledApps: true,
   searchGoogle: true,
@@ -63,6 +79,37 @@ export class AppStore {
       // Auto-migrate legacy / dummy placeholder repository URL
       if (!cfg.updateUrl || cfg.updateUrl.includes('iadonkey/launcher')) {
         cfg.updateUrl = DEFAULT_CONFIG.updateUrl;
+      }
+
+      // Backward compatibility / migration for extensions:
+      // If user had MLog or MagicGate configured, automatically enable the extension and persist to disk
+      let hasModifiedExtensions = false;
+      if (!cfg.extensions) {
+        cfg.extensions = {
+          magicgate: !!(cfg.magicgate?.username?.trim() || cfg.magicgate?.xmlPath?.trim()),
+          mlog: !!(cfg.mlog?.baseUrl?.trim()),
+          github: !!(cfg.github?.token?.trim()),
+        };
+        hasModifiedExtensions = true;
+      } else {
+        if (cfg.extensions.magicgate === undefined) {
+          cfg.extensions.magicgate = !!(cfg.magicgate?.username?.trim() || cfg.magicgate?.xmlPath?.trim());
+          hasModifiedExtensions = true;
+        }
+        if (cfg.extensions.mlog === undefined) {
+          cfg.extensions.mlog = !!(cfg.mlog?.baseUrl?.trim());
+          hasModifiedExtensions = true;
+        }
+        if (cfg.extensions.github === undefined) {
+          cfg.extensions.github = !!(cfg.github?.token?.trim());
+          hasModifiedExtensions = true;
+        }
+      }
+
+      if (hasModifiedExtensions) {
+        try {
+          fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), 'utf-8');
+        } catch {}
       }
     } catch (err) {
       console.error('[Store] Failed to load config, falling back to defaults:', err);

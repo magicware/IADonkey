@@ -16,12 +16,37 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openPath: (path: string): Promise<void> => ipcRenderer.invoke('open-path', path),
   hideWindow: (): Promise<void> => ipcRenderer.invoke('hide-window'),
   openSettingsWindow: (): Promise<void> => ipcRenderer.invoke('open-settings-window'),
+  openGitCloneWindow: (params: { repoName: string; repoUrl: string; initialRecursive?: boolean }): Promise<void> =>
+    ipcRenderer.invoke('open-git-clone-window', params),
   checkUpdate: (): Promise<UpdateInfo> => ipcRenderer.invoke('check-update'),
   downloadUpdate: (downloadUrl: string): Promise<string> => ipcRenderer.invoke('download-update', downloadUrl),
   installUpdate: (filePath: string): Promise<void> => ipcRenderer.invoke('install-update', filePath),
   pauseGlobalHotkey: (): Promise<void> => ipcRenderer.invoke('pause-global-hotkey'),
   resumeGlobalHotkey: (): Promise<void> => ipcRenderer.invoke('resume-global-hotkey'),
   fetchFaviconForUrl: (url: string): Promise<string | null> => ipcRenderer.invoke('fetch-favicon-for-url', url),
+  testGitHubConnection: (settings: any): Promise<any> => ipcRenderer.invoke('test-github-connection', settings),
+  selectDirectory: (): Promise<string | null> => ipcRenderer.invoke('select-directory'),
+  runGitClone: (params: { repoUrl: string; targetDir: string; recursive?: boolean }): Promise<{ success: boolean; targetPath: string; output?: string; error?: string; alreadyExists?: boolean }> =>
+    ipcRenderer.invoke('run-git-clone', params),
+  openInVscode: (folderPath: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('open-in-vscode', folderPath),
+  selectVscodePath: (): Promise<string | null> => ipcRenderer.invoke('select-vscode-path'),
+  detectVscodePath: (): Promise<string | null> => ipcRenderer.invoke('detect-vscode-path'),
+  getExistingClonedRepos: (baseDir?: string): Promise<string[]> => ipcRenderer.invoke('get-existing-cloned-repos', baseDir),
+  fetchInstanceRepos: (adminUrl: string): Promise<{ ok: boolean; repos: any[]; rawJson?: string; error?: string }> =>
+    ipcRenderer.invoke('magicgate-get-repos', { adminUrl }),
+  runMultiRepoClone: (params: { repos: any[]; targetDir: string; recursive?: boolean; rawJson?: string }): Promise<{ success: boolean; targetPath: string; error?: string; alreadyExists?: boolean }> =>
+    ipcRenderer.invoke('magicgate-clone-start', params),
+  onMagicGateCloneProgress: (callback: (data: { current: number; total: number; repoName: string; log: string }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('magicgate-clone-progress', handler);
+    return () => ipcRenderer.removeListener('magicgate-clone-progress', handler);
+  },
+  onGitCloneParams: (callback: (params: { repoName: string; repoUrl?: string; recursive?: boolean; initialRecursive?: boolean; isInstanceMode?: boolean; adminUrl?: string }) => void) => {
+    const handler = (_event: any, params: any) => callback(params);
+    ipcRenderer.on('git-clone-params', handler);
+    return () => ipcRenderer.removeListener('git-clone-params', handler);
+  },
 
   // Event subscriptions from main process
   onDataUpdated: (callback: (items: LauncherItem[]) => void) => {

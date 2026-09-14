@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { LauncherItem, AppConfig, UpdateInfo, SyncProgress } from './types';
 import { SearchSpotlight } from './components/SearchSpotlight';
 import { SettingsModal } from './components/SettingsModal';
 import { UpdateDialog } from './components/UpdateDialog';
 import { WhatsNewModal } from './components/WhatsNewModal';
 import { ChangelogModal } from './components/ChangelogModal';
+import { GitCloneModal } from './components/GitCloneModal';
 import { CURRENT_APP_VERSION, getLatestRelease } from './changelog';
-import { applyPrimaryColor } from './utils/theme';
+import { applyPrimaryColor, applyActionsColor } from './utils/theme';
 
 const DEFAULT_CONFIG: AppConfig = {
   hotkey: 'Ctrl+Alt+Space',
@@ -15,11 +16,21 @@ const DEFAULT_CONFIG: AppConfig = {
     username: '',
     password: '',
   },
+  vscode: {
+    path: '',
+  },
+  extensions: {
+    magicgate: false,
+    mlog: false,
+    github: false,
+    vscode: false,
+  },
   updateUrl: 'https://raw.githubusercontent.com/magicware/IADonkey/main/version.json',
   lastDeclinedVersion: null,
   lastDeclinedTime: null,
   autoSyncIntervalMinutes: 30,
   primaryColor: '#6366f1',
+  actionsColor: '#a855f7',
   lastSeenVersion: null,
   searchGoogle: true,
   defaultSearchEngine: 'google',
@@ -28,6 +39,39 @@ const DEFAULT_CONFIG: AppConfig = {
 export const App: React.FC = () => {
   const [isSettingsView, setIsSettingsView] = useState(() => {
     return window.location.hash === '#settings' || window.location.search.includes('window=settings');
+  });
+
+  const [isGitCloneView, setIsGitCloneView] = useState(() => {
+    return window.location.hash.startsWith('#git-clone') || window.location.search.includes('window=git-clone');
+  });
+
+  const [gitCloneParams, setGitCloneParams] = useState(() => {
+    const hash = window.location.hash;
+    const qIndex = hash.indexOf('?');
+    if (qIndex !== -1) {
+      const sp = new URLSearchParams(hash.slice(qIndex + 1));
+      return {
+        repoName: sp.get('name') || '',
+        repoUrl: sp.get('url') || '',
+        recursive: sp.get('recursive') === '1' || sp.get('recursive') === 'true',
+        isInstanceMode: sp.get('isInstanceMode') === '1' || sp.get('isInstanceMode') === 'true',
+        adminUrl: sp.get('adminUrl') || '',
+      };
+    }
+    const search = window.location.search;
+    if (search) {
+      const sp = new URLSearchParams(search);
+      if (sp.has('recursive') || sp.has('name') || sp.has('isInstanceMode')) {
+        return {
+          repoName: sp.get('name') || '',
+          repoUrl: sp.get('url') || '',
+          recursive: sp.get('recursive') === '1' || sp.get('recursive') === 'true',
+          isInstanceMode: sp.get('isInstanceMode') === '1' || sp.get('isInstanceMode') === 'true',
+          adminUrl: sp.get('adminUrl') || '',
+        };
+      }
+    }
+    return { repoName: '', repoUrl: '', recursive: false, isInstanceMode: false, adminUrl: '' };
   });
 
   const [items, setItems] = useState<LauncherItem[]>([]);
@@ -45,15 +89,33 @@ export const App: React.FC = () => {
   useEffect(() => {
     const handleHash = () => {
       setIsSettingsView(window.location.hash === '#settings' || window.location.search.includes('window=settings'));
+      setIsGitCloneView(window.location.hash.startsWith('#git-clone') || window.location.search.includes('window=git-clone'));
     };
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
 
-  // Synchronize dynamic primary color CSS variables
+  // Listen to git-clone params updates if window was already open
+  useEffect(() => {
+    if (window.electronAPI?.onGitCloneParams) {
+      const unsubscribe = window.electronAPI.onGitCloneParams((params: any) => {
+        setGitCloneParams({
+          repoName: params.repoName || '',
+          repoUrl: params.repoUrl || '',
+          recursive: Boolean(params.recursive ?? params.initialRecursive),
+          isInstanceMode: Boolean(params.isInstanceMode),
+          adminUrl: params.adminUrl || '',
+        });
+      });
+      return () => unsubscribe();
+    }
+  }, []);
+
+  // Synchronize dynamic primary and actions color CSS variables
   useEffect(() => {
     applyPrimaryColor(config.primaryColor);
-  }, [config.primaryColor]);
+    applyActionsColor(config.actionsColor);
+  }, [config.primaryColor, config.actionsColor]);
 
   // Initial load
   useEffect(() => {
@@ -64,6 +126,7 @@ export const App: React.FC = () => {
           if (cfg) {
             setConfig(cfg);
             applyPrimaryColor(cfg.primaryColor);
+            applyActionsColor(cfg.actionsColor);
             if (!isSettingsView && cfg.lastSeenVersion !== CURRENT_APP_VERSION) {
               setShowWhatsNew(true);
             }
@@ -225,6 +288,43 @@ export const App: React.FC = () => {
     );
   }
 
+  // Dedicated Git Clone Window mode
+  if (isGitCloneView) {
+    const baseCloneDir = config.github?.defaultCloneDir || '';
+    const initialTargetDir =
+      gitCloneParams.isInstanceMode && baseCloneDir && gitCloneParams.repoName
+        ? `${baseCloneDir.replace(/[\\/]+$/, '')}\\${gitCloneParams.repoName}`
+        : baseCloneDir;
+
+    return (
+      <GitCloneModal
+        isOpen={true}
+        onClose={() => window.close()}
+        repoName={gitCloneParams.repoName}
+        repoUrl={gitCloneParams.repoUrl}
+        defaultTargetDir={initialTargetDir}
+        initialRecursive={gitCloneParams.recursive}
+        isStandaloneWindow={true}
+        isInstanceMode={gitCloneParams.isInstanceMode}
+        adminUrl={gitCloneParams.adminUrl}
+        vscodeEnabled={config.extensions?.vscode ?? false}
+      />
+    );
+  }
+
+  // Filter items by enabled extensions
+  const visibleItems = useMemo(() => {
+    return items.filter((item) => {
+      if (config?.extensions?.magicgate === false && item.sourceId === 'magicgate-xml') {
+        return false;
+      }
+      if (config?.extensions?.github === false && item.sourceId === 'github') {
+        return false;
+      }
+      return true;
+    });
+  }, [items, config?.extensions]);
+
   // Floating Spotlight Search Bar mode
   return (
     <main
@@ -237,10 +337,12 @@ export const App: React.FC = () => {
     >
       {/* Search Bar & Autocomplete list */}
       <SearchSpotlight
-        items={items}
-        mlogBaseUrl={config?.mlog?.baseUrl}
+        items={visibleItems}
+        mlogBaseUrl={config?.extensions?.mlog ? config?.mlog?.baseUrl : undefined}
         searchGoogle={config.searchGoogle !== false}
         defaultSearchEngine={config.defaultSearchEngine}
+        defaultCloneDir={config?.github?.defaultCloneDir}
+        vscodeEnabled={config.extensions?.vscode ?? false}
         onOpenSettings={() => {
           if (window.electronAPI?.openSettingsWindow) {
             window.electronAPI.openSettingsWindow();
