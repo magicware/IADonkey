@@ -5,12 +5,40 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.0.1';
+export const CURRENT_APP_VERSION = '1.1.1';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.1',
+    date: '14. 9. 2026',
+    title: 'Rozšíření (GitHub, VS Code), systém akcí a informací, klonování repozitářů a barevný design systém',
+    highlights: [
+      'Nová záložka Rozšíření v Nastavení: možnost zapínat a vypínat samostatné moduly MagicGate, MLog, GitHub a VS Code (s automatickým zachováním stávající konfigurace).',
+      'Integrace GitHubu: přímé načítání osobních repozitářů i organizací s vyhledáváním a výchozí ikonou GitHubu.',
+      'Nový systém Akcí položek (Shift+Enter): otevření webu repozitáře, stažení/naklonování repozitáře i rekurzivní klonování včetně submodulů.',
+      'Přehledné samostatné systémové okno pro klonování repozitářů s výběrem cílové složky a živým zobrazením průběhu.',
+      'Výchozí složka pro klonování v nastavení GitHubu a plynulý návrat fokusu do vyhledávače po dokončení.',
+      'Rozšíření Visual Studio Code (VS Code): vyhrazená integrace v Nastavení s možností nastavení cesty a automatické detekce instalace Code.exe.',
+      'Blesková tichá detekce existujících repozitářů v cílové složce bez blokování uživatelského rozhraní.',
+      'Nová akce Otevřít ve VS Code: pokud repozitář v cílové složce existuje, nabídne se v akcích položky (Shift+Enter) s přímým otevřením ve VS Code.',
+      'Vyhrazená identita VS Code: specifická hluboká petrolejová barva rozšíření, zobrazení v Chytrých funkcích a výrazné zvýraznění v nabídce akcí.',
+      'Potvrzení stažení klávesou Enter v okně klonování repozitářů (jak z GitHubu, tak z MagicGate instancí).',
+      'Klonování repozitářů instance MagicGate: možnost stáhnout všechny repozitáře sekcí instance přes novou akci na Shift+Enter se živým průběhem, automatickým pojmenováním podsložek a uložením repos.json.',
+      'Sjednocení barev oken klonování: stavový box, spinner, tlačítko výběru složky i tlačítko pro otevření v Průzkumníku sladěny do sekundární barvy motivu.',
+      'Původní podvolby položek přejmenovány na subpoložky a přesunuty pod klávesovou zkratku Alt+Enter.',
+      'Nový systém Informací (info) položek na Shift+Enter: zobrazení detailních parametrů (databáze, server, mlog požadavek, cesty, zálohy apod.) v kompaktní liště nad akcemi s možností okamžitého zkopírování hodnoty.',
+      'Oprava automatického posouvání (scroll) v okně Akcí a informací při klávesové navigaci šipkami.',
+      'Rychlá zkratka Ctrl+Backspace ve Spotlightu pro okamžité kompletní smazání hledaného výrazu.',
+      'Rychlé prefixy git: a magicgate: (mg:) a vizuální aktivace MLog režimu ve vyhledávači.',
+      'Závazná pravidla barevného systému (docs/COLOR_RULES.md): vyhrazené barvy pro rozšíření, semafor pro stavy a nová paleta 10 designových odstínů pro hlavní i sekundární barvu motivu.',
+      'Zlatý/jantarový akcent pro MagicGate v detailech a čipech a samostatná barevná identita pro internetové vyhledávače.',
+      'Banování položek a správa Banlistu: možnost vyřadit libovolnou položku ze synchronizace i vyhledávače a nová záložka Banlist s možností obnovení.',
+      'Nový interaktivní průvodce "Jak na zdroje dat" v Nápovědě s kompletní specifikací JSON/TypeScript modelu.',
+    ],
+  },
   {
     version: '1.0.1',
     date: '11. 9. 2026',

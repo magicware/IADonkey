@@ -4,6 +4,34 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.1] - 14. 9. 2026
+### Rozšíření (GitHub, VS Code), systém akcí a informací, klonování repozitářů a barevný design systém
+- **Záložka Rozšíření**: Nová vyhrazená sekce v Nastavení pro zapínání/vypínání modulů MagicGate, MLog, GitHub a VS Code bez ztráty existující konfigurace.
+- **Integrace GitHubu**: Automatické načtení osobních i organizačních repozitářů přes GitHub Personal Access Token s podporou vlastní GitHub API URL.
+- **Systém Akcí položek (Shift+Enter)**: Nové rozšířené menu pro položky nabízející přímé akce (otevření repozitáře na webu, klonování i rekurzivní stažení repozitáře).
+- **Samostatné okno pro klonování repozitářů**: Klonování repozitářů (GitHub i MagicGate) se otevírá v samostatném systémovém okně s možností minimalizace a zavření křížkem, výběrem cílové složky a živým streamováním průběhu.
+- **Potvrzení stažení klávesou Enter**: V okně klonování repozitářů lze stahování okamžitě spustit stiskem klávesy <kbd>Enter</kbd>.
+- **Sjednocené barvy dialogu klonování**: Stavový box průběhu, spinner, tlačítko výběru složky i tlačítko pro otevření složky v Průzkumníku jsou sladěny do sekundární barvy motivu bez rušivých glow efektů.
+- **Klonování repozitářů instance MagicGate**: Nové akce na <kbd>Shift+Enter</kbd> u MagicGate instancí (*Klonovat repozitáře instance...* a *Klonovat repozitáře rekurzivně...*). Aplikace se dotáže Administrace instance přes `CmsFsContentHandler.ashx`, zjistí repozitáře sekcí, automaticky odvodí názvy podsložek a nabídne hromadné stažení s vytvořením `repos.json`.
+- **Rozšíření Visual Studio Code (VS Code)**: Nová vyhrazená integrace v Nastavení s možností zadání cesty a automatické detekce spustitelného souboru `Code.exe` / `code.cmd`.
+- **Blesková tichá detekce existujících repozitářů**: Okamžitá kontrola stažených projektů ve výchozí cílové složce bez blokování uživatelského rozhraní (< 1 ms).
+- **Akce Otevřít ve VS Code**: Pokud již repozitář ve výchozí cílové složce existuje a rozšíření VS Code je aktivní, nabídne se v akcích položky (<kbd>Shift+Enter</kbd>) možnost okamžitého otevření ve VS Code se specifickým petrolejovým zvýrazněním.
+- **Chytré otevření ve VS Code při chybě klonování**: Pokud se uživatel pokusí stáhnout repozitář do již existující neprázdné složky, zobrazí se v chybovém hlášení i v patičce tlačítko pro okamžité otevření ve VS Code.
+- **Rychlá zkratka Ctrl+Backspace**: Ve Spotlight vyhledávači stisk <kbd>Ctrl+Backspace</kbd> okamžitě kompletně vymaže vyhledávací pole.
+- **Systém Informací (info) u položek**: Zobrazení podrobných parametrů (databáze, server, mlog požadavek, cesty k souborům, zálohy apod.) v kompaktním panelu přímo nad akcemi na <kbd>Shift+Enter</kbd> s možností okamžitého zkopírování hodnoty do schránky.
+- **Oprava posuvníku a plynulé scrollování akcí**: Při navigaci šipkami na klávesnici v nabídce akcí se okno automaticky plynule posouvá i při zobrazených informacích o položce.
+- **Přesun subpoložek na Alt+Enter**: Původní zobrazení subpoložek (options) přesunuto na klávesovou zkratku <kbd>Alt+Enter</kbd>; u Git repozitářů byla odstraněna stará logika klonování z voleb ve prospěch nového menu Akcí.
+- **Rychlé prefixy `git:` a `magicgate:` (`mg:`)**: Zadáním prefixu okamžitě filtrujete výhradně v repozitářích nebo instancích s dynamickou změnou ikony a nápovědy.
+- **Vizuální aktivace MLog režimu**: Při zadání kódu požadavku či úkolu (např. `T1`, `T12`, `R123`) nebo prefixu `mlog:` se vyhledávací pole okamžitě vizuálně přepne do indigo režimu s ikonou `support_agent`.
+- **Závazná pravidla barevného systému (`docs/COLOR_RULES.md`)**: Striktní pravidla: semafor pro stavy (zelená, červená, žlutá), stálé vyhrazené barvy rozšíření (Git = fialová, MLog = indigo, MagicGate = zlatá/jantarová, VS Code = petrolejová) a přepracovaná paleta 10 vybraných moderních designových odstínů pro uživatelský výběr motivu.
+- **Banování položek a správa Banlistu**: V Kompletním seznamu lze libovolnou položku jedním kliknutím zabanovat a v nové záložce *Banlist* spravovat zabanované položky s možností jejich obnovení.
+- **Nový interaktivní průvodce "Jak na zdroje dat"**: V Nápovědě dostupné modální okno s kompletní specifikací JSON/TypeScript schématu položek, podporovaných akcí a ukázek.
+- **Plynulý návrat do vyhledávače (Spotlight)**: Po zavření okna klonování se automaticky znovu aktivuje a zaměří vyhledávač se zachovaným dotazem i pozicí.
+
+
+
+---
+
 ## [1.0.1] - 11. 9. 2026
 ### Kompletní seznam položek, vyhledávání bez diakritiky a MagicGate XML
 - **Kompletní seznam položek**: Nové přehledné modální okno v Nastavení zobrazující všechny indexované položky seřazené prioritně (shodně se Spotlightem) s filtry a počítadly.
