@@ -1,5 +1,5 @@
 {
   "version": "1.1.2",
-  "releaseNotes": "• Vydana nova verze 1.1.2 aplikace IADonkey.\n• Pridano nove rozsireni Android Studio s inteligentni volbou editoru (VS Code vs Android Studio dle jazyka Kotlin/Java).\n• Vylepseno vyhledavani MLogu o prime 4+ cifrene ciselne dotazy (napr. 2111 -> T2111 a R2111).\n• Kompletni prehled zmen naleznete v aplikaci v zalozce Nastaveni -> Kompletni changelog.",
+  "releaseNotes": "• Vydana nova verze 1.1.2 aplikace IADonkey.\n• Prehled vsech zmen naleznete v aplikaci v zalozce Nastaveni -> Kompletni changelog.",
   "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.2/IADonkey-1.1.2.exe"
 }
