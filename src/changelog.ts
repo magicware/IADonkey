@@ -5,12 +5,30 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.1';
+export const CURRENT_APP_VERSION = '1.1.2';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.2',
+    date: '15. 9. 2026',
+    title: 'Rozšíření Android Studio, vylepšení MLog číselných dotazů, editor statických dat a vyladění UI',
+    highlights: [
+      'Nové rozšíření Android Studio: podpora pro vývojové prostředí Android Studio s vyhrazenou růžovou identitou a možností automatické detekce nebo ruční volby cesty ke studio64.exe.',
+      'Inteligentní volba vývojového editoru: aplikace nabízí buď VS Code, nebo Android Studio – nikdy ne obojí současně. Pro repozitáře s jazykem Kotlin nebo Java se automaticky nabízí Android Studio, pro webové projekty a MagicGate se vždy nabízí VS Code.',
+      'Přímé otevření v Android Studiu z nabídky akcí (Shift+Enter) i z okna klonování repozitářů.',
+      'Číselné dotazy pro MLog na 4 a více číslic (např. 2111): automatické zobrazení úkolu T (T2111) na 1. místě a požadavku R (R2111) na 2. místě včetně přepnutí do MLog režimu a dohledání odkazů v informacích položek.',
+      'Sjednocení cílové složky MagicGate repozitářů do podsložky magicgate/ v rámci výchozí složky pro stahování.',
+      'Okamžitý reset a zavření Spotlight vyhledávače při otevření repozitáře ve VS Code nebo v Android Studiu z okna klonování.',
+      'Zachování označené položky ve Spotlight vyhledávači při návratu ze subpoložek (Alt+Enter).',
+      'Zpřehlednění nabídky akcí: odstranění duplicitního tlačítka rekurzivního stahování a umístění akce Otevřít na GitHubu na konec seznamu.',
+      'Vylepšený editor položek statických dat: pole Název i pole Umístění roztaženo na 100 % šířky formuláře; pole Umístění převedeno na víceřádkový editor s podporou odřádkování.',
+      'Resetování posuvníku na začátek při přepínání záložek v okně Jak na zdroje dat.',
+      'Sjednocení a zpřesnění nápovědy a barevného stylu dle design pravidel (dodržení sekundární barvy v modálech klonování a informačním okně).',
+    ],
+  },
   {
     version: '1.1.1',
     date: '14. 9. 2026',

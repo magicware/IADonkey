@@ -11,6 +11,8 @@ interface GitCloneModalProps {
   isInstanceMode?: boolean;
   adminUrl?: string;
   vscodeEnabled?: boolean;
+  androidStudioEnabled?: boolean;
+  repoLanguage?: string;
 }
 
 interface SectionRepoItem {
@@ -19,6 +21,24 @@ interface SectionRepoItem {
   repoUrl: string;
   version?: string;
   targetSubdir: string;
+}
+
+export function normalizeInstanceTargetDir(dir: string, instanceName: string): string {
+  if (!dir || !instanceName) return dir || '';
+  const clean = dir.replace(/[\\/]+$/, '');
+  const expectedEnd = `\\magicgate\\${instanceName.toLowerCase()}`;
+  if (clean.toLowerCase().endsWith(expectedEnd)) {
+    return clean;
+  }
+  if (clean.toLowerCase().endsWith(`\\${instanceName.toLowerCase()}`)) {
+    const parent = clean.slice(0, clean.length - instanceName.length - 1);
+    const parentClean = parent.replace(/[\\/]+$/, '');
+    if (parentClean.toLowerCase().endsWith('\\magicgate')) {
+      return clean;
+    }
+    return `${parentClean}\\magicgate\\${instanceName}`;
+  }
+  return `${clean}\\magicgate\\${instanceName}`;
 }
 
 export const GitCloneModal: React.FC<GitCloneModalProps> = ({
@@ -32,8 +52,17 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
   isInstanceMode = false,
   adminUrl = '',
   vscodeEnabled = false,
+  androidStudioEnabled = false,
+  repoLanguage = '',
 }) => {
-  const [targetDir, setTargetDir] = useState(defaultTargetDir);
+  const getInitialTargetDir = () => {
+    if (isInstanceMode && repoName && defaultTargetDir) {
+      return normalizeInstanceTargetDir(defaultTargetDir, repoName);
+    }
+    return defaultTargetDir;
+  };
+
+  const [targetDir, setTargetDir] = useState<string>(getInitialTargetDir);
   const [recursive, setRecursive] = useState(initialRecursive);
   const [status, setStatus] = useState<'idle' | 'cloning' | 'success' | 'error'>('idle');
   const [clonedPath, setClonedPath] = useState<string>('');
@@ -53,7 +82,10 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
   // Sync state when modal opens or initial props change
   useEffect(() => {
     if (isOpen) {
-      setTargetDir(defaultTargetDir);
+      const initial = isInstanceMode && repoName && defaultTargetDir
+        ? normalizeInstanceTargetDir(defaultTargetDir, repoName)
+        : defaultTargetDir;
+      setTargetDir(initial);
       setRecursive(initialRecursive);
       setStatus('idle');
       setClonedPath('');
@@ -62,7 +94,18 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
       setCloneLogs([]);
       setCloneProgress(null);
     }
-  }, [isOpen, defaultTargetDir, initialRecursive]);
+  }, [isOpen, defaultTargetDir, initialRecursive, isInstanceMode, repoName]);
+
+  // Fallback if targetDir is still empty in instance mode: read directly from app config
+  useEffect(() => {
+    if (isOpen && isInstanceMode && repoName && !targetDir && window.electronAPI?.getConfig) {
+      window.electronAPI.getConfig().then((cfg) => {
+        if (cfg?.github?.defaultCloneDir) {
+          setTargetDir(normalizeInstanceTargetDir(cfg.github.defaultCloneDir, repoName));
+        }
+      });
+    }
+  }, [isOpen, isInstanceMode, repoName, targetDir]);
 
   // Load instance section repos if in instance mode
   const loadInstanceRepos = async () => {
@@ -146,8 +189,8 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
       if (window.electronAPI?.selectDirectory) {
         const selected = await window.electronAPI.selectDirectory();
         if (selected) {
-          if (isInstanceMode) {
-            setTargetDir(selected);
+          if (isInstanceMode && repoName) {
+            setTargetDir(normalizeInstanceTargetDir(selected, repoName));
           } else {
             setTargetDir(selected);
           }
@@ -251,7 +294,51 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
   const handleOpenInVscode = async () => {
     const pathToOpen = clonedPath || targetDir;
     if (pathToOpen && window.electronAPI?.openInVscode) {
+      await window.electronAPI?.resetAndHideSpotlight?.();
       await window.electronAPI.openInVscode(pathToOpen);
+      onClose();
+    }
+  };
+
+  const handleOpenSpecificInVscode = async (path: string) => {
+    if (path && window.electronAPI?.openInVscode) {
+      await window.electronAPI?.resetAndHideSpotlight?.();
+      await window.electronAPI.openInVscode(path);
+      onClose();
+    }
+  };
+
+  const [isLocalAndroidProject, setIsLocalAndroidProject] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (status === 'success' && !isInstanceMode) {
+      const pathToOpen = clonedPath || targetDir;
+      if (pathToOpen && window.electronAPI?.isAndroidProject) {
+        window.electronAPI.isAndroidProject(pathToOpen).then((isAndroid) => {
+          if (isAndroid) setIsLocalAndroidProject(true);
+        });
+      }
+    }
+  }, [status, clonedPath, targetDir, isInstanceMode]);
+
+  const isAndroid = !isInstanceMode && (
+    isLocalAndroidProject ||
+    (Boolean(repoLanguage) && ['kotlin', 'java'].includes(repoLanguage.toLowerCase().trim()))
+  );
+
+  const handleOpenInAndroidStudio = async () => {
+    const pathToOpen = clonedPath || targetDir;
+    if (pathToOpen && window.electronAPI?.openInAndroidStudio) {
+      await window.electronAPI?.resetAndHideSpotlight?.();
+      await window.electronAPI.openInAndroidStudio(pathToOpen);
+      onClose();
+    }
+  };
+
+  const handleOpenSpecificInAndroidStudio = async (path: string) => {
+    if (path && window.electronAPI?.openInAndroidStudio) {
+      await window.electronAPI?.resetAndHideSpotlight?.();
+      await window.electronAPI.openInAndroidStudio(path);
       onClose();
     }
   };
@@ -261,7 +348,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
       {/* Header */}
       <div className="p-4 border-b border-white/10 bg-[#1e1f29] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border bg-purple-500/20 border-purple-500/30 text-purple-300">
             <span className="material-symbols-outlined text-2xl">
               {isInstanceMode ? 'cloud_download' : 'download'}
             </span>
@@ -290,6 +377,105 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
 
       {/* Body */}
       <div className="p-5 space-y-4 text-sm flex-1 overflow-y-auto">
+        {/* Status states - moved to top */}
+        {status === 'cloning' && (
+          <div className="p-3.5 rounded-xl space-y-2 text-xs animate-in fade-in border bg-purple-500/10 border-purple-500/20 text-purple-300">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-xl animate-spin text-purple-400">
+                progress_activity
+              </span>
+              <div>
+                <div className="font-semibold text-white">
+                  {isInstanceMode && cloneProgress
+                    ? `Klonuji [${cloneProgress.current}/${cloneProgress.total}]: ${cloneProgress.repoName}...`
+                    : 'Stahuji repozitář...'}
+                </div>
+                <div className="text-[11px] mt-0.5 text-purple-300/80">
+                  Spouštím <code>git clone {recursive ? '--recursive ' : ''}...</code> Může to chvíli trvat.
+                </div>
+              </div>
+            </div>
+
+            {/* Live terminal output if available */}
+            {cloneLogs.length > 0 && (
+              <div
+                ref={logContainerRef}
+                className="mt-2 font-mono text-[11px] text-gray-300 bg-black/60 border border-white/10 rounded-lg p-2.5 max-h-36 overflow-y-auto whitespace-pre-wrap leading-relaxed select-text"
+              >
+                {cloneLogs.join('')}
+              </div>
+            )}
+          </div>
+        )}
+
+        {status === 'success' && (
+          <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-2.5 text-emerald-300 text-xs animate-in fade-in">
+            <div className="flex items-center gap-2 font-semibold">
+              <span className="material-symbols-outlined text-lg">check_circle</span>
+              <span>
+                {isInstanceMode
+                  ? `Všechny repozitáře sekcí instance (${validInstanceRepos.length}) byly úspěšně staženy!`
+                  : 'Repozitář byl úspěšně naklonován!'}
+              </span>
+            </div>
+            <div className="font-mono text-[11px] text-emerald-200/90 break-all bg-black/30 p-2 rounded-lg border border-emerald-500/20">
+              {clonedPath}
+            </div>
+
+            {isInstanceMode && validInstanceRepos.length > 0 && (
+              <div className="mt-2 space-y-1.5 pt-2 border-t border-emerald-500/20">
+                <div className="text-[11px] font-semibold text-emerald-200 uppercase tracking-wide">
+                  Stažené repozitáře sekcí:
+                </div>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                  {validInstanceRepos.map((repo) => {
+                    const basePath = (clonedPath || targetDir).replace(/[\\/]+$/, '');
+                    const fullSubPath = `${basePath}\\${repo.targetSubdir}`;
+                    return (
+                      <div
+                        key={repo.sectionId || repo.targetSubdir}
+                        className="flex items-center justify-between gap-2 p-2 rounded-lg bg-black/40 border border-emerald-500/20 text-[11px]"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-emerald-200 truncate">
+                            {repo.targetSubdir}
+                          </div>
+                          <div className="font-mono text-[10px] text-emerald-300/70 truncate" title={fullSubPath}>
+                            {fullSubPath}
+                          </div>
+                        </div>
+                        {vscodeEnabled && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenSpecificInVscode(fullSubPath)}
+                            className="shrink-0 px-2 py-1 rounded bg-cyan-600/30 hover:bg-cyan-600/50 border border-cyan-500/40 text-cyan-200 flex items-center gap-1 transition text-[11px] font-normal cursor-pointer"
+                            title="Otevřít tuto složku ve VS Code"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">code</span>
+                            <span>VS Code</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {status === 'error' && (
+          <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl space-y-2 text-rose-300 text-xs animate-in fade-in">
+            <div className="flex items-center gap-2 font-semibold">
+              <span className="material-symbols-outlined text-lg">error</span>
+              <span>Klonování se nezdařilo</span>
+            </div>
+            <p className="text-[11px] text-rose-200/80 whitespace-pre-wrap font-mono break-all max-h-36 overflow-y-auto bg-black/30 p-2 rounded-lg border border-rose-500/20">
+              {errorMessage}
+            </p>
+          </div>
+        )}
+
         {/* Repository / Instance info */}
         {isInstanceMode ? (
           <div className="space-y-2">
@@ -332,8 +518,8 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
             {/* Loaded repos list */}
             {!isLoadingRepos && !loadReposError && (
               validInstanceRepos.length === 0 ? (
-                <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-2.5 text-amber-300 text-xs">
-                  <span className="material-symbols-outlined text-base shrink-0">info</span>
+                <div className="p-3.5 bg-purple-500/10 border border-purple-500/20 rounded-xl flex items-center gap-2.5 text-purple-300 text-xs">
+                  <span className="material-symbols-outlined text-base shrink-0 text-purple-400">info</span>
                   <span>Tato instance nemá evidované žádné Git repozitáře sekcí ke stažení.</span>
                 </div>
               ) : (
@@ -349,36 +535,44 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
                 </div>
 
                 <div className="max-h-40 overflow-y-auto divide-y divide-white/5">
-                  {instanceRepos.map((r) => (
-                    <div key={r.sectionId || r.manifestPath} className="px-3.5 py-2 flex items-center justify-between gap-3 text-xs hover:bg-white/[0.02]">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="material-symbols-outlined text-base text-gray-500 shrink-0">folder</span>
-                        <div className="min-w-0">
-                          <div className="font-semibold text-white truncate flex items-center gap-1.5">
-                            <span>{r.targetSubdir}</span>
-                            {r.version && (
-                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/10 text-gray-300 font-mono">
-                                {r.version}
-                              </span>
-                            )}
-                          </div>
-                          <div className="font-mono text-[11px] text-gray-400 truncate" title={r.repoUrl}>
-                            {r.repoUrl || '(bez repozitáře)'}
+                  {instanceRepos.map((r) => {
+                    const repoFullPath = targetDir
+                      ? `${targetDir.replace(/[\\/]+$/, '')}\\${r.targetSubdir}`
+                      : `magicgate\\${repoName}\\${r.targetSubdir}`;
+                    return (
+                      <div key={r.sectionId || r.manifestPath} className="px-3.5 py-2 flex items-center justify-between gap-3 text-xs hover:bg-white/[0.02]">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="material-symbols-outlined text-base text-purple-400 shrink-0">folder</span>
+                          <div className="min-w-0">
+                            <div className="font-semibold text-white truncate flex items-center gap-1.5">
+                              <span>{r.targetSubdir}</span>
+                              {r.version && (
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/10 text-gray-300 font-mono">
+                                  {r.version}
+                                </span>
+                              )}
+                            </div>
+                            <div className="font-mono text-[11px] text-purple-300/85 truncate" title={repoFullPath}>
+                              {repoFullPath}
+                            </div>
+                            <div className="font-mono text-[10px] text-gray-500 truncate" title={r.repoUrl}>
+                              {r.repoUrl || '(bez repozitáře)'}
+                            </div>
                           </div>
                         </div>
+                        {r.repoUrl && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopyUrl(r.repoUrl)}
+                            className="p-1 text-gray-400 hover:text-white hover:bg-white/10 rounded transition shrink-0 cursor-pointer"
+                            title="Zkopírovat URL repozitáře"
+                          >
+                            <span className="material-symbols-outlined text-sm">content_copy</span>
+                          </button>
+                        )}
                       </div>
-                      {r.repoUrl && (
-                        <button
-                          type="button"
-                          onClick={() => handleCopyUrl(r.repoUrl)}
-                          className="p-1 text-gray-400 hover:text-white hover:bg-white/10 rounded transition shrink-0 cursor-pointer"
-                          title="Zkopírovat URL repozitáře"
-                        >
-                          <span className="material-symbols-outlined text-sm">content_copy</span>
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                   </div>
                 </div>
               )
@@ -400,7 +594,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
                 className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition shrink-0 cursor-pointer"
                 title={copiedUrl ? 'Zkopírováno!' : 'Zkopírovat URL'}
               >
-                <span className={`material-symbols-outlined text-base ${copiedUrl ? 'text-emerald-400' : ''}`}>
+                <span className={`material-symbols-outlined text-base ${copiedUrl ? 'text-purple-400' : ''}`}>
                   {copiedUrl ? 'check' : 'content_copy'}
                 </span>
               </button>
@@ -426,14 +620,14 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
               disabled={status === 'cloning'}
               value={targetDir}
               onChange={(e) => setTargetDir(e.target.value)}
-              placeholder={isInstanceMode ? 'C:\\development\\InstanceName' : 'Vyberte cílovou složku...'}
-              className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-purple-500/60 disabled:opacity-50"
+              placeholder={isInstanceMode ? 'C:\\dev\\magicgate\\InstanceName' : 'Vyberte cílovou složku...'}
+              className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none disabled:opacity-50 focus:border-purple-500/60"
             />
             <button
               type="button"
               disabled={status === 'cloning'}
               onClick={handleSelectFolder}
-              className="px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-white border border-purple-500/30 rounded-xl text-xs font-medium flex items-center gap-1.5 transition cursor-pointer shrink-0 disabled:opacity-50"
+              className="px-3 py-2 rounded-xl text-xs font-normal flex items-center gap-1.5 transition cursor-pointer shrink-0 disabled:opacity-50 border bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-white border-purple-500/30"
               title="Vybrat složku"
             >
               <span className="material-symbols-outlined text-base">folder_open</span>
@@ -441,7 +635,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
             </button>
           </div>
           {!targetDir.trim() && (
-            <p className="text-[11px] text-amber-400/90">
+            <p className="text-[11px] text-purple-300/90">
               Vyberte složku, do které budou repozitáře naklonovány.
             </p>
           )}
@@ -455,68 +649,11 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
               disabled={status === 'cloning'}
               checked={recursive}
               onChange={(e) => setRecursive(e.target.checked)}
-              className="w-4 h-4 rounded bg-white/10 border-white/20 text-purple-600 focus:ring-0 focus:ring-offset-0 cursor-pointer disabled:opacity-50"
+              className="w-4 h-4 rounded bg-white/10 border-white/20 focus:ring-0 focus:ring-offset-0 cursor-pointer disabled:opacity-50 text-purple-500"
             />
             <span>Rekurzivní klonování včetně submodulů (<code className="font-mono text-[11px] bg-white/10 px-1 rounded">--recursive</code>)</span>
           </label>
         </div>
-
-        {/* Status states */}
-        {status === 'cloning' && (
-          <div className="p-3.5 bg-purple-500/10 border border-purple-500/20 rounded-xl space-y-2 text-purple-300 text-xs">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-xl animate-spin text-purple-400">progress_activity</span>
-              <div>
-                <div className="font-semibold text-white">
-                  {isInstanceMode && cloneProgress
-                    ? `Klonuji [${cloneProgress.current}/${cloneProgress.total}]: ${cloneProgress.repoName}...`
-                    : 'Stahuji repozitář...'}
-                </div>
-                <div className="text-[11px] text-purple-300/80 mt-0.5">
-                  Spouštím <code>git clone {recursive ? '--recursive ' : ''}...</code> Může to chvíli trvat.
-                </div>
-              </div>
-            </div>
-
-            {/* Live terminal output if available */}
-            {cloneLogs.length > 0 && (
-              <div
-                ref={logContainerRef}
-                className="mt-2 font-mono text-[11px] text-gray-300 bg-black/60 border border-white/10 rounded-lg p-2.5 max-h-36 overflow-y-auto whitespace-pre-wrap leading-relaxed select-text"
-              >
-                {cloneLogs.join('')}
-              </div>
-            )}
-          </div>
-        )}
-
-        {status === 'success' && (
-          <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-2 text-emerald-300 text-xs animate-in fade-in">
-            <div className="flex items-center gap-2 font-semibold">
-              <span className="material-symbols-outlined text-lg">check_circle</span>
-              <span>
-                {isInstanceMode
-                  ? `Všechny repozitáře sekcí instance (${validInstanceRepos.length}) byly úspěšně staženy!`
-                  : 'Repozitář byl úspěšně naklonován!'}
-              </span>
-            </div>
-            <div className="font-mono text-[11px] text-emerald-200/90 break-all bg-black/30 p-2 rounded-lg border border-emerald-500/20">
-              {clonedPath}
-            </div>
-          </div>
-        )}
-
-        {status === 'error' && (
-          <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl space-y-2 text-rose-300 text-xs animate-in fade-in">
-            <div className="flex items-center gap-2 font-semibold">
-              <span className="material-symbols-outlined text-lg">error</span>
-              <span>Klonování se nezdařilo</span>
-            </div>
-            <p className="text-[11px] text-rose-200/80 whitespace-pre-wrap font-mono break-all max-h-36 overflow-y-auto bg-black/30 p-2 rounded-lg border border-rose-500/20">
-              {errorMessage}
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Footer */}
@@ -527,26 +664,36 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
               <button
                 type="button"
                 onClick={handleOpenInExplorer}
-                className="px-4 py-2 bg-purple-600/30 hover:bg-purple-600/40 text-purple-300 border border-purple-500/40 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-normal flex items-center gap-1.5 transition cursor-pointer border bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border-purple-500/40"
               >
                 <span className="material-symbols-outlined text-base">folder</span>
                 <span>Otevřít složku v Průzkumníku</span>
               </button>
-              {vscodeEnabled && (
+              {/* Either Android Studio or VS Code - never both */}
+              {isAndroid && androidStudioEnabled ? (
+                <button
+                  type="button"
+                  onClick={handleOpenInAndroidStudio}
+                  className="px-4 py-2 bg-pink-700/30 hover:bg-pink-700/50 text-pink-300 border border-pink-500/40 rounded-xl text-xs font-normal flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base">android</span>
+                  <span>Otevřít v Android Studiu</span>
+                </button>
+              ) : vscodeEnabled ? (
                 <button
                   type="button"
                   onClick={handleOpenInVscode}
-                  className="px-4 py-2 bg-cyan-700/40 hover:bg-cyan-700/60 text-cyan-300 border border-cyan-500/40 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  className="px-4 py-2 bg-cyan-700/30 hover:bg-cyan-700/50 text-cyan-300 border border-cyan-500/40 rounded-xl text-xs font-normal flex items-center gap-1.5 transition cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-base">code</span>
                   <span>Otevřít ve VS Code</span>
                 </button>
-              )}
+              ) : null}
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white rounded-xl text-xs font-medium transition cursor-pointer"
+              className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white rounded-xl text-xs font-normal transition cursor-pointer"
             >
               Zavřít
             </button>
@@ -557,7 +704,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
               type="button"
               disabled={status === 'cloning'}
               onClick={onClose}
-              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl text-xs font-medium transition cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl text-xs font-normal transition cursor-pointer disabled:opacity-50"
             >
               Zrušit
             </button>
@@ -568,25 +715,25 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
                 !targetDir.trim() ||
                 (isInstanceMode && (isLoadingRepos || validInstanceRepos.length === 0));
 
+              const btnThemeClasses = isCloning
+                ? 'bg-purple-600 text-white cursor-wait opacity-95'
+                : isBlocked
+                ? 'bg-white/5 text-gray-500 cursor-not-allowed'
+                : 'bg-purple-600 hover:bg-purple-500 text-white cursor-pointer';
+
               return (
                 <button
                   type="button"
                   disabled={isCloning || isBlocked}
                   onClick={() => handleStartClone()}
-                  className={`px-5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition select-none ${
-                    isCloning
-                      ? 'bg-purple-600 text-white cursor-wait opacity-95'
-                      : isBlocked
-                      ? 'bg-white/5 text-gray-500 cursor-not-allowed'
-                      : 'bg-purple-600 hover:bg-purple-500 text-white cursor-pointer'
-                  }`}
+                  className={`px-5 py-2 rounded-xl text-xs font-normal flex items-center gap-2 transition select-none ${btnThemeClasses}`}
                 >
                   {isCloning ? (
                     <>
                       <span className="material-symbols-outlined text-sm animate-spin text-white">
                         progress_activity
                       </span>
-                      <span className="text-white font-semibold">
+                      <span className="text-white font-normal">
                         {isInstanceMode ? 'Klonuji sekce...' : 'Klonuji...'}
                       </span>
                     </>
@@ -603,7 +750,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
                           : 'Klonovat repozitář'}
                       </span>
                       {!isBlocked && (
-                        <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 text-[10px] font-sans font-medium bg-black/20 text-purple-200 rounded border border-purple-400/30">
+                        <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 text-[10px] font-sans font-normal bg-black/20 text-white/80 rounded border border-white/20">
                           ↵ Enter
                         </kbd>
                       )}

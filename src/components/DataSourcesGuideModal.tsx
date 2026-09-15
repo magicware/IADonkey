@@ -1,12 +1,13 @@
 // POZNÁMKA PRO VÝVOJÁŘE: Jakmile dojde k rozšíření JSON modelu (LauncherItem, DataSource nebo LauncherAction),
 // je NUTNÉ aktualizovat tento průvodce "Jak na zdroje dat" (DataSourcesGuideModal.tsx)!
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface DataSourcesGuideModalProps {
   isOpen: boolean;
   onClose: () => void;
   magicGateEnabled?: boolean;
+  githubEnabled?: boolean;
 }
 
 type GuideTab = 'schema' | 'actions' | 'snippets' | 'magicgate';
@@ -15,9 +16,18 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
   isOpen,
   onClose,
   magicGateEnabled = true,
+  githubEnabled = true,
 }) => {
   const [activeTab, setActiveTab] = useState<GuideTab>('schema');
   const [copiedSnippetId, setCopiedSnippetId] = useState<string | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Reset scrollbar when switching tabs
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0;
+    }
+  }, [activeTab]);
 
   // Close on Escape key
   useEffect(() => {
@@ -225,7 +235,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
               onClick={() => setActiveTab('magicgate')}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
                 activeTab === 'magicgate'
-                  ? 'bg-amber-600 text-white shadow-sm'
+                  ? 'bg-amber-400 text-gray-950 font-bold shadow-sm border border-amber-400'
                   : 'bg-amber-500/10 text-amber-300 hover:text-white hover:bg-amber-500/20 border border-amber-500/20'
               }`}
             >
@@ -236,7 +246,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto pr-1 space-y-4 text-xs select-text">
+        <div ref={contentRef} className="flex-1 overflow-y-auto pr-1 space-y-4 text-xs select-text">
 
           {/* TAB 1: SCHEMA */}
           {activeTab === 'schema' && (
@@ -276,7 +286,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                   <div className="p-3 grid grid-cols-1 md:grid-cols-4 gap-2">
                     <div className="font-mono text-indigo-300 font-semibold">action</div>
                     <div className="md:col-span-3 text-gray-300 leading-relaxed">
-                      <span className="text-white font-medium">Výchozí chování po stisku Enter</span>. Možné hodnoty: <code className="font-mono text-indigo-200">"open"</code> (otevřít URL/soubor), <code className="font-mono text-indigo-200">"copy"</code> / <code className="font-mono text-indigo-200">"snippet"</code> (zkopírovat do schránky), <code className="font-mono text-indigo-200">"clone"</code> (Git klonování), <code className="font-mono text-indigo-200">"clonerecursive"</code>. Výchozí je <code className="font-mono text-gray-200">"open"</code>.
+                      <span className="text-white font-medium">Výchozí chování po stisku Enter</span>. Možné hodnoty: <code className="font-mono text-indigo-200">"open"</code> (otevřít URL/soubor), <code className="font-mono text-indigo-200">"copy"</code> / <code className="font-mono text-indigo-200">"snippet"</code> (zkopírovat do schránky){githubEnabled ? <>, <code className="font-mono text-emerald-400">"clone"</code> (Git klonování), <code className="font-mono text-emerald-400">"clonerecursive"</code></> : null}. Výchozí je <code className="font-mono text-gray-200">"open"</code>.
                     </div>
                   </div>
 
@@ -310,7 +320,9 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                     <div className="md:col-span-3 text-gray-300 leading-relaxed">
                       <span className="text-white font-medium">Systémové napojení</span>:
                       <ul className="list-disc list-inside mt-1 space-y-0.5 text-gray-400">
-                        <li><code className="font-mono text-purple-300">"git"</code> — zapojí automatické Git akce (Klonovat, Klonovat rekurzivně, Otevřít na GitHubu).</li>
+                        {githubEnabled && (
+                          <li><code className="font-mono text-emerald-400">"git"</code> — zapojí automatické Git akce (Klonovat repozitář, Otevřít na GitHubu).</li>
+                        )}
                         {magicGateEnabled && (
                           <li><code className="font-mono text-amber-300">"magicgate"</code> — aktivuje tiché přihlašování přes MagicGate a stahování sekcí instance.</li>
                         )}
@@ -385,27 +397,31 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                   </p>
                 </div>
 
-                {/* clone */}
-                <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-purple-300 text-sm">"clone"</span>
-                    <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[10px] font-medium">Git</span>
-                  </div>
-                  <p className="text-gray-300 leading-relaxed">
-                    Otevře samostatné okno pro klonování Git repozitáře s výběrem cílové složky a možností volby rekurze.
-                  </p>
-                </div>
+                {githubEnabled && (
+                  <>
+                    {/* clone */}
+                    <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-emerald-400 text-sm">"clone"</span>
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-medium">Git</span>
+                      </div>
+                      <p className="text-gray-300 leading-relaxed">
+                        Otevře samostatné okno pro klonování Git repozitáře s výběrem cílové složky a možností volby rekurze.
+                      </p>
+                    </div>
 
-                {/* clonerecursive */}
-                <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-purple-300 text-sm">"clonerecursive"</span>
-                    <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[10px] font-medium">Git</span>
-                  </div>
-                  <p className="text-gray-300 leading-relaxed">
-                    Otevře okno klonování s předvybraným zaškrtávátkem pro rekurzivní stažení submodulů (<code className="font-mono text-gray-200">git clone --recursive</code>).
-                  </p>
-                </div>
+                    {/* clonerecursive */}
+                    <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-emerald-400 text-sm">"clonerecursive"</span>
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-medium">Git</span>
+                      </div>
+                      <p className="text-gray-300 leading-relaxed">
+                        Otevře okno klonování s předvybraným zaškrtávátkem pro rekurzivní stažení submodulů (<code className="font-mono text-gray-200">git clone --recursive</code>).
+                      </p>
+                    </div>
+                  </>
+                )}
 
                 {magicGateEnabled && (
                   <>
@@ -486,40 +502,42 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
               </div>
 
               {/* Snippet 3 */}
-              <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h5 className="font-bold text-white text-xs">3. Git repozitář se systémovou integrací</h5>
-                    <p className="text-gray-400 text-[11px]">Díky "settings": "git" automaticky získá akce pro klonování i otevření na GitHubu.</p>
+              {githubEnabled && (
+                <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h5 className="font-bold text-white text-xs">3. Git repozitář se systémovou integrací</h5>
+                      <p className="text-gray-400 text-[11px]">Díky "settings": "git" automaticky získá akce pro klonování i otevření na GitHubu.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopySnippet('git', SNIPPET_GIT)}
+                      className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-lg font-medium transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-sm">
+                        {copiedSnippetId === 'git' ? 'check' : 'content_copy'}
+                      </span>
+                      <span>{copiedSnippetId === 'git' ? 'Zkopírováno!' : 'Kopírovat snippet'}</span>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleCopySnippet('git', SNIPPET_GIT)}
-                    className="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 rounded-lg font-medium transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-sm">
-                      {copiedSnippetId === 'git' ? 'check' : 'content_copy'}
-                    </span>
-                    <span>{copiedSnippetId === 'git' ? 'Zkopírováno!' : 'Kopírovat snippet'}</span>
-                  </button>
+                  <pre className="p-3 bg-black/40 border border-white/5 rounded-lg font-mono text-[11px] text-gray-300 overflow-x-auto">
+                    {SNIPPET_GIT}
+                  </pre>
                 </div>
-                <pre className="p-3 bg-black/40 border border-white/5 rounded-lg font-mono text-[11px] text-gray-300 overflow-x-auto">
-                  {SNIPPET_GIT}
-                </pre>
-              </div>
+              )}
 
               {/* Snippet 4: MagicGate */}
               {magicGateEnabled && (
-                <div className="p-4 bg-cyan-500/5 border border-cyan-500/20 rounded-xl space-y-2.5">
+                <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-2.5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h5 className="font-bold text-cyan-200 text-xs">4. MagicGate instance se systémovým přihlášením</h5>
+                      <h5 className="font-bold text-amber-300 text-xs">4. MagicGate instance se systémovým přihlášením</h5>
                       <p className="text-gray-400 text-[11px]">S "settings": "magicgate" se provede automatické tiché přihlášení do IS Tour.</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleCopySnippet('magicgate', SNIPPET_MAGICGATE)}
-                      className="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 rounded-lg font-medium transition flex items-center gap-1.5 cursor-pointer"
+                      className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-lg font-medium transition flex items-center gap-1.5 cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-sm">
                         {copiedSnippetId === 'magicgate' ? 'check' : 'content_copy'}
@@ -580,7 +598,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                   <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1">
                     <span className="font-semibold text-white">4. Klonování repozitářů sekcí</span>
                     <p className="text-gray-400 leading-relaxed">
-                      Z Administrace se automaticky vygenerují akce <code className="font-mono text-amber-300">mgclone</code> a <code className="font-mono text-amber-300">mgclonerecursive</code>. Ty přes CmsFs endpoint načtou všechny repozitáře sekcí v instanci a umožní jejich hromadné stažení do podsložek.
+                      Z Administrace se automaticky vygeneruje akce <code className="font-mono text-amber-300">mgclone</code>. Ta přes CmsFs endpoint načte všechny repozitáře sekcí v instanci a umožní jejich stažení do podsložek (s volitelnou rekurzí přes checkbox).
                     </p>
                   </div>
 

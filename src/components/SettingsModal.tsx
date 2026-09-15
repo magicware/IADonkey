@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { AppConfig, DataSource, FileSource, ApiSource, LauncherItem, SyncProgress, UpdateInfo, SourceFieldMapping, MappingTargetKey, BannedItem } from '../types';
+import { AppConfig, DataSource, FileSource, ApiSource, StaticSource, LauncherItem, SyncProgress, UpdateInfo, SourceFieldMapping, MappingTargetKey, BannedItem } from '../types';
 import { applyPrimaryColor, applyActionsColor, APP_COLOR_PRESETS } from '../utils/theme';
 import { formatLastSyncDate } from '../utils/dateHelper';
 import { CURRENT_APP_VERSION } from '../changelog';
@@ -107,10 +107,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   updateStatusMessage,
   updateInfo,
 }) => {
-  const [activeTab, setActiveTab] = useState<'sources' | 'extensions' | 'magicgate' | 'mlog' | 'github' | 'vscode' | 'general' | 'updates' | 'help'>('sources');
+  const [activeTab, setActiveTab] = useState<'sources' | 'extensions' | 'magicgate' | 'mlog' | 'github' | 'vscode' | 'android-studio' | 'general' | 'updates' | 'help'>('sources');
   const [formData, setFormData] = useState<AppConfig>(config);
   const [editingSource, setEditingSource] = useState<DataSource | null>(null);
-  const [isAddingSource, setIsAddingSource] = useState<'file' | 'api' | null>(null);
+  const [isAddingSource, setIsAddingSource] = useState<'file' | 'api' | 'static' | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
   const [showItemsViewer, setShowItemsViewer] = useState(false);
@@ -118,6 +118,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isRecordingHotkey, setIsRecordingHotkey] = useState(false);
   const [recordedModifiers, setRecordedModifiers] = useState<string[]>([]);
   const [hotkeyError, setHotkeyError] = useState<string | null>(null);
+  const [isSharedDropdownOpen, setIsSharedDropdownOpen] = useState(false);
   const [hoveredEyeId, setHoveredEyeId] = useState<string | null>(null);
   const [copiedSourceId, setCopiedSourceId] = useState<string | null>(null);
   const [detectedKeys, setDetectedKeys] = useState<string[]>([]);
@@ -143,6 +144,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (formData.extensions?.mlog) count++;
     if (formData.extensions?.github) count++;
     if (formData.extensions?.vscode) count++;
+    if (formData.extensions?.androidStudio) count++;
     return count;
   }, [formData.extensions]);
 
@@ -237,6 +239,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     tokenUsername: '',
     tokenPassword: '',
     enabled: true,
+  };
+
+  const initialStaticSource: StaticSource = {
+    id: `static-${Date.now()}`,
+    name: 'Statická data',
+    type: 'static',
+    enabled: true,
+    sharedParams: {
+      action: 'open',
+      icon: 'bookmark',
+      priority: '0',
+    },
+    items: [],
   };
 
   const handleSave = (customConfig?: AppConfig) => {
@@ -920,6 +935,749 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     );
   };
 
+  const STATIC_STRUCT_FIELDS: { key: keyof LauncherItem; label: string; placeholder: string }[] = [
+    { key: 'name', label: 'Název (name)', placeholder: 'např. Moje položka' },
+    { key: 'location', label: 'Cesta / URL / Hodnota (location)', placeholder: 'např. https://firma.cz nebo C:\\cesta' },
+    { key: 'action', label: 'Akce (action)', placeholder: 'open nebo copy' },
+    { key: 'icon', label: 'Ikona (icon)', placeholder: 'např. bookmark, folder, terminal...' },
+    { key: 'image', label: 'Obrázek (image)', placeholder: 'např. https://.../logo.png' },
+    { key: 'priority', label: 'Priorita (priority)', placeholder: 'např. 0, 10, -1' },
+    { key: 'settings', label: 'Nastavení (settings)', placeholder: 'např. magicgate, git' },
+  ];
+
+  const handleExportStaticSource = (src: StaticSource) => {
+    const shared = src.sharedParams || {};
+    const mergedItems = (src.items || []).map((it) => {
+      const itemCopy: any = { ...it };
+      delete itemCopy.id;
+      for (const [k, v] of Object.entries(shared)) {
+        if (v !== undefined && v !== '' && (itemCopy[k] === undefined || itemCopy[k] === '' || itemCopy[k] === null)) {
+          itemCopy[k] = k === 'priority' ? Number(v) : v;
+        }
+      }
+      if (Array.isArray(itemCopy.options)) {
+        itemCopy.options = itemCopy.options.map((opt: any) => {
+          const optCopy: any = { ...opt };
+          delete optCopy.id;
+          delete optCopy.actions;
+          return optCopy;
+        });
+      }
+      if (Array.isArray(itemCopy.actions)) {
+        itemCopy.actions = itemCopy.actions.map((act: any) => {
+          const actCopy: any = { ...act };
+          delete actCopy.id;
+          return actCopy;
+        });
+      }
+      return itemCopy;
+    });
+
+    const jsonStr = JSON.stringify(mergedItems, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safeName = (src.name || 'static-data').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    a.download = `${safeName}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const renderStaticSourceForm = (isInline: boolean) => {
+    if (!editingSource || editingSource.type !== 'static') return null;
+    const staticSrc = editingSource as StaticSource;
+    const sharedParams = staticSrc.sharedParams || {};
+    const unusedFields = STATIC_STRUCT_FIELDS.filter((f) => !(f.key in sharedParams));
+    const items = staticSrc.items || [];
+    const itemFields = STATIC_STRUCT_FIELDS.filter((f) => !(f.key in sharedParams));
+
+    const handleUpdateShared = (key: string, value: string) => {
+      setEditingSource({
+        ...staticSrc,
+        sharedParams: { ...sharedParams, [key]: value },
+      });
+    };
+
+    const handleRemoveShared = (key: string) => {
+      const updated = { ...sharedParams };
+      delete updated[key];
+      setEditingSource({
+        ...staticSrc,
+        sharedParams: updated,
+      });
+    };
+
+    const handleAddSharedField = (fieldKey: string) => {
+      setEditingSource({
+        ...staticSrc,
+        sharedParams: {
+          ...sharedParams,
+          [fieldKey]: fieldKey === 'action' ? 'open' : fieldKey === 'priority' ? '0' : '',
+        },
+      });
+      setIsSharedDropdownOpen(false);
+    };
+
+    const handleAddItem = () => {
+      const newItem: LauncherItem = {
+        id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        name: '',
+      };
+      setEditingSource({
+        ...staticSrc,
+        items: [...items, newItem],
+      });
+    };
+
+    const handleRemoveItem = (index: number) => {
+      const nextItems = items.filter((_, i) => i !== index);
+      setEditingSource({
+        ...staticSrc,
+        items: nextItems,
+      });
+    };
+
+    const handleUpdateItemField = (itemIdx: number, fieldKey: keyof LauncherItem, val: any) => {
+      const nextItems = [...items];
+      nextItems[itemIdx] = {
+        ...nextItems[itemIdx],
+        [fieldKey]: fieldKey === 'priority' ? (val === '' ? null : Number(val)) : val,
+      };
+      setEditingSource({
+        ...staticSrc,
+        items: nextItems,
+      });
+    };
+
+    const handleAddAction = (itemIdx: number) => {
+      const nextItems = [...items];
+      const curActions = nextItems[itemIdx].actions || [];
+      nextItems[itemIdx] = {
+        ...nextItems[itemIdx],
+        actions: [...curActions, { name: '', action: 'open', location: '', icon: '', settings: null }],
+      };
+      setEditingSource({ ...staticSrc, items: nextItems });
+    };
+
+    const handleUpdateAction = (itemIdx: number, actionIdx: number, fieldKey: string, val: string) => {
+      const nextItems = [...items];
+      const curActions = [...(nextItems[itemIdx].actions || [])];
+      const normalizedVal = val === '' ? null : val;
+      const updatedAction = { ...curActions[actionIdx], [fieldKey]: normalizedVal };
+
+      // Logické provázání action a settings
+      if (fieldKey === 'action') {
+        if (val === 'clone' || val === 'clonerecursive') {
+          updatedAction.settings = 'git';
+        } else if (val === 'vscode') {
+          updatedAction.settings = 'vscode';
+        } else if (val === 'android-studio') {
+          updatedAction.settings = 'android-studio';
+        }
+      } else if (fieldKey === 'settings') {
+        if (val === 'vscode') {
+          updatedAction.action = 'vscode';
+        } else if (val === 'android-studio') {
+          updatedAction.action = 'android-studio';
+        } else if (val === 'git' && !['clone', 'clonerecursive'].includes(updatedAction.action)) {
+          updatedAction.action = 'clone';
+        }
+      }
+
+      curActions[actionIdx] = updatedAction;
+      nextItems[itemIdx] = { ...nextItems[itemIdx], actions: curActions };
+      setEditingSource({ ...staticSrc, items: nextItems });
+    };
+
+    const handleRemoveAction = (itemIdx: number, actionIdx: number) => {
+      const nextItems = [...items];
+      const curActions = (nextItems[itemIdx].actions || []).filter((_, i) => i !== actionIdx);
+      nextItems[itemIdx] = { ...nextItems[itemIdx], actions: curActions.length > 0 ? curActions : undefined };
+      setEditingSource({ ...staticSrc, items: nextItems });
+    };
+
+    const handleAddOption = (itemIdx: number) => {
+      const nextItems = [...items];
+      const curOptions = nextItems[itemIdx].options || [];
+      const newOpt: LauncherItem = {
+        id: `opt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        name: '',
+        location: '',
+        action: 'open',
+        icon: '',
+        image: '',
+        settings: null,
+      };
+      nextItems[itemIdx] = {
+        ...nextItems[itemIdx],
+        options: [...curOptions, newOpt],
+      };
+      setEditingSource({ ...staticSrc, items: nextItems });
+    };
+
+    const handleUpdateOption = (itemIdx: number, optIdx: number, fieldKey: keyof LauncherItem, val: any) => {
+      const nextItems = [...items];
+      const curOptions = [...(nextItems[itemIdx].options || [])];
+      const normalizedVal = val === '' ? null : val;
+      const updatedOpt = { ...curOptions[optIdx], [fieldKey]: normalizedVal };
+
+      // Logické provázání action a settings
+      if (fieldKey === 'action') {
+        if (val === 'vscode') {
+          updatedOpt.settings = 'vscode';
+        } else if (val === 'android-studio') {
+          updatedOpt.settings = 'android-studio';
+        }
+      } else if (fieldKey === 'settings') {
+        if (val === 'vscode') {
+          updatedOpt.action = 'open';
+        } else if (val === 'android-studio') {
+          updatedOpt.action = 'open';
+        }
+      }
+
+      curOptions[optIdx] = updatedOpt;
+      nextItems[itemIdx] = { ...nextItems[itemIdx], options: curOptions };
+      setEditingSource({ ...staticSrc, items: nextItems });
+    };
+
+    const handleRemoveOption = (itemIdx: number, optIdx: number) => {
+      const nextItems = [...items];
+      const curOptions = (nextItems[itemIdx].options || []).filter((_, i) => i !== optIdx);
+      nextItems[itemIdx] = { ...nextItems[itemIdx], options: curOptions.length > 0 ? curOptions : undefined };
+      setEditingSource({ ...staticSrc, items: nextItems });
+    };
+
+    return (
+      <div className={isInline ? 'space-y-4' : 'p-4 bg-purple-950/10 border border-purple-500/40 rounded-xl space-y-4'}>
+        <div className="flex items-center justify-between border-b border-white/10 pb-2">
+          <span className="font-semibold text-sm text-purple-300 flex items-center gap-2">
+            <span className="material-symbols-outlined text-base">data_object</span>
+            {isInline ? 'Nastavení statických dat' : 'Konfigurace statických dat'}
+          </span>
+          <button
+            type="button"
+            onClick={handleCloseSourceForm}
+            className="text-gray-400 hover:text-white cursor-pointer p-0.5"
+            title="Zavřít"
+          >
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+
+        {/* Source Name */}
+        <div>
+          <label className="block text-xs font-medium text-gray-300 mb-1">Název zdroje</label>
+          <input
+            type="text"
+            value={staticSrc.name || ''}
+            onChange={(e) => setEditingSource({ ...staticSrc, name: e.target.value })}
+            placeholder="např. Oblíbené weby, Nástroje týmu..."
+            className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-500 outline-none focus:border-purple-400"
+          />
+        </div>
+
+        {/* ČÁST 1: Společné parametry */}
+        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h5 className="text-xs font-semibold text-purple-300 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-sm">share</span>
+                Část 1: Společné parametry (dědí všechny položky)
+              </h5>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                Parametry nastavené zde se automaticky použijí pro každou položku a nebudou se v nich znovu zadávat.
+              </p>
+            </div>
+
+            {/* Dropdown button for adding shared param */}
+            <div className="relative">
+              <button
+                type="button"
+                disabled={unusedFields.length === 0}
+                onClick={() => setIsSharedDropdownOpen(!isSharedDropdownOpen)}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30 rounded-lg transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <span className="material-symbols-outlined text-sm">add</span>
+                <span>Přidat společný parametr</span>
+                <span className="material-symbols-outlined text-sm">arrow_drop_down</span>
+              </button>
+
+              {isSharedDropdownOpen && unusedFields.length > 0 && (
+                <div className="absolute right-0 top-full mt-1.5 w-64 bg-[#1e2029] border border-purple-500/40 rounded-xl shadow-2xl py-1 z-50 animate-fade-in">
+                  <div className="px-3 py-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider border-b border-white/10">
+                    Dostupná pole struktury:
+                  </div>
+                  {unusedFields.map((f) => (
+                    <button
+                      key={f.key}
+                      type="button"
+                      onClick={() => handleAddSharedField(f.key)}
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-purple-500/20 text-gray-200 hover:text-white flex items-center justify-between transition cursor-pointer"
+                    >
+                      <span className="font-mono text-purple-300">{f.key}</span>
+                      <span className="text-[11px] text-gray-400">{f.label.split('(')[0].trim()}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* List of active shared params */}
+          {Object.keys(sharedParams).length === 0 ? (
+            <div className="p-3 bg-black/20 border border-dashed border-white/10 rounded-lg text-center text-xs text-gray-400">
+              Žádné společné parametry nejsou definovány. Všechna pole budete moci zadávat u každé položky zvlášť.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {Object.entries(sharedParams).map(([key, val]) => {
+                const fieldDef = STATIC_STRUCT_FIELDS.find((f) => f.key === key);
+                return (
+                  <div key={key} className="p-2.5 bg-black/30 border border-purple-500/30 rounded-lg space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono font-medium text-purple-300 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-purple-400" />
+                        {key}
+                        <span className="text-[11px] font-sans text-gray-400">({fieldDef?.label.split('(')[0].trim() || key})</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveShared(key)}
+                        className="text-gray-400 hover:text-rose-400 transition cursor-pointer p-0.5"
+                        title="Odebrat společný parametr (vrátí se do dropdownu)"
+                      >
+                        <span className="material-symbols-outlined text-sm">close</span>
+                      </button>
+                    </div>
+
+                    {key === 'action' ? (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateShared('action', 'open')}
+                          className={`flex-1 py-1 text-xs rounded border transition cursor-pointer flex items-center justify-center gap-1 ${
+                            val === 'open'
+                              ? 'bg-purple-600 border-purple-500 text-white'
+                              : 'bg-white/5 border-white/10 text-gray-300 hover:text-white'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                          open
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateShared('action', 'copy')}
+                          className={`flex-1 py-1 text-xs rounded border transition cursor-pointer flex items-center justify-center gap-1 ${
+                            val === 'copy'
+                              ? 'bg-purple-600 border-purple-500 text-white'
+                              : 'bg-white/5 border-white/10 text-gray-300 hover:text-white'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-xs">content_copy</span>
+                          copy
+                        </button>
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        value={val}
+                        onChange={(e) => handleUpdateShared(key, e.target.value)}
+                        placeholder={fieldDef?.placeholder || 'Hodnota'}
+                        className="w-full bg-black/50 border border-white/10 rounded px-2.5 py-1.5 text-xs text-white placeholder-gray-500 outline-none focus:border-purple-400 font-mono"
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ČÁST 2: Položky */}
+        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h5 className="text-xs font-semibold text-purple-300 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-sm">list</span>
+                Část 2: Položky ({items.length})
+              </h5>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                Formulář každé položky obsahuje pouze nespolečná pole.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAddItem}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition cursor-pointer shadow-sm"
+            >
+              <span className="material-symbols-outlined text-sm">add</span>
+              <span>Přidat položku</span>
+            </button>
+          </div>
+
+          {items.length === 0 ? (
+            <div className="p-4 bg-black/20 border border-dashed border-white/10 rounded-lg text-center text-xs text-gray-400">
+              Zatím nejsou přidány žádné položky. Klikněte na &quot;Přidat položku&quot; výše.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {items.map((item, itemIdx) => (
+                <div
+                  key={item.id || itemIdx}
+                  className="p-3 bg-black/40 border border-white/10 rounded-xl space-y-3"
+                >
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-300 text-[11px] font-mono flex items-center justify-center">
+                        {itemIdx + 1}
+                      </span>
+                      <span className="text-xs font-semibold text-white truncate max-w-xs">
+                        {item.name || '(Položka bez názvu)'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveItem(itemIdx)}
+                      className="text-gray-400 hover:text-rose-400 transition cursor-pointer flex items-center gap-1 text-xs"
+                      title="Smazat tuto položku"
+                    >
+                      <span className="material-symbols-outlined text-sm">delete</span>
+                      <span>Smazat</span>
+                    </button>
+                  </div>
+
+                  {/* Nespolečná pole položky */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {itemFields.map((field) => {
+                      const isFullWidth = field.key === 'name' || field.key === 'location';
+                      return (
+                        <div
+                          key={field.key}
+                          className={`space-y-1 ${isFullWidth ? 'col-span-1 sm:col-span-2' : ''}`}
+                        >
+                          <label className="text-[11px] text-gray-300 font-medium flex items-center justify-between">
+                            <span>{field.label}</span>
+                            <span className="text-gray-500 font-mono text-[10px]">{field.key}</span>
+                          </label>
+                          {field.key === 'action' ? (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateItemField(itemIdx, 'action', 'open')}
+                                className={`flex-1 py-1 text-xs rounded border transition cursor-pointer ${
+                                  (item.action || 'open') === 'open'
+                                    ? 'bg-purple-600 border-purple-500 text-white'
+                                    : 'bg-white/5 border-white/10 text-gray-300 hover:text-white'
+                                }`}
+                              >
+                                open
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateItemField(itemIdx, 'action', 'copy')}
+                                className={`flex-1 py-1 text-xs rounded border transition cursor-pointer ${
+                                  item.action === 'copy'
+                                    ? 'bg-purple-600 border-purple-500 text-white'
+                                    : 'bg-white/5 border-white/10 text-gray-300 hover:text-white'
+                                }`}
+                              >
+                                copy
+                              </button>
+                            </div>
+                          ) : field.key === 'location' ? (
+                            <textarea
+                              rows={3}
+                              value={(item.location as string) ?? ''}
+                              onChange={(e) => handleUpdateItemField(itemIdx, 'location', e.target.value)}
+                              placeholder={field.placeholder}
+                              className="w-full bg-black/50 border border-white/10 rounded px-2.5 py-1.5 text-xs text-white placeholder-gray-500 outline-none focus:border-purple-400 font-mono resize-y whitespace-pre leading-relaxed"
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              value={(item[field.key as keyof LauncherItem] as string) ?? ''}
+                              onChange={(e) => handleUpdateItemField(itemIdx, field.key as keyof LauncherItem, e.target.value)}
+                              placeholder={field.placeholder}
+                              className="w-full bg-black/50 border border-white/10 rounded px-2.5 py-1.5 text-xs text-white placeholder-gray-500 outline-none focus:border-purple-400 font-mono"
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Možnosti Actions a Options */}
+                  <div className="pt-2 border-t border-white/5 space-y-2.5">
+                    {/* Actions list */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-gray-300 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs text-purple-400">touch_app</span>
+                          Akce položky ({item.actions?.length || 0})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleAddAction(itemIdx)}
+                          className="text-[11px] text-purple-300 hover:text-purple-200 flex items-center gap-0.5 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-xs">add</span>
+                          Přidat akci
+                        </button>
+                      </div>
+
+                      {(item.actions || []).map((act, actIdx) => (
+                        <div key={actIdx} className="p-3 bg-black/60 border border-white/10 rounded-xl space-y-2.5 text-xs">
+                          <div className="flex items-center justify-between pb-1.5 border-b border-white/5">
+                            <span className="text-xs font-semibold text-purple-300 flex items-center gap-1.5">
+                              <span className="w-4 h-4 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-mono flex items-center justify-center">
+                                {actIdx + 1}
+                              </span>
+                              <span>{act.name || `Akce #${actIdx + 1}`}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAction(itemIdx, actIdx)}
+                              className="text-gray-400 hover:text-rose-400 text-xs flex items-center gap-1 cursor-pointer"
+                              title="Smazat akci"
+                            >
+                              <span className="material-symbols-outlined text-xs">delete</span>
+                              <span>Smazat</span>
+                            </button>
+                          </div>
+
+                          {/* Řádek 1: name | action */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-300 mb-1">Název akce (name)</label>
+                              <input
+                                type="text"
+                                value={act.name || ''}
+                                onChange={(e) => handleUpdateAction(itemIdx, actIdx, 'name', e.target.value)}
+                                placeholder="např. Otevřít ve VS Code"
+                                className="w-full bg-black/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-300 mb-1">Typ akce (action)</label>
+                              <select
+                                value={act.action || ''}
+                                onChange={(e) => handleUpdateAction(itemIdx, actIdx, 'action', e.target.value)}
+                                className="w-full bg-[#181920] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
+                              >
+                                <option value="">(Výchozí / null)</option>
+                                <option value="open">open</option>
+                                <option value="copy">copy</option>
+                                <option value="clone">clone</option>
+                                <option value="clonerecursive">clonerecursive</option>
+                                <option value="vscode">vscode</option>
+                                <option value="android-studio">android-studio</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Řádek 2: location (víceřádkové pole, respektovat odřádkování) */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-300 mb-1">Cesta / Hodnota (location)</label>
+                            <textarea
+                              rows={2}
+                              value={act.location || ''}
+                              onChange={(e) => handleUpdateAction(itemIdx, actIdx, 'location', e.target.value)}
+                              placeholder="Cesta k souboru, URL adresa, příkaz nebo text..."
+                              className="w-full bg-black/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-mono resize-y whitespace-pre-wrap leading-relaxed"
+                            />
+                          </div>
+
+                          {/* Řádek 3: icon | settings */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-300 mb-1">Ikona (icon)</label>
+                              <input
+                                type="text"
+                                value={act.icon || ''}
+                                onChange={(e) => handleUpdateAction(itemIdx, actIdx, 'icon', e.target.value)}
+                                placeholder="např. code, terminal, open_in_new"
+                                className="w-full bg-black/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-300 mb-1">Nastavení (settings)</label>
+                              <select
+                                value={act.settings || ''}
+                                onChange={(e) => handleUpdateAction(itemIdx, actIdx, 'settings', e.target.value)}
+                                className="w-full bg-[#181920] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
+                              >
+                                <option value="">(Žádné / null)</option>
+                                <option value="git">git</option>
+                                <option value="magicgate">magicgate</option>
+                                <option value="vscode">vscode</option>
+                                <option value="android-studio">android-studio</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Options list */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-gray-300 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs text-purple-400">subdirectory_arrow_right</span>
+                          Subpoložky ({item.options?.length || 0})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleAddOption(itemIdx)}
+                          className="text-[11px] text-purple-300 hover:text-purple-200 flex items-center gap-0.5 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-xs">add</span>
+                          Přidat subpoložku
+                        </button>
+                      </div>
+
+                      {(item.options || []).map((opt, optIdx) => (
+                        <div key={opt.id || optIdx} className="p-3 bg-black/50 border border-white/10 rounded-xl space-y-2.5 text-xs">
+                          <div className="flex items-center justify-between pb-1.5 border-b border-white/5">
+                            <span className="text-xs font-semibold text-purple-200 flex items-center gap-1.5">
+                              <span className="w-4 h-4 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-mono flex items-center justify-center">
+                                {optIdx + 1}
+                              </span>
+                              <span>{opt.name || `Subpoložka #${optIdx + 1}`}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveOption(itemIdx, optIdx)}
+                              className="text-gray-400 hover:text-rose-400 text-xs flex items-center gap-1 cursor-pointer"
+                              title="Smazat subpoložku"
+                            >
+                              <span className="material-symbols-outlined text-xs">delete</span>
+                              <span>Smazat</span>
+                            </button>
+                          </div>
+
+                          {/* Řádek 1: name | action */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-300 mb-1">Název (name)</label>
+                              <input
+                                type="text"
+                                value={opt.name || ''}
+                                onChange={(e) => handleUpdateOption(itemIdx, optIdx, 'name', e.target.value)}
+                                placeholder="Název subpoložky"
+                                className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-300 mb-1">Typ akce (action)</label>
+                              <select
+                                value={opt.action || ''}
+                                onChange={(e) => handleUpdateOption(itemIdx, optIdx, 'action', e.target.value)}
+                                className="w-full bg-[#181920] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
+                              >
+                                <option value="">(Výchozí / null)</option>
+                                <option value="open">open</option>
+                                <option value="copy">copy</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Řádek 2: location (víceřádkové pole, respektovat odřádkování) */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-300 mb-1">Cesta / URL / Hodnota (location)</label>
+                            <textarea
+                              rows={2}
+                              value={opt.location || ''}
+                              onChange={(e) => handleUpdateOption(itemIdx, optIdx, 'location', e.target.value)}
+                              placeholder="Cesta k souboru, složce, URL adresa..."
+                              className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-mono resize-y whitespace-pre-wrap leading-relaxed"
+                            />
+                          </div>
+
+                          {/* Řádek 3: icon | image | settings */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-300 mb-1">Ikona (icon)</label>
+                              <input
+                                type="text"
+                                value={opt.icon || ''}
+                                onChange={(e) => handleUpdateOption(itemIdx, optIdx, 'icon', e.target.value)}
+                                placeholder="např. open_in_browser"
+                                className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-300 mb-1">Obrázek (image)</label>
+                              <input
+                                type="text"
+                                value={opt.image || ''}
+                                onChange={(e) => handleUpdateOption(itemIdx, optIdx, 'image', e.target.value)}
+                                placeholder="URL obrázku / favikony"
+                                className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-300 mb-1">Nastavení (settings)</label>
+                              <select
+                                value={opt.settings || ''}
+                                onChange={(e) => handleUpdateOption(itemIdx, optIdx, 'settings', e.target.value)}
+                                className="w-full bg-[#181920] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
+                              >
+                                <option value="">(Žádné / null)</option>
+                                <option value="magicgate">magicgate</option>
+                                <option value="vscode">vscode</option>
+                                <option value="android-studio">android-studio</option>
+                                <option value="git">git</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer actions */}
+        <div className="flex justify-between items-center gap-2 pt-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => handleExportStaticSource(staticSrc)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-purple-300 hover:text-white bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 rounded-lg transition cursor-pointer"
+            title="Exportovat data se sloučenými společnými parametry"
+          >
+            <span className="material-symbols-outlined text-sm">download</span>
+            <span>Exportovat JSON</span>
+          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCloseSourceForm}
+              className="px-3 py-1.5 text-xs text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition cursor-pointer"
+            >
+              Zrušit
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSaveSource(staticSrc)}
+              className="px-4 py-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-500 rounded-lg transition cursor-pointer shadow-sm"
+            >
+              Uložit statická data
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="w-full h-screen flex bg-[#181920] text-gray-200 select-none overflow-hidden">
       {/* Left Sidebar */}
@@ -993,12 +1751,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               onClick={() => setActiveTab('magicgate')}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'magicgate'
-                  ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 shadow-sm'
+                  : 'text-gray-400 hover:text-amber-200 hover:bg-white/[0.04] border border-transparent'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-xl text-indigo-400">security</span>
+                <span className="material-symbols-outlined text-xl text-amber-400">security</span>
                 <span>MagicGate</span>
               </div>
             </button>
@@ -1011,12 +1769,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               onClick={() => setActiveTab('mlog')}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'mlog'
-                  ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
+                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30 shadow-sm'
+                  : 'text-gray-400 hover:text-sky-200 hover:bg-white/[0.04] border border-transparent'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-xl text-indigo-400">support_agent</span>
+                <span className="material-symbols-outlined text-xl text-sky-400">support_agent</span>
                 <span>MLog</span>
               </div>
             </button>
@@ -1029,12 +1787,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               onClick={() => setActiveTab('github')}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'github'
-                  ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
+                  : 'text-gray-400 hover:text-emerald-200 hover:bg-white/[0.04] border border-transparent'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-xl text-indigo-400">folder_code</span>
+                <span className="material-symbols-outlined text-xl text-emerald-400">
+                  folder_code
+                </span>
                 <span>GitHub</span>
               </div>
             </button>
@@ -1047,13 +1807,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               onClick={() => setActiveTab('vscode')}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'vscode'
-                  ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm'
+                  : 'text-gray-400 hover:text-cyan-200 hover:bg-white/[0.04] border border-transparent'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-xl text-indigo-400">code</span>
+                <span className="material-symbols-outlined text-xl text-cyan-400">code</span>
                 <span>VS Code</span>
+              </div>
+            </button>
+          )}
+
+          {/* Android Studio tab - visible only when extension is enabled */}
+          {formData.extensions?.androidStudio && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('android-studio')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer pl-6 ${
+                activeTab === 'android-studio'
+                  ? 'bg-pink-500/20 text-pink-300 border border-pink-500/30 shadow-sm'
+                  : 'text-gray-400 hover:text-pink-200 hover:bg-white/[0.04] border border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-xl text-pink-400">android</span>
+                <span>Android Studio</span>
               </div>
             </button>
           )}
@@ -1090,8 +1868,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <span className="w-5 h-5 rounded-full bg-rose-500 text-white text-[11px] font-bold flex items-center justify-center shadow-md shadow-rose-500/30 shrink-0">
                 1
               </span>
-            ) : updateStatusMessage ? (
-              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
             ) : null}
           </button>
 
@@ -1106,13 +1882,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             }`}
           >
             <span className="material-symbols-outlined text-xl text-indigo-400">help</span>
-            <span>Nápověda a zkratky</span>
+            <span>Nápověda</span>
           </button>
         </nav>
 
-        {/* Sidebar Footer Info */}
+        {/* Sidebar Footer with Last Sync Date */}
         {formData.lastSyncTime && (
-          <div className="px-4 py-3 shrink-0">
+          <div className="p-4 border-t border-white/10 shrink-0">
             <div className="w-16 h-[1px] bg-white/10 mx-auto mb-3" />
             <div className="flex flex-col items-center justify-center text-center gap-1 text-xs">
               <div className="flex items-center gap-1.5 text-gray-400">
@@ -1139,6 +1915,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeTab === 'mlog' && 'MLog Helpdesk'}
               {activeTab === 'github' && 'GitHub repozitáře'}
               {activeTab === 'vscode' && 'Visual Studio Code (VS Code)'}
+              {activeTab === 'android-studio' && 'Android Studio'}
               {activeTab === 'general' && 'Obecné nastavení aplikace'}
               {activeTab === 'updates' && 'Aktualizace aplikace'}
               {activeTab === 'help' && 'Nápověda a klávesové zkratky'}
@@ -1150,6 +1927,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeTab === 'mlog' && 'Nastavení Base URL pro rychlé otevírání požadavků a úkolů'}
               {activeTab === 'github' && 'Přístup k osobním i firemním repozitářům a rychlému klonování'}
               {activeTab === 'vscode' && 'Konfigurace cesty k editoru VS Code pro otevírání repozitářů a projektů'}
+              {activeTab === 'android-studio' && 'Konfigurace cesty k Android Studiu pro otevírání mobilních a Kotlin/Java projektů'}
               {activeTab === 'general' && 'Globální klávesová zkratka, barva motivu a vyhledávání programů'}
               {activeTab === 'updates' && 'Kontrola nových verzí a historie změn IADonkey'}
               {activeTab === 'help' && 'Přehled všech klávesových zkratek a chytrých funkcí'}
@@ -1168,22 +1946,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* TAB 1: Sources */}
           {activeTab === 'sources' && (
             <div className="space-y-4">
-              {/* Alert banner for last synchronization */}
-              {formData.lastSyncTime && (
-                <div
-                  className="p-3.5 rounded-xl border flex items-center gap-3 text-[13px] font-medium animate-fade-in"
-                  style={{
-                    backgroundColor: `${formData.primaryColor || '#6366f1'}15`,
-                    borderColor: `${formData.primaryColor || '#6366f1'}35`,
-                    color: formData.primaryColor || '#6366f1',
-                  }}
-                >
+              {/* Alert banner for synchronization */}
+              <div
+                className="p-3.5 rounded-xl border flex items-center justify-between gap-3 text-[13px] font-medium animate-fade-in"
+                style={{
+                  backgroundColor: `${formData.primaryColor || '#6366f1'}15`,
+                  borderColor: `${formData.primaryColor || '#6366f1'}35`,
+                  color: formData.primaryColor || '#6366f1',
+                }}
+              >
+                <div className="flex items-center gap-3 min-w-0">
                   <span className="material-symbols-outlined text-lg shrink-0">schedule</span>
-                  <span className="text-gray-300">
-                    Poslední aktualizace proběhla: <strong className="font-mono text-white ml-1">{formatLastSyncDate(formData.lastSyncTime)}</strong>
+                  <span className="text-gray-300 truncate">
+                    {formData.lastSyncTime ? (
+                      <>
+                        Poslední aktualizace proběhla: <strong className="font-mono text-white ml-1">{formatLastSyncDate(formData.lastSyncTime)}</strong>
+                      </>
+                    ) : (
+                      'Synchronizace dat zatím neproběhla'
+                    )}
                   </span>
                 </div>
-              )}
+                <button
+                  type="button"
+                  onClick={onTriggerSync}
+                  disabled={isSyncing}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition disabled:opacity-50 cursor-pointer shrink-0"
+                  title="Spustit synchronizaci dat ze všech povolených zdrojů"
+                >
+                  <span className={`material-symbols-outlined text-base ${isSyncing ? 'animate-spin' : ''}`}>
+                    sync
+                  </span>
+                  <span>{isSyncing ? 'Probíhá synchronizace...' : 'Spustit synchronizaci'}</span>
+                </button>
+              </div>
 
               <div className="space-y-3">
                 <div className="w-full">
@@ -1196,7 +1992,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </p>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <button
                       type="button"
                       onClick={() => {
@@ -1225,19 +2021,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <span className="material-symbols-outlined text-base">api</span>
                       Přidat API endpoint
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAddingSource('static');
+                        setEditingSource({ ...initialStaticSource });
+                        setDetectedKeys([]);
+                        setSampleRecord(null);
+                        setInspectError(null);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium border border-purple-500/40 hover:border-purple-400 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 hover:text-white rounded-lg transition cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-base">data_object</span>
+                      Přidat statická data
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={onTriggerSync}
-                    disabled={isSyncing}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[13px] font-medium transition disabled:opacity-50 cursor-pointer shrink-0"
-                    title="Spustit synchronizaci dat ze všech povolených zdrojů"
-                  >
-                    <span className={`material-symbols-outlined text-base ${isSyncing ? 'animate-spin' : ''}`}>
-                      sync
-                    </span>
-                    <span>{isSyncing ? 'Probíhá synchronizace...' : 'Spustit synchronizaci'}</span>
-                  </button>
                 </div>
               </div>
 
@@ -1273,23 +2071,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* Inline Add Source Form */}
               {isAddingSource && (
-                <div className="p-4 rounded-xl bg-white/[0.03] border border-indigo-500/40 shadow-sm animate-fade-in">
+                <div className={`p-4 rounded-xl shadow-sm animate-fade-in ${
+                  isAddingSource === 'static'
+                    ? 'bg-purple-950/20 border border-purple-500/40'
+                    : 'bg-white/[0.03] border border-indigo-500/40'
+                }`}>
                   <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
                     <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                      <span className="material-symbols-outlined text-lg text-indigo-400">
-                        {isAddingSource === 'file' ? 'description' : 'api'}
+                      <span className={`material-symbols-outlined text-lg ${
+                        isAddingSource === 'static' ? 'text-purple-400' : 'text-indigo-400'
+                      }`}>
+                        {isAddingSource === 'file' ? 'description' : isAddingSource === 'api' ? 'api' : 'data_object'}
                       </span>
-                      {isAddingSource === 'file' ? 'Nový lokální JSON soubor' : 'Nový API endpoint'}
+                      {isAddingSource === 'file'
+                        ? 'Nový lokální JSON soubor'
+                        : isAddingSource === 'api'
+                        ? 'Nový API endpoint'
+                        : 'Nová statická data'}
                     </h4>
                     <button
                       type="button"
                       onClick={handleCloseSourceForm}
-                      className="text-gray-400 hover:text-white transition"
+                      className="text-gray-400 hover:text-white transition cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-sm">close</span>
                     </button>
                   </div>
-                  {renderSourceForm(false)}
+                  {isAddingSource === 'static' ? renderStaticSourceForm(false) : renderSourceForm(false)}
                 </div>
               )}
 
@@ -1300,7 +2108,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span className="material-symbols-outlined text-3xl text-gray-400">folder_open</span>
                     <p className="text-[13px] text-gray-300 font-medium">Zatím nejsou přidány žádné zdroje dat.</p>
                     <p className="text-xs text-gray-400">
-                      Přidejte první lokální soubor nebo vzdálené API pomocí tlačítek výše.
+                      Přidejte první lokální soubor, API nebo statická data pomocí tlačítek výše.
                     </p>
                   </div>
                 ) : (
@@ -1311,7 +2119,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         key={src.id}
                         className={`p-3.5 rounded-xl border transition ${
                           isCurrentlyEditing
-                            ? 'bg-white/[0.04] border-indigo-500/40 shadow-sm'
+                            ? (src.type === 'static' ? 'bg-purple-950/20 border-purple-500/40 shadow-sm' : 'bg-white/[0.04] border-indigo-500/40 shadow-sm')
                             : src.enabled
                             ? 'bg-white/[0.02] border-white/10'
                             : 'bg-black/20 border-white/5 opacity-60'
@@ -1319,13 +2127,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3 min-w-0">
-                            <span className="material-symbols-outlined p-2 rounded-lg bg-indigo-500/20 text-indigo-400 shrink-0 text-xl">
-                              {src.type === 'file' ? 'description' : 'api'}
+                            <span className={`material-symbols-outlined p-2 rounded-lg shrink-0 text-xl ${
+                              src.type === 'static'
+                                ? 'bg-purple-500/20 text-purple-400'
+                                : 'bg-indigo-500/20 text-indigo-400'
+                            }`}>
+                              {src.type === 'file' ? 'description' : src.type === 'api' ? 'api' : 'data_object'}
                             </span>
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-semibold text-sm text-white">{src.name}</span>
-                                <span className="text-[11px] uppercase font-mono px-1.5 py-0.5 rounded bg-white/10 text-gray-300">
+                                <span className={`text-[11px] uppercase font-mono px-1.5 py-0.5 rounded ${
+                                  src.type === 'static'
+                                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold'
+                                    : 'bg-white/10 text-gray-300'
+                                }`}>
                                   {src.type}
                                 </span>
                                 {src.type === 'api' && (src as ApiSource).authType === 'getToken' && (
@@ -1335,13 +2151,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 )}
                                 {src.mapping && Object.keys(src.mapping).length > 0 && (
                                   <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" title="Vlastní mapování polí je aktivní">
-                                    Mapováno ({Object.keys(src.mapping).length})
+                                    Mapováno
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[13px] text-gray-400 font-mono truncate max-w-md mt-0.5">
-                                {src.type === 'file' ? (src as FileSource).path : (src as ApiSource).url}
-                              </p>
+                              {src.type !== 'static' && (
+                                <p className="text-[13px] text-gray-400 font-mono truncate max-w-md mt-0.5">
+                                  {src.type === 'file' ? (src as FileSource).path : (src as ApiSource).url}
+                                </p>
+                              )}
                               {src.lastSync && (
                                 <p className="text-xs text-gray-400 mt-1">
                                   Poslední synchronizace: {src.lastSync} • {src.itemCount ?? 0} položek
@@ -1357,6 +2175,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           </div>
 
                           <div className="flex items-center gap-1.5 shrink-0">
+                            {src.type === 'static' && (
+                              <button
+                                type="button"
+                                onClick={() => handleExportStaticSource(src as StaticSource)}
+                                title="Exportovat do JSON souboru (se sloučenými společnými parametry)"
+                                className="w-8 h-8 rounded-lg border border-purple-500/25 bg-purple-500/10 text-purple-400 hover:text-purple-300 hover:bg-purple-500/20 hover:border-purple-500/40 flex items-center justify-center shrink-0 transition-all cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined !text-[16px]" style={{ fontSize: '16px' }}>
+                                  download
+                                </span>
+                              </button>
+                            )}
                             {src.type === 'api' && (src as ApiSource).url && (
                               <button
                                 type="button"
@@ -1400,7 +2230,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               onClick={() => handleStartEditSource(src)}
                               className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition-all cursor-pointer ${
                                 isCurrentlyEditing
-                                  ? 'bg-indigo-600 border-indigo-500 text-white'
+                                  ? (src.type === 'static' ? 'bg-purple-600 border-purple-500 text-white' : 'bg-indigo-600 border-indigo-500 text-white')
                                   : 'border-white/10 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 hover:border-white/20'
                               }`}
                               title={isCurrentlyEditing ? 'Zavřít úpravy' : 'Upravit'}
@@ -1421,7 +2251,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         {/* Inline Edit Form */}
                         {isCurrentlyEditing && (
                           <div className="mt-3.5 pt-3.5 border-t border-white/10 animate-fade-in">
-                            {renderSourceForm(true)}
+                            {src.type === 'static' ? renderStaticSourceForm(true) : renderSourceForm(true)}
                           </div>
                         )}
                       </div>
@@ -1511,7 +2341,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             handleSave(updated);
                           }}
                         />
-                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500" />
                       </label>
                     </div>
                   </div>
@@ -1534,7 +2364,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="p-5 bg-white/[0.03] border border-white/10 rounded-2xl flex flex-col justify-between gap-4 transition hover:border-white/20">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3.5">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 text-indigo-400">
+                      <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shrink-0 text-sky-400">
                         <span className="material-symbols-outlined text-2xl">support_agent</span>
                       </div>
                       <div>
@@ -1575,7 +2405,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             handleSave(updated);
                           }}
                         />
-                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500" />
                       </label>
                     </div>
                   </div>
@@ -1585,7 +2415,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setActiveTab('mlog')}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 transition flex items-center gap-1 cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 transition flex items-center gap-1 cursor-pointer"
                       >
                         <span>Nastavení MLog</span>
                         <span className="material-symbols-outlined text-sm">navigate_next</span>
@@ -1598,7 +2428,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="p-5 bg-white/[0.03] border border-white/10 rounded-2xl flex flex-col justify-between gap-4 transition hover:border-white/20">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3.5">
-                      <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0 text-purple-400">
+                      <div className="w-10 h-10 rounded-xl border border-emerald-500/30 bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
                         <span className="material-symbols-outlined text-2xl">folder_code</span>
                       </div>
                       <div>
@@ -1639,7 +2469,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             handleSave(updated);
                           }}
                         />
-                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+                        <div
+                          className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:bg-emerald-500 peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"
+                        />
                       </label>
                     </div>
                   </div>
@@ -1649,7 +2481,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setActiveTab('github')}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 transition flex items-center gap-1 cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium border border-emerald-500/30 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 transition flex items-center gap-1 cursor-pointer hover:opacity-90"
                       >
                         <span>Nastavení GitHub</span>
                         <span className="material-symbols-outlined text-sm">navigate_next</span>
@@ -1698,13 +2530,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 mlog: formData.extensions?.mlog ?? false,
                                 github: formData.extensions?.github ?? false,
                                 vscode: e.target.checked,
+                                androidStudio: formData.extensions?.androidStudio ?? false,
                               },
                             };
                             setFormData(updated);
                             handleSave(updated);
                           }}
                         />
-                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500" />
                       </label>
                     </div>
                   </div>
@@ -1722,6 +2555,72 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   )}
                 </div>
+
+                {/* 5. Android Studio */}
+                <div className="p-5 bg-white/[0.03] border border-white/10 rounded-2xl flex flex-col justify-between gap-4 transition hover:border-white/20">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center shrink-0 text-pink-400">
+                        <span className="material-symbols-outlined text-2xl">android</span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-bold text-white tracking-wide">Android Studio</h3>
+                          {formData.androidStudio?.path?.trim() ? (
+                            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-medium">
+                              Nakonfigurováno
+                            </span>
+                          ) : (
+                            <span className="text-[10px] bg-white/5 text-gray-400 border border-white/10 px-1.5 py-0.5 rounded font-medium">
+                              Výchozí instalace
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                          Okamžité otevírání lokálně naklonovaných mobilních repozitářů a Kotlin/Java projektů přímo v prostředí Android Studio ze seznamu akcí.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={formData.extensions?.androidStudio ?? false}
+                          onChange={(e) => {
+                            const updated = {
+                              ...formData,
+                              extensions: {
+                                ...formData.extensions,
+                                magicgate: formData.extensions?.magicgate ?? false,
+                                mlog: formData.extensions?.mlog ?? false,
+                                github: formData.extensions?.github ?? false,
+                                vscode: formData.extensions?.vscode ?? false,
+                                androidStudio: e.target.checked,
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                        />
+                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500" />
+                      </label>
+                    </div>
+                  </div>
+                  {formData.extensions?.androidStudio && (
+                    <div className="pt-3 border-t border-white/5 flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Záložka je dostupná v levém menu</span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('android-studio')}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/20 transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Nastavení Android Studio</span>
+                        <span className="material-symbols-outlined text-sm">navigate_next</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -1731,11 +2630,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="space-y-6">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg text-indigo-400">security</span>
+                  <span className="material-symbols-outlined text-lg text-amber-400">security</span>
                   Přihlašovací údaje MagicGate
                 </h3>
                 <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
-                  Nastavení přihlašovacích údajů pro automatické přihlašování do instancí IS Tour (položky s parametrem <code className="bg-white/10 px-1 rounded text-indigo-300">settings: "magicgate"</code>). Zadané přihlašovací údaje jsou bezpečně uloženy v lokální konfiguraci.
+                  Nastavení přihlašovacích údajů pro automatické přihlašování do instancí IS Tour (položky s parametrem <code className="bg-white/10 px-1 rounded text-amber-300">settings: "magicgate"</code>). Zadané přihlašovací údaje jsou bezpečně uloženy v lokální konfiguraci.
                 </p>
               </div>
 
@@ -1753,7 +2652,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       setFormData(updated);
                       handleSave(updated);
                     }}
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 outline-none"
                     placeholder="Uživatelské jméno pro MagicGate"
                   />
                 </div>
@@ -1770,7 +2669,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       setFormData(updated);
                       handleSave(updated);
                     }}
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 outline-none"
                     placeholder="••••••••••••"
                   />
                 </div>
@@ -1780,13 +2679,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="space-y-3 bg-white/[0.02] p-4 rounded-xl border border-white/5">
                 <div>
                   <h4 className="font-semibold text-sm text-white flex items-center gap-2 mb-1">
-                    <span className="material-symbols-outlined text-lg text-indigo-400">code_blocks</span>
+                    <span className="material-symbols-outlined text-lg text-amber-400">code_blocks</span>
                     Konfigurační XML soubor instancí (Deploy Config)
                   </h4>
                   <p className="text-[13px] text-gray-400 mb-3 leading-relaxed">
                     Vyberte XML soubor s definicí serverů a instancí. IADonkey z něj automaticky vyextrahuje jednotlivé instance
                     jako hlavní položky s akcí MagicGate a jejich dílčí aplikace (Administrace, Web, API, BO) jako podpoložky s faviconou.
-                    Servery a instance s označením <span className="font-mono text-indigo-300">Bench</span> jsou automaticky vynechány.
+                    Servery a instance s označením <span className="font-mono text-amber-300">Bench</span> jsou automaticky vynechány.
                   </p>
                 </div>
 
@@ -1804,7 +2703,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         setFormData(updated);
                         handleSave(updated);
                       }}
-                      className="h-[38px] flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none font-mono"
+                      className="h-[38px] flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 outline-none font-mono"
                       placeholder="C:\deploy\DeployConfig.xml"
                     />
                     <button
@@ -1822,7 +2721,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           }
                         }
                       }}
-                      className="h-[38px] px-3.5 border border-indigo-500/40 hover:border-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-white rounded-lg text-[13px] font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                      className="h-[38px] px-3.5 border border-amber-500/40 hover:border-amber-400 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-white rounded-lg text-[13px] font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
                     >
                       <span className="material-symbols-outlined text-base">folder_open</span>
                       Procházet...
@@ -1858,13 +2757,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="space-y-6">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg text-indigo-400">support_agent</span>
+                  <span className="material-symbols-outlined text-lg text-sky-400">support_agent</span>
                   Propojení s MLog
                 </h3>
                 <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
                   Nastavte základní webovou adresu (Base URL) vašeho helpdesku MLog. Po nastavení můžete ve vyhledávači
-                  rovnou zadat kód požadavku (např. <strong className="font-mono text-indigo-300">R1234</strong>) nebo
-                  úkolu (např. <strong className="font-mono text-indigo-300">T5678</strong>) a stiskem Enter
+                  rovnou zadat kód požadavku (např. <strong className="font-mono text-sky-300">R1234</strong>) nebo
+                  úkolu (např. <strong className="font-mono text-sky-300">T5678</strong>) a stiskem Enter
                   přímo otevřít detail v prohlížeči.
                 </p>
               </div>
@@ -1885,7 +2784,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       setFormData(updated);
                       handleSave(updated);
                     }}
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none font-mono"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-sky-500 outline-none font-mono"
                     placeholder="https://mlog.magicware.cz"
                   />
                   <span className="text-xs text-gray-400 mt-1.5 block">
@@ -1894,21 +2793,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 {formData.mlog?.baseUrl?.trim() ? (
-                  <div className="p-3 bg-indigo-950/30 border border-indigo-500/20 rounded-lg text-[13px] space-y-1.5">
-                    <p className="font-semibold text-indigo-300 flex items-center gap-1.5">
+                  <div className="p-3 bg-sky-950/30 border border-sky-500/20 rounded-lg text-[13px] space-y-1.5">
+                    <p className="font-semibold text-sky-300 flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-base">check_circle</span>
                       Detekce je aktivní pro následující vzory:
                     </p>
                     <ul className="list-disc list-inside text-gray-300 space-y-0.5 pl-1">
                       <li>
                         Zadání <code className="text-white font-mono bg-black/30 px-1 py-0.5 rounded">R2345</code> otevře{' '}
-                        <span className="font-mono text-indigo-300">
+                        <span className="font-mono text-sky-300">
                           {formData.mlog.baseUrl.trim().replace(/\/+$/, '')}/R2345
                         </span>
                       </li>
                       <li>
                         Zadání <code className="text-white font-mono bg-black/30 px-1 py-0.5 rounded">T7821</code> otevře{' '}
-                        <span className="font-mono text-indigo-300">
+                        <span className="font-mono text-sky-300">
                           {formData.mlog.baseUrl.trim().replace(/\/+$/, '')}/T7821
                         </span>
                       </li>
@@ -1928,7 +2827,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="space-y-6 animate-fade-in max-w-2xl">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg text-indigo-400">folder_code</span>
+                  <span className="material-symbols-outlined text-lg text-emerald-400">
+                    folder_code
+                  </span>
                   Přihlašovací údaje k profilu GitHub
                 </h3>
                 <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
@@ -1940,7 +2841,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-4">
                 <div>
                   <h4 className="font-semibold text-sm text-white flex items-center gap-2 mb-1">
-                    <span className="material-symbols-outlined text-lg text-indigo-400">key</span>
+                    <span className="material-symbols-outlined text-lg text-emerald-400">
+                      key
+                    </span>
                     Přihlašovací údaje (PAT)
                   </h4>
                   <p className="text-[13px] text-gray-400 leading-relaxed">
@@ -1972,7 +2875,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       handleSave(updated);
                     }}
                     placeholder="např. petrkulhanek"
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none font-mono"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none font-mono"
                   />
                   <p className="text-xs text-gray-400 mt-1.5">
                     Vaše osobní uživatelské jméno na GitHubu.
@@ -2004,7 +2907,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         handleSave(updated);
                       }}
                       placeholder="ghp_... nebo github_pat_..."
-                      className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 pr-10 text-sm text-white focus:border-indigo-500 outline-none font-mono"
+                      className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 pr-10 text-sm text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none font-mono"
                     />
                     <button
                       type="button"
@@ -2022,12 +2925,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => window.electronAPI?.openExternal?.('https://github.com/settings/tokens')}
-                      className="text-indigo-400 hover:underline cursor-pointer inline-flex items-center gap-0.5"
+                      className="text-emerald-400 hover:underline cursor-pointer inline-flex items-center gap-0.5"
                     >
                       GitHub Settings &rarr; Personal access tokens
                       <span className="material-symbols-outlined text-[11px]">open_in_new</span>
                     </button>
-                    . Pro soukromé repozitáře zaškrtněte rozsah <code className="bg-white/10 px-1 rounded text-indigo-300">repo</code> a pro organizace <code className="bg-white/10 px-1 rounded text-indigo-300">read:org</code>.
+                    . Pro soukromé repozitáře zaškrtněte rozsah <code className="bg-white/10 px-1 rounded font-mono text-emerald-300">repo</code> a pro organizace <code className="bg-white/10 px-1 rounded font-mono text-emerald-300">read:org</code>.
                   </p>
                 </div>
               </div>
@@ -2036,7 +2939,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-3">
                 <div>
                   <h4 className="font-semibold text-sm text-white flex items-center gap-2 mb-1">
-                    <span className="material-symbols-outlined text-lg text-indigo-400">corporate_fare</span>
+                    <span className="material-symbols-outlined text-lg text-emerald-400">
+                      corporate_fare
+                    </span>
                     Organizace / Společnost <span className="text-gray-500 font-normal text-xs">(volitelné)</span>
                   </h4>
                   <p className="text-[13px] text-gray-400 mb-3 leading-relaxed">
@@ -2063,7 +2968,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       handleSave(updated);
                     }}
                     placeholder="např. magicware"
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none font-mono"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none font-mono"
                   />
                 </div>
               </div>
@@ -2072,7 +2977,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-3">
                 <div>
                   <h4 className="font-semibold text-sm text-white flex items-center gap-2 mb-1">
-                    <span className="material-symbols-outlined text-lg text-indigo-400">cloud</span>
+                    <span className="material-symbols-outlined text-lg text-emerald-400">
+                      cloud
+                    </span>
                     GitHub API URL <span className="text-gray-500 font-normal text-xs">(volitelné)</span>
                   </h4>
                   <p className="text-[13px] text-gray-400 mb-3 leading-relaxed">
@@ -2099,7 +3006,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       handleSave(updated);
                     }}
                     placeholder="https://api.github.com"
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none font-mono"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none font-mono"
                   />
                 </div>
               </div>
@@ -2108,7 +3015,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-3">
                 <div>
                   <h4 className="font-semibold text-sm text-white flex items-center gap-2 mb-1">
-                    <span className="material-symbols-outlined text-lg text-indigo-400">folder_open</span>
+                    <span className="material-symbols-outlined text-lg text-emerald-400">
+                      folder_open
+                    </span>
                     Výchozí složka pro klonování repozitářů <span className="text-gray-500 font-normal text-xs">(volitelné)</span>
                   </h4>
                   <p className="text-[13px] text-gray-400 mb-3 leading-relaxed">
@@ -2137,7 +3046,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         handleSave(updated);
                       }}
                       placeholder="např. C:\Projekty nebo D:\Git"
-                      className="h-[38px] flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none font-mono"
+                      className="h-[38px] flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none font-mono"
                     />
                     <button
                       type="button"
@@ -2161,7 +3070,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           }
                         }
                       }}
-                      className="h-[38px] px-3.5 border border-indigo-500/40 hover:border-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-white rounded-lg text-[13px] font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                      className="h-[38px] px-3.5 border border-emerald-500/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 rounded-lg text-[13px] font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
                     >
                       <span className="material-symbols-outlined text-base">folder_open</span>
                       Procházet...
@@ -2203,7 +3112,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className={`px-4 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 transition cursor-pointer w-fit ${
                     !formData.github?.token?.trim() || isTestingGitHub
                       ? 'bg-white/5 border-white/5 text-gray-500 cursor-not-allowed'
-                      : 'bg-indigo-600/20 text-indigo-300 border-indigo-500/30 hover:bg-indigo-600/30'
+                      : 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600/30'
                   }`}
                 >
                   {isTestingGitHub ? (
@@ -2288,7 +3197,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="space-y-6">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg text-sky-400">code</span>
+                  <span className="material-symbols-outlined text-lg text-cyan-400">code</span>
                   Visual Studio Code (VS Code)
                 </h3>
                 <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
@@ -2313,7 +3222,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         setFormData(updated);
                         handleSave(updated);
                       }}
-                      className="h-[38px] flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-sky-500 outline-none font-mono"
+                      className="h-[38px] flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 outline-none font-mono"
                       placeholder="Automatická detekce (např. C:\Users\...\Code.exe)"
                     />
                     <button
@@ -2331,7 +3240,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           }
                         }
                       }}
-                      className="h-[38px] px-3.5 border border-sky-500/40 hover:border-sky-400 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 hover:text-white rounded-lg text-[13px] font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                      className="h-[38px] px-3.5 border border-cyan-500/40 hover:border-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-white rounded-lg text-[13px] font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
                     >
                       <span className="material-symbols-outlined text-base">folder_open</span>
                       <span>Procházet...</span>
@@ -2351,7 +3260,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           }
                         }
                       }}
-                      className="h-[38px] px-3.5 border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-lg text-[13px] font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                      className="h-[38px] px-3.5 border border-emerald-500/30 hover:border-emerald-500/50 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 hover:text-white rounded-lg text-[13px] font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
                       title="Prohledat standardní instalační složky a PATH"
                     >
                       <span className="material-symbols-outlined text-base">search</span>
@@ -2386,6 +3295,116 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div className="font-semibold text-white">Jak to funguje ve vyhledávači:</div>
                     <p className="text-gray-300 leading-relaxed">
                       Když u repozitáře ve Spotlight vyhledávači stisknete <kbd className="px-1.5 py-0.5 bg-white/10 border border-white/15 rounded text-[10px] font-mono text-white">Shift+Enter</kbd> a repozitář již existuje ve vaší cílové složce, zobrazí se na prvním místě akce <strong>Otevřít ve VS Code</strong>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: Android Studio */}
+          {activeTab === 'android-studio' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg text-pink-400">android</span>
+                  Android Studio
+                </h3>
+                <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
+                  Konfigurace vývojového prostředí Android Studio pro rychlé otevírání mobilních a Kotlin/Java projektů přímo z akcí vyhledávače nebo z modálního okna klonování.
+                </p>
+              </div>
+
+              <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-4">
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+                    Cesta ke spustitelnému souboru Android Studio (studio64.exe / studio.bat)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={formData.androidStudio?.path || ''}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          androidStudio: { ...formData.androidStudio, path: e.target.value },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      className="h-[38px] flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-pink-500 outline-none font-mono"
+                      placeholder="Automatická detekce (např. C:\Program Files\Android\Android Studio\bin\studio64.exe)"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (window.electronAPI?.selectAndroidStudioPath) {
+                          const selected = await window.electronAPI.selectAndroidStudioPath();
+                          if (selected) {
+                            const updated = {
+                              ...formData,
+                              androidStudio: { ...formData.androidStudio, path: selected },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }
+                        }
+                      }}
+                      className="h-[38px] px-3.5 border border-pink-500/40 hover:border-pink-400 bg-pink-500/10 hover:bg-pink-500/20 text-pink-300 hover:text-white rounded-lg text-[13px] font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                    >
+                      <span className="material-symbols-outlined text-base">folder_open</span>
+                      <span>Procházet...</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (window.electronAPI?.detectAndroidStudioPath) {
+                          const detected = await window.electronAPI.detectAndroidStudioPath();
+                          if (detected) {
+                            const updated = {
+                              ...formData,
+                              androidStudio: { ...formData.androidStudio, path: detected },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }
+                        }
+                      }}
+                      className="h-[38px] px-3.5 border border-emerald-500/30 hover:border-emerald-500/50 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 hover:text-white rounded-lg text-[13px] font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                      title="Prohledat standardní instalační složky Android Studia a JetBrains Toolbox"
+                    >
+                      <span className="material-symbols-outlined text-base">search</span>
+                      <span>Automaticky detekovat</span>
+                    </button>
+                    {formData.androidStudio?.path && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = {
+                            ...formData,
+                            androidStudio: { ...formData.androidStudio, path: '' },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                        className="w-[38px] h-[38px] flex items-center justify-center text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg transition cursor-pointer shrink-0"
+                        title="Vymazat cestu (použije se automatická detekce)"
+                      >
+                        <span className="material-symbols-outlined text-[18px] leading-none">delete</span>
+                      </button>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-400 mt-2 block leading-relaxed">
+                    Pokud necháte pole prázdné, aplikace zkusí Android Studio automaticky nalézt ve složce <code className="bg-white/10 px-1 rounded text-pink-300 font-mono">Program Files\Android\Android Studio</code>, v JetBrains Toolboxu nebo v systémovém příkazu <code className="bg-white/10 px-1 rounded text-pink-300 font-mono">studio64.exe</code>.
+                  </span>
+                </div>
+
+                <div className="p-3.5 bg-pink-950/30 border border-pink-500/25 rounded-xl text-xs text-pink-200/90 flex items-start gap-2.5">
+                  <span className="material-symbols-outlined text-base text-pink-400 shrink-0 mt-0.5">info</span>
+                  <div className="space-y-1">
+                    <div className="font-semibold text-white">Kdy se Android Studio nabízí:</div>
+                    <p className="text-gray-300 leading-relaxed">
+                      Aplikace se nabízí, pokud repozitář z GitHubu používá <strong>Kotlin</strong> nebo <strong>Java</strong>. Pro webové projekty a instance MagicGate se vždy nabízí VS Code (nabízí se buď VS Code, nebo Android Studio, nikdy obojí současně).
                     </p>
                   </div>
                 </div>
@@ -2597,6 +3616,125 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     Po výběru zkratky <span className="text-indigo-300 font-mono">:podpis</span> ve vyhledávači se tento text zkopíruje do schránky.
                   </p>
                 </div>
+
+                {/* Company & contact snippets */}
+                <div className="bg-white/[0.02] p-4 rounded-xl border border-white/5 space-y-4">
+                  <h5 className="text-[13px] font-medium text-gray-200 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base text-indigo-400">badge</span>
+                    Firemní a kontaktní údaje pro rychlé vložení
+                  </h5>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* ICO */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-gray-300 flex items-center justify-between">
+                        <span>IČO (<code className="text-indigo-300 font-mono">:ico</code>, <code className="text-indigo-300 font-mono">:ičo</code>)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.snippets?.ico || ''}
+                        onChange={(e) => {
+                          const updated = {
+                            ...formData,
+                            snippets: { ...formData.snippets, ico: e.target.value },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                        placeholder="např. 12345678"
+                        className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono"
+                      />
+                    </div>
+
+                    {/* DIC */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-gray-300 flex items-center justify-between">
+                        <span>DIČ (<code className="text-indigo-300 font-mono">:dic</code>, <code className="text-indigo-300 font-mono">:dič</code>)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.snippets?.dic || ''}
+                        onChange={(e) => {
+                          const updated = {
+                            ...formData,
+                            snippets: { ...formData.snippets, dic: e.target.value },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                        placeholder="např. CZ12345678"
+                        className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono"
+                      />
+                    </div>
+
+                    {/* Phone */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-gray-300 flex items-center justify-between">
+                        <span>Telefon (<code className="text-indigo-300 font-mono">:telefon</code>, <code className="text-indigo-300 font-mono">:tel</code>)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.snippets?.phone || ''}
+                        onChange={(e) => {
+                          const updated = {
+                            ...formData,
+                            snippets: { ...formData.snippets, phone: e.target.value },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                        placeholder="např. +420 777 123 456"
+                        className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono"
+                      />
+                    </div>
+
+                    {/* Email */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-gray-300 flex items-center justify-between">
+                        <span>E-mail (<code className="text-indigo-300 font-mono">:email</code>, <code className="text-indigo-300 font-mono">:mail</code>)</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={formData.snippets?.email || ''}
+                        onChange={(e) => {
+                          const updated = {
+                            ...formData,
+                            snippets: { ...formData.snippets, email: e.target.value },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                        placeholder="např. info@firma.cz"
+                        className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Address */}
+                  <div className="space-y-1.5 pt-1">
+                    <label className="text-xs text-gray-300 flex items-center justify-between">
+                      <span>Adresa / Sídlo (<code className="text-indigo-300 font-mono">:adresa</code>, <code className="text-indigo-300 font-mono">:address</code>)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.snippets?.address || ''}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          snippets: { ...formData.snippets, address: e.target.value },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      placeholder="např. Václavské náměstí 1, 110 00 Praha 1"
+                      className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono"
+                    />
+                  </div>
+
+                  <p className="text-[11px] text-gray-400">
+                    Zadáním dvojtečky a názvu (např. <code className="text-indigo-300 font-mono">:ico</code> nebo <code className="text-indigo-300 font-mono">:adresa</code>) se údaj okamžitě nabídne k vložení ve vyhledávači.
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -2749,6 +3887,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                   <div className="py-3 flex items-center justify-between">
                     <div>
+                      <span className="font-medium text-white">Smazání celého textu hledání</span>
+                      <p className="text-gray-400 text-xs mt-0.5">Rychle vyprázdní celé vyhledávací pole a vrátí výběr na první položku.</p>
+                    </div>
+                    <kbd className="px-2.5 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm whitespace-nowrap">Ctrl / Alt + Backspace</kbd>
+                  </div>
+
+                  <div className="py-3 flex items-center justify-between">
+                    <div>
+                      <span className="font-medium text-white">Listování v informacích položky</span>
+                      <p className="text-gray-400 text-xs mt-0.5">Přepínání stránek dodatečných informací v režimu akcí (při více než 6 záznamech).</p>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <kbd className="px-2 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm whitespace-nowrap">←</kbd>
+                      <kbd className="px-2 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm whitespace-nowrap">→</kbd>
+                    </div>
+                  </div>
+
+                  <div className="py-3 flex items-center justify-between">
+                    <div>
                       <span className="font-medium text-white">Zkopírování systémového snippetu</span>
                       <p className="text-gray-400 text-xs mt-0.5">Napište dvojtečku a klíčové slovo (např. :today, :now, :cas, :guid, :podpis) pro zkopírování hodnoty do schránky.</p>
                     </div>
@@ -2841,7 +3998,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                   {formData.extensions?.github !== false && (
                     <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
-                      <div className="flex items-center gap-2 text-purple-400 font-semibold">
+                      <div className="flex items-center gap-2 text-emerald-400 font-semibold">
                         <span className="material-symbols-outlined text-base">folder_code</span>
                         GitHub repozitáře
                       </div>
@@ -2859,6 +4016,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </div>
                       <p className="text-gray-400 text-xs leading-relaxed">
                         Pokud existuje repozitář nebo projekt v lokální cílové složce, v nabídce akcí (<kbd className="bg-white/10 px-1 rounded font-mono text-[11px] whitespace-nowrap">Shift+Enter</kbd>) jej můžete okamžitě otevřít přímo v editoru VS Code.
+                      </p>
+                    </div>
+                  )}
+
+                  {formData.extensions?.androidStudio && (
+                    <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                      <div className="flex items-center gap-2 text-pink-400 font-semibold">
+                        <span className="material-symbols-outlined text-base">android</span>
+                        Android Studio
+                      </div>
+                      <p className="text-gray-400 text-xs leading-relaxed">
+                        Aplikace se nabízí, pokud repozitář z GitHubu používá jazyk Kotlin nebo Java. V nabídce akcí (<kbd className="bg-white/10 px-1 rounded font-mono text-[11px] whitespace-nowrap">Shift+Enter</kbd>) nebo v okně klonování jej můžete okamžitě otevřít přímo v Android Studiu.
                       </p>
                     </div>
                   )}
@@ -2914,6 +4083,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           isOpen={showDataSourcesGuide}
           onClose={() => setShowDataSourcesGuide(false)}
           magicGateEnabled={formData.extensions?.magicgate !== false}
+          githubEnabled={formData.extensions?.github !== false}
         />
       )}
     </div>

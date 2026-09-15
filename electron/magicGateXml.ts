@@ -6,6 +6,16 @@ function getAttribute(attrsString: string, attrName: string): string {
   return match ? match[1] : '';
 }
 
+function getAllAttributes(attrsString: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  const regex = /([a-zA-Z0-9_-]+)=["']([^"']*)["']/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(attrsString)) !== null) {
+    result[match[1]] = match[2];
+  }
+  return result;
+}
+
 /**
  * Parses MagicGate deploy XML content into LauncherItem objects.
  * - Strips XML comments
@@ -131,13 +141,6 @@ export function parseMagicGateXml(xmlContent: string): LauncherItem[] {
               settings: 'magicgate',
               icon: 'cloud_download',
             },
-            {
-              name: 'Klonovat repozitáře rekurzivně (git clone --recursive)...',
-              action: 'mgclonerecursive',
-              location: adminUrl,
-              settings: 'magicgate',
-              icon: 'cloud_sync',
-            },
           ]
         : undefined;
 
@@ -157,6 +160,39 @@ export function parseMagicGateXml(xmlContent: string): LauncherItem[] {
       if (storageBackup) info['Zálohy úložiště'] = storageBackup;
       if (dbBackupPath) info['Cesta záloh DB'] = dbBackupPath;
       if (perflog) info['Perflog Prefix'] = perflog;
+
+      // Known server and instance attribute names already processed
+      const knownAttrs = new Set([
+        'name',
+        'serverlocation',
+        'dbserver',
+        'providername',
+        'rootpath',
+        'webservice',
+        'ftpurl',
+        'dbserverbackuppath',
+        'deploysubrequirementid',
+        'keepbackupfordays',
+        'backupdownload',
+        'storagebackupdownload',
+        'perflogprefix',
+      ]);
+
+      // Automatically harvest any additional custom attributes from <Server>
+      const allServerAttrs = getAllAttributes(serverAttrs);
+      for (const [key, val] of Object.entries(allServerAttrs)) {
+        if (val && !knownAttrs.has(key.toLowerCase()) && info[key] === undefined) {
+          info[key] = val;
+        }
+      }
+
+      // Automatically harvest any additional custom attributes from <Instance>
+      const allInstanceAttrs = getAllAttributes(instanceAttrs);
+      for (const [key, val] of Object.entries(allInstanceAttrs)) {
+        if (val && !knownAttrs.has(key.toLowerCase()) && info[key] === undefined) {
+          info[key] = val;
+        }
+      }
 
       items.push({
         id: `mg-xml-${instanceName.toLowerCase()}`,

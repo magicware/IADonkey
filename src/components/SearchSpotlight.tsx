@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LauncherItem, LauncherAction, SyncProgress } from '../types';
+import { LauncherItem, LauncherAction, SyncProgress, SnippetsConfig } from '../types';
 import { MaterialIcon } from './MaterialIcon';
 import { evaluateExpression } from '../utils/calculator';
 import { detectUrl } from '../utils/urlHelper';
@@ -17,12 +17,13 @@ interface SearchSpotlightProps {
   defaultSearchEngine?: string;
   defaultCloneDir?: string;
   vscodeEnabled?: boolean;
+  androidStudioEnabled?: boolean;
   onOpenSettings: () => void;
   onRefreshData: () => void;
   isSyncing?: boolean;
   syncProgress?: SyncProgress | null;
   lastSyncTime?: string | null;
-  snippets?: { signature?: string };
+  snippets?: SnippetsConfig;
 }
 
 export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
@@ -32,6 +33,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   defaultSearchEngine,
   defaultCloneDir,
   vscodeEnabled = false,
+  androidStudioEnabled = false,
   onOpenSettings,
   onRefreshData,
   isSyncing = false,
@@ -45,10 +47,13 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   const [parentItem, setParentItem] = useState<LauncherItem | null>(null);
   const [actionsParentItem, setActionsParentItem] = useState<LauncherItem | null>(null);
   const [selectedActionIndex, setSelectedActionIndex] = useState<number>(0);
+  const [infoPage, setInfoPage] = useState<number>(0);
   const [existingClonedRepos, setExistingClonedRepos] = useState<Set<string>>(new Set());
   const [copiedInfoKey, setCopiedInfoKey] = useState<string | null>(null);
   const [savedQueryBeforeSubitems, setSavedQueryBeforeSubitems] = useState<string>('');
   const [savedIndexBeforeSubitems, setSavedIndexBeforeSubitems] = useState<number>(0);
+  const restoringIndexRef = useRef<number | null>(null);
+  const savedParentItemRef = useRef<LauncherItem | null>(null);
   const [engineFavicons, setEngineFavicons] = useState<Record<string, string>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -192,6 +197,19 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       setIsRevealed(false);
       setParentItem(null);
       setActionsParentItem(null);
+      savedParentItemRef.current = null;
+      restoringIndexRef.current = null;
+    });
+
+    const cleanupReset = window.electronAPI?.onResetSpotlight?.(() => {
+      setQuery('');
+      setSelectedIndex(0);
+      setParentItem(null);
+      setActionsParentItem(null);
+      savedParentItemRef.current = null;
+      restoringIndexRef.current = null;
+      setIsRevealed(false);
+      inputRef.current?.blur();
     });
 
     return () => {
@@ -199,6 +217,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       cleanupShown?.();
       cleanupFocusInput?.();
       cleanupHide?.();
+      cleanupReset?.();
     };
   }, [defaultCloneDir]);
 
@@ -208,6 +227,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     setActionsParentItem(null);
     setSavedQueryBeforeSubitems(query);
     setSavedIndexBeforeSubitems(selectedIndex);
+    savedParentItemRef.current = item;
     setParentItem(item);
     setQuery('');
     setSelectedIndex(0);
@@ -216,6 +236,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
   // Return from subitems mode back to previous main level
   const exitSubitems = () => {
+    restoringIndexRef.current = savedIndexBeforeSubitems;
     setParentItem(null);
     setQuery(savedQueryBeforeSubitems);
     setSelectedIndex(savedIndexBeforeSubitems);
@@ -243,30 +264,106 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     if (!item || !defaultCloneDir) return null;
     const folderName = getRepoFolderName(item);
     if (!folderName) return null;
+
+    const sep = defaultCloneDir.includes('/') ? '/' : '\\';
+    const cleanBase = defaultCloneDir.replace(/[\\/]+$/, '');
+
+    // For MagicGate instances: target directory is {defaultCloneDir}/magicgate/{instanceName}
+    const isMagicGate = item.settings === 'magicgate' || item.sourceId === 'magicgate' || item.sourceId === 'magicgate-xml';
+    if (isMagicGate) {
+      const lowerName = folderName.toLowerCase();
+      if (existingClonedRepos.has(`magicgate/${lowerName}`) || existingClonedRepos.has(lowerName)) {
+        return `${cleanBase}${sep}magicgate${sep}${folderName}`;
+      }
+      return null;
+    }
+
+    // For standard GitHub / Git repositories: target directory is {defaultCloneDir}/{repoName}
     if (existingClonedRepos.has(folderName.toLowerCase())) {
-      const sep = defaultCloneDir.includes('/') ? '/' : '\\';
-      return `${defaultCloneDir.replace(/[\\/]+$/, '')}${sep}${folderName}`;
+      return `${cleanBase}${sep}${folderName}`;
     }
     return null;
   };
 
-  // Dynamically resolve actions for an item, inserting 'Otevřít ve VS Code' if repository exists locally
+  const isAndroidProjectItem = (item?: LauncherItem | null): boolean => {
+    if (!item) return false;
+    // MagicGate projects are NEVER Android Studio projects
+    if (item.settings === 'magicgate' || item.sourceId === 'magicgate' || item.sourceId === 'magicgate-xml') {
+      return false;
+    }
+    const lang = String(item.info?.['Jazyk'] || item.info?.['Language'] || '').trim().toLowerCase();
+    if (lang === 'kotlin' || lang === 'java') {
+      return true;
+    }
+    return false;
+  };
+
+  // Dynamically resolve actions for an item, inserting either 'Otevřít v Android Studiu' or 'Otevřít ve VS Code' (never both!)
   const getItemActions = (item?: LauncherItem | null): LauncherAction[] => {
     if (!item) return [];
-    const baseActions = item.actions ? [...item.actions] : [];
+    let baseActions = item.actions ? [...item.actions] : [];
 
-    if (vscodeEnabled) {
-      const localPath = getLocalRepoPath(item);
-      if (localPath) {
-        const hasVscodeAction = baseActions.some((a) => a.action === 'vscode');
-        if (!hasVscodeAction) {
-          baseActions.unshift({
-            name: 'Otevřít ve VS Code',
-            action: 'vscode',
-            location: localPath,
-            icon: 'code',
-            settings: 'vscode',
-          });
+    // Filter out redundant recursive clone actions (handled by checkbox in clone modal)
+    baseActions = baseActions.filter(
+      (a) => a.action !== 'clonerecursive' && a.action !== 'mgclonerecursive'
+    );
+
+    // For Git / GitHub items: ensure 'Otevřít na GitHubu' is always at the very end
+    const isGit = item.settings === 'git' || item.sourceId === 'github' || item.sourceId === 'git';
+    if (isGit) {
+      const openOnGithubIndex = baseActions.findIndex(
+        (a) =>
+          a.action === 'open' &&
+          (a.name.toLowerCase().includes('github') || a.location?.includes('github.com'))
+      );
+      if (openOnGithubIndex >= 0 && openOnGithubIndex < baseActions.length - 1) {
+        const [openOnGithubAction] = baseActions.splice(openOnGithubIndex, 1);
+        baseActions.push(openOnGithubAction);
+      }
+    }
+
+    const localPath = getLocalRepoPath(item);
+    if (localPath) {
+      const isAndroid = isAndroidProjectItem(item);
+
+      if (isAndroid) {
+        if (androidStudioEnabled) {
+          const hasAndroidAction = baseActions.some((a) => a.action === 'android-studio');
+          if (!hasAndroidAction) {
+            baseActions.unshift({
+              name: 'Otevřít v Android Studiu',
+              action: 'android-studio',
+              location: localPath,
+              icon: 'android',
+              settings: 'android-studio',
+            });
+          }
+        } else if (vscodeEnabled) {
+          // Fallback to VS Code if Android Studio extension is not active
+          const hasVscodeAction = baseActions.some((a) => a.action === 'vscode');
+          if (!hasVscodeAction) {
+            baseActions.unshift({
+              name: 'Otevřít ve VS Code',
+              action: 'vscode',
+              location: localPath,
+              icon: 'code',
+              settings: 'vscode',
+            });
+          }
+        }
+      } else {
+        // Not Android (MagicGate or regular web/backend repo) -> VS Code only
+        if (vscodeEnabled) {
+          const hasVscodeAction = baseActions.some((a) => a.action === 'vscode');
+          if (!hasVscodeAction) {
+            baseActions.unshift({
+              name: 'Otevřít ve VS Code',
+              action: 'vscode',
+              location: localPath,
+              icon: 'code',
+              settings: 'vscode',
+            });
+          }
         }
       }
     }
@@ -289,12 +386,14 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     refreshExistingClonedRepos();
     setActionsParentItem(item);
     setSelectedActionIndex(0);
+    setInfoPage(0);
   };
 
   // Return from actions mode back to search results
   const exitActions = () => {
     setActionsParentItem(null);
     setSelectedActionIndex(0);
+    setInfoPage(0);
     inputRef.current?.focus();
   };
 
@@ -524,30 +623,13 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           const directTicket = detectMlogTicket(mlogQuery, mlogBaseUrl);
           if (directTicket) {
             mlogList.push(directTicket);
-          } else {
             const numOnly = mlogQuery.match(/^(\d+)$/);
             if (numOnly) {
               const id = numOnly[1];
-              mlogList.push({
-                id: `mlog-R${id}`,
-                name: `Otevřít požadavek R${id} v MLogu`,
-                location: `${cleanBase}/R${id}`,
-                action: 'open',
-                icon: 'support_agent',
-                image: null,
-                priority: -2,
-                settings: null,
-              });
-              mlogList.push({
-                id: `mlog-T${id}`,
-                name: `Otevřít úkol T${id} v MLogu`,
-                location: `${cleanBase}/T${id}`,
-                action: 'open',
-                icon: 'support_agent',
-                image: null,
-                priority: -2,
-                settings: null,
-              });
+              const taskItem = detectMlogTicket(`T${id}`, mlogBaseUrl);
+              const reqItem = detectMlogTicket(`R${id}`, mlogBaseUrl);
+              if (taskItem) mlogList.push(taskItem);
+              if (reqItem) mlogList.push(reqItem);
             }
           }
         } else {
@@ -604,6 +686,34 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           if (hasInfoTicket) return true;
         }
         return false;
+      });
+      list.push(...referencingItems);
+      return list;
+    }
+
+    // 0a. MLog digits-only query (4 or more digits, e.g. 2111 -> 1st T2111, 2nd R2111)
+    const digitsOnlyMatch = trimmed.match(/^(\d{4,})$/);
+    if (digitsOnlyMatch && mlogBaseUrl) {
+      const numId = digitsOnlyMatch[1];
+      const taskItem = detectMlogTicket(`T${numId}`, mlogBaseUrl);
+      const reqItem = detectMlogTicket(`R${numId}`, mlogBaseUrl);
+      if (taskItem) list.push(taskItem);
+      if (reqItem) list.push(reqItem);
+
+      // Also look for items that specifically reference this ticket or number in info or name
+      const referencingItems = items.filter((it) => {
+        if (it.info) {
+          const hasInfoTicket = Object.values(it.info).some((v) => {
+            if (typeof v === 'string') {
+              const cleaned = removeDiacritics(v.replace(/\s+/g, '')).toLowerCase();
+              return cleaned.includes(`r${numId}`) || cleaned.includes(`t${numId}`) || cleaned.includes(numId);
+            }
+            return false;
+          });
+          if (hasInfoTicket) return true;
+        }
+        const nameNorm = removeDiacritics(it.name || '').toLowerCase();
+        return nameNorm.includes(numId);
       });
       list.push(...referencingItems);
       return list;
@@ -706,8 +816,29 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     return list;
   }, [query, items, parentItem, searchGoogle, defaultSearchEngine, mlogBaseUrl, engineFavicons]);
 
-  // Keep selected index within bounds
+  // Keep selected index within bounds or restore saved index when returning from subitems
   useEffect(() => {
+    if (restoringIndexRef.current !== null) {
+      const savedIdx = restoringIndexRef.current;
+      restoringIndexRef.current = null;
+      if (results.length > 0) {
+        let targetIndex = savedIdx;
+        if (savedParentItemRef.current) {
+          const parent = savedParentItemRef.current;
+          const foundIdx = results.findIndex(
+            (r) =>
+              (r.id && parent.id && r.id === parent.id) ||
+              (r.name === parent.name && r.location === parent.location)
+          );
+          if (foundIdx !== -1) {
+            targetIndex = foundIdx;
+          }
+          savedParentItemRef.current = null;
+        }
+        setSelectedIndex(Math.max(0, Math.min(targetIndex, results.length - 1)));
+        return;
+      }
+    }
     setSelectedIndex(0);
   }, [results]);
 
@@ -738,6 +869,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     setTimeout(() => {
       setParentItem(null);
       setActionsParentItem(null);
+      savedParentItemRef.current = null;
+      restoringIndexRef.current = null;
       window.electronAPI?.hideWindow?.();
     }, 90);
   };
@@ -880,6 +1013,17 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       return;
     }
 
+    if (actionType === 'android-studio') {
+      exitActions();
+      if (window.electronAPI?.openInAndroidStudio) {
+        window.electronAPI.openInAndroidStudio(effectiveLocation);
+      }
+      setTimeout(() => {
+        handleClose();
+      }, 60);
+      return;
+    }
+
     // Default / 'open' action
     if (actionType === 'open' || !actionType) {
       exitActions();
@@ -909,7 +1053,20 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     // If in actions mode
     if (actionsParentItem) {
       const actionsList = getItemActions(actionsParentItem);
-      if (e.key === 'ArrowDown') {
+      const allInfoEntries = Object.entries(actionsParentItem.info || {});
+      const totalInfoPages = Math.ceil(allInfoEntries.length / 8);
+
+      if (e.key === 'ArrowRight') {
+        if (totalInfoPages > 1) {
+          e.preventDefault();
+          setInfoPage((prev) => (prev < totalInfoPages - 1 ? prev + 1 : prev));
+        }
+      } else if (e.key === 'ArrowLeft') {
+        if (totalInfoPages > 1) {
+          e.preventDefault();
+          setInfoPage((prev) => (prev > 0 ? prev - 1 : prev));
+        }
+      } else if (e.key === 'ArrowDown') {
         e.preventDefault();
         setSelectedActionIndex((prev) => (actionsList.length > 0 ? (prev + 1) % actionsList.length : 0));
       } else if (e.key === 'ArrowUp') {
@@ -928,11 +1085,18 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       return;
     }
 
-    // Ctrl+Backspace -> completely clear search query string
-    if (e.key === 'Backspace' && (e.ctrlKey || e.metaKey)) {
+    // Ctrl+Backspace or Alt+Backspace -> completely clear search query string
+    if (e.key === 'Backspace' && (e.ctrlKey || e.metaKey || e.altKey)) {
       e.preventDefault();
       setQuery('');
       setSelectedIndex(0);
+      return;
+    }
+
+    // If inside subitems and search query is empty, Backspace returns to previous main level
+    if (e.key === 'Backspace' && query === '' && parentItem) {
+      e.preventDefault();
+      exitSubitems();
       return;
     }
 
@@ -1078,7 +1242,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   const isGitPrefix = Boolean(trimmedQuery.match(/^git:/i));
   const isMagicGatePrefix = Boolean(trimmedQuery.match(/^(?:magicgate|mg):/i));
   const isMlogMode = Boolean(
-    mlogBaseUrl?.trim() && trimmedQuery.match(/^(?:mlog:|[rRtT]\s*\d+)/i)
+    mlogBaseUrl?.trim() && trimmedQuery.match(/^(?:mlog:|[rRtT]\s*\d+|\d{4,})$/i)
   );
 
   return (
@@ -1100,7 +1264,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
               : isMlogMode
               ? 'text-indigo-400'
               : isGitPrefix
-              ? 'text-purple-400'
+              ? 'text-emerald-400'
               : isMagicGatePrefix
               ? 'text-amber-400'
               : 'text-indigo-400'
@@ -1262,50 +1426,96 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             className="max-h-[430px] overflow-y-auto p-2 focus:outline-none space-y-2"
           >
             {/* 1. Compact Info Section (BEFORE actions) */}
-            {hasItemInfo(actionsParentItem) && (
-              <div className="p-2 rounded-xl bg-white/[0.02] border border-white/5 space-y-1.5">
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-purple-300">
-                    <span className="material-symbols-outlined text-sm text-purple-400">info</span>
-                    <span>Informace o položce</span>
-                  </div>
-                  <span className="text-[10px] text-gray-400 font-mono">
-                    kliknutím zkopírovat
-                  </span>
-                </div>
+            {hasItemInfo(actionsParentItem) && (() => {
+              const allInfoEntries = Object.entries(actionsParentItem.info!);
+              const ITEMS_PER_PAGE = 8;
+              const totalPages = Math.ceil(allInfoEntries.length / ITEMS_PER_PAGE);
+              const safePage = Math.min(infoPage, Math.max(0, totalPages - 1));
+              const visibleEntries = allInfoEntries.slice(safePage * ITEMS_PER_PAGE, (safePage + 1) * ITEMS_PER_PAGE);
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  {Object.entries(actionsParentItem.info!).map(([key, val]) => {
-                    const strVal = val !== null && val !== undefined ? String(val) : '—';
-                    const isCopied = copiedInfoKey === key;
-                    return (
-                      <div
-                        key={key}
-                        onClick={() => handleCopyInfoValue(key, strVal)}
-                        title={`Kliknutím zkopírujete „${strVal}“ do schránky`}
-                        className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border transition cursor-pointer min-w-0 ${
-                          isCopied
-                            ? 'bg-emerald-500/10 border-emerald-500/40'
-                            : 'bg-black/30 border-white/5 hover:border-purple-500/30 hover:bg-white/[0.04]'
-                        }`}
-                      >
-                        <span className="text-[11px] text-gray-400 truncate shrink-0 max-w-[45%] select-none font-medium">
-                          {key}
+              return (
+                <div className="p-2 rounded-xl bg-white/[0.02] border border-white/5 space-y-1.5">
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-purple-300">
+                      <span className="material-symbols-outlined text-sm text-purple-400">info</span>
+                      <span>Informace o položce</span>
+                      {allInfoEntries.length > ITEMS_PER_PAGE && (
+                        <span className="text-[10px] text-purple-400/80 font-mono">
+                          ({allInfoEntries.length})
                         </span>
-                        <span
-                          className={`text-xs font-mono truncate select-all ${
-                            isCopied ? 'text-emerald-400 font-semibold' : 'text-gray-200'
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {allInfoEntries.length > ITEMS_PER_PAGE && (
+                        <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono bg-black/40 px-1.5 py-0.5 rounded border border-white/5">
+                          <span>
+                            {safePage + 1} / {totalPages}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={safePage === 0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setInfoPage((prev) => Math.max(0, prev - 1));
+                            }}
+                            className="p-0.5 rounded hover:bg-white/10 text-gray-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center"
+                            title="Předchozí strana (←)"
+                          >
+                            <span className="material-symbols-outlined !text-[12px]" style={{ fontSize: '12px' }}>chevron_left</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={safePage >= totalPages - 1}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setInfoPage((prev) => Math.min(totalPages - 1, prev + 1));
+                            }}
+                            className="p-0.5 rounded hover:bg-white/10 text-gray-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center"
+                            title="Další strana (→)"
+                          >
+                            <span className="material-symbols-outlined !text-[12px]" style={{ fontSize: '12px' }}>chevron_right</span>
+                          </button>
+                        </div>
+                      )}
+                      <span className="text-[10px] text-gray-400 font-mono">
+                        kliknutím zkopírovat
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {visibleEntries.map(([key, val]) => {
+                      const strVal = val !== null && val !== undefined ? String(val) : '—';
+                      const isCopied = copiedInfoKey === key;
+                      return (
+                        <div
+                          key={key}
+                          onClick={() => handleCopyInfoValue(key, strVal)}
+                          title={`Kliknutím zkopírujete „${strVal}“ do schránky`}
+                          className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border transition cursor-pointer min-w-0 ${
+                            isCopied
+                              ? 'bg-emerald-500/10 border-emerald-500/40'
+                              : 'bg-black/30 border-white/5 hover:border-purple-500/30 hover:bg-white/[0.04]'
                           }`}
-                          title={strVal}
                         >
-                          {isCopied ? 'Zkopírováno!' : strVal}
-                        </span>
-                      </div>
-                    );
-                  })}
+                          <span className="text-[11px] text-gray-400 truncate shrink-0 max-w-[45%] select-none font-medium">
+                            {key}
+                          </span>
+                          <span
+                            className={`text-xs font-mono truncate select-all ${
+                              isCopied ? 'text-emerald-400 font-semibold' : 'text-gray-200'
+                            }`}
+                            title={strVal}
+                          >
+                            {isCopied ? 'Zkopírováno!' : strVal}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* 2. Actions List */}
             {hasItemActions(actionsParentItem) && (
@@ -1313,7 +1523,45 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                 {getItemActions(actionsParentItem).map((action, idx) => {
                   const isSelected = idx === selectedActionIndex;
                   const isVscode = action.settings === 'vscode' || action.action === 'vscode';
-                  const isGit = action.settings === 'git';
+                  const isAndroid = action.settings === 'android-studio' || action.action === 'android-studio';
+
+                  const itemSelectedClass = isSelected
+                    ? isVscode
+                      ? 'bg-cyan-800/40 border-cyan-500/50 text-white shadow-md'
+                      : isAndroid
+                      ? 'bg-pink-800/40 border-pink-500/50 text-white shadow-md'
+                      : 'bg-purple-600/30 border-purple-500/40 text-white shadow-md'
+                    : isVscode
+                    ? 'hover:bg-cyan-950/30 text-gray-200 border-white/5 bg-black/20 hover:border-cyan-500/30'
+                    : isAndroid
+                    ? 'hover:bg-pink-950/30 text-gray-200 border-white/5 bg-black/20 hover:border-pink-500/30'
+                    : 'hover:bg-white/[0.05] text-gray-200 border-white/5 bg-black/20 hover:border-purple-500/30';
+
+                  const iconContainerClass = isVscode
+                    ? 'bg-cyan-900/40 border-cyan-500/50 text-cyan-300'
+                    : isAndroid
+                    ? 'bg-pink-900/40 border-pink-500/50 text-pink-300'
+                    : 'bg-purple-600/20 border-purple-500/30 text-purple-300';
+
+                  const dividerClass = isSelected
+                    ? isVscode
+                      ? 'bg-cyan-400/40'
+                      : isAndroid
+                      ? 'bg-pink-400/40'
+                      : 'bg-white/20'
+                    : 'bg-white/[0.08]';
+
+                  const badgeClass = isVscode
+                    ? 'bg-cyan-950/70 border-cyan-500/50 text-cyan-300'
+                    : isAndroid
+                    ? 'bg-pink-950/70 border-pink-500/50 text-pink-300'
+                    : 'bg-white/5 border-white/10 text-gray-400';
+
+                  const selectIndicatorClass = isVscode
+                    ? 'text-cyan-300'
+                    : isAndroid
+                    ? 'text-pink-300'
+                    : 'text-purple-300';
 
                   return (
                     <div
@@ -1322,29 +1570,15 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       data-action-selected={isSelected}
                       onClick={() => handleExecuteAction(actionsParentItem, action)}
                       onMouseEnter={() => setSelectedActionIndex(idx)}
-                      className={`flex items-center px-3 py-2 rounded-xl cursor-pointer transition-colors duration-150 gap-3 border ${
-                        isSelected
-                          ? isVscode
-                            ? 'bg-cyan-800/40 border-cyan-500/50 text-white shadow-md'
-                            : 'bg-purple-600/30 border-purple-500/40 text-white shadow-md'
-                          : isVscode
-                          ? 'hover:bg-cyan-950/30 text-gray-200 border-white/5 bg-black/20 hover:border-cyan-500/30'
-                          : 'hover:bg-white/[0.05] text-gray-200 border-white/5 bg-black/20 hover:border-purple-500/30'
-                      }`}
+                      className={`flex items-center px-3 py-2 rounded-xl cursor-pointer transition-colors duration-150 gap-3 border ${itemSelectedClass}`}
                     >
                       <div className="flex items-center gap-3 shrink-0">
-                        <div
-                          className={`w-8 h-8 rounded-full border flex items-center justify-center ${
-                            isVscode
-                              ? 'bg-cyan-900/40 border-cyan-500/50 text-cyan-300'
-                              : 'bg-purple-600/20 border-purple-500/30 text-purple-300'
-                          }`}
-                        >
+                        <div className={`w-8 h-8 rounded-full border flex items-center justify-center ${iconContainerClass}`}>
                           <span className="material-symbols-outlined text-lg">
-                            {action.icon || (action.action === 'clone' ? 'download' : action.action === 'clonerecursive' ? 'folder_zip' : action.action === 'copy' ? 'content_copy' : 'open_in_new')}
+                            {action.icon || (action.action === 'clone' ? 'download' : action.action === 'clonerecursive' ? 'folder_zip' : action.action === 'mgclone' || action.action === 'mgclonerecursive' ? 'cloud_download' : action.action === 'copy' ? 'content_copy' : 'open_in_new')}
                           </span>
                         </div>
-                        <div className={`h-5 w-[1px] shrink-0 self-center transition-colors ${isSelected ? (isVscode ? 'bg-cyan-400/40' : 'bg-white/20') : 'bg-white/[0.08]'}`} />
+                        <div className={`h-5 w-[1px] shrink-0 self-center transition-colors ${dividerClass}`} />
                       </div>
 
                       <div className="flex-1 min-w-0 flex flex-col justify-center pl-2">
@@ -1352,16 +1586,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                           <span className="font-semibold text-sm truncate leading-tight">
                             {action.name}
                           </span>
-                          <span
-                            className={`text-[10px] font-mono px-1.5 py-0.5 rounded border font-medium uppercase ${
-                              isVscode
-                                ? 'bg-cyan-950/70 border-cyan-500/50 text-cyan-300'
-                                : isGit
-                                ? 'bg-purple-500/20 border-purple-500/30 text-purple-300'
-                                : 'bg-white/5 border-white/10 text-gray-400'
-                            }`}
-                          >
-                            {isVscode ? 'VS Code' : action.action}
+                          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border font-medium uppercase ${badgeClass}`}>
+                            {isVscode ? 'VS Code' : isAndroid ? 'Android Studio' : action.action}
                           </span>
                         </div>
                         <div className="text-xs mt-0.5 font-mono text-gray-400 truncate">
@@ -1370,7 +1596,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       </div>
 
                       {isSelected && (
-                        <div className={`flex-shrink-0 text-xs flex items-center gap-1.5 opacity-90 ${isVscode ? 'text-cyan-300' : 'text-purple-300'}`}>
+                        <div className={`flex-shrink-0 text-xs flex items-center gap-1.5 opacity-90 ${selectIndicatorClass}`}>
                           <span>Provést</span>
                           <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none whitespace-nowrap">Enter</kbd>
                         </div>
@@ -1462,6 +1688,13 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                             icon={item.icon}
                             image={item.image}
                             location={item.location}
+                            colorClass={
+                              item.settings === 'git' || item.sourceId === 'github'
+                                ? 'text-emerald-400'
+                                : item.sourceId === 'magicgate-xml'
+                                ? 'text-amber-400'
+                                : undefined
+                            }
                             fallbackIcon={
                               item.sourceId === 'snippet'
                                 ? 'content_paste'
@@ -1530,8 +1763,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                                 enterActions(item);
                               }
                             }}
-                            className={`text-[10px] font-medium px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1 select-none ${
-                              hasActionsOrInfo ? 'hover:bg-purple-500/30 cursor-pointer' : 'cursor-default'
+                            className={`text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 select-none ${
+                              hasActionsOrInfo ? 'hover:bg-emerald-500/30 cursor-pointer' : 'cursor-default'
                             }`}
                             title={hasActionsOrInfo ? 'Git položka – klikněte nebo stiskněte Shift+Enter pro akce a informace' : 'Git položka'}
                           >

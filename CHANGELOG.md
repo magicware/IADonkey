@@ -4,6 +4,22 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.2] - 15. 9. 2026
+### Rozšíření Android Studio, vylepšení MLog číselných dotazů, editor statických dat a vyladění UI
+- **Rozšíření Android Studio**: Vyhrazená integrace pro prostředí Android Studio s růžovou identitou (`pink`), možností automatické detekce standardních cest / JetBrains Toolboxu nebo ručního nastavení cesty ke `studio64.exe`.
+- **Inteligentní volba editoru (Android Studio vs VS Code)**: Aplikace nabízí buď VS Code, nebo Android Studio – nikdy oboje současně. Pokud GitHub repozitář používá programovací jazyk Kotlin nebo Java, zobrazí se tlačítko *Otevřít v Android Studiu*. Pro webové repozitáře a instance MagicGate se vždy nabízí VS Code.
+- **Tlačítko Android Studia v nabídce Akcí i v okně klonování**: Možnost okamžitého otevření mobilního projektu přímo z akcí položky (<kbd>Shift+Enter</kbd>) nebo po dokončení stahování repozitáře.
+- **Číselné dotazy MLogu na 4+ číslic (např. `2111`)**: Pokud je zapnuté rozšíření MLog a dotaz ve Spotlightu obsahuje pouze 4 nebo více číslic, automaticky se nabídne na 1. místě úkol **T2111** (*Otevřít úkol T2111 v MLogu*) a na 2. místě požadavek **R2111** (*Otevřít požadavek R2111 v MLogu*) včetně vizuální aktivace MLog režimu s ikonou `support_agent`.
+- **Sjednocení cílové složky MagicGate repozitářů**: Klonované repozitáře sekcí instancí MagicGate se nyní stahují a detekují v přehledné podsložce `{defaultCloneDir}/magicgate/{instanceName}`.
+- **Plynulý reset vyhledávače při otevření v editoru**: Po kliknutí na otevření repozitáře ve VS Code nebo Android Studiu z okna klonování se Spotlight kompletně skryje a zresetuje do výchozího stavu.
+- **Zachování fokusu při návratu ze subpoložek (Alt+Enter)**: Při zavření subpoložek zpět do vyhledávače zůstane vybraná původní položka namísto přeskočení na začátek seznamu.
+- **Zpřehlednění nabídky akcí repozitářů**: Odstraněna redundantní položka rekurzivního klonování (obslouženo přepínačem v dialogu stahování) a akce *Otevřít na GitHubu* je umístěna na konec nabídky.
+- **Editor položek statických dat**: Pole *Název* i pole *Cesta / URL / Obsah* (`location`) roztaženo na 100 % šířky; pole `location` změněno na víceřádkový editor (`textarea`) akceptující a zachovávající odřádkování.
+- **Resetování posuvníku v průvodci "Jak na zdroje dat"**: Při přepínání mezi záložkami v modálním okně průvodce se posuvník automaticky vrátí na začátek obsahu.
+- **Vyladění barevného design systému**: Důsledné dodržení sekundární barvy v okně klonování repozitářů i v informačním boxu vyhledávače.
+
+---
+
 ## [1.1.1] - 14. 9. 2026
 ### Rozšíření (GitHub, VS Code), systém akcí a informací, klonování repozitářů a barevný design systém
 - **Záložka Rozšíření**: Nová vyhrazená sekce v Nastavení pro zapínání/vypínání modulů MagicGate, MLog, GitHub a VS Code bez ztráty existující konfigurace.

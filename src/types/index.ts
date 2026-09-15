@@ -22,7 +22,7 @@ export interface LauncherItem {
   info?: Record<string, any>;
 }
 
-export type SourceType = 'file' | 'api';
+export type SourceType = 'file' | 'api' | 'static';
 
 export interface FieldMappingRule {
   type: 'field' | 'fixed';
@@ -69,7 +69,13 @@ export interface ApiSource extends BaseSource {
   tokenExpiresAt?: number;
 }
 
-export type DataSource = FileSource | ApiSource;
+export interface StaticSource extends BaseSource {
+  type: 'static';
+  sharedParams?: Record<string, string>;
+  items: LauncherItem[];
+}
+
+export type DataSource = FileSource | ApiSource | StaticSource;
 
 export interface MagicGateSettings {
   username: string;
@@ -86,9 +92,14 @@ export interface ExtensionsConfig {
   mlog: boolean;
   github: boolean;
   vscode?: boolean;
+  androidStudio?: boolean;
 }
 
 export interface VscodeSettings {
+  path?: string;
+}
+
+export interface AndroidStudioSettings {
   path?: string;
 }
 
@@ -115,6 +126,7 @@ export interface AppConfig {
   mlog?: MlogSettings;
   github?: GithubSettings;
   vscode?: VscodeSettings;
+  androidStudio?: AndroidStudioSettings;
   extensions?: ExtensionsConfig;
   banlist?: BannedItem[];
   updateUrl: string;
@@ -128,9 +140,16 @@ export interface AppConfig {
   searchInstalledApps?: boolean;
   searchGoogle?: boolean;
   defaultSearchEngine?: string;
-  snippets?: {
-    signature?: string;
-  };
+  snippets?: SnippetsConfig;
+}
+
+export interface SnippetsConfig {
+  signature?: string;
+  ico?: string;
+  dic?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
 }
 
 export interface SyncProgress {

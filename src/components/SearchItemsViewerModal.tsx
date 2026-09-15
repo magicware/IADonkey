@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { LauncherItem, DataSource, BannedItem } from '../types';
+import { LauncherItem, DataSource, BannedItem, SnippetsConfig } from '../types';
 import { MaterialIcon } from './MaterialIcon';
 import { getDynamicSnippets } from '../utils/snippets';
 import { removeDiacritics } from '../utils/text';
@@ -9,7 +9,7 @@ interface SearchItemsViewerModalProps {
   onClose: () => void;
   items: LauncherItem[];
   sources?: DataSource[];
-  snippetsConfig?: { signature?: string };
+  snippetsConfig?: SnippetsConfig;
   banlist?: BannedItem[];
   onBanItem?: (item: LauncherItem) => void;
   onUnbanItem?: (banned: BannedItem) => void;
@@ -274,11 +274,11 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                     {filterQuery ? `${filteredSubCount} z ${totalSubCount}` : totalSubCount} subpoložek
                   </span>
                   {totalGitCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-purple-500/15 text-purple-300 border border-purple-500/25">
+                    <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
                       {filterQuery ? `${filteredGitCount} z ${totalGitCount}` : totalGitCount} z Gitu
                     </span>
                   )}
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
+                  <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-white/10 text-white border border-white/20">
                     {filterQuery ? `${filteredIndexedAll} celkem` : `${totalIndexedAll} celkem`}
                   </span>
                 </div>
@@ -509,6 +509,13 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                               icon={item.icon}
                               image={item.image}
                               location={item.location}
+                              colorClass={
+                                item.settings === 'git' || item.sourceId === 'github'
+                                  ? 'text-emerald-400'
+                                  : item.settings === 'magicgate' || item.sourceId === 'magicgate-xml'
+                                  ? 'text-amber-400'
+                                  : undefined
+                              }
                               fallbackIcon={
                                 item.sourceId === 'snippet'
                                   ? 'content_paste'
@@ -560,7 +567,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                             )}
 
                             {item.settings === 'git' && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30 select-none flex items-center gap-1">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 select-none flex items-center gap-1">
                                 {(item.actions?.length || (item.info && Object.keys(item.info).length > 0)) && (
                                   <span className="material-symbols-outlined text-[11px] leading-none">
                                     {item.actions?.length ? 'bolt' : 'info'}

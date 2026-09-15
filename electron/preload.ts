@@ -15,8 +15,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('open-external', url),
   openPath: (path: string): Promise<void> => ipcRenderer.invoke('open-path', path),
   hideWindow: (): Promise<void> => ipcRenderer.invoke('hide-window'),
+  resetAndHideSpotlight: (): Promise<void> => ipcRenderer.invoke('reset-and-hide-spotlight'),
   openSettingsWindow: (): Promise<void> => ipcRenderer.invoke('open-settings-window'),
-  openGitCloneWindow: (params: { repoName: string; repoUrl: string; initialRecursive?: boolean }): Promise<void> =>
+  openGitCloneWindow: (params: { repoName: string; repoUrl?: string; initialRecursive?: boolean; isInstanceMode?: boolean; adminUrl?: string; targetDir?: string }): Promise<void> =>
     ipcRenderer.invoke('open-git-clone-window', params),
   checkUpdate: (): Promise<UpdateInfo> => ipcRenderer.invoke('check-update'),
   downloadUpdate: (downloadUrl: string): Promise<string> => ipcRenderer.invoke('download-update', downloadUrl),
@@ -32,6 +33,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('open-in-vscode', folderPath),
   selectVscodePath: (): Promise<string | null> => ipcRenderer.invoke('select-vscode-path'),
   detectVscodePath: (): Promise<string | null> => ipcRenderer.invoke('detect-vscode-path'),
+  openInAndroidStudio: (folderPath: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('open-in-android-studio', folderPath),
+  selectAndroidStudioPath: (): Promise<string | null> => ipcRenderer.invoke('select-android-studio-path'),
+  detectAndroidStudioPath: (): Promise<string | null> => ipcRenderer.invoke('detect-android-studio-path'),
+  isAndroidProject: (folderPath: string): Promise<boolean> => ipcRenderer.invoke('is-android-project', folderPath),
   getExistingClonedRepos: (baseDir?: string): Promise<string[]> => ipcRenderer.invoke('get-existing-cloned-repos', baseDir),
   fetchInstanceRepos: (adminUrl: string): Promise<{ ok: boolean; repos: any[]; rawJson?: string; error?: string }> =>
     ipcRenderer.invoke('magicgate-get-repos', { adminUrl }),
@@ -108,5 +114,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = () => callback();
     ipcRenderer.on('focus-input', handler);
     return () => ipcRenderer.removeListener('focus-input', handler);
+  },
+
+  onResetSpotlight: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('reset-spotlight', handler);
+    return () => ipcRenderer.removeListener('reset-spotlight', handler);
   },
 });

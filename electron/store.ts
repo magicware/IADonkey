@@ -33,11 +33,15 @@ const DEFAULT_CONFIG: AppConfig = {
   vscode: {
     path: '',
   },
+  androidStudio: {
+    path: '',
+  },
   extensions: {
     magicgate: false,
     mlog: false,
     github: false,
     vscode: false,
+    androidStudio: false,
   },
   updateUrl: 'https://raw.githubusercontent.com/magicware/IADonkey/main/version.json',
   lastDeclinedVersion: null,

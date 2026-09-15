@@ -194,13 +194,6 @@ export async function fetchGitHubRepos(settings: GithubSettings): Promise<Launch
       shortcuts: [repo.name, repo.full_name],
       actions: [
         {
-          name: 'Otevřít na GitHubu',
-          action: 'open',
-          location: repo.html_url,
-          icon: 'open_in_new',
-          settings: 'git',
-        },
-        {
           name: 'Klonovat repozitář (git clone)...',
           action: 'clone',
           location: repo.clone_url,
@@ -208,10 +201,10 @@ export async function fetchGitHubRepos(settings: GithubSettings): Promise<Launch
           settings: 'git',
         },
         {
-          name: 'Klonovat rekurzivně (git clone --recursive)...',
-          action: 'clonerecursive',
-          location: repo.clone_url,
-          icon: 'folder_zip',
+          name: 'Otevřít na GitHubu',
+          action: 'open',
+          location: repo.html_url,
+          icon: 'open_in_new',
           settings: 'git',
         },
       ],

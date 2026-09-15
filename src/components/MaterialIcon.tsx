@@ -7,6 +7,7 @@ interface MaterialIconProps {
   className?: string;
   fallbackIcon?: string;
   size?: number | string;
+  colorClass?: string;
 }
 
 function getOrigin(url?: string | null): string | null {
@@ -28,6 +29,7 @@ export const MaterialIcon: React.FC<MaterialIconProps> = ({
   className = 'w-6 h-6',
   fallbackIcon = 'code',
   size,
+  colorClass,
 }) => {
   const [imgError, setImgError] = useState(false);
   const isFaviconPlaceholder = image === '{favicon}';
@@ -97,7 +99,7 @@ export const MaterialIcon: React.FC<MaterialIconProps> = ({
 
   return (
     <span
-      className={`material-symbols-outlined select-none text-indigo-400 ${className} !flex items-center justify-center text-center leading-none shrink-0 m-auto`}
+      className={`material-symbols-outlined select-none ${colorClass || 'text-indigo-400'} ${className} !flex items-center justify-center text-center leading-none shrink-0 m-auto`}
       style={{
         fontSize: effectiveFontSize,
         display: 'flex',

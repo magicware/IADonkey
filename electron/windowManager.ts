@@ -20,10 +20,16 @@ export class WindowManager {
   private tray: Tray | null = null;
   private isQuitting = false;
   private lastShowTime = 0;
+  private shouldRestoreSpotlightOnCloneClose = true;
+
+  public setSkipSpotlightRestoreOnCloneClose(skip: boolean): void {
+    this.shouldRestoreSpotlightOnCloneClose = !skip;
+  }
 
   constructor(
     private onSyncRequest: () => void,
-    private onSettingsRequest: () => void
+    private onSettingsRequest: () => void,
+    private getConfig?: () => any
   ) {}
 
   public createMainWindow(): BrowserWindow {
@@ -221,10 +227,19 @@ export class WindowManager {
     initialRecursive?: boolean;
     isInstanceMode?: boolean;
     adminUrl?: string;
+    repoLanguage?: string;
   }): BrowserWindow {
     const isRecursive = Boolean(params.initialRecursive);
     const isInstanceMode = Boolean(params.isInstanceMode);
     const adminUrl = params.adminUrl || '';
+    const repoLanguage = params.repoLanguage || '';
+
+    const appConfig = this.getConfig ? this.getConfig() : null;
+    const baseDir = appConfig?.github?.defaultCloneDir || '';
+    let targetDir = baseDir;
+    if (isInstanceMode && params.repoName && baseDir) {
+      targetDir = `${baseDir.replace(/[\\/]+$/, '')}\\magicgate\\${params.repoName}`;
+    }
 
     const query = new URLSearchParams({
       name: params.repoName || '',
@@ -232,6 +247,8 @@ export class WindowManager {
       recursive: isRecursive ? '1' : '0',
       isInstanceMode: isInstanceMode ? '1' : '0',
       adminUrl,
+      targetDir,
+      repoLanguage,
     }).toString();
 
     const payload = {
@@ -241,6 +258,8 @@ export class WindowManager {
       initialRecursive: isRecursive,
       isInstanceMode,
       adminUrl,
+      targetDir,
+      repoLanguage,
     };
 
     if (this.gitCloneWindow && !this.gitCloneWindow.isDestroyed()) {
@@ -293,9 +312,17 @@ export class WindowManager {
 
     this.gitCloneWindow.on('closed', () => {
       this.gitCloneWindow = null;
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        this.showSpotlight();
-        this.mainWindow.webContents.send('focus-input');
+      if (this.shouldRestoreSpotlightOnCloneClose) {
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.showSpotlight();
+          this.mainWindow.webContents.send('focus-input');
+        }
+      } else {
+        this.shouldRestoreSpotlightOnCloneClose = true;
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.hideSpotlight();
+          this.mainWindow.webContents.send('reset-spotlight');
+        }
       }
     });
 

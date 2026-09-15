@@ -14,6 +14,7 @@ declare global {
       openExternal: (url: string) => Promise<void>;
       openPath: (path: string) => Promise<void>;
       hideWindow: () => void;
+      resetAndHideSpotlight: () => Promise<void>;
       openSettingsWindow: () => Promise<void>;
       openGitCloneWindow: (params: {
         repoName: string;
@@ -21,6 +22,7 @@ declare global {
         initialRecursive?: boolean;
         isInstanceMode?: boolean;
         adminUrl?: string;
+        repoLanguage?: string;
       }) => Promise<void>;
       checkUpdate: () => Promise<UpdateInfo>;
       downloadUpdate: (url: string) => Promise<string>;
@@ -46,6 +48,10 @@ declare global {
       openInVscode: (folderPath: string) => Promise<{ success: boolean; error?: string }>;
       selectVscodePath: () => Promise<string | null>;
       detectVscodePath: () => Promise<string | null>;
+      openInAndroidStudio: (folderPath: string) => Promise<{ success: boolean; error?: string }>;
+      selectAndroidStudioPath: () => Promise<string | null>;
+      detectAndroidStudioPath: () => Promise<string | null>;
+      isAndroidProject: (folderPath: string) => Promise<boolean>;
       getExistingClonedRepos: (baseDir?: string) => Promise<string[]>;
       fetchInstanceRepos: (adminUrl: string) => Promise<{
         ok: boolean;
@@ -59,7 +65,12 @@ declare global {
         rawJson?: string;
         error?: string;
       }>;
-      runMultiRepoClone: (params: { repos: any[]; targetDir: string; recursive?: boolean; rawJson?: string }) => Promise<{
+      runMultiRepoClone: (params: {
+        repos: Array<{ sectionId: number; manifestPath: string; repoUrl: string; targetSubdir: string }>;
+        targetDir: string;
+        recursive?: boolean;
+        rawJson?: string;
+      }) => Promise<{
         success: boolean;
         targetPath: string;
         error?: string;
@@ -73,6 +84,7 @@ declare global {
         initialRecursive?: boolean;
         isInstanceMode?: boolean;
         adminUrl?: string;
+        repoLanguage?: string;
       }) => void) => () => void;
       onDataUpdated: (callback: (items: LauncherItem[]) => void) => () => void;
       onConfigUpdated: (callback: (config: AppConfig) => void) => () => void;
@@ -85,6 +97,7 @@ declare global {
       getSearchEngineFavicons: () => Promise<Record<string, string>>;
       onSearchEngineFaviconsUpdated: (callback: (favicons: Record<string, string>) => void) => () => void;
       onFocusInput: (callback: () => void) => () => void;
+      onResetSpotlight: (callback: () => void) => () => void;
     };
   }
 }

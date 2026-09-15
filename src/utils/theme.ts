@@ -219,11 +219,24 @@ export function applyActionsColor(hexColor?: string) {
     .text-purple-400\\/90 {
       color: ${hexLighter} !important;
     }
+    .text-purple-300\\/85 {
+      color: rgba(${rLighter}, ${gLighter}, ${bLighter}, 0.85) !important;
+    }
 
     /* Borders */
     .border-purple-500,
     .border-purple-400 {
       border-color: ${fullHex} !important;
+    }
+    .focus\\:border-purple-500:focus,
+    .focus\\:border-purple-500\\/60:focus {
+      border-color: ${fullHex} !important;
+    }
+
+    /* Form controls */
+    input.text-purple-500,
+    .text-purple-500 {
+      color: ${fullHex} !important;
     }
 
     /* Selected actions row */

@@ -381,6 +381,12 @@ function setupIpcHandlers() {
     windowManager.hideImmediately();
   });
 
+  ipcMain.handle('reset-and-hide-spotlight', () => {
+    windowManager.setSkipSpotlightRestoreOnCloneClose(true);
+    windowManager.hideImmediately();
+    windowManager.getMainWindow()?.webContents.send('reset-spotlight');
+  });
+
   ipcMain.handle('check-update', async () => {
     return await updateChecker.checkForUpdates(true);
   });
@@ -423,6 +429,36 @@ function setupIpcHandlers() {
     return detectDefaultVscodePath();
   });
 
+  ipcMain.handle('open-in-android-studio', async (_event, folderPath: string) => {
+    if (!folderPath) {
+      return { success: false, error: 'Chybí cesta ke složce.' };
+    }
+    return await openPathInAndroidStudio(folderPath);
+  });
+
+  ipcMain.handle('select-android-studio-path', async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'Vyberte spustitelný soubor Android Studio (studio64.exe)',
+      properties: ['openFile'],
+      filters: [
+        { name: 'Spustitelné soubory (*.exe, *.bat, *.cmd)', extensions: ['exe', 'bat', 'cmd'] },
+        { name: 'Všechny soubory', extensions: ['*'] },
+      ],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+    return result.filePaths[0];
+  });
+
+  ipcMain.handle('detect-android-studio-path', () => {
+    return detectDefaultAndroidStudioPath();
+  });
+
+  ipcMain.handle('is-android-project', (_event, folderPath: string) => {
+    return isAndroidProjectFolder(folderPath);
+  });
+
   ipcMain.handle('get-existing-cloned-repos', (_event, baseDir?: string) => {
     const config = store.getConfig();
     const targetDir = baseDir?.trim() || config.github?.defaultCloneDir?.trim();
@@ -430,20 +466,45 @@ function setupIpcHandlers() {
       return [];
     }
     try {
+      const repoNames = new Set<string>();
+
+      // 1. Direct subdirectories of targetDir (standard GitHub / git repositories)
       const entries = fs.readdirSync(targetDir, { withFileTypes: true });
-      const repoNames: string[] = [];
       for (const entry of entries) {
         if (entry.isDirectory()) {
           const subPath = path.join(targetDir, entry.name);
           try {
             const subEntries = fs.readdirSync(subPath);
             if (subEntries.length > 0) {
-              repoNames.push(entry.name.toLowerCase());
+              repoNames.add(entry.name.toLowerCase());
             }
           } catch {}
         }
       }
-      return repoNames;
+
+      // 2. Subdirectories of targetDir/magicgate (MagicGate instances)
+      const mgDir = path.join(targetDir, 'magicgate');
+      if (fs.existsSync(mgDir)) {
+        try {
+          const mgStat = fs.statSync(mgDir);
+          if (mgStat.isDirectory()) {
+            const mgEntries = fs.readdirSync(mgDir, { withFileTypes: true });
+            for (const mgEntry of mgEntries) {
+              if (mgEntry.isDirectory()) {
+                const mgSubPath = path.join(mgDir, mgEntry.name);
+                try {
+                  const subEntries = fs.readdirSync(mgSubPath);
+                  if (subEntries.length > 0) {
+                    repoNames.add(`magicgate/${mgEntry.name.toLowerCase()}`);
+                  }
+                } catch {}
+              }
+            }
+          }
+        } catch {}
+      }
+
+      return Array.from(repoNames);
     } catch (err) {
       console.warn('[Main] Error reading existing cloned repos:', err);
       return [];
@@ -514,6 +575,114 @@ async function openPathInVscode(folderPath: string): Promise<{ success: boolean;
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Nepodařilo se spustit VS Code.' };
+  }
+}
+
+function detectDefaultAndroidStudioPath(): string | null {
+  const localAppData = process.env.LOCALAPPDATA || '';
+  const progFiles = process.env['ProgramFiles'] || 'C:\\Program Files';
+  const progFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+
+  const candidates = [
+    path.join(progFiles, 'Android', 'Android Studio', 'bin', 'studio64.exe'),
+    path.join(localAppData, 'Programs', 'Android Studio', 'bin', 'studio64.exe'),
+    path.join(progFilesX86, 'Android', 'Android Studio', 'bin', 'studio64.exe'),
+    path.join(progFiles, 'Google', 'Android Studio', 'bin', 'studio64.exe'),
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate && fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  // Check JetBrains Toolbox apps directory for Android Studio
+  try {
+    const toolboxDir = path.join(localAppData, 'JetBrains', 'Toolbox', 'apps', 'AndroidStudio', 'ch-0');
+    if (fs.existsSync(toolboxDir)) {
+      const versions = fs.readdirSync(toolboxDir);
+      for (const ver of versions) {
+        const candidate = path.join(toolboxDir, ver, 'bin', 'studio64.exe');
+        if (fs.existsSync(candidate)) {
+          return candidate;
+        }
+      }
+    }
+  } catch {}
+
+  // Check if 'studio64.exe' or 'studio.bat' is available in PATH
+  try {
+    const checkExe = spawnSync('where', ['studio64.exe'], { windowsHide: true, encoding: 'utf-8' });
+    if (checkExe.status === 0 && checkExe.stdout) {
+      const firstLine = checkExe.stdout.split(/\r?\n/)[0]?.trim();
+      if (firstLine && fs.existsSync(firstLine)) {
+        return firstLine;
+      }
+    }
+    const checkBat = spawnSync('where', ['studio.bat'], { windowsHide: true, encoding: 'utf-8' });
+    if (checkBat.status === 0 && checkBat.stdout) {
+      const firstLine = checkBat.stdout.split(/\r?\n/)[0]?.trim();
+      if (firstLine && fs.existsSync(firstLine)) {
+        return firstLine;
+      }
+    }
+  } catch {}
+
+  return null;
+}
+
+async function openPathInAndroidStudio(folderPath: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const config = store.getConfig();
+    let studioExe = config.androidStudio?.path?.trim();
+
+    if (!studioExe || !fs.existsSync(studioExe)) {
+      const detected = detectDefaultAndroidStudioPath();
+      if (detected) {
+        studioExe = detected;
+      }
+    }
+
+    if (studioExe && fs.existsSync(studioExe)) {
+      const child = spawn(`"${studioExe}"`, [`"${folderPath}"`], {
+        shell: true,
+        detached: true,
+        windowsHide: true,
+      });
+      child.unref();
+      return { success: true };
+    }
+
+    // Fallback: spawn studio64 directly via shell
+    const child = spawn('studio64', [`"${folderPath}"`], {
+      shell: true,
+      detached: true,
+      windowsHide: true,
+    });
+    child.unref();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Nepodařilo se spustit Android Studio.' };
+  }
+}
+
+function isAndroidProjectFolder(folderPath: string): boolean {
+  if (!folderPath) return false;
+  try {
+    if (!fs.existsSync(folderPath)) return false;
+    const markers = [
+      path.join(folderPath, 'build.gradle'),
+      path.join(folderPath, 'build.gradle.kts'),
+      path.join(folderPath, 'settings.gradle'),
+      path.join(folderPath, 'settings.gradle.kts'),
+      path.join(folderPath, 'app', 'build.gradle'),
+      path.join(folderPath, 'app', 'build.gradle.kts'),
+      path.join(folderPath, 'app', 'src', 'main', 'AndroidManifest.xml'),
+      path.join(folderPath, 'AndroidManifest.xml'),
+    ];
+    return markers.some((m) => fs.existsSync(m));
+  } catch {
+    return false;
   }
 }
 
@@ -625,7 +794,9 @@ app.whenReady().then(() => {
     // onSettingsRequest from Tray
     () => {
       windowManager.getMainWindow()?.webContents.send('open-settings');
-    }
+    },
+    // getConfig callback
+    () => store.getConfig()
   );
 
   windowManager.createMainWindow();

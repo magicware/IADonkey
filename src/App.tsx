@@ -56,22 +56,26 @@ export const App: React.FC = () => {
         recursive: sp.get('recursive') === '1' || sp.get('recursive') === 'true',
         isInstanceMode: sp.get('isInstanceMode') === '1' || sp.get('isInstanceMode') === 'true',
         adminUrl: sp.get('adminUrl') || '',
+        targetDir: sp.get('targetDir') || '',
+        repoLanguage: sp.get('repoLanguage') || '',
       };
     }
     const search = window.location.search;
     if (search) {
       const sp = new URLSearchParams(search);
-      if (sp.has('recursive') || sp.has('name') || sp.has('isInstanceMode')) {
+      if (sp.has('recursive') || sp.has('name') || sp.has('isInstanceMode') || sp.has('targetDir')) {
         return {
           repoName: sp.get('name') || '',
           repoUrl: sp.get('url') || '',
           recursive: sp.get('recursive') === '1' || sp.get('recursive') === 'true',
           isInstanceMode: sp.get('isInstanceMode') === '1' || sp.get('isInstanceMode') === 'true',
           adminUrl: sp.get('adminUrl') || '',
+          targetDir: sp.get('targetDir') || '',
+          repoLanguage: sp.get('repoLanguage') || '',
         };
       }
     }
-    return { repoName: '', repoUrl: '', recursive: false, isInstanceMode: false, adminUrl: '' };
+    return { repoName: '', repoUrl: '', recursive: false, isInstanceMode: false, adminUrl: '', targetDir: '', repoLanguage: '' };
   });
 
   const [items, setItems] = useState<LauncherItem[]>([]);
@@ -105,6 +109,8 @@ export const App: React.FC = () => {
           recursive: Boolean(params.recursive ?? params.initialRecursive),
           isInstanceMode: Boolean(params.isInstanceMode),
           adminUrl: params.adminUrl || '',
+          targetDir: params.targetDir || '',
+          repoLanguage: params.repoLanguage || '',
         });
       });
       return () => unsubscribe();
@@ -292,9 +298,10 @@ export const App: React.FC = () => {
   if (isGitCloneView) {
     const baseCloneDir = config.github?.defaultCloneDir || '';
     const initialTargetDir =
-      gitCloneParams.isInstanceMode && baseCloneDir && gitCloneParams.repoName
-        ? `${baseCloneDir.replace(/[\\/]+$/, '')}\\${gitCloneParams.repoName}`
-        : baseCloneDir;
+      gitCloneParams.targetDir ||
+      (gitCloneParams.isInstanceMode && baseCloneDir && gitCloneParams.repoName
+        ? `${baseCloneDir.replace(/[\\/]+$/, '')}\\magicgate\\${gitCloneParams.repoName}`
+        : baseCloneDir);
 
     return (
       <GitCloneModal
@@ -308,6 +315,8 @@ export const App: React.FC = () => {
         isInstanceMode={gitCloneParams.isInstanceMode}
         adminUrl={gitCloneParams.adminUrl}
         vscodeEnabled={config.extensions?.vscode ?? false}
+        androidStudioEnabled={config.extensions?.androidStudio ?? false}
+        repoLanguage={gitCloneParams.repoLanguage}
       />
     );
   }
@@ -343,6 +352,7 @@ export const App: React.FC = () => {
         defaultSearchEngine={config.defaultSearchEngine}
         defaultCloneDir={config?.github?.defaultCloneDir}
         vscodeEnabled={config.extensions?.vscode ?? false}
+        androidStudioEnabled={config.extensions?.androidStudio ?? false}
         onOpenSettings={() => {
           if (window.electronAPI?.openSettingsWindow) {
             window.electronAPI.openSettingsWindow();

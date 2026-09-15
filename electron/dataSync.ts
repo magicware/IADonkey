@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import type { DataSource, FileSource, ApiSource, LauncherItem, SourceFieldMapping, BannedItem } from '../src/types';
+import type { DataSource, FileSource, ApiSource, StaticSource, LauncherItem, SourceFieldMapping, BannedItem } from '../src/types';
 import { AppStore } from './store';
 import { loadMagicGateXml } from './magicGateXml';
 import { fetchGitHubRepos } from './githubService';
@@ -90,6 +90,8 @@ export class DataSyncManager {
           items = await this.syncFileSource(src as FileSource);
         } else if (src.type === 'api') {
           items = await this.syncApiSource(src as ApiSource);
+        } else if (src.type === 'static') {
+          items = this.syncStaticSource(src as StaticSource);
         }
 
         // Tag items with source reference and apply mapping if configured
@@ -444,5 +446,23 @@ export class DataSyncManager {
       actions: rawActions && rawActions.length > 0 ? rawActions : undefined,
       info: rawInfo && Object.keys(rawInfo).length > 0 ? rawInfo : undefined,
     };
+  }
+
+  /**
+   * Processes a static data source, merging shared parameters into each item.
+   */
+  private syncStaticSource(src: StaticSource): LauncherItem[] {
+    const rawItems = src.items || [];
+    const shared = src.sharedParams || {};
+
+    return rawItems.map((raw) => {
+      const merged: any = { ...raw };
+      for (const [k, v] of Object.entries(shared)) {
+        if (v !== undefined && v !== '' && (merged[k] === undefined || merged[k] === '' || merged[k] === null)) {
+          merged[k] = k === 'priority' ? Number(v) : v;
+        }
+      }
+      return merged as LauncherItem;
+    });
   }
 }
