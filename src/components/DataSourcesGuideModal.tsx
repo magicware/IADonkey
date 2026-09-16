@@ -181,10 +181,10 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer self-center shrink-0 flex items-center justify-center"
             title="Zavřít (Esc)"
           >
-            <span className="material-symbols-outlined text-lg">close</span>
+            <span className="material-symbols-outlined text-lg leading-none select-none">close</span>
           </button>
         </div>
 
@@ -503,10 +503,10 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
 
               {/* Snippet 3 */}
               {githubEnabled && (
-                <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-2.5">
+                <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2.5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h5 className="font-bold text-white text-xs">3. Git repozitář se systémovou integrací</h5>
+                      <h5 className="font-bold text-emerald-300 text-xs">3. Git repozitář se systémovou integrací</h5>
                       <p className="text-gray-400 text-[11px]">Díky "settings": "git" automaticky získá akce pro klonování i otevření na GitHubu.</p>
                     </div>
                     <button
@@ -520,7 +520,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                       <span>{copiedSnippetId === 'git' ? 'Zkopírováno!' : 'Kopírovat snippet'}</span>
                     </button>
                   </div>
-                  <pre className="p-3 bg-black/40 border border-white/5 rounded-lg font-mono text-[11px] text-gray-300 overflow-x-auto">
+                  <pre className="p-3 bg-black/40 border border-emerald-500/15 rounded-lg font-mono text-[11px] text-gray-300 overflow-x-auto">
                     {SNIPPET_GIT}
                   </pre>
                 </div>
@@ -588,10 +588,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                   <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1">
                     <span className="font-semibold text-white">3. Automatická metadata (info)</span>
                     <p className="text-gray-400 leading-relaxed">
-                      Z XML se do informačního panelu položky automaticky vytáhnou atributy:
-                      <span className="block font-mono text-amber-300 mt-1">
-                        Server, Instance, DB Server, Umístění serveru, Provider, MLog Požadavek (R...), Root Path, FTP, Zálohy
-                      </span>
+                      Z XML se do informačního panelu položky (<kbd className="px-1 py-0.2 bg-white/10 rounded font-mono text-[10px]">Shift+Enter</kbd>) automaticky načítají <strong>všechny dostupné XML atributy a parametry</strong> daného serveru i instance (např. Server, Instance, DB Server, Umístění serveru, Provider, MLog Požadavek, Root Path, FTP, Zálohy a další). Veškerá tato metadata lze jedním kliknutím zkopírovat do schránky a slouží také pro vyhledávání.
                     </p>
                   </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { AppConfig, DataSource, FileSource, ApiSource, StaticSource, LauncherItem, SyncProgress, UpdateInfo, SourceFieldMapping, MappingTargetKey, BannedItem } from '../types';
+import { AppConfig, DataSource, FileSource, ApiSource, StaticSource, LauncherItem, SyncProgress, UpdateInfo, SourceFieldMapping, MappingTargetKey, BannedItem, CustomSnippet } from '../types';
 import { applyPrimaryColor, applyActionsColor, APP_COLOR_PRESETS } from '../utils/theme';
 import { formatLastSyncDate } from '../utils/dateHelper';
 import { CURRENT_APP_VERSION } from '../changelog';
@@ -8,6 +8,8 @@ import { SearchItemsViewerModal } from './SearchItemsViewerModal';
 import { DataSourcesGuideModal } from './DataSourcesGuideModal';
 import { SEARCH_ENGINES } from '../constants/searchEngines';
 import { getDynamicSnippets } from '../utils/snippets';
+import { MaterialIcon } from './MaterialIcon';
+import { IconPickerInput } from './IconPickerInput';
 
 interface SettingsModalProps {
   config: AppConfig;
@@ -95,6 +97,41 @@ const ColorPickerSection: React.FC<ColorPickerSectionProps> = ({
   );
 };
 
+/**
+ * Rezervované klávesové zkratky z nápovědy a systému IADonkey.
+ * Tyto zkratky nelze použít pro globální vyvolání z důvodu kolize s ovládáním.
+ */
+const RESERVED_HOTKEYS: Record<string, string> = {
+  'Shift+Enter': 'zkratka je v aplikaci vyhrazena pro otevření akcí položky',
+  'Alt+Enter': 'zkratka je v aplikaci vyhrazena pro vstup do podpoložek',
+  'Ctrl+Enter': 'zkratka je v aplikaci vyhrazena pro rychlé spuštění první volby',
+  'Ctrl+Backspace': 'zkratka je v aplikaci vyhrazena pro rychlé smazání hledaného textu',
+  'Alt+Backspace': 'zkratka je v aplikaci vyhrazena pro rychlé smazání hledaného textu',
+  'Ctrl+Alt+Backspace': 'zkratka je v aplikaci vyhrazena pro smazání hledaného textu',
+  'Ctrl+Left': 'šipky jsou v aplikaci vyhrazeny pro listování v informacích položky',
+  'Ctrl+Right': 'šipky jsou v aplikaci vyhrazeny pro listování v informacích položky',
+  'Alt+Left': 'šipky jsou v aplikaci vyhrazeny pro listování v informacích položky',
+  'Alt+Right': 'šipky jsou v aplikaci vyhrazeny pro listování v informacích položky',
+  'Ctrl+Up': 'šipky jsou v aplikaci vyhrazeny pro pohyb ve výsledcích vyhledávání',
+  'Ctrl+Down': 'šipky jsou v aplikaci vyhrazeny pro pohyb ve výsledcích vyhledávání',
+  'Alt+Up': 'šipky jsou v aplikaci vyhrazeny pro pohyb ve výsledcích vyhledávání',
+  'Alt+Down': 'šipky jsou v aplikaci vyhrazeny pro pohyb ve výsledcích vyhledávání',
+  'Ctrl+Escape': 'kombinace s klávesou Escape nelze použít (Escape slouží k zavírání)',
+  'Alt+Escape': 'kombinace s klávesou Escape nelze použít (Escape slouží k zavírání)',
+  'Shift+Escape': 'kombinace s klávesou Escape nelze použít (Escape slouží k zavírání)',
+};
+
+function getReservedHotkeyCollision(combo: string[]): string | null {
+  const hotkey = combo.join('+');
+  if (RESERVED_HOTKEYS[hotkey]) {
+    return RESERVED_HOTKEYS[hotkey];
+  }
+  if (combo.includes('Escape')) {
+    return 'kombinace s klávesou Escape nelze použít (Escape slouží k zavírání)';
+  }
+  return null;
+}
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   config,
   items,
@@ -107,7 +144,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   updateStatusMessage,
   updateInfo,
 }) => {
-  const [activeTab, setActiveTab] = useState<'sources' | 'extensions' | 'magicgate' | 'mlog' | 'github' | 'vscode' | 'android-studio' | 'general' | 'updates' | 'help'>('sources');
+  const [activeTab, setActiveTab] = useState<'sources' | 'extensions' | 'magicgate' | 'mlog' | 'github' | 'vscode' | 'android-studio' | 'snippets' | 'general' | 'updates' | 'help'>('sources');
   const [formData, setFormData] = useState<AppConfig>(config);
   const [editingSource, setEditingSource] = useState<DataSource | null>(null);
   const [isAddingSource, setIsAddingSource] = useState<'file' | 'api' | 'static' | null>(null);
@@ -137,6 +174,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const pressedKeysRef = useRef<Set<string>>(new Set());
   const maxComboRef = useRef<string[]>([]);
   const originalHotkeyRef = useRef<string>(config.hotkey || 'Ctrl+Alt+Space');
+  const contentRef = useRef<HTMLDivElement>(null);
+  const importSnippetsFileRef = useRef<HTMLInputElement>(null);
+  const [snippetFeedback, setSnippetFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    if (snippetFeedback) {
+      const timer = setTimeout(() => setSnippetFeedback(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [snippetFeedback]);
 
   const activeExtensionsCount = useMemo(() => {
     let count = 0;
@@ -171,16 +218,368 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
-  // Compute indexed search items counts (main items, subitems, dynamic system snippets, and total)
-  const { mainItemsCount, subItemsCount, snippetsCount, totalIndexedCount } = useMemo(() => {
-    const mainCount = items.length;
+  const [isDownloadingIcons, setIsDownloadingIcons] = useState(false);
+  const [downloadIconsResult, setDownloadIconsResult] = useState<{
+    ok: boolean;
+    count?: number;
+    downloadedAt?: string;
+    error?: string;
+  } | null>(null);
+
+  const handleDownloadIcons = async () => {
+    setIsDownloadingIcons(true);
+    setDownloadIconsResult(null);
+    try {
+      if (window.electronAPI?.downloadMaterialIcons) {
+        const res = await window.electronAPI.downloadMaterialIcons();
+        if (res.success) {
+          setDownloadIconsResult({
+            ok: true,
+            count: res.count,
+            downloadedAt: res.downloadedAt,
+          });
+          const updated = {
+            ...formData,
+            iconsLastDownloadedAt: res.downloadedAt,
+            iconsCount: res.count,
+          };
+          setFormData(updated);
+          handleSave(updated);
+        } else {
+          setDownloadIconsResult({
+            ok: false,
+            error: res.error || 'Chyba při stahování ikon.',
+          });
+        }
+      } else {
+        setDownloadIconsResult({
+          ok: false,
+          error: 'Funkce není dostupná mimo aplikaci Electron.',
+        });
+      }
+    } catch (err: any) {
+      setDownloadIconsResult({
+        ok: false,
+        error: err?.message || 'Chyba při stahování ikon.',
+      });
+    } finally {
+      setIsDownloadingIcons(false);
+    }
+  };
+
+  // Synchronization progress & smooth 2s minimum animation state
+  const [syncPhase, setSyncPhase] = useState<'idle' | 'syncing' | 'success'>('idle');
+  const [visualProgress, setVisualProgress] = useState(0);
+  const syncStartTimeRef = useRef<number | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (isSyncing) {
+      if (syncPhase !== 'syncing') {
+        setSyncPhase('syncing');
+        syncStartTimeRef.current = Date.now();
+        setVisualProgress(5);
+      }
+    }
+  }, [isSyncing, syncPhase]);
+
+  useEffect(() => {
+    if (syncPhase !== 'syncing') {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+      return;
+    }
+
+    const MIN_SYNC_DURATION_MS = 2000;
+
+    const tick = () => {
+      const now = Date.now();
+      const startTime = syncStartTimeRef.current || now;
+      const elapsed = now - startTime;
+
+      if (isSyncing) {
+        // While backend is still syncing:
+        // Progress smoothly advances towards either real percentage or up to 88% over MIN_SYNC_DURATION_MS
+        const realPercent = syncProgress?.percentage ?? 0;
+        const timePercent = Math.min((elapsed / MIN_SYNC_DURATION_MS) * 85, 88);
+        const targetPercent = Math.max(realPercent, timePercent, 8);
+
+        setVisualProgress((prev) => {
+          const step = Math.max((targetPercent - prev) * 0.15, 0.5);
+          return Math.min(prev + step, targetPercent);
+        });
+
+        animFrameRef.current = requestAnimationFrame(tick);
+      } else {
+        // Backend finished: ensure minimum MIN_SYNC_DURATION_MS elapsed time
+        if (elapsed < MIN_SYNC_DURATION_MS) {
+          const remainingTime = MIN_SYNC_DURATION_MS - elapsed;
+          setVisualProgress((prev) => {
+            const step = Math.max((100 - prev) / (remainingTime / 16), 0.8);
+            return Math.min(prev + step, 99);
+          });
+          animFrameRef.current = requestAnimationFrame(tick);
+        } else {
+          // Both backend finished and minimum duration elapsed
+          setVisualProgress(100);
+          setSyncPhase('success');
+        }
+      }
+    };
+
+    animFrameRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+    };
+  }, [syncPhase, isSyncing, syncProgress]);
+
+  // Transition from success state back to idle after 1.5s
+  useEffect(() => {
+    if (syncPhase === 'success') {
+      const timer = setTimeout(() => {
+        setSyncPhase('idle');
+        setVisualProgress(0);
+        syncStartTimeRef.current = null;
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [syncPhase]);
+
+  const handleTriggerSync = async () => {
+    if (syncPhase !== 'idle') return;
+    setSyncPhase('syncing');
+    syncStartTimeRef.current = Date.now();
+    setVisualProgress(5);
+    await onTriggerSync();
+  };
+
+  const handleAddCustomSnippet = () => {
+    const newSnippet: CustomSnippet = {
+      id: `cs-${Date.now()}`,
+      name: '',
+      location: '',
+      icon: 'content_paste',
+      shortcuts: [],
+    };
+    const currentCustom = formData.snippets?.custom || [];
+    const updated = {
+      ...formData,
+      snippets: {
+        ...formData.snippets,
+        custom: [newSnippet, ...currentCustom],
+      },
+    };
+    setFormData(updated);
+    handleSave(updated);
+  };
+
+  const handleExportCustomSnippets = () => {
+    const list = formData.snippets?.custom || [];
+    if (list.length === 0) return;
+
+    // Clean export objects without internal id
+    const exportData = list.map((snip) => ({
+      name: snip.name || '',
+      location: snip.location || '',
+      icon: snip.icon || 'content_paste',
+      shortcuts: (snip.shortcuts || []).map((s) => (s.startsWith(':') ? s : `:${s}`)),
+    }));
+
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const dateStr = new Date().toISOString().slice(0, 10);
+    a.download = `iadonkey_snippety_${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportCustomSnippets = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const parsed = JSON.parse(text);
+
+        // Normalize raw items: could be an array, or an object wrapping custom/snippets/items
+        let rawList: any[] = [];
+        if (Array.isArray(parsed)) {
+          rawList = parsed;
+        } else if (parsed && typeof parsed === 'object') {
+          if (Array.isArray(parsed.custom)) {
+            rawList = parsed.custom;
+          } else if (Array.isArray(parsed.snippets)) {
+            rawList = parsed.snippets;
+          } else if (Array.isArray(parsed.items)) {
+            rawList = parsed.items;
+          }
+        }
+
+        if (!rawList || rawList.length === 0) {
+          setSnippetFeedback({
+            type: 'error',
+            message: 'Vybraný soubor neobsahuje žádné platné položky snippetů.',
+          });
+          return;
+        }
+
+        const importedSnippets: CustomSnippet[] = [];
+        const now = Date.now();
+
+        rawList.forEach((raw, idx) => {
+          if (!raw || typeof raw !== 'object') return;
+
+          const rawName = String(raw.name || '').trim();
+          const rawLocation = String(raw.location || raw.value || raw.text || '');
+          const rawIcon = String(raw.icon || 'content_paste').trim();
+
+          let rawShortcuts: string[] = [];
+          if (Array.isArray(raw.shortcuts)) {
+            rawShortcuts = raw.shortcuts.map((s: any) => String(s).trim());
+          } else if (typeof raw.shortcut === 'string') {
+            rawShortcuts = [raw.shortcut.trim()];
+          }
+
+          // If rawName starts with colon (e.g. ":iban"), ensure it is in shortcuts
+          if (rawName.startsWith(':')) {
+            if (!rawShortcuts.includes(rawName)) {
+              rawShortcuts.unshift(rawName);
+            }
+          }
+
+          const formattedShortcuts = rawShortcuts
+            .filter(Boolean)
+            .map((s) => {
+              const clean = s.replace(/^:+/, '');
+              return clean ? `:${clean.toLowerCase()}` : '';
+            })
+            .filter((s, sIdx, arr) => s && arr.indexOf(s) === sIdx);
+
+          importedSnippets.push({
+            id: `cs-${now}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+            name: rawName || 'Importovaný snippet',
+            location: rawLocation,
+            icon: rawIcon || 'content_paste',
+            shortcuts: formattedShortcuts,
+          });
+        });
+
+        if (importedSnippets.length === 0) {
+          setSnippetFeedback({
+            type: 'error',
+            message: 'Ze souboru se nepodařilo načíst žádné snippety.',
+          });
+          return;
+        }
+
+        // Prepend imported snippets to existing ones
+        const currentCustom = formData.snippets?.custom || [];
+        const updatedCustom = [...importedSnippets, ...currentCustom];
+        const updated = {
+          ...formData,
+          snippets: {
+            ...formData.snippets,
+            custom: updatedCustom,
+          },
+        };
+
+        setFormData(updated);
+        handleSave(updated);
+        setSnippetFeedback({
+          type: 'success',
+          message: `Úspěšně importováno ${importedSnippets.length} ${
+            importedSnippets.length === 1 ? 'snippet' : importedSnippets.length < 5 ? 'snippety' : 'snippetů'
+          }.`,
+        });
+      } catch (err: any) {
+        setSnippetFeedback({
+          type: 'error',
+          message: `Chyba při čtení souboru: ${err?.message || 'Neplatný formát JSON.'}`,
+        });
+      }
+    };
+
+    reader.readAsText(file, 'utf-8');
+    e.target.value = '';
+  };
+
+  const handleUpdateCustomSnippet = (id: string, patch: Partial<CustomSnippet>) => {
+    const currentCustom = formData.snippets?.custom || [];
+    const updatedCustom = currentCustom.map((item) =>
+      item.id === id ? { ...item, ...patch } : item
+    );
+    const updated = {
+      ...formData,
+      snippets: {
+        ...formData.snippets,
+        custom: updatedCustom,
+      },
+    };
+    setFormData(updated);
+    handleSave(updated);
+  };
+
+  const handleRemoveCustomSnippet = (id: string) => {
+    const currentCustom = formData.snippets?.custom || [];
+    const updatedCustom = currentCustom.filter((item) => item.id !== id);
+    const updated = {
+      ...formData,
+      snippets: {
+        ...formData.snippets,
+        custom: updatedCustom,
+      },
+    };
+    setFormData(updated);
+    handleSave(updated);
+  };
+
+  const handleAddShortcut = (id: string, rawVal: string) => {
+    const clean = rawVal.trim().replace(/^:+/, '');
+    if (!clean) return;
+    const formatted = `:${clean.toLowerCase()}`;
+    const currentCustom = formData.snippets?.custom || [];
+    const target = currentCustom.find((item) => item.id === id);
+    if (!target) return;
+    if ((target.shortcuts || []).includes(formatted)) return;
+
+    handleUpdateCustomSnippet(id, {
+      shortcuts: [...(target.shortcuts || []), formatted],
+    });
+  };
+
+  const handleRemoveShortcut = (id: string, shortcutIdx: number) => {
+    const currentCustom = formData.snippets?.custom || [];
+    const target = currentCustom.find((item) => item.id === id);
+    if (!target) return;
+    const updatedShortcuts = (target.shortcuts || []).filter((_, idx) => idx !== shortcutIdx);
+    handleUpdateCustomSnippet(id, { shortcuts: updatedShortcuts });
+  };
+
+  // Compute indexed search items counts (main items, git items, subitems, dynamic system snippets, and total)
+  const { mainItemsCount, gitItemsCount, subItemsCount, snippetsCount, totalIndexedCount } = useMemo(() => {
+    const gitCount = items.filter((it) => it.settings === 'git' || it.sourceId === 'github').length;
+    const mainOnlyCount = items.filter((it) => !(it.settings === 'git' || it.sourceId === 'github')).length;
     const subCount = items.reduce((acc, it) => acc + (it.options?.length || 0), 0);
     const snipCount = getDynamicSnippets(':', formData.snippets).length;
     return {
-      mainItemsCount: mainCount,
+      mainItemsCount: mainOnlyCount,
+      gitItemsCount: gitCount,
       subItemsCount: subCount,
       snippetsCount: snipCount,
-      totalIndexedCount: mainCount + subCount + snipCount,
+      totalIndexedCount: mainOnlyCount + gitCount + subCount + snipCount,
     };
   }, [items, formData.snippets]);
 
@@ -204,6 +603,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       window.electronAPI?.resumeGlobalHotkey?.();
     };
   }, []);
+
+  // Reset scrollbar when switching tabs in settings modal
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0;
+    }
+  }, [activeTab]);
 
   // Check if at least one item (or any nested option) has settings === 'magicgate'
   const hasMagicGate = (item: LauncherItem): boolean => {
@@ -333,7 +739,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handlePickLocalFile = async () => {
-    const selectedPath = await window.electronAPI?.selectJsonFile?.();
+    const currentPath = editingSource && editingSource.type === 'file' ? editingSource.path : undefined;
+    const selectedPath = await window.electronAPI?.selectJsonFile?.(currentPath);
     if (selectedPath) {
       if (editingSource && editingSource.type === 'file') {
         const updated = { ...editingSource, path: selectedPath };
@@ -569,10 +976,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       return;
     }
 
-    // If at least 2 keys were pressed: save new valid hotkey
+    // If at least 2 keys were pressed: check reserved hotkey collision, then save
     if (combo.length >= 2) {
-      setHotkeyError(null);
       const finalHotkey = combo.join('+');
+      const conflictReason = getReservedHotkeyCollision(combo);
+
+      if (conflictReason) {
+        const fallback = originalHotkeyRef.current || 'Ctrl+Alt+Space';
+        setFormData((prev) => ({ ...prev, hotkey: fallback }));
+        setHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – ${conflictReason}. Byla zachována původní zkratka.`);
+        setIsRecordingHotkey(false);
+        pressedKeysRef.current.clear();
+        maxComboRef.current = [];
+        setRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      setHotkeyError(null);
       const updated = { ...formData, hotkey: finalHotkey };
       setFormData(updated);
       handleSave(updated);
@@ -732,7 +1154,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-xs font-semibold text-white flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-base text-amber-400">tune</span>
+                    <span className="material-symbols-outlined text-base text-indigo-400">tune</span>
                     Mapování polí JSONu (odlišná struktura dat)
                   </h4>
                   <p className="text-[11px] text-gray-400 mt-0.5">
@@ -745,7 +1167,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   type="button"
                   onClick={() => triggerInspectSource()}
                   disabled={isInspecting}
-                  className="flex items-center gap-1 px-2.5 py-1 text-[11px] text-indigo-300 hover:text-white bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 rounded-lg transition cursor-pointer disabled:opacity-50"
+                  className="flex items-center gap-1 px-2.5 py-1 text-[11px] text-indigo-300 hover:text-white bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 rounded-lg transition cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
                   title="Znovu analyzovat data ze zdroje a načíst pole"
                 >
                   <span className={`material-symbols-outlined text-xs ${isInspecting ? 'animate-spin' : ''}`}>sync</span>
@@ -879,7 +1301,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           </div>
                         )}
 
-                        {isFixed && (!isActionField || (rule?.value !== 'open' && rule?.value !== 'copy')) && (
+                        {isFixed && target.key === 'icon' && (
+                          <div className="pt-1">
+                            <IconPickerInput
+                              value={rule?.value || ''}
+                              onChange={(val) => handleFixedValueChange('icon', val)}
+                              placeholder="Vyberte pevnou ikonu pro všechny záznamy..."
+                            />
+                          </div>
+                        )}
+
+                        {isFixed && target.key !== 'icon' && (!isActionField || (rule?.value !== 'open' && rule?.value !== 'copy')) && (
                           <div className="pt-1">
                             <input
                               type="text"
@@ -895,21 +1327,67 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   })}
                 </div>
 
-                {/* Live preview */}
-                {sampleRecord && (
-                  <div className="p-3 bg-indigo-950/20 border border-indigo-500/20 rounded-xl space-y-1.5 text-xs">
-                    <div className="flex items-center gap-1.5 text-indigo-300 font-semibold text-[11px]">
-                      <span className="material-symbols-outlined text-sm">visibility</span>
-                      Náhled 1. položky s aktuálním mapováním:
+                {/* Live preview - věrná simulace Spotlight výsledku */}
+                {sampleRecord && (() => {
+                  const previewName = getMappedPreviewValue('name', 'Položka bez názvu');
+                  const previewLocation = getMappedPreviewValue('location', '');
+                  const previewIcon = getMappedPreviewValue('icon', 'code');
+                  const previewImage = getMappedPreviewValue('image', '');
+                  const previewAction = getMappedPreviewValue('action', 'open');
+
+                  return (
+                    <div className="space-y-2 pt-2">
+                      <div className="flex items-center gap-1.5 text-indigo-300 font-semibold text-[11px]">
+                        <span className="material-symbols-outlined text-sm">visibility</span>
+                        <span>Náhled 1. položky ve Spotlight vyhledávači:</span>
+                      </div>
+
+                      {/* Spotlight container frame */}
+                      <div className="bg-[#1c1d24] border border-white/10 rounded-xl p-1.5 shadow-xl">
+                        <div className="flex items-center px-3 py-2.5 rounded-xl bg-indigo-600/30 border border-indigo-500/40 text-white shadow-md gap-3">
+                          {/* Column 1: Icon / Image with separator */}
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
+                              <MaterialIcon
+                                icon={previewIcon}
+                                image={previewImage}
+                                location={previewLocation}
+                                fallbackIcon="code"
+                                className="w-7 h-7"
+                              />
+                            </div>
+                            <div className="h-6 w-[1px] shrink-0 self-center bg-white/20" />
+                          </div>
+
+                          {/* Column 2: Name and Location */}
+                          <div className="flex-1 min-w-0 flex flex-col justify-center pl-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm truncate leading-tight text-white">
+                                {previewName}
+                              </span>
+                              {previewAction && (
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border font-medium uppercase bg-white/10 text-gray-300 border-white/15">
+                                  {previewAction}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs mt-0.5 font-mono text-gray-400 truncate">
+                              {previewLocation || '(žádná lokace)'}
+                            </div>
+                          </div>
+
+                          {/* Column 3: Action indicator */}
+                          <div className="shrink-0 text-xs flex items-center gap-1.5 text-indigo-200 opacity-90 select-none">
+                            <span className="text-[11px]">Provést</span>
+                            <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none whitespace-nowrap">
+                              Enter
+                            </kbd>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-300 font-mono pt-1">
-                      <div><strong className="text-gray-400 font-sans">Název:</strong> {getMappedPreviewValue('name', 'Položka bez názvu')}</div>
-                      <div><strong className="text-gray-400 font-sans">Cesta:</strong> {getMappedPreviewValue('location', '(žádná)')}</div>
-                      <div><strong className="text-gray-400 font-sans">Ikona:</strong> {getMappedPreviewValue('icon', 'code')}</div>
-                      <div><strong className="text-gray-400 font-sans">Akce:</strong> {getMappedPreviewValue('action', 'open')}</div>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -1255,11 +1733,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
 
                     {key === 'action' ? (
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 h-[38px]">
                         <button
                           type="button"
                           onClick={() => handleUpdateShared('action', 'open')}
-                          className={`flex-1 py-1 text-xs rounded border transition cursor-pointer flex items-center justify-center gap-1 ${
+                          className={`flex-1 h-[38px] text-xs rounded-lg border transition cursor-pointer flex items-center justify-center gap-1 ${
                             val === 'open'
                               ? 'bg-purple-600 border-purple-500 text-white'
                               : 'bg-white/5 border-white/10 text-gray-300 hover:text-white'
@@ -1271,7 +1749,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleUpdateShared('action', 'copy')}
-                          className={`flex-1 py-1 text-xs rounded border transition cursor-pointer flex items-center justify-center gap-1 ${
+                          className={`flex-1 h-[38px] text-xs rounded-lg border transition cursor-pointer flex items-center justify-center gap-1 ${
                             val === 'copy'
                               ? 'bg-purple-600 border-purple-500 text-white'
                               : 'bg-white/5 border-white/10 text-gray-300 hover:text-white'
@@ -1281,13 +1759,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           copy
                         </button>
                       </div>
+                    ) : key === 'icon' ? (
+                      <IconPickerInput
+                        value={val || ''}
+                        onChange={(newIcon) => handleUpdateShared('icon', newIcon)}
+                        placeholder="Vybrat společnou ikonu..."
+                        accentColorClass="text-purple-300"
+                      />
                     ) : (
                       <input
                         type="text"
                         value={val}
                         onChange={(e) => handleUpdateShared(key, e.target.value)}
                         placeholder={fieldDef?.placeholder || 'Hodnota'}
-                        className="w-full bg-black/50 border border-white/10 rounded px-2.5 py-1.5 text-xs text-white placeholder-gray-500 outline-none focus:border-purple-400 font-mono"
+                        className="w-full h-[38px] bg-black/50 border border-white/10 rounded-lg px-2.5 text-xs text-white placeholder-gray-500 outline-none focus:border-purple-400 font-mono"
                       />
                     )}
                   </div>
@@ -1365,11 +1850,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <span className="text-gray-500 font-mono text-[10px]">{field.key}</span>
                           </label>
                           {field.key === 'action' ? (
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 h-[38px]">
                               <button
                                 type="button"
                                 onClick={() => handleUpdateItemField(itemIdx, 'action', 'open')}
-                                className={`flex-1 py-1 text-xs rounded border transition cursor-pointer ${
+                                className={`flex-1 h-[38px] text-xs rounded-lg border transition cursor-pointer flex items-center justify-center gap-1 ${
                                   (item.action || 'open') === 'open'
                                     ? 'bg-purple-600 border-purple-500 text-white'
                                     : 'bg-white/5 border-white/10 text-gray-300 hover:text-white'
@@ -1380,7 +1865,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleUpdateItemField(itemIdx, 'action', 'copy')}
-                                className={`flex-1 py-1 text-xs rounded border transition cursor-pointer ${
+                                className={`flex-1 h-[38px] text-xs rounded-lg border transition cursor-pointer flex items-center justify-center gap-1 ${
                                   item.action === 'copy'
                                     ? 'bg-purple-600 border-purple-500 text-white'
                                     : 'bg-white/5 border-white/10 text-gray-300 hover:text-white'
@@ -1397,13 +1882,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               placeholder={field.placeholder}
                               className="w-full bg-black/50 border border-white/10 rounded px-2.5 py-1.5 text-xs text-white placeholder-gray-500 outline-none focus:border-purple-400 font-mono resize-y whitespace-pre leading-relaxed"
                             />
+                          ) : field.key === 'icon' ? (
+                            <IconPickerInput
+                              value={(item.icon as string) ?? ''}
+                              onChange={(val) => handleUpdateItemField(itemIdx, 'icon', val)}
+                              placeholder="Vybrat ikonu položky..."
+                              accentColorClass="text-purple-300"
+                            />
                           ) : (
                             <input
                               type="text"
                               value={(item[field.key as keyof LauncherItem] as string) ?? ''}
                               onChange={(e) => handleUpdateItemField(itemIdx, field.key as keyof LauncherItem, e.target.value)}
                               placeholder={field.placeholder}
-                              className="w-full bg-black/50 border border-white/10 rounded px-2.5 py-1.5 text-xs text-white placeholder-gray-500 outline-none focus:border-purple-400 font-mono"
+                              className="w-full h-[38px] bg-black/50 border border-white/10 rounded-lg px-2.5 text-xs text-white placeholder-gray-500 outline-none focus:border-purple-400 font-mono"
                             />
                           )}
                         </div>
@@ -1459,7 +1951,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 value={act.name || ''}
                                 onChange={(e) => handleUpdateAction(itemIdx, actIdx, 'name', e.target.value)}
                                 placeholder="např. Otevřít ve VS Code"
-                                className="w-full bg-black/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400"
+                                className="w-full h-[38px] bg-black/50 border border-white/10 rounded-lg px-2.5 text-xs text-white outline-none focus:border-purple-400"
                               />
                             </div>
                             <div>
@@ -1467,7 +1959,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               <select
                                 value={act.action || ''}
                                 onChange={(e) => handleUpdateAction(itemIdx, actIdx, 'action', e.target.value)}
-                                className="w-full bg-[#181920] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
+                                className="w-full h-[38px] bg-[#181920] border border-white/10 rounded-lg px-2.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
                               >
                                 <option value="">(Výchozí / null)</option>
                                 <option value="open">open</option>
@@ -1496,12 +1988,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             <div>
                               <label className="block text-xs font-medium text-gray-300 mb-1">Ikona (icon)</label>
-                              <input
-                                type="text"
+                              <IconPickerInput
                                 value={act.icon || ''}
-                                onChange={(e) => handleUpdateAction(itemIdx, actIdx, 'icon', e.target.value)}
-                                placeholder="např. code, terminal, open_in_new"
-                                className="w-full bg-black/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
+                                onChange={(val) => handleUpdateAction(itemIdx, actIdx, 'icon', val)}
+                                placeholder="Vybrat ikonu akce..."
+                                accentColorClass="text-purple-300"
                               />
                             </div>
                             <div>
@@ -1509,7 +2000,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               <select
                                 value={act.settings || ''}
                                 onChange={(e) => handleUpdateAction(itemIdx, actIdx, 'settings', e.target.value)}
-                                className="w-full bg-[#181920] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
+                                className="w-full h-[38px] bg-[#181920] border border-white/10 rounded-lg px-2.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
                               >
                                 <option value="">(Žádné / null)</option>
                                 <option value="git">git</option>
@@ -1569,7 +2060,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 value={opt.name || ''}
                                 onChange={(e) => handleUpdateOption(itemIdx, optIdx, 'name', e.target.value)}
                                 placeholder="Název subpoložky"
-                                className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400"
+                                className="w-full h-[38px] bg-black/40 border border-white/10 rounded-lg px-2.5 text-xs text-white outline-none focus:border-purple-400"
                               />
                             </div>
                             <div>
@@ -1577,7 +2068,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               <select
                                 value={opt.action || ''}
                                 onChange={(e) => handleUpdateOption(itemIdx, optIdx, 'action', e.target.value)}
-                                className="w-full bg-[#181920] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
+                                className="w-full h-[38px] bg-[#181920] border border-white/10 rounded-lg px-2.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
                               >
                                 <option value="">(Výchozí / null)</option>
                                 <option value="open">open</option>
@@ -1602,12 +2093,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                             <div>
                               <label className="block text-xs font-medium text-gray-300 mb-1">Ikona (icon)</label>
-                              <input
-                                type="text"
+                              <IconPickerInput
                                 value={opt.icon || ''}
-                                onChange={(e) => handleUpdateOption(itemIdx, optIdx, 'icon', e.target.value)}
-                                placeholder="např. open_in_browser"
-                                className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
+                                onChange={(val) => handleUpdateOption(itemIdx, optIdx, 'icon', val)}
+                                placeholder="Vybrat ikonu podpoložky..."
+                                accentColorClass="text-purple-300"
                               />
                             </div>
                             <div>
@@ -1617,7 +2107,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 value={opt.image || ''}
                                 onChange={(e) => handleUpdateOption(itemIdx, optIdx, 'image', e.target.value)}
                                 placeholder="URL obrázku / favikony"
-                                className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
+                                className="w-full h-[38px] bg-black/40 border border-white/10 rounded-lg px-2.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
                               />
                             </div>
                             <div>
@@ -1625,7 +2115,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               <select
                                 value={opt.settings || ''}
                                 onChange={(e) => handleUpdateOption(itemIdx, optIdx, 'settings', e.target.value)}
-                                className="w-full bg-[#181920] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
+                                className="w-full h-[38px] bg-[#181920] border border-white/10 rounded-lg px-2.5 text-xs text-white outline-none focus:border-purple-400 font-mono"
                               >
                                 <option value="">(Žádné / null)</option>
                                 <option value="magicgate">magicgate</option>
@@ -1836,6 +2326,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
           )}
 
+          {/* Snippets tab */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('snippets')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer ${
+              activeTab === 'snippets'
+                ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
+            }`}
+          >
+            <span className="material-symbols-outlined text-xl text-indigo-400">draw</span>
+            <span>Snippety</span>
+          </button>
+
           {/* General tab */}
           <button
             type="button"
@@ -1886,21 +2390,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
         </nav>
 
-        {/* Sidebar Footer with Last Sync Date */}
-        {formData.lastSyncTime && (
-          <div className="p-4 border-t border-white/10 shrink-0">
-            <div className="w-16 h-[1px] bg-white/10 mx-auto mb-3" />
-            <div className="flex flex-col items-center justify-center text-center gap-1 text-xs">
-              <div className="flex items-center gap-1.5 text-gray-400">
-                <span className="material-symbols-outlined text-base text-white">schedule</span>
-                <span className="font-medium leading-tight">Poslední aktualizace</span>
-              </div>
-              <span className="text-white font-bold font-mono text-xs leading-tight">
-                {formatLastSyncDate(formData.lastSyncTime)}
-              </span>
-            </div>
-          </div>
-        )}
       </aside>
 
       {/* Main Right Content Pane */}
@@ -1916,6 +2405,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeTab === 'github' && 'GitHub repozitáře'}
               {activeTab === 'vscode' && 'Visual Studio Code (VS Code)'}
               {activeTab === 'android-studio' && 'Android Studio'}
+              {activeTab === 'snippets' && 'Uživatelské snippety'}
               {activeTab === 'general' && 'Obecné nastavení aplikace'}
               {activeTab === 'updates' && 'Aktualizace aplikace'}
               {activeTab === 'help' && 'Nápověda a klávesové zkratky'}
@@ -1928,6 +2418,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeTab === 'github' && 'Přístup k osobním i firemním repozitářům a rychlému klonování'}
               {activeTab === 'vscode' && 'Konfigurace cesty k editoru VS Code pro otevírání repozitářů a projektů'}
               {activeTab === 'android-studio' && 'Konfigurace cesty k Android Studiu pro otevírání mobilních a Kotlin/Java projektů'}
+              {activeTab === 'snippets' && 'Předem definované textové zkratky a osobní údaje pro rychlé vložení'}
               {activeTab === 'general' && 'Globální klávesová zkratka, barva motivu a vyhledávání programů'}
               {activeTab === 'updates' && 'Kontrola nových verzí a historie změn IADonkey'}
               {activeTab === 'help' && 'Přehled všech klávesových zkratek a chytrých funkcí'}
@@ -1942,42 +2433,103 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </header>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* TAB 1: Sources */}
           {activeTab === 'sources' && (
             <div className="space-y-4">
               {/* Alert banner for synchronization */}
               <div
-                className="p-3.5 rounded-xl border flex items-center justify-between gap-3 text-[13px] font-medium animate-fade-in"
+                className="p-3.5 rounded-xl border flex items-center justify-between gap-4 text-[13px] font-medium animate-fade-in min-h-[58px]"
                 style={{
                   backgroundColor: `${formData.primaryColor || '#6366f1'}15`,
                   borderColor: `${formData.primaryColor || '#6366f1'}35`,
                   color: formData.primaryColor || '#6366f1',
                 }}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="material-symbols-outlined text-lg shrink-0">schedule</span>
-                  <span className="text-gray-300 truncate">
-                    {formData.lastSyncTime ? (
-                      <>
-                        Poslední aktualizace proběhla: <strong className="font-mono text-white ml-1">{formatLastSyncDate(formData.lastSyncTime)}</strong>
-                      </>
-                    ) : (
-                      'Synchronizace dat zatím neproběhla'
-                    )}
-                  </span>
-                </div>
+                {/* Idle state: Last sync time info bubble */}
+                {syncPhase === 'idle' && (
+                  <div className="flex items-center gap-3 min-w-0 animate-fade-in">
+                    <span className="material-symbols-outlined text-lg shrink-0">schedule</span>
+                    <span className="text-gray-300 truncate">
+                      {formData.lastSyncTime ? (
+                        <>
+                          Poslední aktualizace proběhla: <strong className="font-mono text-white ml-1">{formatLastSyncDate(formData.lastSyncTime)}</strong>
+                        </>
+                      ) : (
+                        'Synchronizace dat zatím neproběhla'
+                      )}
+                    </span>
+                  </div>
+                )}
+
+                {/* Syncing state: Replaces the info bubble with smooth progress bar & status text */}
+                {syncPhase === 'syncing' && (
+                  <div className="flex flex-col justify-center min-w-0 flex-1 gap-1.5 pr-2 animate-fade-in">
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-2 min-w-0 text-gray-200">
+                        <span className="material-symbols-outlined text-base shrink-0 animate-spin text-indigo-400">
+                          sync
+                        </span>
+                        <span className="truncate font-medium">
+                          {syncProgress?.sourceName
+                            ? `Synchronizuji: ${syncProgress.sourceName}`
+                            : 'Probíhá synchronizace dat...'}
+                        </span>
+                      </div>
+                      <span className="font-mono font-bold text-white shrink-0 text-xs">
+                        {Math.round(visualProgress)}%
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all duration-150 ease-out shadow-sm"
+                        style={{ width: `${visualProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Success state: Confirmation before switching back to info bubble */}
+                {syncPhase === 'success' && (
+                  <div className="flex items-center gap-2.5 min-w-0 text-emerald-400 animate-fade-in">
+                    <span className="material-symbols-outlined text-lg shrink-0">check_circle</span>
+                    <span className="text-gray-200 truncate font-medium text-[13px]">
+                      Synchronizace dat proběhla úspěšně
+                    </span>
+                  </div>
+                )}
+
                 <button
                   type="button"
-                  onClick={onTriggerSync}
-                  disabled={isSyncing}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition disabled:opacity-50 cursor-pointer shrink-0"
-                  title="Spustit synchronizaci dat ze všech povolených zdrojů"
+                  onClick={handleTriggerSync}
+                  disabled={syncPhase !== 'idle'}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0 ${
+                    syncPhase === 'success'
+                      ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 cursor-default'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 disabled:cursor-not-allowed'
+                  }`}
+                  title={
+                    syncPhase === 'syncing'
+                      ? 'Probíhá synchronizace dat'
+                      : syncPhase === 'success'
+                      ? 'Synchronizace proběhla úspěšně'
+                      : 'Spustit synchronizaci dat ze všech povolených zdrojů'
+                  }
                 >
-                  <span className={`material-symbols-outlined text-base ${isSyncing ? 'animate-spin' : ''}`}>
-                    sync
+                  <span
+                    className={`material-symbols-outlined text-base ${
+                      syncPhase === 'syncing' ? 'animate-spin' : ''
+                    }`}
+                  >
+                    {syncPhase === 'success' ? 'check' : 'sync'}
                   </span>
-                  <span>{isSyncing ? 'Probíhá synchronizace...' : 'Spustit synchronizaci'}</span>
+                  <span>
+                    {syncPhase === 'syncing'
+                      ? 'Probíhá synchronizace...'
+                      : syncPhase === 'success'
+                      ? 'Dokončeno'
+                      : 'Spustit synchronizaci'}
+                  </span>
                 </button>
               </div>
 
@@ -2278,6 +2830,92 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {totalIndexedCount}
                   </span>
                 </button>
+              </div>
+
+              {/* External tools section header */}
+              <div className="w-full pt-4 border-t border-white/10">
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg text-indigo-400">handyman</span>
+                  Externí nástroje
+                </h3>
+                <p className="text-[13px] text-gray-400 mt-1">
+                  Doplňkové utility, katalogy a pomocné nástroje pro správu obsahu a vyhledávání.
+                </p>
+              </div>
+
+              {/* Material Symbols Icons Download Card (aligned with Extensions cards style) */}
+              <div className="p-5 bg-white/[0.03] border border-white/10 rounded-2xl flex flex-col justify-between gap-4 transition hover:border-white/20">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 text-indigo-400">
+                      <span className="material-symbols-outlined text-2xl">interests</span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-white tracking-wide">Katalog ikon Material Symbols</h3>
+                        {formData.iconsLastDownloadedAt ? (
+                          <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-medium">
+                            Aktualizováno
+                          </span>
+                        ) : (
+                          <span className="text-[10px] bg-white/5 text-gray-400 border border-white/10 px-1.5 py-0.5 rounded font-medium">
+                            Nestáhnuto
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                        Kompletní databáze ikon přímo z Google Fonts (3 900+ unikátních ikon s vyhledáváním a štítky) pro výběr ikon zdrojů, akcí i podpoložek.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleDownloadIcons}
+                      disabled={isDownloadingIcons}
+                      className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <span className={`material-symbols-outlined text-sm ${isDownloadingIcons ? 'animate-spin' : ''}`}>
+                        {isDownloadingIcons ? 'progress_activity' : 'cloud_download'}
+                      </span>
+                      <span>{isDownloadingIcons ? 'Stahuji...' : 'Stáhnout ikony'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-white/5 flex items-center justify-between text-xs text-gray-400 gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm text-gray-500">schedule</span>
+                    <span>Čas posledního stažení:</span>
+                    <span className="font-medium text-gray-200">
+                      {formData.iconsLastDownloadedAt ? formatLastSyncDate(formData.iconsLastDownloadedAt) : 'Zatím nestáhnuto'}
+                    </span>
+                  </div>
+                  {typeof formData.iconsCount === 'number' && formData.iconsCount > 0 && (
+                    <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-medium">
+                      {formData.iconsCount.toLocaleString('cs-CZ')} ikon uloženo v mezipaměti
+                    </span>
+                  )}
+                </div>
+
+                {downloadIconsResult && (
+                  <div
+                    className={`p-3 rounded-xl flex items-center gap-2 text-xs border ${
+                      downloadIconsResult.ok
+                        ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-300'
+                        : 'bg-rose-950/30 border-rose-500/30 text-rose-300'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-base">
+                      {downloadIconsResult.ok ? 'check_circle' : 'error'}
+                    </span>
+                    <span>
+                      {downloadIconsResult.ok
+                        ? `Úspěšně staženo a uloženo ${downloadIconsResult.count?.toLocaleString('cs-CZ')} ikon z Google Fonts.`
+                        : downloadIconsResult.error || 'Nastala chyba při stahování ikon.'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -2710,7 +3348,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       type="button"
                       onClick={async () => {
                         if (window.electronAPI?.selectXmlFile) {
-                          const selected = await window.electronAPI.selectXmlFile();
+                          const selected = await window.electronAPI.selectXmlFile(formData.magicgate?.xmlPath);
                           if (selected) {
                             const updated = {
                               ...formData,
@@ -3052,7 +3690,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       type="button"
                       onClick={async () => {
                         if (window.electronAPI?.selectDirectory) {
-                          const dir = await window.electronAPI.selectDirectory();
+                          const dir = await window.electronAPI.selectDirectory(formData.github?.defaultCloneDir);
                           if (dir) {
                             const updated = {
                               ...formData,
@@ -3105,6 +3743,82 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* Test connection button & results (outside/below boxes) */}
               <div className="pt-2 flex flex-col gap-3">
+                {/* Result card or placeholder (above test button) */}
+                {gitHubTestResult ? (
+                  <div
+                    className={`p-3.5 rounded-xl border text-xs leading-relaxed animate-fade-in ${
+                      gitHubTestResult.ok
+                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                        : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+                    }`}
+                  >
+                    {gitHubTestResult.ok ? (
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          {gitHubTestResult.user?.avatar_url ? (
+                            <img
+                              src={gitHubTestResult.user.avatar_url}
+                              alt={gitHubTestResult.user.login}
+                              className="w-10 h-10 rounded-full border border-emerald-500/30 shrink-0 self-center"
+                            />
+                          ) : (
+                            <span className="material-symbols-outlined text-2xl text-emerald-400 shrink-0 self-center">check_circle</span>
+                          )}
+                          <div className="min-w-0 space-y-0.5">
+                            <div className="font-semibold text-emerald-200 text-[13px]">
+                              Připojení k GitHubu bylo úspěšné!
+                            </div>
+                            <div className="text-gray-300 flex items-center gap-1.5 flex-wrap">
+                              <span>Přihlášený profil:</span>
+                              <span className="font-mono font-medium text-emerald-300">
+                                @{gitHubTestResult.user?.login}
+                              </span>
+                              {gitHubTestResult.user?.name && (
+                                <span className="text-gray-400">({gitHubTestResult.user.name})</span>
+                              )}
+                              {gitHubTestResult.orgs && gitHubTestResult.orgs.length > 0 && (
+                                <div className="inline-flex items-center gap-1 ml-1 flex-wrap">
+                                  {gitHubTestResult.orgs.map((org) => (
+                                    <span
+                                      key={org}
+                                      className="bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 px-1.5 py-0.5 rounded font-mono text-[10px] leading-none"
+                                      title={`Organizace: ${org}`}
+                                    >
+                                      {org}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Celkový počet repozitářů vpravo svisle vycentrovaný */}
+                        <div className="shrink-0 flex flex-col items-center justify-center pl-4 border-l border-emerald-500/20 min-w-[75px]">
+                          <span className="text-2xl font-bold font-mono text-emerald-200 leading-none">
+                            {gitHubTestResult.repoCount ?? 0}
+                          </span>
+                          <span className="text-[11px] text-emerald-400/80 mt-1 leading-none font-medium">
+                            repozitářů
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-2xl text-rose-400 shrink-0 self-center">error</span>
+                        <div className="min-w-0">
+                          <div className="font-semibold text-rose-200 text-[13px]">Připojení se nezdařilo</div>
+                          <div className="text-rose-300/80 mt-0.5">{gitHubTestResult.error}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-[68px] rounded-xl border border-dashed border-white/15 bg-white/[0.01] flex items-center justify-center text-xs font-medium text-gray-500 select-none">
+                    Výsledek testu
+                  </div>
+                )}
+
                 <button
                   type="button"
                   disabled={!formData.github?.token?.trim() || isTestingGitHub}
@@ -3127,67 +3841,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </>
                   )}
                 </button>
-
-                {/* Result card */}
-                {gitHubTestResult && (
-                  <div
-                    className={`p-4 rounded-xl border text-xs leading-relaxed animate-fade-in ${
-                      gitHubTestResult.ok
-                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
-                        : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
-                    }`}
-                  >
-                    {gitHubTestResult.ok ? (
-                      <div className="flex items-start gap-3">
-                        {gitHubTestResult.user?.avatar_url ? (
-                          <img
-                            src={gitHubTestResult.user.avatar_url}
-                            alt={gitHubTestResult.user.login}
-                            className="w-10 h-10 rounded-full border border-emerald-500/30 shrink-0"
-                          />
-                        ) : (
-                          <span className="material-symbols-outlined text-2xl text-emerald-400">check_circle</span>
-                        )}
-                        <div className="space-y-1">
-                          <div className="font-semibold text-emerald-200">
-                            Připojení k GitHubu bylo úspěšné!
-                          </div>
-                          <div className="text-gray-300">
-                            Přihlášený profil:{' '}
-                            <span className="font-mono font-medium text-emerald-300">
-                              @{gitHubTestResult.user?.login}
-                            </span>{' '}
-                            {gitHubTestResult.user?.name && `(${gitHubTestResult.user.name})`}
-                          </div>
-                          {gitHubTestResult.orgs && gitHubTestResult.orgs.length > 0 && (
-                            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                              <span className="text-gray-400">Nalezené organizace:</span>
-                              {gitHubTestResult.orgs.map((org) => (
-                                <span
-                                  key={org}
-                                  className="bg-emerald-500/20 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono text-[11px]"
-                                >
-                                  {org}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          <div className="text-emerald-400 font-medium pt-0.5">
-                            ✓ Nalezeno celkem {gitHubTestResult.repoCount ?? 0} repozitářů
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-start gap-2.5">
-                        <span className="material-symbols-outlined text-xl text-rose-400 shrink-0 mt-0.5">error</span>
-                        <div>
-                          <div className="font-semibold text-rose-200">Připojení se nezdařilo</div>
-                          <div className="text-rose-300/80 mt-0.5">{gitHubTestResult.error}</div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -3229,7 +3882,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       type="button"
                       onClick={async () => {
                         if (window.electronAPI?.selectVscodePath) {
-                          const selected = await window.electronAPI.selectVscodePath();
+                          const selected = await window.electronAPI.selectVscodePath(formData.vscode?.path);
                           if (selected) {
                             const updated = {
                               ...formData,
@@ -3260,11 +3913,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           }
                         }
                       }}
-                      className="h-[38px] px-3.5 border border-emerald-500/30 hover:border-emerald-500/50 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 hover:text-white rounded-lg text-[13px] font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
-                      title="Prohledat standardní instalační složky a PATH"
+                      className="w-[38px] h-[38px] flex items-center justify-center border border-emerald-500/30 hover:border-emerald-500/50 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 hover:text-white rounded-lg transition cursor-pointer shrink-0"
+                      title="Automaticky detekovat (prohledat standardní instalační složky a PATH)"
                     >
-                      <span className="material-symbols-outlined text-base">search</span>
-                      <span>Automaticky detekovat</span>
+                      <span className="material-symbols-outlined text-[18px] leading-none">auto_awesome</span>
                     </button>
                     {formData.vscode?.path && (
                       <button
@@ -3339,7 +3991,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       type="button"
                       onClick={async () => {
                         if (window.electronAPI?.selectAndroidStudioPath) {
-                          const selected = await window.electronAPI.selectAndroidStudioPath();
+                          const selected = await window.electronAPI.selectAndroidStudioPath(formData.androidStudio?.path);
                           if (selected) {
                             const updated = {
                               ...formData,
@@ -3370,11 +4022,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           }
                         }
                       }}
-                      className="h-[38px] px-3.5 border border-emerald-500/30 hover:border-emerald-500/50 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 hover:text-white rounded-lg text-[13px] font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
-                      title="Prohledat standardní instalační složky Android Studia a JetBrains Toolbox"
+                      className="w-[38px] h-[38px] flex items-center justify-center border border-emerald-500/30 hover:border-emerald-500/50 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 hover:text-white rounded-lg transition cursor-pointer shrink-0"
+                      title="Automaticky detekovat (prohledat standardní instalační složky Android Studia a JetBrains Toolbox)"
                     >
-                      <span className="material-symbols-outlined text-base">search</span>
-                      <span>Automaticky detekovat</span>
+                      <span className="material-symbols-outlined text-[18px] leading-none">auto_awesome</span>
                     </button>
                     {formData.androidStudio?.path && (
                       <button
@@ -3411,6 +4062,413 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* TAB: Snippets */}
+          {activeTab === 'snippets' && (
+            <div className="space-y-8 animate-fade-in max-w-4xl">
+              {/* SECTION 1: Vlastní snippety */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold text-white text-base flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg text-indigo-400">draw</span>
+                    Vlastní snippety
+                  </h3>
+                  <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
+                    Vytvořte si vlastní zkratky přes dvojtečku a textové šablony pro rychlé zkopírování do schránky (např. IBAN, čísla účtů, smlouvy či často používané odpovědi).
+                  </p>
+                </div>
+
+                {/* Action buttons on their own line, left-aligned */}
+                <div className="flex items-center justify-start gap-2 flex-wrap">
+                  {/* Hidden input for JSON file import */}
+                  <input
+                    ref={importSnippetsFileRef}
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleImportCustomSnippets}
+                    className="hidden"
+                  />
+
+                  {/* Import button */}
+                  <button
+                    type="button"
+                    onClick={() => importSnippetsFileRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:border-white/20 bg-white/[0.04] hover:bg-white/[0.08] text-gray-300 hover:text-white text-xs font-medium transition cursor-pointer"
+                    title="Importovat snippety ze souboru JSON"
+                  >
+                    <span className="material-symbols-outlined text-[16px] text-indigo-400">file_upload</span>
+                    <span>Importovat</span>
+                  </button>
+
+                  {/* Export button */}
+                  <button
+                    type="button"
+                    onClick={handleExportCustomSnippets}
+                    disabled={!formData.snippets?.custom || formData.snippets.custom.length === 0}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition ${
+                      !formData.snippets?.custom || formData.snippets.custom.length === 0
+                        ? 'border-white/5 bg-white/[0.02] text-gray-500 cursor-not-allowed opacity-50'
+                        : 'border-white/10 hover:border-white/20 bg-white/[0.04] hover:bg-white/[0.08] text-gray-300 hover:text-white cursor-pointer'
+                    }`}
+                    title="Exportovat vlastní snippety do souboru JSON"
+                  >
+                    <span className="material-symbols-outlined text-[16px] text-indigo-400">file_download</span>
+                    <span>Exportovat</span>
+                  </button>
+
+                  {/* Add snippet button */}
+                  <button
+                    type="button"
+                    onClick={handleAddCustomSnippet}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition cursor-pointer shrink-0 shadow-sm"
+                  >
+                    <span className="material-symbols-outlined text-base">add</span>
+                    <span>Přidat snippet</span>
+                  </button>
+                </div>
+
+                {snippetFeedback && (
+                  <div
+                    className={`p-2.5 px-3 rounded-lg text-xs flex items-center justify-between gap-2 border transition ${
+                      snippetFeedback.type === 'success'
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                        : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-base">
+                        {snippetFeedback.type === 'success' ? 'check_circle' : 'error'}
+                      </span>
+                      <span>{snippetFeedback.message}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSnippetFeedback(null)}
+                      className="hover:opacity-75 text-gray-400 hover:text-white transition cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-sm">close</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* List of custom snippets */}
+                {(!formData.snippets?.custom || formData.snippets.custom.length === 0) ? (
+                  <div className="p-6 bg-white/[0.02] border border-dashed border-white/10 rounded-2xl text-center space-y-2.5">
+                    <span className="material-symbols-outlined text-3xl text-gray-500">content_paste</span>
+                    <p className="text-xs text-gray-400">
+                      Zatím nemáte vytvořené žádné vlastní snippety.
+                    </p>
+                    <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={handleAddCustomSnippet}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-lg text-xs font-medium transition cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-sm">add</span>
+                        <span>Vytvořit první snippet</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => importSnippetsFileRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-white/10 hover:border-white/20 bg-white/[0.04] hover:bg-white/[0.08] text-gray-300 hover:text-white rounded-lg text-xs font-medium transition cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-sm text-indigo-400">file_upload</span>
+                        <span>Importovat JSON</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {formData.snippets.custom.map((snip, index) => (
+                      <div
+                        key={snip.id || index}
+                        className="p-4 bg-white/[0.02] border border-white/10 rounded-xl space-y-3 hover:border-white/20 transition"
+                      >
+                        {/* Row 1: {vyber ikony} | {nazev} | [odebrat] */}
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-48 sm:w-56 shrink-0">
+                            <IconPickerInput
+                              value={snip.icon || ''}
+                              onChange={(newIcon) => handleUpdateCustomSnippet(snip.id, { icon: newIcon })}
+                              placeholder="Vybrat ikonu..."
+                              accentColorClass="text-indigo-400"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <input
+                              type="text"
+                              value={snip.name}
+                              onChange={(e) => handleUpdateCustomSnippet(snip.id, { name: e.target.value })}
+                              placeholder="Název snippetu (např. Číslo bankovního účtu, IBAN)"
+                              className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-medium"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCustomSnippet(snip.id)}
+                            className="w-8 h-8 rounded-lg border border-rose-500/25 bg-rose-500/10 text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 flex items-center justify-center shrink-0 transition cursor-pointer"
+                            title="Smazat snippet"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                          </button>
+                        </div>
+
+                        {/* Row 2: {location - viceradkove pole} */}
+                        <div>
+                          <textarea
+                            rows={2}
+                            value={snip.location}
+                            onChange={(e) => handleUpdateCustomSnippet(snip.id, { location: e.target.value })}
+                            placeholder="Obsah snippetu (víceřádkový text ke zkopírování do schránky)..."
+                            className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono resize-y leading-relaxed"
+                          />
+                        </div>
+
+                        {/* Row 3: {shortcuts X} [pridat novy] */}
+                        <div className="flex items-center gap-2 flex-wrap pt-1">
+                          <span className="h-7 flex items-center gap-1.5 text-xs text-gray-300 font-medium mr-0.5 select-none">
+                            <span className="material-symbols-outlined text-[17px] text-indigo-400 leading-none">label</span>
+                            <span className="leading-none">Zkratky:</span>
+                          </span>
+                          {(snip.shortcuts || []).map((sc, scIdx) => {
+                            const clean = sc.replace(/^:+/, '');
+                            return (
+                              <span
+                                key={scIdx}
+                                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg bg-indigo-500/15 text-indigo-200 border border-indigo-500/30 text-xs font-mono select-none"
+                              >
+                                <span className="text-indigo-400 font-bold leading-none">:</span>
+                                <span className="leading-none">{clean}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveShortcut(snip.id, scIdx)}
+                                  className="w-4 h-4 flex items-center justify-center rounded hover:bg-rose-500/20 hover:text-rose-300 text-gray-400 transition cursor-pointer ml-0.5"
+                                  title="Odebrat zkratku"
+                                >
+                                  <span className="material-symbols-outlined text-[13px] leading-none">close</span>
+                                </button>
+                              </span>
+                            );
+                          })}
+
+                          {/* Inline input to add shortcut with non-deletable colon */}
+                          <div className="inline-flex items-center h-7 px-2.5 bg-black/40 border border-white/15 rounded-lg focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/30 transition">
+                            <span className="text-indigo-400 font-mono text-xs select-none font-bold mr-1 leading-none">:</span>
+                            <input
+                              type="text"
+                              placeholder="přidat zkratku..."
+                              className="bg-transparent text-white text-xs font-mono outline-none w-28 placeholder:text-gray-500 leading-none"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const target = e.currentTarget;
+                                  const val = target.value.trim().replace(/^:+/, '');
+                                  if (val) {
+                                    handleAddShortcut(snip.id, val);
+                                    target.value = '';
+                                  }
+                                }
+                              }}
+                              onBlur={(e) => {
+                                const val = e.target.value.trim().replace(/^:+/, '');
+                                if (val) {
+                                  handleAddShortcut(snip.id, val);
+                                  e.target.value = '';
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* SECTION 2: Předdefinované osobní údaje */}
+              <div className="space-y-4 pt-6 border-t border-white/10">
+                <div>
+                  <h3 className="font-semibold text-white text-base flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg text-indigo-400">badge</span>
+                    Předdefinované osobní údaje
+                  </h3>
+                  <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
+                    Pevně definované textové zkratky a kontaktní údaje zabudované v aplikaci (podpis, jméno, IČO, DIČ, telefon, e-mail, adresa). Hodnota se po výběru okamžitě zkopíruje do schránky.
+                  </p>
+                </div>
+
+              {/* Vlastní podpis */}
+              <div className="space-y-2 bg-white/[0.02] p-4 rounded-xl border border-white/5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[13px] font-medium text-gray-200">
+                    Můj Podpis (<span className="text-indigo-300 font-mono">:podpis</span>, <span className="text-indigo-300 font-mono">:sign</span>, <span className="text-indigo-300 font-mono">:signature</span>)
+                  </label>
+                  <span className="text-[11px] text-gray-500 font-mono">Víceřádkový text</span>
+                </div>
+                <textarea
+                  rows={4}
+                  value={formData.snippets?.signature || ''}
+                  onChange={(e) => {
+                    const updated = {
+                      ...formData,
+                      snippets: {
+                        ...formData.snippets,
+                        signature: e.target.value,
+                      },
+                    };
+                    setFormData(updated);
+                    handleSave(updated);
+                  }}
+                  placeholder={`S pozdravem,\nPetr Kulhánek\ntel: +420 ...`}
+                  className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none font-mono resize-y leading-relaxed"
+                />
+                <p className="text-xs text-gray-400">
+                  Po výběru zkratky <span className="text-indigo-300 font-mono">:podpis</span> ve vyhledávači se tento text zkopíruje do schránky.
+                </p>
+              </div>
+
+              {/* Company & contact snippets */}
+              <div className="bg-white/[0.02] p-4 rounded-xl border border-white/5 space-y-4">
+                <h5 className="text-[13px] font-medium text-gray-200 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base text-indigo-400">badge</span>
+                  Osobní, firemní a kontaktní údaje pro rychlé vložení
+                </h5>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Moje Jmeno */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-gray-300 flex items-center justify-between">
+                      <span>Moje Jméno (<code className="text-indigo-300 font-mono">:jmeno</code>, <code className="text-indigo-300 font-mono">:name</code>)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.snippets?.name || ''}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          snippets: { ...formData.snippets, name: e.target.value },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      placeholder="např. Jan Novák"
+                      className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono"
+                    />
+                  </div>
+
+                  {/* Moje ICO */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-gray-300 flex items-center justify-between">
+                      <span>Moje IČO (<code className="text-indigo-300 font-mono">:ico</code>, <code className="text-indigo-300 font-mono">:ičo</code>)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.snippets?.ico || ''}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          snippets: { ...formData.snippets, ico: e.target.value },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      placeholder="např. 12345678"
+                      className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono"
+                    />
+                  </div>
+
+                  {/* DIC */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-gray-300 flex items-center justify-between">
+                      <span>Moje DIČ (<code className="text-indigo-300 font-mono">:dic</code>, <code className="text-indigo-300 font-mono">:dič</code>, <code className="text-indigo-300 font-mono">:vat</code>)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.snippets?.dic || ''}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          snippets: { ...formData.snippets, dic: e.target.value },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      placeholder="např. CZ12345678"
+                      className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono"
+                    />
+                  </div>
+
+                  {/* Muj Telefon */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-gray-300 flex items-center justify-between">
+                      <span>Můj Telefon (<code className="text-indigo-300 font-mono">:telefon</code>, <code className="text-indigo-300 font-mono">:tel</code>)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.snippets?.phone || ''}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          snippets: { ...formData.snippets, phone: e.target.value },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      placeholder="např. +420 777 123 456"
+                      className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono"
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-gray-300 flex items-center justify-between">
+                      <span>Můj E-mail (<code className="text-indigo-300 font-mono">:email</code>, <code className="text-indigo-300 font-mono">:mail</code>, <code className="text-indigo-300 font-mono">:e-mail</code>)</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.snippets?.email || ''}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          snippets: { ...formData.snippets, email: e.target.value },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      placeholder="např. info@firma.cz"
+                      className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Moje Adresa */}
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-xs text-gray-300 flex items-center justify-between">
+                    <span>Moje Adresa (<code className="text-indigo-300 font-mono">:adresa</code>, <code className="text-indigo-300 font-mono">:address</code>)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.snippets?.address || ''}
+                    onChange={(e) => {
+                      const updated = {
+                        ...formData,
+                        snippets: { ...formData.snippets, address: e.target.value },
+                      };
+                      setFormData(updated);
+                      handleSave(updated);
+                    }}
+                    placeholder="např. Václavské náměstí 1, 110 00 Praha 1"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono"
+                  />
+                </div>
+
+                <p className="text-[11px] text-gray-400">
+                  Zadáním dvojtečky a názvu (např. <code className="text-indigo-300 font-mono">:ico</code> nebo <code className="text-indigo-300 font-mono">:adresa</code>) se údaj okamžitě zkopíruje do schránky.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
           {/* TAB 3: General & Updates */}
           {activeTab === 'general' && (
@@ -3457,7 +4515,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           Stiskněte klávesovou kombinaci (např. Ctrl+Alt+Space). Esc zruší.
                         </span>
                       ) : (
-                        <span>Klikněte do pole a stiskněte kombinaci kláves (nelze vepisovat text)</span>
+                        <span>Klikněte do pole a stiskněte kombinaci kláves (např. Ctrl+Alt+Space). Rezervované zkratky z nápovědy nelze použít.</span>
                       )}
                     </span>
                   </div>
@@ -3575,167 +4633,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </div>
               </div>
-
-              {/* Pre-defined variable snippets */}
-              <div className="space-y-3 pt-4 border-t border-white/10">
-                <div>
-                  <h4 className="font-semibold text-sm text-white flex items-center gap-2">
-                    <span className="material-symbols-outlined text-lg text-indigo-400">draw</span>
-                    Předem definované variabilní snippety
-                  </h4>
-                  <p className="text-[13px] text-gray-400 mt-1 max-w-xl leading-relaxed">
-                    Nastavení obsahu pro textové zkratky vkládané přes dvojtečku (např. <code className="text-indigo-300 font-mono bg-white/5 px-1 py-0.5 rounded">:podpis</code>, <code className="text-indigo-300 font-mono bg-white/5 px-1 py-0.5 rounded">:sign</code> nebo <code className="text-indigo-300 font-mono bg-white/5 px-1 py-0.5 rounded">:signature</code>).
-                  </p>
-                </div>
-
-                <div className="space-y-2 bg-white/[0.02] p-4 rounded-xl border border-white/5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[13px] font-medium text-gray-200">
-                      Vlastní podpis (<span className="text-indigo-300 font-mono">:podpis</span>, <span className="text-indigo-300 font-mono">:sign</span>, <span className="text-indigo-300 font-mono">:signature</span>)
-                    </label>
-                    <span className="text-[11px] text-gray-500 font-mono">Víceřádkový text</span>
-                  </div>
-                  <textarea
-                    rows={4}
-                    value={formData.snippets?.signature || ''}
-                    onChange={(e) => {
-                      const updated = {
-                        ...formData,
-                        snippets: {
-                          ...formData.snippets,
-                          signature: e.target.value,
-                        },
-                      };
-                      setFormData(updated);
-                      handleSave(updated);
-                    }}
-                    placeholder={`S pozdravem,\nPetr Kulhánek\ntel: +420 ...`}
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none font-mono resize-y leading-relaxed"
-                  />
-                  <p className="text-xs text-gray-400">
-                    Po výběru zkratky <span className="text-indigo-300 font-mono">:podpis</span> ve vyhledávači se tento text zkopíruje do schránky.
-                  </p>
-                </div>
-
-                {/* Company & contact snippets */}
-                <div className="bg-white/[0.02] p-4 rounded-xl border border-white/5 space-y-4">
-                  <h5 className="text-[13px] font-medium text-gray-200 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-base text-indigo-400">badge</span>
-                    Firemní a kontaktní údaje pro rychlé vložení
-                  </h5>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* ICO */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs text-gray-300 flex items-center justify-between">
-                        <span>IČO (<code className="text-indigo-300 font-mono">:ico</code>, <code className="text-indigo-300 font-mono">:ičo</code>)</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.snippets?.ico || ''}
-                        onChange={(e) => {
-                          const updated = {
-                            ...formData,
-                            snippets: { ...formData.snippets, ico: e.target.value },
-                          };
-                          setFormData(updated);
-                          handleSave(updated);
-                        }}
-                        placeholder="např. 12345678"
-                        className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono"
-                      />
-                    </div>
-
-                    {/* DIC */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs text-gray-300 flex items-center justify-between">
-                        <span>DIČ (<code className="text-indigo-300 font-mono">:dic</code>, <code className="text-indigo-300 font-mono">:dič</code>)</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.snippets?.dic || ''}
-                        onChange={(e) => {
-                          const updated = {
-                            ...formData,
-                            snippets: { ...formData.snippets, dic: e.target.value },
-                          };
-                          setFormData(updated);
-                          handleSave(updated);
-                        }}
-                        placeholder="např. CZ12345678"
-                        className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono"
-                      />
-                    </div>
-
-                    {/* Phone */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs text-gray-300 flex items-center justify-between">
-                        <span>Telefon (<code className="text-indigo-300 font-mono">:telefon</code>, <code className="text-indigo-300 font-mono">:tel</code>)</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.snippets?.phone || ''}
-                        onChange={(e) => {
-                          const updated = {
-                            ...formData,
-                            snippets: { ...formData.snippets, phone: e.target.value },
-                          };
-                          setFormData(updated);
-                          handleSave(updated);
-                        }}
-                        placeholder="např. +420 777 123 456"
-                        className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono"
-                      />
-                    </div>
-
-                    {/* Email */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs text-gray-300 flex items-center justify-between">
-                        <span>E-mail (<code className="text-indigo-300 font-mono">:email</code>, <code className="text-indigo-300 font-mono">:mail</code>)</span>
-                      </label>
-                      <input
-                        type="email"
-                        value={formData.snippets?.email || ''}
-                        onChange={(e) => {
-                          const updated = {
-                            ...formData,
-                            snippets: { ...formData.snippets, email: e.target.value },
-                          };
-                          setFormData(updated);
-                          handleSave(updated);
-                        }}
-                        placeholder="např. info@firma.cz"
-                        className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Address */}
-                  <div className="space-y-1.5 pt-1">
-                    <label className="text-xs text-gray-300 flex items-center justify-between">
-                      <span>Adresa / Sídlo (<code className="text-indigo-300 font-mono">:adresa</code>, <code className="text-indigo-300 font-mono">:address</code>)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.snippets?.address || ''}
-                      onChange={(e) => {
-                        const updated = {
-                          ...formData,
-                          snippets: { ...formData.snippets, address: e.target.value },
-                        };
-                        setFormData(updated);
-                        handleSave(updated);
-                      }}
-                      placeholder="např. Václavské náměstí 1, 110 00 Praha 1"
-                      className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 outline-none font-mono"
-                    />
-                  </div>
-
-                  <p className="text-[11px] text-gray-400">
-                    Zadáním dvojtečky a názvu (např. <code className="text-indigo-300 font-mono">:ico</code> nebo <code className="text-indigo-300 font-mono">:adresa</code>) se údaj okamžitě nabídne k vložení ve vyhledávači.
-                  </p>
-                </div>
-              </div>
             </div>
           )}
 
@@ -3758,11 +4655,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span className="text-[13px] text-gray-400 block mb-1">Nainstalovaná verze</span>
                     <div className="text-lg font-mono font-bold text-white tracking-wide">
                       v{CURRENT_APP_VERSION}
-                    </div>
-                    <div className="mt-1.5">
-                      <span className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        Aktuální sestavení
-                      </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

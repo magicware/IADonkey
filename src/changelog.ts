@@ -5,12 +5,35 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.2';
+export const CURRENT_APP_VERSION = '1.1.3';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.3',
+    date: '16. 9. 2026',
+    title: 'Vlastní snippety, import/export, katalog Material Symbols, plynulá synchronizace a vyladění UI',
+    highlights: [
+      'Nová záložka Snippety v Nastavení: přehledná centrální správa textových zkratek s rozdělením na Vlastní snippety a Předdefinované osobní údaje.',
+      'Vlastní snippety: možnost vytvářet libovolné textové šablony s výběrem ikony z Material Symbols, víceřádkovým textem pro rychlé zkopírování do schránky a flexibilními zkratkami (:zkratka) přes štítky.',
+      'Export a import vlastních snippetů: možnost zálohovat i nahrát snippety v přenosném formátu JSON přímo z nového panelu akcí bez závislosti na externích souborech.',
+      'Nové předdefinované osobní údaje: přidána pole Moje Jméno (:jmeno), Moje DIČ (:dic) a Můj E-mail (:email) se sjednoceným názvoslovím v Nastavení i Spotlightu.',
+      'Vylepšený katalog Material Symbols: nová komponenta IconPickerInput pro pohodlný výběr ikon ve všech formulářích s inteligentním relevančním vyhledáváním a deduplikací.',
+      'Správa online katalogu ikon přesunuta na konec záložky Zdroje dat do nové sekce Externí nástroje se sjednoceným vizuálním stylem.',
+      'Plynulý stav synchronizace ve Zdrojích dat s minimální dobou trvání 2 sekundy a živým progress barem namísto náhlého probliknutí.',
+      'Podpora číselných dotazů MLogu již od 3 číslic (např. 123 nabídne T123 a R123).',
+      'Podpora elementů <Alias> v konfiguraci MagicGate XML se stejnými možnostmi a funkcemi jako <App>.',
+      'Tlačítka „Procházet...“ nyní otevírají souborový průzkumník přímo ve stávající zadané cestě nebo její nadřazené složce.',
+      'Podpoložky (Alt+Enter) ve Spotlightu se nyní vždy vykreslují ve vybrané primární barvě motivu z Nastavení, z rozšíření se přebírá pouze štítek.',
+      'Ochrana před kolizí globální zkratky s rezervovanými klávesovými zkratkami aplikace.',
+      'Automatické resetování posuvníku na začátek při přepínání záložek v Nastavení.',
+      'Kompaktní tlačítka automatické detekce cest (VS Code a Android Studio) s ikonou hvězdiček.',
+      'Odstranění duplicitního zápatí v menu Nastavení pro čistší rozvržení okna.',
+      'Zpřesnění výpočtu a zobrazení součtu disjunktních položek v Kompletním seznamu a ve Zdrojích dat.',
+    ],
+  },
   {
     version: '1.1.2',
     date: '15. 9. 2026',
@@ -153,10 +176,29 @@ export const CHANGELOG_HISTORY: VersionEntry[] = [
 ];
 
 /**
- * Zde se průběžně zapisují novinky pro budoucí verzi.
+ * Zde se průběžně zapisují novinky pro budoucí verzi (1.1.3).
  * Po dokončení denní práce se tato sekce překlopí do nové verze a navýší se číslo.
  */
-export const UPCOMING_CHANGELOG: string[] = [];
+export const UPCOMING_CHANGELOG: string[] = [
+  'Aktivace MLog rozšíření u čistě číselných dotazů již od 3 číslic (např. 123 -> T123 a R123).',
+  'Odstranění nadbytečného štítku "Aktuální sestavení" v záložce Aktualizace v Nastavení.',
+  'Zpřesnění textu v okně dostupné aktualizace ("Přehled všech změn po aktualizaci naleznete...").',
+  'Oprava deformace a nežádoucího zmenšování ikony hvězdiček v záhlaví modálu Co je nového.',
+  'Tlačítko "Znovu načíst pole" u struktury JSONu ve zdrojích dat zajištěno proti nechtěnému zalamování textu (whitespace: nowrap).',
+  'Průvodce "Jak na zdroje dat": ukázka č. 3 pro Git přestylována do zelené barvy rozšíření GitHub.',
+  'Průvodce "Jak na zdroje dat": textace bodu 3 u MagicGate XML modelu upravena tak, že reflektuje automatické načítání všech dostupných metadat a parametrů.',
+  'Průvodce "Jak na zdroje dat": perfektní vertikální vycentrování křížku pro zavření modálu.',
+  'Záložka Obecné: zpřesnění nápovědy u snippetů (údaj se přímo zkopíruje do schránky).',
+  'Záložka Obecné: zjednodušení formulářového popisku z "Adresa / Sídlo" na "Adresa".',
+  'Changelog: stručný popis verze přesunut z hlavičky na samostatný řádek přímo nad seznam odrážek pro vyšší přehlednost.',
+  'Zdroje dat v Nastavení: ikona u nadpisu sekce Mapování polí JSONu sladěna do vybrané primární barvy motivu.',
+  'Osobní snippety: přidána nová položka "Moje Jméno" (:jmeno / :name) a sjednoceno pojmenování snippetů na Moje IČO, Moje Jméno, Můj Telefon, Můj Podpis a Moje Adresa.',
+  'Redesign karty výsledku testu GitHubu: organizace přesunuty přímo na řádek profilu, celkový počet repozitářů zarovnán vpravo s velkou číslicí, svisle vycentrovaný avatar a elegantní čárkovaný placeholder před spuštěním testu.',
+  'Zdroje dat: věrná simulace náhledu 1. položky JSONu ve stylu skutečného řádku Spotlight vyhledávače včetně ikony, akce a provedení.',
+  'Ochrana před kolizí globální zkratky: zamezeno nastavení rezervovaných klávesových zkratek z nápovědy (Shift+Enter, Alt+Enter, Ctrl+Enter, Ctrl/Alt+Backspace, šipky, Escape). Při kolizi zůstává zachována původní funkční zkratka a zobrazí se vysvětlující chybová hláška.',
+  'Komponenta výběru ikony s živým vyhledávačem: nová vizuální komponenta pro všechna pole ikony (položka, akce, podpoložka, pevné mapování) zobrazující dashed placeholder se zašedlou ikonou nebo reálný náhled vybrané ikony a otevírající interaktivní výběrové okno s vyhledáváním a kategoriemi.',
+  'Oprava ukončení aplikace při instalaci aktualizace: ošetřeno korektní uvolnění zámku instance, zničení oken i tray ikony a čisté ukončení starého procesu před spuštěním instalátoru, čímž se zamezilo nežádoucímu opětovnému otevření staré verze.',
+];
 
 export function getLatestRelease(): VersionEntry {
   return CHANGELOG_HISTORY[0];

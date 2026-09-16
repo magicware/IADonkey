@@ -58,8 +58,8 @@ export function parseMagicGateXml(xmlContent: string): LauncherItem[] {
         continue;
       }
 
-      // 4. Find all <App ... /> or <Check ... /> inside the instance
-      const appRegex = /<(?:App|Check)\s+([^>]*?)(?:\/>|>[\s\S]*?<\/(?:App|Check)>)/gi;
+      // 4. Find all <App ... />, <Check ... />, or <Alias ... /> inside the instance
+      const appRegex = /<(?:App|Check|Alias)\s+([^>]*?)(?:\/>|>[\s\S]*?<\/(?:App|Check|Alias)>)/gi;
       let appMatch: RegExpExecArray | null;
       const validApps: { name: string; url: string }[] = [];
 
@@ -91,7 +91,7 @@ export function parseMagicGateXml(xmlContent: string): LauncherItem[] {
       const mainApp = validApps[0];
       const otherApps = validApps.slice(1);
 
-      const options: LauncherItem[] = otherApps.map((app) => {
+      const options: LauncherItem[] = otherApps.map((app, idx) => {
         let displayName = app.name;
         const upper = app.name.trim().toUpperCase();
         if (upper === 'A') {
@@ -104,9 +104,10 @@ export function parseMagicGateXml(xmlContent: string): LauncherItem[] {
           displayName = 'BO';
         }
 
+        const safeKey = (app.name || `sub-${idx}`).toLowerCase().replace(/[^a-z0-9]/g, '_');
         return {
-          id: `mg-xml-${instanceName.toLowerCase()}-${app.name.toLowerCase()}`,
-          name: displayName,
+          id: `mg-xml-${instanceName.toLowerCase()}-${safeKey}-${idx}`,
+          name: displayName || app.name || 'Aplikace',
           location: app.url,
           action: 'open',
           icon: 'public',

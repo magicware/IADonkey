@@ -2,12 +2,14 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { AppConfig, LauncherItem, UpdateInfo } from '../src/types';
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  downloadMaterialIcons: (): Promise<any> => ipcRenderer.invoke('download-material-icons'),
+  getMaterialIcons: (): Promise<any> => ipcRenderer.invoke('get-material-icons'),
   getConfig: (): Promise<AppConfig> => ipcRenderer.invoke('get-config'),
   saveConfig: (config: AppConfig): Promise<void> => ipcRenderer.invoke('save-config', config),
   getItems: (): Promise<LauncherItem[]> => ipcRenderer.invoke('get-items'),
   syncNow: (): Promise<LauncherItem[]> => ipcRenderer.invoke('sync-now'),
-  selectJsonFile: (): Promise<string | null> => ipcRenderer.invoke('select-json-file'),
-  selectXmlFile: (): Promise<string | null> => ipcRenderer.invoke('select-xml-file'),
+  selectJsonFile: (defaultPath?: string): Promise<string | null> => ipcRenderer.invoke('select-json-file', defaultPath),
+  selectXmlFile: (defaultPath?: string): Promise<string | null> => ipcRenderer.invoke('select-xml-file', defaultPath),
   inspectSource: (source: any): Promise<{ keys: string[]; sample: any }> =>
     ipcRenderer.invoke('inspect-source', source),
   executeAction: (data: { action: string; location: string; settings?: string | null }): Promise<void> =>
@@ -26,16 +28,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   resumeGlobalHotkey: (): Promise<void> => ipcRenderer.invoke('resume-global-hotkey'),
   fetchFaviconForUrl: (url: string): Promise<string | null> => ipcRenderer.invoke('fetch-favicon-for-url', url),
   testGitHubConnection: (settings: any): Promise<any> => ipcRenderer.invoke('test-github-connection', settings),
-  selectDirectory: (): Promise<string | null> => ipcRenderer.invoke('select-directory'),
+  selectDirectory: (defaultPath?: string): Promise<string | null> => ipcRenderer.invoke('select-directory', defaultPath),
   runGitClone: (params: { repoUrl: string; targetDir: string; recursive?: boolean }): Promise<{ success: boolean; targetPath: string; output?: string; error?: string; alreadyExists?: boolean }> =>
     ipcRenderer.invoke('run-git-clone', params),
   openInVscode: (folderPath: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('open-in-vscode', folderPath),
-  selectVscodePath: (): Promise<string | null> => ipcRenderer.invoke('select-vscode-path'),
+  selectVscodePath: (defaultPath?: string): Promise<string | null> => ipcRenderer.invoke('select-vscode-path', defaultPath),
   detectVscodePath: (): Promise<string | null> => ipcRenderer.invoke('detect-vscode-path'),
   openInAndroidStudio: (folderPath: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke('open-in-android-studio', folderPath),
-  selectAndroidStudioPath: (): Promise<string | null> => ipcRenderer.invoke('select-android-studio-path'),
+  selectAndroidStudioPath: (defaultPath?: string): Promise<string | null> => ipcRenderer.invoke('select-android-studio-path', defaultPath),
   detectAndroidStudioPath: (): Promise<string | null> => ipcRenderer.invoke('detect-android-studio-path'),
   isAndroidProject: (folderPath: string): Promise<boolean> => ipcRenderer.invoke('is-android-project', folderPath),
   getExistingClonedRepos: (baseDir?: string): Promise<string[]> => ipcRenderer.invoke('get-existing-cloned-repos', baseDir),

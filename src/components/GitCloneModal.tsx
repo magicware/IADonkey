@@ -187,7 +187,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
   const handleSelectFolder = async () => {
     try {
       if (window.electronAPI?.selectDirectory) {
-        const selected = await window.electronAPI.selectDirectory();
+        const selected = await window.electronAPI.selectDirectory(targetDir);
         if (selected) {
           if (isInstanceMode && repoName) {
             setTargetDir(normalizeInstanceTargetDir(selected, repoName));

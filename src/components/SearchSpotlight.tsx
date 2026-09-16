@@ -423,7 +423,14 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
     // 1. If currently browsing subitems of a parent item
     if (parentItem) {
-      const subitems = parentItem.options || [];
+      const rawSubitems = parentItem.options || [];
+      const subitems = rawSubitems.map((it) => ({
+        ...it,
+        icon: it.icon?.trim() ? it.icon : parentItem.icon,
+        image: it.image?.trim() ? it.image : parentItem.image,
+        sourceId: it.sourceId || parentItem.sourceId,
+        settings: it.settings || parentItem.settings,
+      }));
       if (!trimmed) {
         return subitems;
       }
@@ -691,8 +698,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       return list;
     }
 
-    // 0a. MLog digits-only query (4 or more digits, e.g. 2111 -> 1st T2111, 2nd R2111)
-    const digitsOnlyMatch = trimmed.match(/^(\d{4,})$/);
+    // 0a. MLog digits-only query (3 or more digits, e.g. 123 -> 1st T123, 2nd R123)
+    const digitsOnlyMatch = trimmed.match(/^(\d{3,})$/);
     if (digitsOnlyMatch && mlogBaseUrl) {
       const numId = digitsOnlyMatch[1];
       const taskItem = detectMlogTicket(`T${numId}`, mlogBaseUrl);
@@ -1242,7 +1249,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   const isGitPrefix = Boolean(trimmedQuery.match(/^git:/i));
   const isMagicGatePrefix = Boolean(trimmedQuery.match(/^(?:magicgate|mg):/i));
   const isMlogMode = Boolean(
-    mlogBaseUrl?.trim() && trimmedQuery.match(/^(?:mlog:|[rRtT]\s*\d+|\d{4,})$/i)
+    mlogBaseUrl?.trim() && trimmedQuery.match(/^(?:mlog:|[rRtT]\s*\d+|\d{3,})$/i)
   );
 
   return (
@@ -1261,6 +1268,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           className={`material-symbols-outlined select-none text-2xl ${
             actionsParentItem
               ? 'text-purple-400'
+              : parentItem
+              ? 'text-indigo-400'
               : isMlogMode
               ? 'text-indigo-400'
               : isGitPrefix
@@ -1685,28 +1694,32 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       <div className="relative flex-shrink-0">
                         <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
                           <MaterialIcon
-                            icon={item.icon}
-                            image={item.image}
-                            location={item.location}
+                            icon={item.icon?.trim() ? item.icon : parentItem?.icon}
+                            image={item.image?.trim() ? item.image : parentItem?.image}
+                            location={item.location || parentItem?.location}
                             colorClass={
-                              item.settings === 'git' || item.sourceId === 'github'
+                              parentItem
+                                ? undefined
+                                : item.settings === 'git' || item.sourceId === 'github'
                                 ? 'text-emerald-400'
-                                : item.sourceId === 'magicgate-xml'
+                                : item.sourceId === 'magicgate-xml' || item.settings === 'magicgate'
                                 ? 'text-amber-400'
                                 : undefined
                             }
                             fallbackIcon={
-                              item.sourceId === 'snippet'
-                                ? 'content_paste'
-                                : item.priority === 99
-                                ? 'apps'
-                                : item.priority === -1.5
-                                ? 'mail'
-                                : item.priority === -1
-                                ? 'calculate'
-                                : item.priority === -2
-                                ? 'support_agent'
-                                : 'code'
+                              parentItem?.icon || (
+                                item.sourceId === 'snippet'
+                                  ? 'content_paste'
+                                  : item.priority === 99
+                                  ? 'apps'
+                                  : item.priority === -1.5
+                                  ? 'mail'
+                                  : item.priority === -1
+                                  ? 'calculate'
+                                  : item.priority === -2
+                                  ? 'support_agent'
+                                  : 'code'
+                              )
                             }
                             className="w-7 h-7"
                           />

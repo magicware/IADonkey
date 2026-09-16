@@ -182,6 +182,103 @@ function setupIpcHandlers() {
     return getCombinedItems();
   });
 
+  ipcMain.handle('get-material-icons', () => {
+    return store.getMaterialIcons();
+  });
+
+  ipcMain.handle('download-material-icons', async () => {
+    try {
+      const url = 'https://fonts.google.com/metadata/icons?key=material_symbols&incomplete=true';
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Chyba serveru Google Fonts (${res.status} ${res.statusText})`);
+      }
+      const text = await res.text();
+      const clean = text.replace(/^\)]}'\s*/, '');
+      const data = JSON.parse(clean);
+
+      if (!Array.isArray(data.icons)) {
+        throw new Error('Neplatný formát metadat z Google Fonts');
+      }
+
+      function normalizeCategory(rawCat?: string): string {
+        if (!rawCat) return 'Ostatní';
+        const lower = rawCat.toLowerCase().trim();
+        if (lower.includes('action')) return 'Akce';
+        if (lower.includes('audio') || lower === 'av' || lower.includes('video')) return 'Zvuk a video';
+        if (lower.includes('image') || lower.includes('photo')) return 'Obrázky';
+        if (lower.includes('social')) return 'Sociální';
+        if (lower.includes('device') || lower.includes('hardware') || lower.includes('android')) return 'Hardware a zařízení';
+        if (lower.includes('map') || lower.includes('transit') || lower.includes('travel') || lower.includes('places')) return 'Mapy a cestování';
+        if (lower.includes('communicat')) return 'Komunikace';
+        if (lower.includes('home') || lower.includes('household')) return 'Domácnost';
+        if (lower.includes('business') || lower.includes('payment')) return 'Obchod a finance';
+        if (lower.includes('notif') || lower.includes('alert')) return 'Upozornění';
+        if (lower.includes('text') || lower.includes('editor')) return 'Text a editor';
+        if (lower.includes('file')) return 'Soubory';
+        if (lower.includes('privacy') || lower.includes('security')) return 'Bezpečnost';
+        if (lower.includes('navigat') || lower.includes('search')) return 'Navigace a hledání';
+        if (lower.includes('activit')) return 'Aktivity';
+        return 'Ostatní';
+      }
+
+      // Filter only icons supported in Material Symbols Outlined (exclude legacy Material Icons)
+      const symbolsOnly = data.icons.filter((item: any) => {
+        const unsupported = Array.isArray(item.unsupported_families) ? item.unsupported_families : [];
+        return !unsupported.includes('Material Symbols Outlined');
+      });
+
+      const iconMap = new Map<string, { name: string; category: string; tags: string[] }>();
+      for (const item of symbolsOnly) {
+        if (!item.name) continue;
+        const name = String(item.name).trim().toLowerCase();
+        const rawTags = Array.isArray(item.tags) ? item.tags : [];
+        const cleanTags = rawTags
+          .map((t: any) => String(t).trim().toLowerCase())
+          .filter((t: string) => t.length > 0);
+
+        if (!iconMap.has(name)) {
+          iconMap.set(name, {
+            name,
+            category: normalizeCategory(item.categories?.[0]),
+            tags: cleanTags,
+          });
+        } else {
+          const existing = iconMap.get(name)!;
+          existing.tags = Array.from(new Set([...existing.tags, ...cleanTags]));
+        }
+      }
+
+      const simplified = Array.from(iconMap.values());
+
+      store.saveMaterialIcons(simplified);
+
+      const downloadedAt = new Date().toISOString();
+      const currentConfig = store.getConfig();
+      const updatedConfig = {
+        ...currentConfig,
+        iconsLastDownloadedAt: downloadedAt,
+        iconsCount: simplified.length,
+      };
+      store.saveConfig(updatedConfig);
+
+      windowManager.getMainWindow()?.webContents.send('config-updated', updatedConfig);
+      windowManager.getSettingsWindow()?.webContents.send('config-updated', updatedConfig);
+
+      return {
+        success: true,
+        count: simplified.length,
+        downloadedAt,
+      };
+    } catch (err: any) {
+      console.error('[Main] Failed to download material icons:', err);
+      return {
+        success: false,
+        error: err?.message || 'Chyba při stahování ikon z Google Fonts.',
+      };
+    }
+  });
+
   ipcMain.handle('sync-now', async () => {
     await syncManager.syncAll((progress) => {
       windowManager.getMainWindow()?.webContents.send('sync-progress', progress);
@@ -200,26 +297,38 @@ function setupIpcHandlers() {
     return await syncManager.inspectSource(source);
   });
 
-  ipcMain.handle('select-json-file', async () => {
-    const win = windowManager.getMainWindow();
-    const result = await dialog.showOpenDialog(win || undefined as any, {
-      title: 'Vyberte JSON soubor s daty',
-      filters: [{ name: 'JSON Files', extensions: ['json'] }],
-      properties: ['openFile'],
-    });
+  function resolveDefaultPath(initialPath?: string, forDirectory: boolean = false): string | undefined {
+    if (!initialPath || typeof initialPath !== 'string') return undefined;
+    const trimmed = initialPath.trim();
+    if (!trimmed) return undefined;
 
-    if (!result.canceled && result.filePaths.length > 0) {
-      return result.filePaths[0];
+    try {
+      if (fs.existsSync(trimmed)) {
+        if (forDirectory) {
+          const stat = fs.statSync(trimmed);
+          return stat.isDirectory() ? trimmed : path.dirname(trimmed);
+        }
+        return trimmed;
+      }
+      // If exact path does not exist, check its parent directory
+      const parent = path.dirname(trimmed);
+      if (fs.existsSync(parent)) {
+        return parent;
+      }
+    } catch {
+      // ignore filesystem errors
     }
-    return null;
-  });
+    return undefined;
+  }
 
-  ipcMain.handle('select-xml-file', async () => {
+  ipcMain.handle('select-json-file', async (_event, defaultPath?: string) => {
     const win = windowManager.getSettingsWindow() || windowManager.getMainWindow();
+    const resolvedPath = resolveDefaultPath(defaultPath, false);
     const result = await dialog.showOpenDialog(win || (undefined as any), {
-      title: 'Vyberte MagicGate XML soubor konfigurace',
+      title: 'Vyberte JSON soubor s daty',
+      defaultPath: resolvedPath,
       filters: [
-        { name: 'XML soubory', extensions: ['xml'] },
+        { name: 'JSON soubory (*.json)', extensions: ['json'] },
         { name: 'Všechny soubory', extensions: ['*'] },
       ],
       properties: ['openFile'],
@@ -231,10 +340,31 @@ function setupIpcHandlers() {
     return null;
   });
 
-  ipcMain.handle('select-directory', async () => {
+  ipcMain.handle('select-xml-file', async (_event, defaultPath?: string) => {
     const win = windowManager.getSettingsWindow() || windowManager.getMainWindow();
+    const resolvedPath = resolveDefaultPath(defaultPath, false);
     const result = await dialog.showOpenDialog(win || (undefined as any), {
-      title: 'Vyberte složku pro klonování repozitářů',
+      title: 'Vyberte MagicGate XML soubor konfigurace',
+      defaultPath: resolvedPath,
+      filters: [
+        { name: 'XML soubory (*.xml)', extensions: ['xml'] },
+        { name: 'Všechny soubory', extensions: ['*'] },
+      ],
+      properties: ['openFile'],
+    });
+
+    if (!result.canceled && result.filePaths.length > 0) {
+      return result.filePaths[0];
+    }
+    return null;
+  });
+
+  ipcMain.handle('select-directory', async (_event, defaultPath?: string) => {
+    const win = windowManager.getGitCloneWindow() || windowManager.getSettingsWindow() || windowManager.getMainWindow();
+    const resolvedPath = resolveDefaultPath(defaultPath, true);
+    const result = await dialog.showOpenDialog(win || (undefined as any), {
+      title: 'Vyberte cílovou složku',
+      defaultPath: resolvedPath,
       properties: ['openDirectory', 'createDirectory'],
     });
 
@@ -399,7 +529,12 @@ function setupIpcHandlers() {
   });
 
   ipcMain.handle('install-update', (_event, filePath: string) => {
-    updateChecker.installAndRestart(filePath);
+    updateChecker.installAndRestart(filePath, () => {
+      windowManager.prepareForQuitOrRestart();
+      globalShortcut.unregisterAll();
+      if (syncIntervalTimer) clearInterval(syncIntervalTimer);
+      if (updateIntervalTimer) clearInterval(updateIntervalTimer);
+    });
   });
 
   // VS Code integration handlers
@@ -410,9 +545,12 @@ function setupIpcHandlers() {
     return await openPathInVscode(folderPath);
   });
 
-  ipcMain.handle('select-vscode-path', async () => {
-    const result = await dialog.showOpenDialog({
+  ipcMain.handle('select-vscode-path', async (_event, defaultPath?: string) => {
+    const win = windowManager.getSettingsWindow() || windowManager.getMainWindow();
+    const resolvedPath = resolveDefaultPath(defaultPath, false);
+    const result = await dialog.showOpenDialog(win || (undefined as any), {
       title: 'Vyberte spustitelný soubor VS Code (Code.exe)',
+      defaultPath: resolvedPath,
       properties: ['openFile'],
       filters: [
         { name: 'Spustitelné soubory (*.exe, *.cmd)', extensions: ['exe', 'cmd'] },
@@ -436,9 +574,12 @@ function setupIpcHandlers() {
     return await openPathInAndroidStudio(folderPath);
   });
 
-  ipcMain.handle('select-android-studio-path', async () => {
-    const result = await dialog.showOpenDialog({
+  ipcMain.handle('select-android-studio-path', async (_event, defaultPath?: string) => {
+    const win = windowManager.getSettingsWindow() || windowManager.getMainWindow();
+    const resolvedPath = resolveDefaultPath(defaultPath, false);
+    const result = await dialog.showOpenDialog(win || (undefined as any), {
       title: 'Vyberte spustitelný soubor Android Studio (studio64.exe)',
+      defaultPath: resolvedPath,
       properties: ['openFile'],
       filters: [
         { name: 'Spustitelné soubory (*.exe, *.bat, *.cmd)', extensions: ['exe', 'bat', 'cmd'] },

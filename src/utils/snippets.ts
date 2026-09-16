@@ -217,26 +217,35 @@ export function getDynamicSnippets(query: string, customSnippets?: SnippetsConfi
   const sigText = customSnippets?.signature?.trim();
   allDefs.unshift({
     keys: [':podpis', ':sign', ':signature'],
-    name: 'Osobní podpis',
-    description: sigText ? 'Váš podpis z nastavení' : 'Zatím není nastaven v Nastavení (Obecné)',
+    name: 'Můj Podpis',
+    description: sigText ? 'Váš podpis z nastavení' : 'Zatím není nastaven v Nastavení (Snippety)',
     getValue: () => customSnippets?.signature || '',
     icon: 'draw',
+  });
+
+  const nameText = customSnippets?.name?.trim();
+  allDefs.unshift({
+    keys: [':jmeno', ':jméno', ':name'],
+    name: 'Moje Jméno',
+    description: nameText ? nameText : 'Zatím není nastaveno v Nastavení (Snippety)',
+    getValue: () => customSnippets?.name || '',
+    icon: 'person',
   });
 
   const icoText = customSnippets?.ico?.trim();
   allDefs.unshift({
     keys: [':ico', ':ičo'],
-    name: 'IČO',
-    description: icoText ? `IČO: ${icoText}` : 'Zatím není nastaveno v Nastavení (Obecné)',
+    name: 'Moje IČO',
+    description: icoText ? `IČO: ${icoText}` : 'Zatím není nastaveno v Nastavení (Snippety)',
     getValue: () => customSnippets?.ico || '',
     icon: 'badge',
   });
 
   const dicText = customSnippets?.dic?.trim();
   allDefs.unshift({
-    keys: [':dic', ':dič'],
-    name: 'DIČ',
-    description: dicText ? `DIČ: ${dicText}` : 'Zatím není nastaveno v Nastavení (Obecné)',
+    keys: [':dic', ':dič', ':vat'],
+    name: 'Moje DIČ',
+    description: dicText ? `DIČ: ${dicText}` : 'Zatím není nastaveno v Nastavení (Snippety)',
     getValue: () => customSnippets?.dic || '',
     icon: 'receipt_long',
   });
@@ -244,8 +253,8 @@ export function getDynamicSnippets(query: string, customSnippets?: SnippetsConfi
   const addressText = customSnippets?.address?.trim();
   allDefs.unshift({
     keys: [':adresa', ':address'],
-    name: 'Adresa',
-    description: addressText ? addressText : 'Zatím není nastaveno v Nastavení (Obecné)',
+    name: 'Moje Adresa',
+    description: addressText ? addressText : 'Zatím není nastaveno v Nastavení (Snippety)',
     getValue: () => customSnippets?.address || '',
     icon: 'home_pin',
   });
@@ -253,20 +262,47 @@ export function getDynamicSnippets(query: string, customSnippets?: SnippetsConfi
   const phoneText = customSnippets?.phone?.trim();
   allDefs.unshift({
     keys: [':telefon', ':tel', ':phone'],
-    name: 'Telefon',
-    description: phoneText ? phoneText : 'Zatím není nastaveno v Nastavení (Obecné)',
+    name: 'Můj Telefon',
+    description: phoneText ? phoneText : 'Zatím není nastaveno v Nastavení (Snippety)',
     getValue: () => customSnippets?.phone || '',
     icon: 'call',
   });
 
   const emailText = customSnippets?.email?.trim();
   allDefs.unshift({
-    keys: [':email', ':mail'],
-    name: 'E-mail',
-    description: emailText ? emailText : 'Zatím není nastaveno v Nastavení (Obecné)',
+    keys: [':email', ':mail', ':e-mail'],
+    name: 'Můj E-mail',
+    description: emailText ? emailText : 'Zatím není nastaveno v Nastavení (Snippety)',
     getValue: () => customSnippets?.email || '',
     icon: 'mail',
   });
+
+  // User custom snippets from settings
+  if (customSnippets?.custom && Array.isArray(customSnippets.custom)) {
+    for (const cs of customSnippets.custom) {
+      if (!cs) continue;
+      const rawName = (cs.name || '').trim();
+      const rawLoc = cs.location || '';
+      if (!rawName && !rawLoc) continue;
+
+      const keys = (cs.shortcuts || [])
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+        .map((s) => (s.startsWith(':') ? s : `:${s}`));
+
+      const effectiveKeys = keys.length > 0
+        ? keys
+        : [rawName ? (rawName.startsWith(':') ? rawName : `:${rawName}`) : ':snippet'];
+
+      allDefs.unshift({
+        keys: effectiveKeys,
+        name: rawName || effectiveKeys[0],
+        description: rawLoc ? (rawLoc.length > 60 ? `${rawLoc.slice(0, 60)}...` : rawLoc) : '',
+        getValue: () => rawLoc,
+        icon: cs.icon || 'draw',
+      });
+    }
+  }
 
   // Check if query contains math operators (+ or - after snippet key)
   const mathMatch = /^(:[a-zA-Zá-žÁ-Ž0-9_-]+)([\s+\-].*)$/.exec(trimmed);

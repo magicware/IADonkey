@@ -1,14 +1,16 @@
-import { AppConfig, LauncherItem, UpdateInfo, SyncProgress, DataSource, GithubSettings } from './index';
+import { AppConfig, LauncherItem, UpdateInfo, SyncProgress, DataSource, GithubSettings, MaterialIconDef } from './index';
 
 declare global {
   interface Window {
     electronAPI: {
+      downloadMaterialIcons: () => Promise<{ success: boolean; count?: number; downloadedAt?: string; error?: string }>;
+      getMaterialIcons: () => Promise<MaterialIconDef[] | null>;
       getConfig: () => Promise<AppConfig>;
       saveConfig: (config: AppConfig) => Promise<void>;
       getItems: () => Promise<LauncherItem[]>;
       syncNow: () => Promise<LauncherItem[]>;
-      selectJsonFile: () => Promise<string | null>;
-      selectXmlFile: () => Promise<string | null>;
+      selectJsonFile: (defaultPath?: string) => Promise<string | null>;
+      selectXmlFile: (defaultPath?: string) => Promise<string | null>;
       inspectSource: (source: DataSource) => Promise<{ keys: string[]; sample: Record<string, any> | null }>;
       executeAction: (data: { action: string; location: string; settings?: string | null }) => Promise<void>;
       openExternal: (url: string) => Promise<void>;
@@ -37,7 +39,7 @@ declare global {
         repoCount?: number;
         error?: string;
       }>;
-      selectDirectory: () => Promise<string | null>;
+      selectDirectory: (defaultPath?: string) => Promise<string | null>;
       runGitClone: (params: { repoUrl: string; targetDir: string; recursive?: boolean }) => Promise<{
         success: boolean;
         targetPath: string;
@@ -46,10 +48,10 @@ declare global {
         alreadyExists?: boolean;
       }>;
       openInVscode: (folderPath: string) => Promise<{ success: boolean; error?: string }>;
-      selectVscodePath: () => Promise<string | null>;
+      selectVscodePath: (defaultPath?: string) => Promise<string | null>;
       detectVscodePath: () => Promise<string | null>;
       openInAndroidStudio: (folderPath: string) => Promise<{ success: boolean; error?: string }>;
-      selectAndroidStudioPath: () => Promise<string | null>;
+      selectAndroidStudioPath: (defaultPath?: string) => Promise<string | null>;
       detectAndroidStudioPath: () => Promise<string | null>;
       isAndroidProject: (folderPath: string) => Promise<boolean>;
       getExistingClonedRepos: (baseDir?: string) => Promise<string[]>;

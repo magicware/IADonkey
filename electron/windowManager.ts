@@ -378,4 +378,33 @@ export class WindowManager {
   public setQuitting(val: boolean): void {
     this.isQuitting = val;
   }
+
+  public prepareForQuitOrRestart(): void {
+    this.isQuitting = true;
+    try {
+      if (this.tray && !this.tray.isDestroyed()) {
+        this.tray.destroy();
+        this.tray = null;
+      }
+    } catch {}
+    try {
+      if (this.gitCloneWindow && !this.gitCloneWindow.isDestroyed()) {
+        this.gitCloneWindow.destroy();
+        this.gitCloneWindow = null;
+      }
+    } catch {}
+    try {
+      if (this.settingsWindow && !this.settingsWindow.isDestroyed()) {
+        this.settingsWindow.destroy();
+        this.settingsWindow = null;
+      }
+    } catch {}
+    try {
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.mainWindow.removeAllListeners('close');
+        this.mainWindow.destroy();
+        this.mainWindow = null;
+      }
+    } catch {}
+  }
 }

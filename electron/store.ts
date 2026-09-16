@@ -13,6 +13,7 @@ if (!fs.existsSync(USER_DATA_PATH)) {
 
 const CONFIG_FILE = path.join(USER_DATA_PATH, 'config.json');
 const ITEMS_FILE = path.join(USER_DATA_PATH, 'items_cache.json');
+const ICONS_FILE = path.join(USER_DATA_PATH, 'icons_cache.json');
 
 const DEFAULT_CONFIG: AppConfig = {
   hotkey: 'Ctrl+Alt+Space',
@@ -171,6 +172,26 @@ export class AppStore {
       fs.writeFileSync(ITEMS_FILE, JSON.stringify(items, null, 2), 'utf-8');
     } catch (err) {
       console.error('[Store] Failed to save items to cache:', err);
+    }
+  }
+
+  public getMaterialIcons(): any[] | null {
+    try {
+      if (fs.existsSync(ICONS_FILE)) {
+        const raw = fs.readFileSync(ICONS_FILE, 'utf-8');
+        return JSON.parse(raw);
+      }
+    } catch (err) {
+      console.error('[Store] Failed to load cached icons:', err);
+    }
+    return null;
+  }
+
+  public saveMaterialIcons(icons: any[]): void {
+    try {
+      fs.writeFileSync(ICONS_FILE, JSON.stringify(icons), 'utf-8');
+    } catch (err) {
+      console.error('[Store] Failed to save icons to cache:', err);
     }
   }
 }

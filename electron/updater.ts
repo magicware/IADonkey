@@ -166,14 +166,31 @@ export class UpdateChecker {
   }
 
   /**
-   * Runs the downloaded update executable and terminates the current process.
+   * Runs the downloaded update executable and cleanly terminates the current process.
    */
-  public installAndRestart(filePath: string): void {
+  public installAndRestart(filePath: string, beforeExit?: () => void): void {
     if (!fs.existsSync(filePath)) {
       throw new Error(`Soubor aktualizace nebyl nalezen: ${filePath}`);
     }
 
-    console.log(`[UpdateChecker] Spawning new version: ${filePath} and closing old process`);
+    console.log(`[UpdateChecker] Preparing for update installation: ${filePath}`);
+
+    // Execute window destruction, shortcut unregistration, etc.
+    try {
+      beforeExit?.();
+    } catch (err) {
+      console.error('[UpdateChecker] Error in beforeExit callback:', err);
+    }
+
+    // Release single instance lock and prevent second-instance triggers
+    try {
+      app.removeAllListeners('second-instance');
+      app.releaseSingleInstanceLock();
+    } catch (err) {
+      console.error('[UpdateChecker] Error releasing single instance lock:', err);
+    }
+
+    console.log(`[UpdateChecker] Spawning updater executable: ${filePath}`);
 
     const child = spawn(filePath, [], {
       detached: true,
@@ -181,7 +198,17 @@ export class UpdateChecker {
     });
     child.unref();
 
-    app.quit();
+    console.log(`[UpdateChecker] Terminating current application process...`);
+
+    // Give child process a small moment to initialize, then exit cleanly
+    setTimeout(() => {
+      try {
+        app.exit(0);
+      } catch {}
+      try {
+        process.exit(0);
+      } catch {}
+    }, 150);
   }
 }
 

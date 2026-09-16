@@ -178,36 +178,40 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
     return allCombinedItems.filter((it) => it.sourceId === 'snippet').length;
   }, [allCombinedItems]);
 
+  const totalGitCount = useMemo(() => {
+    return allCombinedItems.filter((it) => it.settings === 'git' || it.sourceId === 'github').length;
+  }, [allCombinedItems]);
+
   const totalMainOnlyCount = useMemo(() => {
-    return allCombinedItems.filter((it) => it.sourceId !== 'snippet').length;
+    return allCombinedItems.filter(
+      (it) => it.sourceId !== 'snippet' && !(it.settings === 'git' || it.sourceId === 'github')
+    ).length;
   }, [allCombinedItems]);
 
   const totalSubCount = useMemo(() => {
     return allCombinedItems.reduce((acc, it) => acc + (it.options?.length || 0), 0);
   }, [allCombinedItems]);
 
-  const totalGitCount = useMemo(() => {
-    return allCombinedItems.filter((it) => it.settings === 'git' || it.sourceId === 'github').length;
-  }, [allCombinedItems]);
-
   const filteredSnippetCount = useMemo(() => {
     return filteredData.filter((d) => d.item.sourceId === 'snippet').length;
-  }, [filteredData]);
-
-  const filteredMainOnlyCount = useMemo(() => {
-    return filteredData.filter((d) => d.item.sourceId !== 'snippet').length;
-  }, [filteredData]);
-
-  const filteredSubCount = useMemo(() => {
-    return filteredData.reduce((acc, it) => acc + it.subitems.length, 0);
   }, [filteredData]);
 
   const filteredGitCount = useMemo(() => {
     return filteredData.filter((d) => d.item.settings === 'git' || d.item.sourceId === 'github').length;
   }, [filteredData]);
 
-  const totalIndexedAll = totalMainOnlyCount + totalSnippetCount + totalSubCount;
-  const filteredIndexedAll = filteredMainOnlyCount + filteredSnippetCount + filteredSubCount;
+  const filteredMainOnlyCount = useMemo(() => {
+    return filteredData.filter(
+      (d) => d.item.sourceId !== 'snippet' && !(d.item.settings === 'git' || d.item.sourceId === 'github')
+    ).length;
+  }, [filteredData]);
+
+  const filteredSubCount = useMemo(() => {
+    return filteredData.reduce((acc, it) => acc + it.subitems.length, 0);
+  }, [filteredData]);
+
+  const totalIndexedAll = totalMainOnlyCount + totalGitCount + totalSnippetCount + totalSubCount;
+  const filteredIndexedAll = filteredMainOnlyCount + filteredGitCount + filteredSnippetCount + filteredSubCount;
 
   // Filter banlist based on search query
   const filteredBanlist = useMemo(() => {
@@ -267,17 +271,17 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                   <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-indigo-500/15 text-indigo-300 border border-indigo-500/25">
                     {filterQuery ? `${filteredMainOnlyCount} z ${totalMainOnlyCount}` : totalMainOnlyCount} hlavních
                   </span>
+                  {totalGitCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
+                      {filterQuery ? `${filteredGitCount} z ${totalGitCount}` : totalGitCount} z Gitu
+                    </span>
+                  )}
                   <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-teal-500/15 text-teal-300 border border-teal-500/25">
                     {filterQuery ? `${filteredSnippetCount} z ${totalSnippetCount}` : totalSnippetCount} snippetů
                   </span>
                   <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-sky-500/15 text-sky-300 border border-sky-500/25">
                     {filterQuery ? `${filteredSubCount} z ${totalSubCount}` : totalSubCount} subpoložek
                   </span>
-                  {totalGitCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
-                      {filterQuery ? `${filteredGitCount} z ${totalGitCount}` : totalGitCount} z Gitu
-                    </span>
-                  )}
                   <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-white/10 text-white border border-white/20">
                     {filterQuery ? `${filteredIndexedAll} celkem` : `${totalIndexedAll} celkem`}
                   </span>
@@ -290,11 +294,12 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer shrink-0"
+            className="w-9 h-9 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer self-center shrink-0 flex items-center justify-center"
             title="Zavřít okno (Esc)"
           >
-            <span className="material-symbols-outlined text-xl">close</span>
+            <span className="material-symbols-outlined text-xl leading-none select-none">close</span>
           </button>
         </header>
 
@@ -691,10 +696,10 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                                 <div className="flex items-center justify-center">
                                   <div className="w-6 h-6 rounded bg-white/[0.03] border border-white/5 flex items-center justify-center overflow-hidden">
                                     <MaterialIcon
-                                      icon={sub.icon}
-                                      image={sub.image}
-                                      location={sub.location}
-                                      fallbackIcon="public"
+                                      icon={sub.icon?.trim() ? sub.icon : item.icon}
+                                      image={sub.image?.trim() ? sub.image : item.image}
+                                      location={sub.location || item.location}
+                                      fallbackIcon={item.icon || "public"}
                                       className="w-4 h-4 flex items-center justify-center"
                                       size={13}
                                     />

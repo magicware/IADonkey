@@ -65,7 +65,7 @@ async function main() {
   const versionJsonPath = path.join(rootDir, 'version.json');
   const versionData = {
     version: version,
-    releaseNotes: `• Vydana nova verze ${version} aplikace IADonkey.\n• Prehled vsech zmen naleznete v aplikaci v zalozce Nastaveni -> Kompletni changelog.`,
+    releaseNotes: `• Vydana nova verze ${version} aplikace IADonkey.\n• Prehled vsech zmen po aktualizaci naleznete v aplikaci v zalozce Nastaveni -> Kompletni changelog.`,
     downloadUrl: `https://github.com/magicware/IADonkey/releases/download/v${version}/IADonkey-${version}.exe`,
   };
   fs.writeFileSync(versionJsonPath, JSON.stringify(versionData, null, 2) + '\n', 'utf8');

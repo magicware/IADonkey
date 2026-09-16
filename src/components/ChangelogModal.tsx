@@ -65,10 +65,9 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose }) => {
                     : 'bg-white/[0.02] border-white/5'
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-sm text-white">v{entry.version}</span>
-                    <span className="text-xs font-semibold text-indigo-300">— {entry.title}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {isCurrent && (
@@ -79,6 +78,12 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose }) => {
                     <span className="text-[11px] text-gray-400 font-mono">{entry.date}</span>
                   </div>
                 </div>
+
+                {entry.title && (
+                  <div className="text-xs font-semibold text-indigo-300 mb-2 leading-relaxed">
+                    {entry.title}
+                  </div>
+                )}
 
                 <ul className="space-y-1.5 mt-3 pl-1">
                   {entry.highlights.map((highlight, idx) => (

@@ -141,15 +141,33 @@ export interface AppConfig {
   searchGoogle?: boolean;
   defaultSearchEngine?: string;
   snippets?: SnippetsConfig;
+  iconsLastDownloadedAt?: string | null;
+  iconsCount?: number;
+}
+
+export interface MaterialIconDef {
+  name: string;
+  category: string;
+  tags: string[];
+}
+
+export interface CustomSnippet {
+  id: string;
+  name: string;
+  location: string;
+  icon?: string;
+  shortcuts: string[];
 }
 
 export interface SnippetsConfig {
   signature?: string;
+  name?: string;
   ico?: string;
   dic?: string;
   address?: string;
   phone?: string;
   email?: string;
+  custom?: CustomSnippet[];
 }
 
 export interface SyncProgress {

@@ -4,6 +4,59 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.3] - 16. 9. 2026
+### Vlastní snippety, import/export, katalog Material Symbols, plynulá synchronizace a vyladění UI
+- **MLog číselné dotazy již od 3 číslic**: Zadání např. `123` do Spotlightu při aktivním MLogu automaticky nabídne úkol `T123` na 1. místě a požadavek `R123` na 2. místě.
+- **Odstranění štítku „Aktuální sestavení“**: V záložce *Aktualizace* odstraněn nadbytečný badge pod nainstalovanou verzí.
+- **Zpřesnění textu v okně aktualizace**: Úprava textu na *„Přehled všech změn po aktualizaci naleznete v aplikaci v záložce Nastavení -> Kompletní changelog.“*.
+- **Oprava ikony v okně „Co je nového“**: Ikona hvězdiček se již při dlouhém titulku verze nezmenšuje ani nedeformuje.
+- **Zdroje dat – tlačítko „Znovu načíst pole“**: Přidána ochrana proti nechtěnému zalomení textu tlačítka (`whitespace-nowrap`).
+- **Průvodce „Jak na zdroje dat“**:
+  - Ukázka č. 3 (Git) přestylována do zelené barvy rozšíření GitHub.
+  - Bod 3 u MagicGate XML modelu upraven tak, že popisuje načítání všech dostupných atributů a metadat z XML.
+  - Svislé vycentrování zavíracího křížku v záhlaví okna.
+- **MagicGate XML model – podpora elementů `<Alias>`**: Při načítání podpoložek instancí MagicGate jsou nově kromě elementů `<App>` a `<Check>` načítány i elementy `<Alias Name="..." Url="..." />` se stejným mapováním a funkcionalitou (otevření URL, načítání favicony atd.).
+- **Nastavení – záložka Obecné**:
+  - Popisek formulářového pole zkrácen na *Adresa*.
+  - Nápověda snippetů zpřesněna o informaci, že hodnota se přímo zkopíruje do schránky.
+- **Historie verzí (Changelog)**: Stručný popis verze přesunut na samostatný řádek nad seznam odrážek pro vyšší čitelnost.
+- **Zdroje dat – barva ikony v mapování**: Ikona u nadpisu sekce *Mapování polí JSONu* sladěna do vybrané primární barvy motivu.
+- **Osobní snippety**: Přidáno nové pole *Moje Jméno* (zkratky `:jmeno`, `:jméno`, `:name`), *Moje DIČ* (`:dic`, `:dič`, `:vat`) a *Můj E-mail* (`:email`, `:mail`, `:e-mail`). Všechny osobní snippety jsou sjednoceny v Nastavení i Spotlightu na *Moje IČO*, *Moje DIČ*, *Moje Jméno*, *Můj E-mail*, *Můj Telefon*, *Můj Podpis* a *Moje Adresa*.
+- **Karta výsledku testu GitHubu nad tlačítkem**: Výsledek testu i čárkovaný placeholder přesunuty přímo nad tlačítko *Otestovat připojení*. Zrušen samostatný řádek organizací a štítky přesunuty přímo za jméno profilu; vpravo přidán svisle vycentrovaný přehled počtu repozitářů s velkou číslicí; profilová fotka svisle vycentrována s celou kartou.
+- **Věrná simulace Spotlight náhledu ve zdrojích dat**: Náhled 1. položky s aktuálním mapováním v JSON zdrojích nyní přesně simuluje vzhled skutečného řádku Spotlightu včetně ikony položky, štítku akce a klávesy provést.
+- **Ochrana před kolizí globální zkratky**: V záložce *Obecné* je zamezeno nastavení rezervovaných klávesových zkratek uvedených v nápovědě (`Shift+Enter`, `Alt+Enter`, `Ctrl+Enter`, `Ctrl/Alt+Backspace`, šipky, `Escape`). V případě kolize se nová zkratka nezapíše, zůstane zachována původní funkční a uživateli se zobrazí červená chybová hláška s důvodem kolize.
+- **Komponenta výběru ikon a vylepšení vyhledávání Material Symbols**:
+  - Všechna vstupní pole pro zadání ikony vybavena komponentou `IconPickerInput`.
+  - V modálu výběru ikon zrušeno zbytečné filtrování kategorií pro čisté a rychlé vyhledávání.
+  - Implementováno inteligentní relevanční vyhledávání ikon (přesná shoda na 1. místě, prefix názvu, slova v názvu, tagy) – hledání např. výrazu „book“ již netlačí nesouvisející ikony dopředu a prioritně vrací `book`, `bookmark`, `bookmarks` atd.
+  - Odstraněny veškeré duplicity ikon v katalogu i mezipaměti (vyloučeny nekompatibilní staré rodiny fontů a zavedena striktní deduplikace dle názvu).
+  - Tlačítko pro ruční stažení kompletního online katalogu Material Symbols z Google Fonts s evidencí data, času a počtu ikon přesunuto na konec záložky *Nastavení -> Zdroje dat* do nové sekce *Externí nástroje* a jeho vizuální styl (velikosti písma, štítky, tlačítko) sjednocen s kartami v záložce *Rozšíření*.
+  - Vyladěn layout modálu výběru ikon: zvětšen font vyhledávacího pole (14px), zvětšena velikost ikon na 32px (`text-3xl`), zvětšen font popisků ikon (`text-[11px]`) a mřížka nastavena na 6 ikon na řádek.
+- **Primární barva ikon pro podpoložky (Alt+Enter)**: Ve Spotlightu se ikony podpoložek vždy vykreslují ve vybrané primární barvě motivu z Nastavení. Z rozšíření (např. MagicGate nebo Git) se přebírá pouze příslušný štítek (chip); výchozí či převzaté ikony (např. při nenačtené faviconě) se již nezbarvují do žluté ani zelené barvy rozšíření.
+- **Vertikální vycentrování křížku zavření v okně Kompletního seznamu**: Zavírací tlačítko v hlavičce modálu `SearchItemsViewerModal` je nyní přesně vertikálně vycentrováno (`self-center`, fixní rozměr 36x36 px, vycentrovaná ikona `close`).
+- **Zpřesnění výpočtu a zobrazení součtu položek (Kompletní seznam a Nastavení)**:
+  - Odstraněna optická chyba součtu způsobená tím, že položky z Gitu byly dříve započítány dvakrát (v hlavních položkách i v samostatném čipu z Gitu).
+  - Všechny kategorie jsou nyní striktně disjunktní a jejich součet přesně odpovídá celku: `[hlavních] + [z Gitu] + [snippetů] + [subpoložek] = [celkem]` (např. 405 hlavních + 87 z Gitu + 16 snippetů + 175 subpoložek = 683 celkem).
+  - V záložce *Nastavení -> Zdroje dat* zobrazen čistý celkový počet načtených položek bez nadbytečných závorek.
+- **Plynulý stav synchronizace a progress bar ve Zdrojích dat**:
+  - Při spuštění synchronizace dat se v banneru skryje bublina s časem poslední aktualizace a na jejím místě se zobrazí živý stav (název synchronizovaného zdroje, procenta a plynulý barevný progress bar).
+  - Průběh je plynule animován s minimální dobou trvání 2 sekundy (stejně jako u synchronizace přes ikonu ve Spotlightu), po dokončení krátce potvrdí úspěch a následně znovu zobrazí bublinu s čerstvě aktualizovaným časem.
+- **Resetování posuvníku při přepínání záložek v Nastavení**: Při přechodu na jakoukoliv záložku v levém menu se posuvník obsahu automaticky vrátí na začátek (`scrollTop = 0`).
+- **Kompaktní tlačítko automatické detekce (VS Code a Android Studio)**: U konfigurace cesty k VS Code i Android Studiu byl text tlačítka *Automaticky detekovat* nahrazen kompaktní čtvercovou ikonkou hvězdiček (`auto_awesome`) s vysvětlujícím tooltipem.
+- **Samostatná záložka „Snippety“ v Nastavení**:
+  - Původní sekce osobních snippetů přejmenována na **Předdefinované osobní údaje** (vlastní podpis, IČO, DIČ, jméno, e-mail, telefon, adresa).
+  - Přidána zcela nová sekce **Vlastní snippety** umožňující vytvářet libovolné textové zkratky a šablony s rozhraním: výběr ikony z Material Symbols, název snippetu, víceřádkový text k rychlému zkopírování do schránky a dynamické štítky zkratek (`shortcuts[]`) s fixní dvojtečkou `:` a tlačítkem pro přidání/odebrání.
+  - Vlastní snippety plně sdílejí jednotný model systémových snippetů (`action: 'copy'`, `sourceId: 'snippet'`), okamžitě reagují ve Spotlightu pod dvojtečkou a automaticky se započítávají do celkových indexovaných položek.
+  - Tlačítko *Přidat snippet* nyní vkládá nový záznam vždy na začátek seznamu (prepend) pro okamžitou editaci bez nutnosti scrollovat dolů.
+  - Přidána tlačítka pro **Exportovat** a **Importovat** vlastní snippety ve formátu JSON: export ukládá čistou strukturu s názvy, obsahem, ikonami a zkratkami, zatímco import načte data ze souboru, přiřadí nová ID, zvaliduje zkratky a bezpečně snippety přidá do konfigurace bez nutnosti vytvářet databázovou či souborovou vazbu zdroje. Akční tlačítka (Importovat, Exportovat, Přidat snippet) jsou umístěna na samostatném řádku pod popiskem a zarovnána doleva.
+  - Vyladěn řádek zkratek u snippetů: zvětšena ikona štítku (`17px`), zvětšen font popisků, štítků zkratek i vstupního pole na čitelnější velikost (`text-xs`) a všechny prvky sjednoceny na jednotnou výšku (`h-7`) s nulovým offsetem linky (`leading-none`) pro dokonalé vertikální vycentrování v ose Y.
+- **Odstranění zápatí v menu Nastavení**: Z levého navigačního sloupce Nastavení bylo odstraněno duplicitní zápatí s informací o poslední aktualizaci dat (tato informace je přehledně zobrazena přímo v záložce *Zdroje dat*).
+- **Tlačítka „Procházet...“ otevírají průzkumník v aktuální cestě**: Všechna tlačítka pro výběr souborů i složek (JSON datové zdroje, MagicGate XML konfigurace, výchozí složka repozitářů GitHubu, dialog klonování repozitářů, spustitelné soubory VS Code a Android Studio) nyní berou v potaz již vyplněnou cestu (`defaultPath`). Nativní dialog souborového průzkumníka se otevře přímo ve vybrané složce či u daného souboru (případně v nadřazené existující složce) a je vždy korektně modálně navázán na aktivní okno.
+- **Příprava grafického designu instalátoru**: Vytvořeny bitmapy pro hlavičku a uvítací panel Windows NSIS instalátoru v tmavém motivu IADonkey.
+- **Oprava ukončení aplikace při instalaci aktualizace**: Při instalaci nové verze se nyní korektně uvolní zámek instance Electronu, zničí okna i ikona v oznamovací oblasti (Tray) a starý proces se čistě ukončí před spuštěním instalátoru, což spolehlivě zabrání nežádoucímu opětovnému otevření staré verze.
+
+---
+
 ## [1.1.2] - 15. 9. 2026
 ### Rozšíření Android Studio, vylepšení MLog číselných dotazů, editor statických dat a vyladění UI
 - **Rozšíření Android Studio**: Vyhrazená integrace pro prostředí Android Studio s růžovou identitou (`pink`), možností automatické detekce standardních cest / JetBrains Toolboxu nebo ručního nastavení cesty ke `studio64.exe`.
