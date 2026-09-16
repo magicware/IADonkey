@@ -5,12 +5,23 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.10';
+export const CURRENT_APP_VERSION = '1.1.11';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.11',
+    date: '16. 9. 2026',
+    title: 'Photoshop-style čtvercový Splash Screen a automatická aktivace Spotlightu',
+    highlights: [
+      'Čistý čtvercový Splash Screen ve stylu Photoshopu: minimalistické tmavé čtvercové okno (260x260 px) se zaoblenými rohy, dominantní 48px ikonou maskota IADonkey uprostřed, názvem aplikace a štítkem verze.',
+      'Garantovaný 5sekundový čas zobrazení: splash screen běží minimálně 5 sekund, takže si uživatel stihne všimnout spuštění aplikace. Pokud načítání trvá déle, splash počká na skutečné dokončení.',
+      'Automatická aktivace Spotlightu po startu: jakmile uplyne 5s a aplikace je plně načtena v paměti, splash plynule zmizí a Spotlight se automaticky zobrazí, vycentruje na monitoru s myší a získá okamžitý fokus pro psaní dotazu.',
+      'Tichý start se systémem Windows: při spuštění na pozadí s Windows (--background, --silent) se splash nezobrazuje a Spotlight zůstává skrytý v oznamovací oblasti.',
+    ],
+  },
   {
     version: '1.1.10',
     date: '16. 9. 2026',

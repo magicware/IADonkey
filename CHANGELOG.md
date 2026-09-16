@@ -4,6 +4,13 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.11] - 16. 9. 2026
+### Photoshop-style čtvercový Splash Screen a automatická aktivace Spotlightu
+- **Čistý čtvercový Splash Screen ve stylu Photoshopu**: Minimalistické tmavé čtvercové okno (260 × 260 px) se zaoblenými rohy, dominantní 48px ikonou maskota IADonkey uprostřed, názvem aplikace a štítkem verze.
+- **Garantovaný 5sekundový čas zobrazení**: Splash screen běží minimálně 5 sekund, takže si uživatel stihne všimnout spuštění aplikace. Pokud načítání trvá déle, splash počká na skutečné dokončení.
+- **Automatická aktivace Spotlightu po startu**: Jakmile uplyne 5s a aplikace je plně načtena v paměti, splash plynule zmizí a Spotlight se automaticky zobrazí, vycentruje na monitoru s myší a získá okamžitý fokus pro psaní dotazu.
+- **Tichý start se systémem Windows**: Při spuštění na pozadí s Windows (`--background`, `--silent`, `--hidden`) se splash nezobrazuje a Spotlight zůstává skrytý v oznamovací oblasti.
+
 ## [1.1.10] - 16. 9. 2026
 ### 100% tichý restart po aktualizaci a nový Startup Splash Screen
 - **100% tichý In-App restart bez probliknutí okna příkazové řádky**: Spuštění výměnného skriptu nově obstarává Windows Script Host (`wscript.exe` / `.vbs`) v GUI subsystému s příznakem `SW_HIDE`. Při restartu po aktualizaci již nikdy nedojde k alokaci ani probliknutí černé konzole cmd.exe.

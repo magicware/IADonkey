@@ -479,8 +479,8 @@ export class WindowManager {
       : path.join(__dirname, 'preload.js');
 
     this.splashWindow = new BrowserWindow({
-      width: 380,
-      height: 130,
+      width: 260,
+      height: 260,
       frame: false,
       transparent: true,
       backgroundColor: '#00000000',

@@ -1,6 +1,6 @@
 {
-  "version": "1.1.10",
-  "releaseNotes": "• Vydána nová verze 1.1.10 aplikace IADonkey.\n• 100% tichý In-App restart po aktualizaci bez probliknutí příkazové řádky.\n• Nový Startup Splash Screen s indikací fází spouštění.\n• Přehled všech změn naleznete v aplikaci v Nastavení -> Kompletní changelog.",
-  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.10/IADonkey-Setup-1.1.10.exe",
-  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.10/IADonkey-1.1.10.zip"
+  "version": "1.1.11",
+  "releaseNotes": "• Vydána nová verze 1.1.11 aplikace IADonkey.\n• Photoshop-style čtvercový Splash Screen (min. 5 sekund).\n• Automatické vyvolání Spotlightu po dokončení startu.\n• Přehled všech změn naleznete v aplikaci v Nastavení -> Kompletní changelog.",
+  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.11/IADonkey-Setup-1.1.11.exe",
+  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.11/IADonkey-1.1.11.zip"
 }

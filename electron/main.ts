@@ -1010,22 +1010,17 @@ app.whenReady().then(() => {
     process.argv.includes('--hidden') ||
     process.argv.includes('--silent');
 
+  const splashStartTime = Date.now();
+  const MIN_SPLASH_DURATION_MS = 5000;
+
   if (!isSilentStart) {
     windowManager.createSplashWindow();
-    windowManager.updateSplashStatus(20, 'Spouštění aplikace...');
   }
 
-  windowManager.createMainWindow();
+  const mainWindow = windowManager.createMainWindow();
   windowManager.createTray(currentHotkey);
 
-  if (!isSilentStart) {
-    windowManager.updateSplashStatus(50, `Registrace zkratky ${currentHotkey}...`);
-  }
   registerGlobalHotkey(currentHotkey);
-
-  if (!isSilentStart) {
-    windowManager.updateSplashStatus(80, 'Inicializace komponent...');
-  }
   startBackgroundTasks();
 
   // Background refresh of search engine favicons from baseUrl metadata
@@ -1037,10 +1032,29 @@ app.whenReady().then(() => {
   });
 
   if (!isSilentStart) {
-    windowManager.updateSplashStatus(100, 'Připraveno v oznamovací oblasti');
-    setTimeout(() => {
-      windowManager.closeSplashWindow();
-    }, 700);
+    const minTimePromise = new Promise((resolve) => {
+      const elapsed = Date.now() - splashStartTime;
+      const remaining = Math.max(0, MIN_SPLASH_DURATION_MS - elapsed);
+      setTimeout(resolve, remaining);
+    });
+
+    const readyPromise = new Promise<void>((resolve) => {
+      if (!mainWindow) {
+        resolve();
+        return;
+      }
+      if (mainWindow.webContents.isLoading()) {
+        mainWindow.webContents.once('did-finish-load', () => resolve());
+      } else {
+        resolve();
+      }
+    });
+
+    // Run splash for at least 5s, or longer if loading takes more than 5s, then reveal and focus Spotlight
+    Promise.all([minTimePromise, readyPromise]).then(async () => {
+      await windowManager.closeSplashWindow();
+      windowManager.showSpotlight();
+    });
   }
 });
 
