@@ -17,6 +17,11 @@ export class WindowManager {
   private mainWindow: BrowserWindow | null = null;
   private settingsWindow: BrowserWindow | null = null;
   private gitCloneWindow: BrowserWindow | null = null;
+  private splashWindow: BrowserWindow | null = null;
+  private lastSplashStatus: { percent: number; text: string } = {
+    percent: 10,
+    text: 'Inicializace aplikace...',
+  };
   private tray: Tray | null = null;
   private isQuitting = false;
   private lastShowTime = 0;
@@ -76,12 +81,9 @@ export class WindowManager {
       this.mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
     }
 
-    // Automatically reveal spotlight input on application startup
+    // Preload window in background; spotlight is revealed via hotkey or tray click
     this.mainWindow.once('ready-to-show', () => {
-      const isSilentStart = process.argv.includes('--hidden') || process.argv.includes('--background');
-      if (!isSilentStart) {
-        this.showSpotlight();
-      }
+      // Keep hidden in background until requested
     });
 
     // Hide window when it loses focus (unless devtools is active or during initial reveal)
@@ -465,8 +467,91 @@ export class WindowManager {
     this.isQuitting = val;
   }
 
+  public createSplashWindow(): BrowserWindow {
+    if (this.splashWindow && !this.splashWindow.isDestroyed()) {
+      return this.splashWindow;
+    }
+
+    const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
+      ? path.join(__dirname, 'preload.cjs')
+      : fs.existsSync(path.join(__dirname, 'preload.mjs'))
+      ? path.join(__dirname, 'preload.mjs')
+      : path.join(__dirname, 'preload.js');
+
+    this.splashWindow = new BrowserWindow({
+      width: 380,
+      height: 130,
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      icon: getAppIcon(),
+      show: false,
+      center: true,
+      resizable: false,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      hasShadow: false,
+      webPreferences: {
+        preload: preloadPath,
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    if (process.env.VITE_DEV_SERVER_URL) {
+      this.splashWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#splash`);
+    } else {
+      this.splashWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash: 'splash' });
+    }
+
+    this.splashWindow.once('ready-to-show', () => {
+      if (this.splashWindow && !this.splashWindow.isDestroyed()) {
+        this.splashWindow.show();
+        this.splashWindow.webContents.send('splash-status', this.lastSplashStatus);
+      }
+    });
+
+    this.splashWindow.webContents.on('did-finish-load', () => {
+      if (this.splashWindow && !this.splashWindow.isDestroyed()) {
+        this.splashWindow.webContents.send('splash-status', this.lastSplashStatus);
+      }
+    });
+
+    return this.splashWindow;
+  }
+
+  public updateSplashStatus(percent: number, text: string): void {
+    this.lastSplashStatus = { percent, text };
+    if (this.splashWindow && !this.splashWindow.isDestroyed()) {
+      this.splashWindow.webContents.send('splash-status', this.lastSplashStatus);
+    }
+  }
+
+  public getLastSplashStatus(): { percent: number; text: string } {
+    return this.lastSplashStatus;
+  }
+
+  public async closeSplashWindow(delayMs = 0): Promise<void> {
+    if (delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    try {
+      if (this.splashWindow && !this.splashWindow.isDestroyed()) {
+        this.splashWindow.destroy();
+        this.splashWindow = null;
+      }
+    } catch {}
+  }
+
   public prepareForQuitOrRestart(): void {
     this.isQuitting = true;
+    try {
+      if (this.splashWindow && !this.splashWindow.isDestroyed()) {
+        this.splashWindow.destroy();
+        this.splashWindow = null;
+      }
+    } catch {}
     try {
       if (this.tray && !this.tray.isDestroyed()) {
         this.tray.destroy();

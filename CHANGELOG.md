@@ -4,6 +4,22 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.10] - 16. 9. 2026
+### 100% tichý restart po aktualizaci a nový Startup Splash Screen
+- **100% tichý In-App restart bez probliknutí okna příkazové řádky**: Spuštění výměnného skriptu nově obstarává Windows Script Host (`wscript.exe` / `.vbs`) v GUI subsystému s příznakem `SW_HIDE`. Při restartu po aktualizaci již nikdy nedojde k alokaci ani probliknutí černé konzole cmd.exe.
+- **Nový Startup Splash Screen**: Při spuštění aplikace (i po dokončení aktualizace) se zobrazí kompaktní elegantní mini-okno ve stylu IADonkey s oficiální ikonou maskota, verzí programu a indikátorem průběhu startu.
+- **Živá indikace fází spouštění**: Plynulý indigovo-fialový progress bar a stavový text informují o fázích inicializace (načítání konfigurace, registrace klávesové zkratky `Ctrl+Alt+Space`, start služeb na pozadí a připravenost v oznamovací oblasti).
+- **Plynulé skrytí do oznamovací oblasti**: Po dokončení inicializace mini-okno automaticky a plynule zmizí, přičemž aplikace běží připravena v tray liště pro okamžité vyvolání.
+- **Chytré potlačení na pozadí**: Při automatickém startu se systémem Windows v tichém režimu (`--background`, `--silent`, `--hidden`) se splash okno nezobrazuje a uživatele neruší.
+
+## [1.1.9] - 16. 9. 2026
+### Full-Width layout instalačního průvodce a spolehlivá instalace
+- **Full-Width moderní layout instalátoru**: Hlavička i patička nového instalátoru jsou roztaženy přes celou šířku okna pro čistý, prémiový a vzdušný vzhled.
+- **Miniatura loga IADonkey v záhlaví**: Do horní lišty instalátoru byla doplněna miniatura oficiálního maskota IADonkey vedle názvu průvodce.
+- **Přesun odznaku instalace bez UAC**: Odznak „Instalace bez UAC práv“ byl přesunut z bočního panelu do levé části globální patičky okna.
+- **Bezpečné zamykání asar archivu**: Vyřešeno zamykání souboru `resources/app.asar` při instalaci náhradou monkey-patched `fs` za `original-fs`.
+- **Atomický rename-swap a bezpečné ukončení instancí**: Pokročilé filtrování běžících instancí zabraňuje nechtěnému pádu instalátoru.
+
 ## [1.1.8] - 16. 9. 2026
 ### Vyladěný design instalátoru a oprava stability instalace
 - **Větší a prostornější okno instalátoru**: Šířka zvětšena na 860 px a výška na 580 px pro optimální čitelnost a vzdušnost.

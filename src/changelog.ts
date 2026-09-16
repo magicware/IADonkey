@@ -5,12 +5,36 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.9';
+export const CURRENT_APP_VERSION = '1.1.10';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.10',
+    date: '16. 9. 2026',
+    title: '100% tichý restart po aktualizaci a nový Startup Splash Screen',
+    highlights: [
+      '100% tichý In-App restart bez probliknutí okna příkazové řádky: spuštění výměnného skriptu nově obstarává Windows Script Host (wscript.exe / .vbs) v GUI subsystému s příznakem SW_HIDE. Při restartu po aktualizaci již nikdy nedojde k alokaci ani probliknutí černé konzole cmd.exe.',
+      'Nový Startup Splash Screen: při spuštění aplikace (i po dokončení aktualizace) se zobrazí kompaktní elegantní mini-okno ve stylu IADonkey s oficiální ikonou maskota, verzí programu a indikátorem průběhu startu.',
+      'Živá indikace fází spouštění: plynulý indigovo-fialový progress bar a stavový text informují o fázích inicializace (načítání konfigurace, registrace klávesové zkratky Ctrl+Alt+Space, start služeb a připravenost v oznamovací oblasti).',
+      'Plynulé skrytí do oznamovací oblasti: po dokončení inicializace mini-okno automaticky a plynule zmizí, přičemž aplikace běží připravena v tray liště pro okamžité vyvolání.',
+      'Chytré potlačení na pozadí: při automatickém startu se systémem Windows v tichém režimu (--background, --silent) se splash okno nezobrazuje.',
+    ],
+  },
+  {
+    version: '1.1.9',
+    date: '16. 9. 2026',
+    title: 'Full-Width layout instalačního průvodce a spolehlivá instalace',
+    highlights: [
+      'Full-Width moderní layout instalátoru: hlavička i patička nového instalátoru jsou roztaženy přes celou šířku okna pro čistý, prémiový a vzdušný vzhled.',
+      'Miniatura loga IADonkey v záhlaví: do horní lišty instalátoru byla doplněna miniatura oficiálního maskota IADonkey.',
+      'Přesun odznaku instalace bez UAC: odznak „Instalace bez UAC práv“ byl přesunut z bočního panelu do levé části globální patičky okna.',
+      'Bezpečné zamykání asar archivu: vyřešeno zamykání souboru resources/app.asar při instalaci náhradou monkey-patched fs za original-fs.',
+      'Atomický rename-swap a bezpečné ukončení instancí: pokročilé filtrování běžících instancí zabraňuje nechtěnému pádu instalátoru.',
+    ],
+  },
   {
     version: '1.1.8',
     date: '16. 9. 2026',

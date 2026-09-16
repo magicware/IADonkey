@@ -140,4 +140,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   minimizeWindow: (): Promise<void> => ipcRenderer.invoke('minimize-window'),
   closeWindow: (): Promise<void> => ipcRenderer.invoke('close-window'),
+
+  // Splash Screen API
+  getSplashStatus: (): Promise<{ percent: number; text: string }> => ipcRenderer.invoke('get-splash-status'),
+  onSplashStatus: (callback: (status: { percent: number; text: string }) => void) => {
+    const handler = (_event: any, status: any) => callback(status);
+    ipcRenderer.on('splash-status', handler);
+    return () => ipcRenderer.removeListener('splash-status', handler);
+  },
 });

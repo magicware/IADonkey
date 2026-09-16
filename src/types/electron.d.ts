@@ -115,6 +115,10 @@ declare global {
       onInstallerProgress?: (callback: (progress: { percent: number; phase: string; detail?: string }) => void) => () => void;
       minimizeWindow?: () => Promise<void>;
       closeWindow?: () => Promise<void>;
+
+      // Splash Screen API
+      getSplashStatus?: () => Promise<{ percent: number; text: string }>;
+      onSplashStatus?: (callback: (status: { percent: number; text: string }) => void) => () => void;
     };
   }
 }

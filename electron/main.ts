@@ -698,6 +698,10 @@ function setupIpcHandlers() {
       return [];
     }
   });
+
+  ipcMain.handle('get-splash-status', () => {
+    return windowManager ? windowManager.getLastSplashStatus() : { percent: 15, text: 'Inicializace aplikace...' };
+  });
 }
 
 function detectDefaultVscodePath(): string | null {
@@ -1001,10 +1005,27 @@ app.whenReady().then(() => {
     return;
   }
 
+  const isSilentStart =
+    process.argv.includes('--background') ||
+    process.argv.includes('--hidden') ||
+    process.argv.includes('--silent');
+
+  if (!isSilentStart) {
+    windowManager.createSplashWindow();
+    windowManager.updateSplashStatus(20, 'Spouštění aplikace...');
+  }
+
   windowManager.createMainWindow();
   windowManager.createTray(currentHotkey);
 
+  if (!isSilentStart) {
+    windowManager.updateSplashStatus(50, `Registrace zkratky ${currentHotkey}...`);
+  }
   registerGlobalHotkey(currentHotkey);
+
+  if (!isSilentStart) {
+    windowManager.updateSplashStatus(80, 'Inicializace komponent...');
+  }
   startBackgroundTasks();
 
   // Background refresh of search engine favicons from baseUrl metadata
@@ -1014,6 +1035,13 @@ app.whenReady().then(() => {
   }).catch((err) => {
     console.warn('[Main] Favicon refresh error:', err);
   });
+
+  if (!isSilentStart) {
+    windowManager.updateSplashStatus(100, 'Připraveno v oznamovací oblasti');
+    setTimeout(() => {
+      windowManager.closeSplashWindow();
+    }, 700);
+  }
 });
 
 app.on('second-instance', () => {

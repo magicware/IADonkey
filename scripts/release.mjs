@@ -108,7 +108,7 @@ async function main() {
   const doGit = await rl.question(`Chcete provest git commit a vytvorit tag v${version}? (A/n): `);
   if (!doGit || doGit.toLowerCase() === 'a' || doGit.toLowerCase() === 'y') {
     try {
-      execSync('git add package.json src/changelog.ts version.json CHANGELOG.md', { cwd: rootDir, stdio: 'inherit' });
+      execSync('git add -A', { cwd: rootDir, stdio: 'inherit' });
       try {
         execSync(`git commit -m "chore: Release v${version}"`, { cwd: rootDir, stdio: 'inherit' });
       } catch {
@@ -150,13 +150,39 @@ async function main() {
       try {
         console.log(`\x1b[33mZakládám / aktualizuji GitHub Release v${version}...\x1b[0m`);
         const primaryAsset = releaseAssets[0];
+
+        // Extract notes from CHANGELOG.md for the current version
+        let releaseNotesText = `Release v${version}`;
+        const changelogMdPath = path.join(rootDir, 'CHANGELOG.md');
+        if (fs.existsSync(changelogMdPath)) {
+          const mdContent = fs.readFileSync(changelogMdPath, 'utf8');
+          const versionHeaderRegex = new RegExp(`##\\s*\\[${version.replace(/\\./g, '\\.')}\\][^\n]*\n([\\s\\S]*?)(?=\n##\\s*\\[|$)`);
+          const match = mdContent.match(versionHeaderRegex);
+          if (match && match[1]?.trim()) {
+            releaseNotesText = match[1].trim();
+          }
+        }
+
+        const tempNotesPath = path.join(rootDir, 'temp-release-notes.txt');
+        fs.writeFileSync(tempNotesPath, releaseNotesText, 'utf8');
+
         try {
-          execSync(`gh release create "v${version}" "${primaryAsset.path}" --title "v${version}" --notes "Release v${version}"`, {
+          execSync(`gh release create "v${version}" "${primaryAsset.path}" --title "v${version}" --notes-file "${tempNotesPath}"`, {
             cwd: rootDir,
             stdio: 'inherit',
           });
         } catch {
-          // Ignorovat, pokud release již existuje
+          // Pokud release již existuje, aktualizovat poznámky
+          try {
+            execSync(`gh release edit "v${version}" --title "v${version}" --notes-file "${tempNotesPath}"`, {
+              cwd: rootDir,
+              stdio: 'inherit',
+            });
+          } catch {}
+        } finally {
+          try {
+            fs.unlinkSync(tempNotesPath);
+          } catch {}
         }
 
         for (const asset of releaseAssets) {

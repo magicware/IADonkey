@@ -8,6 +8,7 @@ import { ChangelogModal } from './components/ChangelogModal';
 import { GitCloneModal } from './components/GitCloneModal';
 import { InstallerWizard } from './components/InstallerWizard';
 import { UninstallerModal } from './components/UninstallerModal';
+import { SplashScreen } from './components/SplashScreen';
 import { CURRENT_APP_VERSION, getLatestRelease } from './changelog';
 import { applyPrimaryColor, applyActionsColor } from './utils/theme';
 
@@ -45,6 +46,10 @@ export const App: React.FC = () => {
 
   const [isUninstallMode] = useState(() => {
     return window.location.hash.startsWith('#uninstall') || window.location.search.includes('window=uninstall');
+  });
+
+  const [isSplashMode] = useState(() => {
+    return window.location.hash.startsWith('#splash') || window.location.search.includes('window=splash');
   });
 
   const [isSettingsView, setIsSettingsView] = useState(() => {
@@ -275,6 +280,11 @@ export const App: React.FC = () => {
   // Dedicated Uninstaller Window mode
   if (isUninstallMode) {
     return <UninstallerModal />;
+  }
+
+  // Dedicated Splash Screen Window mode
+  if (isSplashMode) {
+    return <SplashScreen />;
   }
 
   // Dedicated Settings Window mode

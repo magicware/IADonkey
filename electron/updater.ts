@@ -253,21 +253,33 @@ export class UpdateChecker {
         : path.join(process.env.LOCALAPPDATA || '', 'Programs', 'IADonkey');
       const tempDir = app.getPath('temp');
       const swapBat = path.join(tempDir, 'iadonkey-swap-update.bat');
+      const swapVbs = path.join(tempDir, 'iadonkey-swap-runner.vbs');
+
+      const cleanFilePath = filePath.replace(/[\\/]+$/, '');
+      const cleanTargetDir = targetDir.replace(/[\\/]+$/, '');
 
       const batContent = `@echo off
 timeout /t 1 /nobreak >nul
-robocopy "${filePath}" "${targetDir}" /E /IS /IT /MOVE >nul 2>&1
-start "" "${targetDir}\\IADonkey.exe" --updated
+robocopy "${cleanFilePath}" "${cleanTargetDir}" /E /IS /IT /MOVE >nul 2>&1
+start "" "${cleanTargetDir}\\IADonkey.exe" --updated
 del "%~f0" >nul 2>&1
 exit
 `;
       fs.writeFileSync(swapBat, batContent, 'utf8');
 
-      console.log(`[UpdateChecker] Spawning instant swap script: ${swapBat}`);
-      const child = spawn('cmd.exe', ['/c', swapBat], {
+      // VBScript runner executed via wscript.exe (GUI subsystem) guarantees 0% console window flicker
+      const vbsContent = `Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run "cmd.exe /c """ & WScript.Arguments(0) & """", 0, False
+Set FSO = CreateObject("Scripting.FileSystemObject")
+On Error Resume Next
+FSO.DeleteFile WScript.ScriptFullName
+`;
+      fs.writeFileSync(swapVbs, vbsContent, 'utf8');
+
+      console.log(`[UpdateChecker] Spawning 100% silent swap runner via wscript: ${swapVbs}`);
+      const child = spawn('wscript.exe', ['//B', '//nologo', swapVbs, swapBat], {
         detached: true,
         stdio: 'ignore',
-        windowsHide: true,
       });
       child.unref();
     } else {
