@@ -192,7 +192,7 @@ export class UpdateChecker {
 
     console.log(`[UpdateChecker] Spawning updater executable: ${filePath}`);
 
-    const child = spawn(filePath, [], {
+    const child = spawn(filePath, ['/S', '--force-run', '--updated'], {
       detached: true,
       stdio: 'ignore',
     });

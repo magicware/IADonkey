@@ -5,12 +5,23 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.4';
+export const CURRENT_APP_VERSION = '1.1.5';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.5',
+    date: '16. 9. 2026',
+    title: 'Tichá aktualizace na pozadí a moderní 1-Click instalátor bez zastaralých Win32 oken',
+    highlights: [
+      'Tichá aktualizace na pozadí (Silent Background Update): při kliknutí na „Restartovat a spustit novou verzi“ proběhne instalace nového sestavení během 1–2 sekund zcela tiše a neviditelně na pozadí bez jakýchkoliv systémových dialogů.',
+      'Automatické spuštění nové verze: instalátor po dokončení tichého přepisu souborů aplikaci okamžitě a automaticky znovu spustí.',
+      'Přechod na moderní 1-Click instalátor (oneClick): při ručním spuštění staženého instalátoru se již nezobrazuje zastaralý vícekrokový Win32 průvodce s bílými rámy a systémovými tlačítky; aplikace se nainstaluje na jedno kliknutí a ihned otevře.',
+      'Čistý uživatelský zážitek: veškeré novinky a vizuální prezentace verze probíhají přímo v aplikaci IADonkey (WhatsNewModal a Spotlight) v plnohodnotném tmavém motivu.',
+    ],
+  },
   {
     version: '1.1.4',
     date: '16. 9. 2026',

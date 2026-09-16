@@ -4,6 +4,12 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.5] - 16. 9. 2026
+### Tichá aktualizace na pozadí a moderní 1-Click instalátor
+- **Tichá aktualizace na pozadí (Silent Background Update)**: Při kliknutí na „Restartovat a spustit novou verzi“ se již nezobrazuje zastaralý vícekrokový Win32 průvodce instalací. Aplikace se ukončí, instalátor během 1–2 sekund zcela tiše a neviditelně přepíše soubory (`/S --force-run --updated`) a novou verzi automaticky spustí.
+- **Přechod na moderní 1-Click instalátor (`oneClick: true`)**: Při ručním spuštění nově staženého instalátoru (`.exe`) z GitHubu se aplikace nainstaluje na jediné kliknutí přímo do profilu uživatele bez zdržujících dialogů, bílých rámů a systémových tlačítek. Pro vlastní umístění je k dispozici Portable verze.
+- **Čistý a nerušený zážitek**: Veškerá vizuální prezentace, novinky a seznam změn verze jsou zobrazovány přímo v nativním a plně přizpůsobeném tmavém prostředí aplikace (okno „Co je nového“ s barevnými akcenty a animacemi).
+
 ## [1.1.4] - 16. 9. 2026
 ### Kompletní vizuální redesign instalátoru Windows (NSIS) do tmavého motivu
 - **Vizuální redesign instalačního průvodce Windows (NSIS)**: Instalační okno (`.exe`), které se spouští při ruční instalaci i po automatickém stažení aktualizace, bylo kompletně přestylováno do tmavého motivu odpovídajícího oknu Nastavení aplikace (`#1E1E28`).
