@@ -176,29 +176,10 @@ export const CHANGELOG_HISTORY: VersionEntry[] = [
 ];
 
 /**
- * Zde se průběžně zapisují novinky pro budoucí verzi (1.1.3).
- * Po dokončení denní práce se tato sekce překlopí do nové verze a navýší se číslo.
+ * Zde se průběžně zapisují novinky pro budoucí verzi (1.1.4).
+ * Po dokončení releasu se tyto položky přesunou přímo pod vydávanou verzi a toto pole se vyprázdní.
  */
-export const UPCOMING_CHANGELOG: string[] = [
-  'Aktivace MLog rozšíření u čistě číselných dotazů již od 3 číslic (např. 123 -> T123 a R123).',
-  'Odstranění nadbytečného štítku "Aktuální sestavení" v záložce Aktualizace v Nastavení.',
-  'Zpřesnění textu v okně dostupné aktualizace ("Přehled všech změn po aktualizaci naleznete...").',
-  'Oprava deformace a nežádoucího zmenšování ikony hvězdiček v záhlaví modálu Co je nového.',
-  'Tlačítko "Znovu načíst pole" u struktury JSONu ve zdrojích dat zajištěno proti nechtěnému zalamování textu (whitespace: nowrap).',
-  'Průvodce "Jak na zdroje dat": ukázka č. 3 pro Git přestylována do zelené barvy rozšíření GitHub.',
-  'Průvodce "Jak na zdroje dat": textace bodu 3 u MagicGate XML modelu upravena tak, že reflektuje automatické načítání všech dostupných metadat a parametrů.',
-  'Průvodce "Jak na zdroje dat": perfektní vertikální vycentrování křížku pro zavření modálu.',
-  'Záložka Obecné: zpřesnění nápovědy u snippetů (údaj se přímo zkopíruje do schránky).',
-  'Záložka Obecné: zjednodušení formulářového popisku z "Adresa / Sídlo" na "Adresa".',
-  'Changelog: stručný popis verze přesunut z hlavičky na samostatný řádek přímo nad seznam odrážek pro vyšší přehlednost.',
-  'Zdroje dat v Nastavení: ikona u nadpisu sekce Mapování polí JSONu sladěna do vybrané primární barvy motivu.',
-  'Osobní snippety: přidána nová položka "Moje Jméno" (:jmeno / :name) a sjednoceno pojmenování snippetů na Moje IČO, Moje Jméno, Můj Telefon, Můj Podpis a Moje Adresa.',
-  'Redesign karty výsledku testu GitHubu: organizace přesunuty přímo na řádek profilu, celkový počet repozitářů zarovnán vpravo s velkou číslicí, svisle vycentrovaný avatar a elegantní čárkovaný placeholder před spuštěním testu.',
-  'Zdroje dat: věrná simulace náhledu 1. položky JSONu ve stylu skutečného řádku Spotlight vyhledávače včetně ikony, akce a provedení.',
-  'Ochrana před kolizí globální zkratky: zamezeno nastavení rezervovaných klávesových zkratek z nápovědy (Shift+Enter, Alt+Enter, Ctrl+Enter, Ctrl/Alt+Backspace, šipky, Escape). Při kolizi zůstává zachována původní funkční zkratka a zobrazí se vysvětlující chybová hláška.',
-  'Komponenta výběru ikony s živým vyhledávačem: nová vizuální komponenta pro všechna pole ikony (položka, akce, podpoložka, pevné mapování) zobrazující dashed placeholder se zašedlou ikonou nebo reálný náhled vybrané ikony a otevírající interaktivní výběrové okno s vyhledáváním a kategoriemi.',
-  'Oprava ukončení aplikace při instalaci aktualizace: ošetřeno korektní uvolnění zámku instance, zničení oken i tray ikony a čisté ukončení starého procesu před spuštěním instalátoru, čímž se zamezilo nežádoucímu opětovnému otevření staré verze.',
-];
+export const UPCOMING_CHANGELOG: string[] = [];
 
 export function getLatestRelease(): VersionEntry {
   return CHANGELOG_HISTORY[0];

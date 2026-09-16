@@ -19,16 +19,26 @@ Tento dokument definuje závazná pravidla pro vývoj, verzování, changelog a 
 - Pokud uživatel nespecifikuje konkrétní číslo verze, automaticky navyšujeme verzi o **+0.0.1** (patch increment), např. z `1.0.1` na `1.0.2`.
 - Changelog se vždy připravuje pro **nadcházející verzi**, která se aktuálně vyvíjí.
 
+### Pravidlo pro sekci „Připravuje se v příští verzi“ (`UPCOMING_CHANGELOG`)
+- V průběhu vývoje se nové body zapisují do sekce `UPCOMING_CHANGELOG` (případně přímo do rozpracované verze).
+- **Při přípravě release notes a sestavení releasu:**
+  - Všechny položky z `UPCOMING_CHANGELOG` se **musí vzít a přesunout přímo pod vydávanou verzi** v `CHANGELOG_HISTORY` (a do `CHANGELOG.md`).
+  - Pole `UPCOMING_CHANGELOG` se v momentě releasu **musí vyprázdnit (`[]`)**.
+  - **V ostrém releasu se sekce „Připravuje se v příští verzi“ nesmí nikdy objevit!**
+- **Založení nové verze:**
+  - Teprve po dokončení releasu a na pokyn uživatele k přípravě další verze se v changelogu založí nová verze nebo začne plnit nová sekce `UPCOMING_CHANGELOG`.
+
 ### Styl zápisu changelogu
 - Changelog je určený **pro koncové uživatele**, nikoliv jako interní git commit log.
 - Psát **česky**, srozumitelně, věcně a s důrazem na to, co novinka uživateli přináší a jak ji ovládat.
 - Vyvarovat se nicneříkajícího interního žargonu typu „refaktorován useEffect v komponentě X".
 
 ### Postup buildu a releasu
-1. Ověřit bezchybnou kompilaci projektu: `npm run compile`.
-2. Zkontrolovat, že jsou v changelogu zapsány všechny body z aktuální iterace.
-3. Připravit podklady pro release (souhrn novinek).
-4. Sestavení spustitelného balíčku / spuštění `scripts/release.mjs` nebo předání uživateli k manuálnímu releasu.
+1. Přesunout položky z `UPCOMING_CHANGELOG` do vydávané verze a vyprázdnit `UPCOMING_CHANGELOG = []`.
+2. Ověřit bezchybnou kompilaci projektu: `npm run compile`.
+3. Zkontrolovat, že jsou v changelogu zapsány všechny body z aktuální iterace.
+4. Připravit podklady pro release (souhrn novinek).
+5. Sestavení spustitelného balíčku / spuštění `scripts/release.mjs` nebo předání uživateli k manuálnímu releasu.
 
 ---
 
