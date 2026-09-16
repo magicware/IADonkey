@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { app } from 'electron';
 import { AppStore } from './store';
 import { UpdateInfo, DownloadProgress } from '../src/types';
@@ -62,7 +62,8 @@ export class UpdateChecker {
       const data = await res.json();
       const latestVersion = data.version || currentVersion;
       const releaseNotes = data.notes || data.releaseNotes || '';
-      const downloadUrl = data.downloadUrl || data.url || '';
+      // Prefer zipUrl for smooth in-app updates, fallback to downloadUrl
+      const downloadUrl = data.zipUrl || data.downloadUrl || data.url || '';
 
       const isNewer = this.compareVersions(latestVersion, currentVersion) > 0;
 
@@ -106,19 +107,21 @@ export class UpdateChecker {
   }
 
   /**
-   * Downloads the update binary to temp folder, reporting progress along the way.
+   * Downloads the update binary/archive to temp folder, reporting progress along the way.
+   * If the update is a .zip archive, it unpacks it on the fly while in-app.
    */
   public async downloadUpdate(
     downloadUrl: string,
     onProgress: (progress: DownloadProgress) => void
   ): Promise<string> {
     const tempDir = app.getPath('temp');
-    // Extract filename from URL or default
-    let fileName = 'IADonkey-update.exe';
+    const isZip = downloadUrl.toLowerCase().includes('.zip');
+    let fileName = isZip ? 'IADonkey-update.zip' : 'IADonkey-update.exe';
+
     try {
       const parsedUrl = new URL(downloadUrl);
       const base = path.basename(parsedUrl.pathname);
-      if (base && base.endsWith('.exe')) {
+      if (base) {
         fileName = base;
       }
     } catch {}
@@ -150,7 +153,9 @@ export class UpdateChecker {
 
     readable.on('data', (chunk: Buffer) => {
       transferred += chunk.length;
-      const percent = total > 0 ? Math.min(100, Math.round((transferred / total) * 100)) : 0;
+      // Download represents 0-90% of total progress for zip, or 0-100% for exe
+      const maxPct = isZip ? 90 : 100;
+      const percent = total > 0 ? Math.min(maxPct, Math.round((transferred / total) * maxPct)) : 0;
       onProgress({ percent, transferred, total });
     });
 
@@ -162,15 +167,64 @@ export class UpdateChecker {
     });
 
     console.log(`[UpdateChecker] Download complete: ${targetPath}`);
+
+    // If update is a zip archive, extract it immediately in temp so restart takes < 1 second!
+    if (isZip || targetPath.endsWith('.zip')) {
+      onProgress({ percent: 92, transferred: total, total });
+      const extractDir = path.join(tempDir, 'IADonkey-update-extracted');
+      if (fs.existsSync(extractDir)) {
+        try {
+          fs.rmSync(extractDir, { recursive: true, force: true });
+        } catch {}
+      }
+      fs.mkdirSync(extractDir, { recursive: true });
+
+      console.log(`[UpdateChecker] Extracting update zip to ${extractDir}...`);
+      try {
+        const result = spawnSync('tar', ['-xf', targetPath, '-C', extractDir], {
+          windowsHide: true,
+        });
+        if (result.error) {
+          throw result.error;
+        }
+      } catch (tarErr) {
+        console.warn('[UpdateChecker] tar failed, trying PowerShell Expand-Archive:', tarErr);
+        spawnSync(
+          'powershell',
+          [
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-Command',
+            `Expand-Archive -Path '${targetPath}' -DestinationPath '${extractDir}' -Force`,
+          ],
+          { windowsHide: true }
+        );
+      }
+
+      onProgress({ percent: 100, transferred: total, total });
+
+      // Check if extracted files are nested inside a subfolder (like win-unpacked)
+      let resolvedDir = extractDir;
+      const entries = fs.readdirSync(extractDir);
+      if (entries.length === 1 && fs.statSync(path.join(extractDir, entries[0])).isDirectory()) {
+        resolvedDir = path.join(extractDir, entries[0]);
+      }
+
+      return resolvedDir;
+    }
+
     return targetPath;
   }
 
   /**
-   * Runs the downloaded update executable and cleanly terminates the current process.
+   * Installs update and cleanly restarts application.
+   * If update was extracted to a folder, it uses a sub-second robocopy swap script.
+   * If update is an executable, it runs it with silent flags.
    */
   public installAndRestart(filePath: string, beforeExit?: () => void): void {
     if (!fs.existsSync(filePath)) {
-      throw new Error(`Soubor aktualizace nebyl nalezen: ${filePath}`);
+      throw new Error(`Soubor nebo složka aktualizace nebyla nalezena: ${filePath}`);
     }
 
     console.log(`[UpdateChecker] Preparing for update installation: ${filePath}`);
@@ -190,17 +244,44 @@ export class UpdateChecker {
       console.error('[UpdateChecker] Error releasing single instance lock:', err);
     }
 
-    console.log(`[UpdateChecker] Spawning updater executable: ${filePath}`);
+    const isDirectory = fs.statSync(filePath).isDirectory();
 
-    const child = spawn(filePath, ['/S', '--force-run', '--updated'], {
-      detached: true,
-      stdio: 'ignore',
-    });
-    child.unref();
+    if (isDirectory) {
+      // Sub-second instant swap update!
+      const targetDir = app.isPackaged
+        ? path.dirname(process.resourcesPath)
+        : path.join(process.env.LOCALAPPDATA || '', 'Programs', 'IADonkey');
+      const tempDir = app.getPath('temp');
+      const swapBat = path.join(tempDir, 'iadonkey-swap-update.bat');
+
+      const batContent = `@echo off
+timeout /t 1 /nobreak >nul
+robocopy "${filePath}" "${targetDir}" /E /IS /IT /MOVE >nul 2>&1
+start "" "${targetDir}\\IADonkey.exe" --updated
+del "%~f0" >nul 2>&1
+exit
+`;
+      fs.writeFileSync(swapBat, batContent, 'utf8');
+
+      console.log(`[UpdateChecker] Spawning instant swap script: ${swapBat}`);
+      const child = spawn('cmd.exe', ['/c', swapBat], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true,
+      });
+      child.unref();
+    } else {
+      // Executable fallback
+      console.log(`[UpdateChecker] Spawning updater executable: ${filePath}`);
+      const child = spawn(filePath, ['/S', '--force-run', '--updated'], {
+        detached: true,
+        stdio: 'ignore',
+      });
+      child.unref();
+    }
 
     console.log(`[UpdateChecker] Terminating current application process...`);
 
-    // Give child process a small moment to initialize, then exit cleanly
     setTimeout(() => {
       try {
         app.exit(0);

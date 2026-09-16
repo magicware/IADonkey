@@ -329,6 +329,92 @@ export class WindowManager {
     return this.gitCloneWindow;
   }
 
+  public createInstallerWindow(): BrowserWindow {
+    const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
+      ? path.join(__dirname, 'preload.cjs')
+      : fs.existsSync(path.join(__dirname, 'preload.mjs'))
+      ? path.join(__dirname, 'preload.mjs')
+      : path.join(__dirname, 'preload.js');
+
+    const win = new BrowserWindow({
+      width: 660,
+      height: 520,
+      minWidth: 600,
+      minHeight: 460,
+      resizable: false,
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      icon: getAppIcon(),
+      show: false,
+      webPreferences: {
+        preload: preloadPath,
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    if (process.env.VITE_DEV_SERVER_URL) {
+      win.loadURL(`${process.env.VITE_DEV_SERVER_URL}#installer`);
+    } else {
+      win.loadFile(path.join(__dirname, '../dist/index.html'), { hash: 'installer' });
+    }
+
+    win.once('ready-to-show', () => {
+      win.show();
+      win.focus();
+    });
+
+    win.on('closed', () => {
+      app.quit();
+    });
+
+    return win;
+  }
+
+  public createUninstallerWindow(): BrowserWindow {
+    const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
+      ? path.join(__dirname, 'preload.cjs')
+      : fs.existsSync(path.join(__dirname, 'preload.mjs'))
+      ? path.join(__dirname, 'preload.mjs')
+      : path.join(__dirname, 'preload.js');
+
+    const win = new BrowserWindow({
+      width: 480,
+      height: 320,
+      resizable: false,
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      icon: getAppIcon(),
+      show: false,
+      webPreferences: {
+        preload: preloadPath,
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    if (process.env.VITE_DEV_SERVER_URL) {
+      win.loadURL(`${process.env.VITE_DEV_SERVER_URL}#uninstall`);
+    } else {
+      win.loadFile(path.join(__dirname, '../dist/index.html'), { hash: 'uninstall' });
+    }
+
+    win.once('ready-to-show', () => {
+      win.show();
+      win.focus();
+    });
+
+    win.on('closed', () => {
+      app.quit();
+    });
+
+    return win;
+  }
+
   public createTray(hotkeyLabel: string): void {
     // Minimalist monochrome outline donkey in a rounded square (embedded 64x64 PNG)
     const TRAY_ICON_PNG_B64 =

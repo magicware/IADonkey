@@ -6,6 +6,8 @@ import { UpdateDialog } from './components/UpdateDialog';
 import { WhatsNewModal } from './components/WhatsNewModal';
 import { ChangelogModal } from './components/ChangelogModal';
 import { GitCloneModal } from './components/GitCloneModal';
+import { InstallerWizard } from './components/InstallerWizard';
+import { UninstallerModal } from './components/UninstallerModal';
 import { CURRENT_APP_VERSION, getLatestRelease } from './changelog';
 import { applyPrimaryColor, applyActionsColor } from './utils/theme';
 
@@ -37,6 +39,14 @@ const DEFAULT_CONFIG: AppConfig = {
 };
 
 export const App: React.FC = () => {
+  const [isInstallerMode] = useState(() => {
+    return window.location.hash.startsWith('#installer') || window.location.search.includes('window=installer');
+  });
+
+  const [isUninstallMode] = useState(() => {
+    return window.location.hash.startsWith('#uninstall') || window.location.search.includes('window=uninstall');
+  });
+
   const [isSettingsView, setIsSettingsView] = useState(() => {
     return window.location.hash === '#settings' || window.location.search.includes('window=settings');
   });
@@ -256,6 +266,16 @@ export const App: React.FC = () => {
       await window.electronAPI.saveConfig(updatedConfig);
     }
   };
+
+  // Dedicated Installer Window mode
+  if (isInstallerMode) {
+    return <InstallerWizard />;
+  }
+
+  // Dedicated Uninstaller Window mode
+  if (isUninstallMode) {
+    return <UninstallerModal />;
+  }
 
   // Dedicated Settings Window mode
   if (isSettingsView) {

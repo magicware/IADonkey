@@ -73,19 +73,23 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
               <span className="material-symbols-outlined text-3xl">task_alt</span>
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Aktualizace stažena!</h3>
+              <h3 className="text-base font-bold text-white">Aktualizace připravena!</h3>
               <p className="text-xs text-emerald-300">
-                Verze <span className="font-mono font-bold text-white">{updateInfo.latestVersion}</span> je připravena
+                Verze <span className="font-mono font-bold text-white">{updateInfo.latestVersion}</span> je připravena k instalaci
               </p>
             </div>
           </div>
         ) : downloadState === 'downloading' ? (
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 animate-pulse">
-              <span className="material-symbols-outlined text-3xl">cloud_download</span>
+              <span className="material-symbols-outlined text-3xl">
+                {progress.percent >= 90 ? 'inventory_2' : 'cloud_download'}
+              </span>
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Stahování aktualizace...</h3>
+              <h3 className="text-base font-bold text-white">
+                {progress.percent >= 90 ? 'Příprava aktualizace...' : 'Stahování aktualizace...'}
+              </h3>
               <p className="text-xs text-indigo-300">
                 Verze <span className="font-mono font-bold text-white">{updateInfo.latestVersion}</span>
               </p>
@@ -134,20 +138,24 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
           <div className="space-y-3 py-2">
             <div className="w-full bg-black/40 h-3.5 rounded-full overflow-hidden border border-white/10 p-0.5">
               <div
-                className="h-full bg-indigo-600 rounded-full transition-all duration-300 ease-out flex items-center justify-end"
+                className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-300 ease-out flex items-center justify-end"
                 style={{ width: `${Math.max(5, progress.percent)}%` }}
               />
             </div>
             <div className="flex items-center justify-between text-xs text-gray-400">
               <span className="font-mono font-bold text-white">{progress.percent} %</span>
               <span className="text-gray-400 font-mono">
-                {progress.total > 0
+                {progress.percent >= 90
+                  ? 'Rozbalování souborů...'
+                  : progress.total > 0
                   ? `${(progress.transferred / (1024 * 1024)).toFixed(1)} MB / ${(progress.total / (1024 * 1024)).toFixed(1)} MB`
                   : `${(progress.transferred / (1024 * 1024)).toFixed(1)} MB`}
               </span>
             </div>
             <p className="text-xs text-gray-400 text-center">
-              Stahování probíhá na pozadí, prosím chvíli vyčkejte...
+              {progress.percent >= 90
+                ? 'Připravuji a rozbaluji aktualizaci na pozadí...'
+                : 'Stahování probíhá přímo v aplikaci, prosím chvíli vyčkejte...'}
             </p>
           </div>
         )}
@@ -155,7 +163,7 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
         {downloadState === 'completed' && (
           <div className="space-y-2 py-2">
             <p className="text-xs text-gray-300">
-              Nový instalační balíček byl v pořádku stažen do počítače. Pro dokončení aktualizace je potřeba aplikaci restartovat.
+              Balíček byl úspěšně připraven. Kliknutím na tlačítko níže dojde k okamžitému bleskovému restartu do nové verze.
             </p>
           </div>
         )}

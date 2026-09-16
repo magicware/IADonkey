@@ -4,6 +4,13 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.7] - 16. 9. 2026
+### Moderní 4-krokový instalátor a blesková In-App aktualizace bez prodlevy
+- **Samostatný moderní instalátor (React + Tailwind)**: Kompletní opuštění zastaralého Win32 NSIS. Nový instalátor je plnohodnotné tmavé frameless okno ve vizuálním stylu aplikace s vlastním záhlavím, ikonou s fialovou září a 4 přehlednými kroky (Vítejte → Nastavení cílové složky a zástupců → Průběh instalace s živým progress barem → Dokončeno se zaškrtávacím polem pro spuštění).
+- **Plná systémová integrace do Windows**: Instalátor vytváří zástupce na Ploše a v nabídce Start pomocí Windows Script Host a registruje aplikaci do systémového Nastavení Windows (Přidat nebo odebrat programy) včetně korektní možnosti odinstalace.
+- **Blesková In-App aktualizace (0.5s swap)**: Stažení i rozbalení aktualizace probíhá přímo v běžícím okně aplikace s živým tmavým progress barem a zobrazením fází rozbalování. Samotná výměna souborů při restartu trvá pouze 0,5 sekundy díky bleskovému swapu – uživatel již nikdy nečeká do prázdna ani nevidí žádná bílá okna.
+- **Moderní odinstalátor**: Při odinstalaci přes systémové Nastavení se otevře moderní potvrzovací okno s čistým odebráním všech součástí programu a zástupců.
+
 ## [1.1.6] - 16. 9. 2026
 ### 100% tichý instalátor bez systémových oken a okamžitý start aplikace
 - **Úplné potlačení systémového dialogu instalátoru**: Do jádra NSIS instalátoru byla přímo začleněna direktiva `SilentInstall silent`. Ani při ručním spuštění poklepáním v Průzkumníku Windows se již nezobrazuje žádné malé bílé systémové okénko s nápisem „Instaluje se, prosím vyčkejte...“ ani zelený proužek.

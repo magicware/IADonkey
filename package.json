@@ -1,6 +1,6 @@
 {
   "name": "iadonkey",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "IADonkey Launcher",
   "author": "MagicWare",
   "main": "dist-electron/main.js",
@@ -36,24 +36,15 @@
           ]
         },
         {
-          "target": "nsis",
+          "target": "zip",
           "arch": [
             "x64"
           ]
         }
       ]
     },
-    "nsis": {
-      "oneClick": true,
-      "perMachine": false,
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "shortcutName": "IADonkey",
-      "uninstallDisplayName": "IADonkey Launcher",
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "runAfterFinish": true,
-      "include": "build/installer.nsh"
+    "portable": {
+      "artifactName": "${productName}-Setup-${version}.${ext}"
     }
   },
   "keywords": [],

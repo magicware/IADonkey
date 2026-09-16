@@ -100,6 +100,21 @@ declare global {
       onSearchEngineFaviconsUpdated: (callback: (favicons: Record<string, string>) => void) => () => void;
       onFocusInput: (callback: () => void) => () => void;
       onResetSpotlight: (callback: () => void) => () => void;
+
+      // Installer API
+      installerGetDefaultPath?: () => Promise<string>;
+      installerBrowseFolder?: (defaultPath?: string) => Promise<string | null>;
+      installerPerformInstall?: (options: {
+        targetDir: string;
+        createDesktopShortcut: boolean;
+        createStartMenuShortcut: boolean;
+        autoStartWithWindows: boolean;
+      }) => Promise<void>;
+      installerLaunchAndFinish?: (targetDir: string, runNow: boolean) => Promise<void>;
+      installerPerformUninstall?: () => Promise<void>;
+      onInstallerProgress?: (callback: (progress: { percent: number; phase: string; detail?: string }) => void) => () => void;
+      minimizeWindow?: () => Promise<void>;
+      closeWindow?: () => Promise<void>;
     };
   }
 }

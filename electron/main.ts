@@ -12,6 +12,7 @@ import { getMagicGateAutoLoginUrl } from './magicGate';
 import { testGitHubConnection } from './githubService';
 import { faviconService } from './faviconService';
 import { fetchInstanceSectionRepos, runMultiRepoClone, MagicGateSectionRepo } from './magicGateService';
+import { InstallerService } from './installerService';
 
 // Enforce single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
@@ -537,6 +538,52 @@ function setupIpcHandlers() {
     });
   });
 
+  // Installer IPC handlers
+  ipcMain.handle('installer-get-default-path', () => {
+    return InstallerService.getDefaultInstallPath();
+  });
+
+  ipcMain.handle('installer-browse-folder', async (_event, defaultPath?: string) => {
+    const win = BrowserWindow.getFocusedWindow();
+    const result = await dialog.showOpenDialog(win || (undefined as any), {
+      title: 'Vyberte cílovou složku pro instalaci IADonkey',
+      defaultPath: defaultPath || InstallerService.getDefaultInstallPath(),
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+    return result.filePaths[0];
+  });
+
+  ipcMain.handle('installer-perform-install', async (event, options) => {
+    return await InstallerService.performInstall(options, (progress) => {
+      event.sender.send('installer-progress', progress);
+    });
+  });
+
+  ipcMain.handle('installer-launch-and-finish', (_event, targetDir: string, runNow: boolean) => {
+    if (runNow) {
+      InstallerService.launchInstalledAppAndExit(targetDir);
+    } else {
+      app.exit(0);
+    }
+  });
+
+  ipcMain.handle('installer-perform-uninstall', () => {
+    InstallerService.performUninstall();
+  });
+
+  ipcMain.handle('minimize-window', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    win?.minimize();
+  });
+
+  ipcMain.handle('close-window', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    win?.close();
+  });
+
   // VS Code integration handlers
   ipcMain.handle('open-in-vscode', async (_event, folderPath: string) => {
     if (!folderPath) {
@@ -940,10 +987,23 @@ app.whenReady().then(() => {
     () => store.getConfig()
   );
 
+  setupIpcHandlers();
+
+  // Check if running in uninstaller mode
+  if (process.argv.includes('--uninstall')) {
+    windowManager.createUninstallerWindow();
+    return;
+  }
+
+  // Check if running in installer mode
+  if (InstallerService.isInstallerMode()) {
+    windowManager.createInstallerWindow();
+    return;
+  }
+
   windowManager.createMainWindow();
   windowManager.createTray(currentHotkey);
 
-  setupIpcHandlers();
   registerGlobalHotkey(currentHotkey);
   startBackgroundTasks();
 

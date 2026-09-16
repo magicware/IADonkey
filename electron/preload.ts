@@ -123,4 +123,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('reset-spotlight', handler);
     return () => ipcRenderer.removeListener('reset-spotlight', handler);
   },
+
+  // Installer API
+  installerGetDefaultPath: (): Promise<string> => ipcRenderer.invoke('installer-get-default-path'),
+  installerBrowseFolder: (defaultPath?: string): Promise<string | null> =>
+    ipcRenderer.invoke('installer-browse-folder', defaultPath),
+  installerPerformInstall: (options: any): Promise<void> =>
+    ipcRenderer.invoke('installer-perform-install', options),
+  installerLaunchAndFinish: (targetDir: string, runNow: boolean): Promise<void> =>
+    ipcRenderer.invoke('installer-launch-and-finish', targetDir, runNow),
+  installerPerformUninstall: (): Promise<void> => ipcRenderer.invoke('installer-perform-uninstall'),
+  onInstallerProgress: (callback: (progress: any) => void) => {
+    const handler = (_event: any, progress: any) => callback(progress);
+    ipcRenderer.on('installer-progress', handler);
+    return () => ipcRenderer.removeListener('installer-progress', handler);
+  },
+  minimizeWindow: (): Promise<void> => ipcRenderer.invoke('minimize-window'),
+  closeWindow: (): Promise<void> => ipcRenderer.invoke('close-window'),
 });

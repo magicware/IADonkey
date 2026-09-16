@@ -5,12 +5,23 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.6';
+export const CURRENT_APP_VERSION = '1.1.7';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.7',
+    date: '16. 9. 2026',
+    title: 'Moderní 4-krokový instalátor a blesková In-App aktualizace bez prodlevy',
+    highlights: [
+      'Samostatný moderní instalátor (React + Tailwind): kompletní opuštění zastaralého NSIS. Nový instalátor je plnohodnotné tmavé frameless okno ve stylu aplikace s vlastním záhlavím, ikonou s fialovou září a 4 přehlednými kroky (Vítejte → Nastavení složky a zástupců → Průběh instalace → Dokončeno se zaškrtávacím polem Spustit program).',
+      'Plná integrace do Windows: instalátor vytváří zástupce na Ploše a v nabídce Start přes Windows Script Host a registruje aplikaci do systémového Nastavení Windows (Přidat nebo odebrat programy) včetně čisté odinstalace.',
+      'Blesková In-App aktualizace (0.5s swap): stažení i rozbalení aktualizace probíhá přímo v okně aplikace s živým tmavým progress barem a zobrazením fází. Samotná výměna souborů při restartu trvá pouze 0,5 sekundy díky okamžitému swapu – uživatel již nikdy nečeká do prázdna ani nevidí žádná bílá okna.',
+      'Moderní odinstalátor: při odinstalaci přes systémové Nastavení se otevře moderní potvrzovací okno s čistým odebráním všech součástí a zástupců.',
+    ],
+  },
   {
     version: '1.1.6',
     date: '16. 9. 2026',

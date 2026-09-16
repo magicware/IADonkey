@@ -65,8 +65,9 @@ async function main() {
   const versionJsonPath = path.join(rootDir, 'version.json');
   const versionData = {
     version: version,
-    releaseNotes: `• Vydana nova verze ${version} aplikace IADonkey.\n• Prehled vsech zmen po aktualizaci naleznete v aplikaci v zalozce Nastaveni -> Kompletni changelog.`,
-    downloadUrl: `https://github.com/magicware/IADonkey/releases/download/v${version}/IADonkey-${version}.exe`,
+    releaseNotes: `• Vydána nová verze ${version} aplikace IADonkey.\n• Přehled všech změn po aktualizaci naleznete v aplikaci v záložce Nastavení -> Kompletní changelog.`,
+    downloadUrl: `https://github.com/magicware/IADonkey/releases/download/v${version}/IADonkey-Setup-${version}.exe`,
+    zipUrl: `https://github.com/magicware/IADonkey/releases/download/v${version}/IADonkey-${version}.zip`,
   };
   fs.writeFileSync(versionJsonPath, JSON.stringify(versionData, null, 2) + '\n', 'utf8');
   console.log(`✓ Aktualizovan version.json pro update system`);
@@ -81,26 +82,25 @@ async function main() {
     process.exit(1);
   }
 
-  // Hledani vytvoreneho exe ve slozce release
+  // Hledani vytvorenych souboru ve slozce release (exe instalator + zip balicek pro in-app update)
   const releaseDir = path.join(rootDir, 'release');
-  let builtExePath = null;
-  let builtExeName = `IADonkey-${version}.exe`;
+  const releaseAssets = [];
 
   if (fs.existsSync(releaseDir)) {
     const files = fs.readdirSync(releaseDir);
-    const matched = files.find(f => f.includes(version) && f.endsWith('.exe')) ||
-                    files.find(f => f.endsWith('.exe'));
-    if (matched) {
-      builtExeName = matched;
-      builtExePath = path.join(releaseDir, matched);
+    const matched = files.filter(f => f.includes(version) && (f.endsWith('.exe') || f.endsWith('.zip')));
+    for (const f of matched) {
+      releaseAssets.push({ name: f, path: path.join(releaseDir, f) });
     }
   }
 
-  if (builtExePath && fs.existsSync(builtExePath)) {
-    console.log(`\n\x1b[32m✓ Spustitelny soubor uspesne vytvoren:\x1b[0m`);
-    console.log(`  ${builtExePath}`);
+  if (releaseAssets.length > 0) {
+    console.log(`\n\x1b[32m✓ Nalezeny soubory k vydání verze ${version}:\x1b[0m`);
+    for (const asset of releaseAssets) {
+      console.log(`  • ${asset.name} (${(fs.statSync(asset.path).size / (1024 * 1024)).toFixed(1)} MB)`);
+    }
   } else {
-    console.log(`\n\x1b[33mUpozorneni: Soubor ${builtExeName} nebyl nalezen v release slozce.\x1b[0m`);
+    console.log(`\n\x1b[33mUpozorneni: Zadne soubory verze ${version} nebyly nalezeny v release slozce.\x1b[0m`);
   }
 
   // 6. Git commit a tag
@@ -143,25 +143,30 @@ async function main() {
     ghLoggedIn = true;
   } catch {}
 
-  if (ghLoggedIn && builtExePath && fs.existsSync(builtExePath)) {
+  if (ghLoggedIn && releaseAssets.length > 0) {
     console.log('\n\x1b[36m=== Automatická publikace na GitHub Releases ===\x1b[0m');
-    const doGh = await rl.question(`Chcete automaticky publikovat Release v${version} a nahrat ${builtExeName} na GitHub? [A/n]: `);
+    const doGh = await rl.question(`Chcete automaticky publikovat Release v${version} a nahrat balicky na GitHub? [A/n]: `);
     if (!doGh || doGh.toLowerCase() === 'a' || doGh.toLowerCase() === 'y') {
       try {
-        console.log(`\x1b[33mNahrávám ${builtExeName} na GitHub Releases...\x1b[0m`);
+        console.log(`\x1b[33mZakládám / aktualizuji GitHub Release v${version}...\x1b[0m`);
+        const primaryAsset = releaseAssets[0];
         try {
-          execSync(`gh release create "v${version}" "${builtExePath}" --title "v${version}" --notes "Release v${version}"`, {
+          execSync(`gh release create "v${version}" "${primaryAsset.path}" --title "v${version}" --notes "Release v${version}"`, {
             cwd: rootDir,
             stdio: 'inherit',
           });
         } catch {
-          // Pokud release uz existuje, uploadneme asset s prepsanim (--clobber plati pro upload)
-          execSync(`gh release upload "v${version}" "${builtExePath}" --clobber`, {
+          // Ignorovat, pokud release již existuje
+        }
+
+        for (const asset of releaseAssets) {
+          console.log(`Nahrávám asset: ${asset.name}...`);
+          execSync(`gh release upload "v${version}" "${asset.path}" --clobber`, {
             cwd: rootDir,
             stdio: 'inherit',
           });
         }
-        console.log(`\x1b[32m✓ GitHub Release v${version} byl kompletně a automaticky publikován včetně binárky ${builtExeName}!\x1b[0m`);
+        console.log(`\x1b[32m✓ Všechny balíčky verze v${version} byly úspěšně nahrány na GitHub!\x1b[0m`);
       } catch (err) {
         console.error(`\x1b[31mChyba pri automatickem nahravani na GitHub: ${err.message}\x1b[0m`);
         console.log(`Rucni zaloha: https://github.com/magicware/IADonkey/releases`);
