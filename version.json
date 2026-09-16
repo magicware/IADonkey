@@ -1,6 +1,6 @@
 {
   "version": "1.1.7",
-  "releaseNotes": "• Vydána nová verze 1.1.7 aplikace IADonkey.\n• Nový moderní 4-krokový instalátor (React + Tailwind) bez zastaralých Win32 oken.\n• Blesková In-App aktualizace se živým ukazatelem rozbalování a 0,5s restartem.\n• Přehled všech změn naleznete v aplikaci v záložce Nastavení -> Kompletní changelog.",
+  "releaseNotes": "• Vydána nová verze 1.1.7 aplikace IADonkey.\n• Přehled všech změn po aktualizaci naleznete v aplikaci v záložce Nastavení -> Kompletní changelog.",
   "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.7/IADonkey-Setup-1.1.7.exe",
   "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.7/IADonkey-1.1.7.zip"
 }
