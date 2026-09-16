@@ -5,12 +5,23 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.12';
+export const CURRENT_APP_VERSION = '1.1.13';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.13',
+    date: '17. 9. 2026',
+    title: 'Spolehlivé zobrazení Splash Screenu v produkci a podpora RDP/virtuálních prostředí',
+    highlights: [
+      'Spolehlivé zobrazení Splash Screenu v produkčním .exe: Zahrnutí složky electron/assets do produkčního instalačního balíčku asar a vestavění přímé Base64 zálohy ikony zaručuje okamžité vykreslení bez závislosti na diskových cestách.',
+      'Plná viditelnost v RDP a softwarovém vykreslování: Splash okno používá plné neprůhledné pozadí #141520 namísto průhledného rámce, díky čemuž se spolehlivě zobrazí i ve vzdálených plochách (RDP) a na strojích bez hardwarové GPU akcelerace.',
+      'Garantovaný 5sekundový čas běhu Splash Screenu: Úvodní obrazovka zůstává zobrazená minimálně 5 sekund, aby uživatel vždy zachytil start aplikace.',
+      'Automatická aktivace vyhledávání Spotlight: Po uplynutí 5s a dokončení načtení se splash screen plynule skryje a okno Spotlightu se samo zobrazí, vycentruje na aktivním monitoru a okamžitě získá fokus.',
+    ],
+  },
   {
     version: '1.1.12',
     date: '17. 9. 2026',

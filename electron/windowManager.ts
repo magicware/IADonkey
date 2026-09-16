@@ -5,11 +5,16 @@ import { BrowserWindow, Tray, Menu, screen, nativeImage, app } from 'electron';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const APP_ICON_PNG_B64 =
+  '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軽減';
+
 const getAppIcon = () => {
   const ico = path.join(__dirname, '../electron/assets/icon.ico');
   const png = path.join(__dirname, '../electron/assets/icon.png');
+  const distPng = path.join(__dirname, '../dist/icon.png');
   if (fs.existsSync(ico)) return ico;
   if (fs.existsSync(png)) return png;
+  if (fs.existsSync(distPng)) return distPng;
   return undefined;
 };
 
@@ -17,7 +22,9 @@ const getAppIconBase64 = (): string => {
   const candidates = [
     path.join(__dirname, '../electron/assets/icon.png'),
     path.join(__dirname, 'assets/icon.png'),
+    path.join(__dirname, '../dist/icon.png'),
     path.join(process.resourcesPath || '', 'app.asar/electron/assets/icon.png'),
+    path.join(process.resourcesPath || '', 'app.asar/dist/icon.png'),
   ];
   for (const c of candidates) {
     if (fs.existsSync(c)) {
@@ -26,7 +33,7 @@ const getAppIconBase64 = (): string => {
       } catch {}
     }
   }
-  return '';
+  return `data:image/png;base64,${APP_ICON_PNG_B64}`;
 };
 
 export class WindowManager {

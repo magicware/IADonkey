@@ -4,6 +4,13 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.13] - 17. 9. 2026
+### Spolehlivé zobrazení Splash Screenu v produkci a podpora RDP/virtuálních prostředí
+- **Spolehlivé zobrazení Splash Screenu v produkčním .exe**: Složka `electron/assets` byla explicitně přidána do balíčku `app.asar` v konfiguraci `package.json` a doplněna o přímou vestavěnou Base64 zálohu ikony. Splash screen se tak vykreslí bleskově a bez jakékoliv závislosti na externích souborech.
+- **Plná podpora zobrazení v RDP a softwarovém vykreslování**: Odstranění závislosti na průhlednosti oken (`transparent: false`) a nastavení plného tmavého pozadí `#141520` zajišťuje spolehlivé zobrazení i ve virtuálních prostředích, vzdálené ploše (RDP) a při softwarovém vykreslování (SwiftShader).
+- **Garantovaný 5sekundový čas běhu Splash Screenu**: Úvodní obrazovka zůstává zobrazená minimálně 5 sekund, i když je načtení aplikace v paměti bleskové.
+- **Automatická aktivace Spotlightu po startu**: Po uplynutí 5 sekund a dokončení inicializace se splash screen plynule skryje a vyhledávací okno Spotlight se automaticky zobrazí, vycentruje na monitoru s kurzorem myši a získá okamžitý fokus pro psaní.
+
 ## [1.1.12] - 17. 9. 2026
 ### Okamžité zobrazení Splash Screenu na frame 0 a garantovaný 5s start
 - **Okamžité zobrazení Splash Screenu (Frame 0)**: Okno je vykresleno přímo z paměti pomocí samostatného odlehčeného HTML namísto čekání na objemný React bundle. Zobrazí se bleskově během 2 ms.
