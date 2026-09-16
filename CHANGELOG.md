@@ -4,6 +4,14 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.4] - 16. 9. 2026
+### Kompletní vizuální redesign instalátoru Windows (NSIS) do tmavého motivu
+- **Vizuální redesign instalačního průvodce Windows (NSIS)**: Instalační okno (`.exe`), které se spouští při ruční instalaci i po automatickém stažení aktualizace, bylo kompletně přestylováno do tmavého motivu odpovídajícího oknu Nastavení aplikace (`#1E1E28`).
+- **Bezešvé bitmapové podklady**: Podkladové grafické prvky levého panelu (`installerSidebar.bmp`) i záhlaví (`installerHeader.bmp`) mají přesnou barvu `#1E1E28` a plynule navazují na podklad dialogu, čímž vzniká jednolitý a vizuálně čistý celek bez bílých okrajů.
+- **Zaoblená karta s ikonou a ambientní záře**: Ikona IADonkey je na bočním panelu i v záhlaví prezentována v elegantní zaoblené kartě s jemnou indigo září (`#6366F1`) a vertikálním akcentním žebrem.
+- **Tmavé ladění dialogů a ovládacích prvků**: Klientská plocha, výběr cílové složky i instalační ukazatel průběhu jsou sladěny do tmavých odstínů s indigo ukazatelem instalace.
+- **Odstranění rušivých prvků**: Skryty ostré šedé Win32 horizontální linky a upraven brandingový text.
+
 ## [1.1.3] - 16. 9. 2026
 ### Vlastní snippety, import/export, katalog Material Symbols, plynulá synchronizace a vyladění UI
 - **MLog číselné dotazy již od 3 číslic**: Zadání např. `123` do Spotlightu při aktivním MLogu automaticky nabídne úkol `T123` na 1. místě a požadavek `R123` na 2. místě.
