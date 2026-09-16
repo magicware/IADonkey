@@ -1,4 +1,4 @@
-﻿const fs = require('fs');
+const fs = require('fs');
 const path = require('path');
 const { app, nativeImage } = require('electron');
 
@@ -47,36 +47,103 @@ function createBmpBuffer(width, height, getPixelBgr) {
   return buf;
 }
 
+// Signed distance function for anti-aliased rounded rectangle
+function roundedBoxSdf(px, py, halfW, halfH, radius) {
+  const qx = Math.abs(px) - halfW + radius;
+  const qy = Math.abs(py) - halfH + radius;
+  return Math.min(Math.max(qx, qy), 0) + Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) - radius;
+}
+
+function clamp(val, min, max) {
+  return Math.max(min, Math.min(max, val));
+}
+
 app.whenReady().then(() => {
   const rootDir = path.resolve(__dirname, '..');
   const iconPngPath = path.join(rootDir, 'build', 'icon.png');
   const icon = nativeImage.createFromPath(iconPngPath);
 
-  // 1. Sidebar BMP (164 x 314)
+  // Theme base colors: #1E1E28 (RGB: 30, 30, 40)
+  const BASE_R = 30;
+  const BASE_G = 30;
+  const BASE_B = 40;
+
+  // Accent indigo: #6366F1 (RGB: 99, 102, 241)
+  const ACCENT_R = 99;
+  const ACCENT_G = 102;
+  const ACCENT_B = 241;
+
+  // Card panel: #262634 (RGB: 38, 38, 52)
+  const CARD_R = 38;
+  const CARD_G = 38;
+  const CARD_B = 52;
+
+  // -------------------------------------------------------------
+  // 1. Sidebar BMP (164 x 314) - Welcome & Finish page left panel
+  // -------------------------------------------------------------
   const sidebarW = 164;
   const sidebarH = 314;
-  const iconSidebarSize = 96;
+
+  const cardCenterX = 82;
+  const cardCenterY = 98;
+  const cardHalfW = 46;
+  const cardHalfH = 46;
+  const cardRadius = 14;
+
+  const iconSidebarSize = 64;
   const iconSidebar = icon.resize({ width: iconSidebarSize, height: iconSidebarSize });
-  const iconSidebarBmp = iconSidebar.toBitmap(); // BGRA format
-  const iconSidebarX = Math.round((sidebarW - iconSidebarSize) / 2);
-  const iconSidebarY = Math.round((sidebarH - iconSidebarSize) / 2) - 30; // slightly above center
+  const iconSidebarBmp = iconSidebar.toBitmap(); // BGRA
+  const iconSidebarX = cardCenterX - Math.round(iconSidebarSize / 2);
+  const iconSidebarY = cardCenterY - Math.round(iconSidebarSize / 2);
 
   const sidebarBmp = createBmpBuffer(sidebarW, sidebarH, (x, y) => {
-    // Dark background gradient with subtle purple-indigo glow at top
-    const factor = y / sidebarH;
-    let bgR = Math.round(24 + factor * 8);
-    let bgG = Math.round(25 + factor * 10);
-    let bgB = Math.round(32 + factor * 16);
+    let r = BASE_R;
+    let g = BASE_G;
+    let b = BASE_B;
 
-    // Subtle indigo glow on top area
-    if (y < 120) {
-      const glow = (1 - y / 120) * 0.25;
-      bgR = Math.round(bgR * (1 - glow) + 99 * glow);
-      bgG = Math.round(bgG * (1 - glow) + 102 * glow);
-      bgB = Math.round(bgB * (1 - glow) + 241 * glow);
+    // 1. Left vertical accent stripe (3px) with soft glow
+    if (x < 3) {
+      r = ACCENT_R;
+      g = ACCENT_G;
+      b = ACCENT_B;
+    } else if (x === 3) {
+      r = Math.round(BASE_R * 0.4 + ACCENT_R * 0.6);
+      g = Math.round(BASE_G * 0.4 + ACCENT_G * 0.6);
+      b = Math.round(BASE_B * 0.4 + ACCENT_B * 0.6);
     }
 
-    // Overlay icon if inside icon box
+    // 2. Soft radial ambient indigo glow behind the card
+    const glowDist = Math.hypot(x - cardCenterX, y - cardCenterY);
+    if (glowDist < 75) {
+      const glow = (1 - glowDist / 75) * 0.28;
+      r = Math.round(r * (1 - glow) + ACCENT_R * glow);
+      g = Math.round(g * (1 - glow) + ACCENT_G * glow);
+      b = Math.round(b * (1 - glow) + ACCENT_B * glow);
+    }
+
+    // 3. Card container with anti-aliased rounded rectangle
+    const dCard = roundedBoxSdf(x - cardCenterX, y - cardCenterY, cardHalfW, cardHalfH, cardRadius);
+    if (dCard < 1.0) {
+      const cardAlpha = clamp(1.0 - dCard, 0, 1);
+      // Check if pixel is on the 1.5px border
+      const isBorder = dCard >= -1.5 && dCard <= 0.5;
+      const borderAlpha = isBorder ? 0.65 : 0;
+
+      if (isBorder) {
+        const tr = Math.round(CARD_R * 0.4 + ACCENT_R * 0.6);
+        const tg = Math.round(CARD_G * 0.4 + ACCENT_G * 0.6);
+        const tb = Math.round(CARD_B * 0.4 + ACCENT_B * 0.6);
+        r = Math.round(r * (1 - cardAlpha) + tr * cardAlpha);
+        g = Math.round(g * (1 - cardAlpha) + tg * cardAlpha);
+        b = Math.round(b * (1 - cardAlpha) + tb * cardAlpha);
+      } else {
+        r = Math.round(r * (1 - cardAlpha) + CARD_R * cardAlpha);
+        g = Math.round(g * (1 - cardAlpha) + CARD_G * cardAlpha);
+        b = Math.round(b * (1 - cardAlpha) + CARD_B * cardAlpha);
+      }
+    }
+
+    // 4. Render icon inside card
     if (
       x >= iconSidebarX &&
       x < iconSidebarX + iconSidebarSize &&
@@ -86,41 +153,97 @@ app.whenReady().then(() => {
       const ix = x - iconSidebarX;
       const iy = y - iconSidebarY;
       const idx = (iy * iconSidebarSize + ix) * 4;
-      const b = iconSidebarBmp[idx];
-      const g = iconSidebarBmp[idx + 1];
-      const r = iconSidebarBmp[idx + 2];
-      const a = iconSidebarBmp[idx + 3] / 255;
+      const ib = iconSidebarBmp[idx];
+      const ig = iconSidebarBmp[idx + 1];
+      const ir = iconSidebarBmp[idx + 2];
+      const ia = iconSidebarBmp[idx + 3] / 255;
 
-      return [
-        Math.round(b * a + bgB * (1 - a)),
-        Math.round(g * a + bgG * (1 - a)),
-        Math.round(r * a + bgR * (1 - a)),
-      ];
+      b = Math.round(ib * ia + b * (1 - ia));
+      g = Math.round(ig * ia + g * (1 - ia));
+      r = Math.round(ir * ia + r * (1 - ia));
     }
 
-    return [bgB, bgG, bgR];
+    // 5. Decorative accent pill below card (y from 162 to 166, centered)
+    const dPill = roundedBoxSdf(x - cardCenterX, y - 165, 24, 2, 2);
+    if (dPill < 1.0) {
+      const pillAlpha = clamp(1.0 - dPill, 0, 1) * 0.75;
+      r = Math.round(r * (1 - pillAlpha) + ACCENT_R * pillAlpha);
+      g = Math.round(g * (1 - pillAlpha) + ACCENT_G * pillAlpha);
+      b = Math.round(b * (1 - pillAlpha) + ACCENT_B * pillAlpha);
+    }
+
+    // 6. Decorative three small status dots below pill
+    const dotY = 176;
+    [-12, 0, 12].forEach((offsetDot, idx) => {
+      const dotDist = Math.hypot(x - (cardCenterX + offsetDot), y - dotY);
+      if (dotDist < 2.2) {
+        const dotAlpha = clamp(2.2 - dotDist, 0, 1) * (idx === 1 ? 0.8 : 0.4);
+        r = Math.round(r * (1 - dotAlpha) + ACCENT_R * dotAlpha);
+        g = Math.round(g * (1 - dotAlpha) + ACCENT_G * dotAlpha);
+        b = Math.round(b * (1 - dotAlpha) + ACCENT_B * dotAlpha);
+      }
+    });
+
+    return [b, g, r];
   });
 
   fs.writeFileSync(path.join(rootDir, 'build', 'installerSidebar.bmp'), sidebarBmp);
   fs.writeFileSync(path.join(rootDir, 'build', 'uninstallerSidebar.bmp'), sidebarBmp);
   console.log('Created installerSidebar.bmp & uninstallerSidebar.bmp (164x314)');
 
-  // 2. Header BMP (150 x 57)
+  // -------------------------------------------------------------
+  // 2. Header BMP (150 x 57) - Directory & Progress page top banner
+  // -------------------------------------------------------------
   const headerW = 150;
   const headerH = 57;
-  const iconHeaderSize = 42;
+
+  const headerCardCenterX = 120;
+  const headerCardCenterY = Math.round(headerH / 2);
+  const headerCardHalfW = 20;
+  const headerCardHalfH = 20;
+  const headerCardRadius = 8;
+
+  const iconHeaderSize = 30;
   const iconHeader = icon.resize({ width: iconHeaderSize, height: iconHeaderSize });
   const iconHeaderBmp = iconHeader.toBitmap();
-  const iconHeaderX = headerW - iconHeaderSize - 10;
-  const iconHeaderY = Math.round((headerH - iconHeaderSize) / 2);
+  const iconHeaderX = headerCardCenterX - Math.round(iconHeaderSize / 2);
+  const iconHeaderY = headerCardCenterY - Math.round(iconHeaderSize / 2);
 
   const headerBmp = createBmpBuffer(headerW, headerH, (x, y) => {
-    // Dark clean background
-    let bgR = 24;
-    let bgG = 25;
-    let bgB = 32;
+    let r = BASE_R;
+    let g = BASE_G;
+    let b = BASE_B;
 
-    // Overlay icon on the right
+    // Ambient glow on the right around icon card
+    const glowDist = Math.hypot(x - headerCardCenterX, y - headerCardCenterY);
+    if (glowDist < 40) {
+      const glow = (1 - glowDist / 40) * 0.22;
+      r = Math.round(r * (1 - glow) + ACCENT_R * glow);
+      g = Math.round(g * (1 - glow) + ACCENT_G * glow);
+      b = Math.round(b * (1 - glow) + ACCENT_B * glow);
+    }
+
+    // Rounded card container
+    const dCard = roundedBoxSdf(x - headerCardCenterX, y - headerCardCenterY, headerCardHalfW, headerCardHalfH, headerCardRadius);
+    if (dCard < 1.0) {
+      const cardAlpha = clamp(1.0 - dCard, 0, 1);
+      const isBorder = dCard >= -1.2 && dCard <= 0.5;
+
+      if (isBorder) {
+        const tr = Math.round(CARD_R * 0.3 + ACCENT_R * 0.7);
+        const tg = Math.round(CARD_G * 0.3 + ACCENT_G * 0.7);
+        const tb = Math.round(CARD_B * 0.3 + ACCENT_B * 0.7);
+        r = Math.round(r * (1 - cardAlpha) + tr * cardAlpha);
+        g = Math.round(g * (1 - cardAlpha) + tg * cardAlpha);
+        b = Math.round(b * (1 - cardAlpha) + tb * cardAlpha);
+      } else {
+        r = Math.round(r * (1 - cardAlpha) + CARD_R * cardAlpha);
+        g = Math.round(g * (1 - cardAlpha) + CARD_G * cardAlpha);
+        b = Math.round(b * (1 - cardAlpha) + CARD_B * cardAlpha);
+      }
+    }
+
+    // Icon
     if (
       x >= iconHeaderX &&
       x < iconHeaderX + iconHeaderSize &&
@@ -130,19 +253,17 @@ app.whenReady().then(() => {
       const ix = x - iconHeaderX;
       const iy = y - iconHeaderY;
       const idx = (iy * iconHeaderSize + ix) * 4;
-      const b = iconHeaderBmp[idx];
-      const g = iconHeaderBmp[idx + 1];
-      const r = iconHeaderBmp[idx + 2];
-      const a = iconHeaderBmp[idx + 3] / 255;
+      const ib = iconHeaderBmp[idx];
+      const ig = iconHeaderBmp[idx + 1];
+      const ir = iconHeaderBmp[idx + 2];
+      const ia = iconHeaderBmp[idx + 3] / 255;
 
-      return [
-        Math.round(b * a + bgB * (1 - a)),
-        Math.round(g * a + bgG * (1 - a)),
-        Math.round(r * a + bgR * (1 - a)),
-      ];
+      b = Math.round(ib * ia + b * (1 - ia));
+      g = Math.round(ig * ia + g * (1 - ia));
+      r = Math.round(ir * ia + r * (1 - ia));
     }
 
-    return [bgB, bgG, bgR];
+    return [b, g, r];
   });
 
   fs.writeFileSync(path.join(rootDir, 'build', 'installerHeader.bmp'), headerBmp);

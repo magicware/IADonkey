@@ -5,12 +5,24 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.3';
+export const CURRENT_APP_VERSION = '1.1.4';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.4',
+    date: '16. 9. 2026',
+    title: 'Kompletní vizuální redesign instalátoru Windows (NSIS) do tmavého motivu',
+    highlights: [
+      'Vizuální redesign instalačního průvodce Windows (NSIS): okno instalátoru nyní plně odpovídá modernímu temnému stylu aplikace IADonkey a okna Nastavení (#1E1E28).',
+      'Bezešvé bitmapové podklady: uvítací i dokončovací levý panel (sidebar) a záhlaví (header) mají podklad #1E1E28, díky čemuž dokonale a plynule splývají s plochou okna bez jakýchkoliv rušivých švů.',
+      'Zaoblená karta s ikonou a ambientní záře: na bočním panelu i v záhlaví je ikona IADonkey zasazena do elegantní zaoblené karty s měkkou indigo září (#6366F1) a akcentním žebrem.',
+      'Tmavé ladění dialogů a ovládacích prvků: výběr cílové složky i ukazatel průběhu instalace jsou stylizovány do tmavého motivu s indigo progress barem.',
+      'Odstranění rušivých dělících linek: skryty klasické šedé horizontální linky a sjednocen vzhled klientské plochy i brandingového textu.',
+    ],
+  },
   {
     version: '1.1.3',
     date: '16. 9. 2026',
@@ -176,7 +188,7 @@ export const CHANGELOG_HISTORY: VersionEntry[] = [
 ];
 
 /**
- * Zde se průběžně zapisují novinky pro budoucí verzi (1.1.4).
+ * Zde se průběžně zapisují novinky pro budoucí verzi (1.1.5).
  * Po dokončení releasu se tyto položky přesunou přímo pod vydávanou verzi a toto pole se vyprázdní.
  */
 export const UPCOMING_CHANGELOG: string[] = [];
