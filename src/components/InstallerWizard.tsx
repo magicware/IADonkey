@@ -107,117 +107,114 @@ export const InstallerWizard: React.FC = () => {
   ] as const;
 
   return (
-    <div className="w-screen h-screen bg-[#141520] text-gray-200 flex select-none overflow-hidden font-sans border border-white/10 rounded-2xl shadow-2xl">
-      {/* LEFT SIDEBAR: Branding and Steps */}
-      <div className="w-72 bg-[#12131c] border-r border-white/10 flex flex-col justify-between p-6 flex-shrink-0">
-        {/* Top Header in Sidebar with official IADonkey icon */}
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="relative flex-shrink-0">
-              <img
-                src={appLogo}
-                alt="IADonkey"
-                className="w-10 h-10 rounded-xl shadow-lg border border-white/10 object-contain bg-[#181926]"
-              />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-white tracking-wide flex items-center gap-1.5">
-                IADonkey
-                <span className="text-[10px] font-mono text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.2 rounded-md">
-                  v{CURRENT_APP_VERSION}
-                </span>
-              </div>
-              <p className="text-xs text-gray-400">Instalátor aplikace</p>
-            </div>
-          </div>
+    <div className="w-screen h-screen bg-[#141520] text-gray-200 flex flex-col select-none overflow-hidden font-sans border border-white/10 rounded-2xl shadow-2xl">
+      {/* 1. TOP FULL-WIDTH HEADER WITH MINIATURE IADONKEY ICON */}
+      <div
+        className="h-11 w-full bg-[#12131c] border-b border-white/10 flex items-center justify-between px-5 flex-shrink-0"
+        style={{ WebkitAppRegion: 'drag' } as any}
+      >
+        <div className="flex items-center gap-2.5">
+          <img src={appLogo} alt="IADonkey" className="w-5 h-5 rounded-md object-contain" />
+          <span className="text-xs font-semibold text-gray-300 tracking-wide">
+            IADonkey – Průvodce instalací
+          </span>
         </div>
 
-        {/* Vertical Steps List - larger spacing, larger fonts, no glow, no connecting line */}
-        <div className="space-y-7 my-auto py-4">
-          {STEPS.map((s) => {
-            const isCompleted = step > s.num;
-            const isCurrent = step === s.num;
-
-            return (
-              <div key={s.num} className="relative flex items-center gap-3.5">
-                {/* Step Circle Indicator - clean solid look without glow effect */}
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-200 flex-shrink-0 ${
-                    isCompleted
-                      ? 'bg-emerald-500 text-white shadow-sm'
-                      : isCurrent
-                      ? 'bg-indigo-600 text-white font-bold'
-                      : 'bg-white/5 text-gray-400 border border-white/10'
-                  }`}
-                >
-                  {isCompleted ? (
-                    <span className="material-symbols-outlined text-base font-bold">check</span>
-                  ) : (
-                    s.num
-                  )}
-                </div>
-
-                {/* Step Text Label - enlarged typography */}
-                <div className="flex flex-col">
-                  <span
-                    className={`text-sm font-semibold transition-colors ${
-                      isCurrent
-                        ? 'text-white'
-                        : isCompleted
-                        ? 'text-gray-200'
-                        : 'text-gray-400'
-                    }`}
-                  >
-                    {s.label}
-                  </span>
-                  <span className="text-xs text-gray-400 leading-tight mt-0.5">{s.desc}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Bottom indicator - enlarged font and icon */}
-        <div className="pt-4 border-t border-white/10 text-xs text-gray-400 flex items-center gap-2.5">
-          <span className="material-symbols-outlined text-base text-indigo-400">verified_user</span>
-          <span>Instalace bez UAC práv</span>
+        {/* Window control buttons */}
+        <div className="flex items-center gap-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
+          <button
+            type="button"
+            onClick={handleMinimize}
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition cursor-pointer"
+            title="Minimalizovat"
+          >
+            <span className="material-symbols-outlined text-sm">remove</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-rose-600 text-gray-400 hover:text-white transition cursor-pointer"
+            title="Zavřít"
+          >
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
         </div>
       </div>
 
-      {/* RIGHT MAIN CONTENT AREA */}
-      <div className="flex-1 bg-[#181926] flex flex-col justify-between overflow-hidden">
-        {/* Custom Draggable Window Titlebar */}
-        <div
-          className="h-11 bg-[#161722]/90 border-b border-white/10 flex items-center justify-between px-6 flex-shrink-0"
-          style={{ WebkitAppRegion: 'drag' } as any}
-        >
-          <span className="text-xs font-medium text-gray-400 tracking-wide">
-            IADonkey – Průvodce instalací
-          </span>
+      {/* 2. MIDDLE AREA (SIDEBAR + MAIN CONTENT) */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* LEFT SIDEBAR: Branding and Steps */}
+        <div className="w-72 bg-[#12131c] border-r border-white/10 flex flex-col justify-start p-6 flex-shrink-0 space-y-8">
+          {/* Top Header in Sidebar with official IADonkey icon */}
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="relative flex-shrink-0">
+                <img
+                  src={appLogo}
+                  alt="IADonkey"
+                  className="w-10 h-10 rounded-xl shadow-lg border border-white/10 object-contain bg-[#181926]"
+                />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white tracking-wide flex items-center gap-1.5">
+                  IADonkey
+                  <span className="text-[10px] font-mono text-indigo-400 bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.2 rounded-md">
+                    v{CURRENT_APP_VERSION}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400">Instalátor aplikace</p>
+              </div>
+            </div>
+          </div>
 
-          {/* Window control buttons */}
-          <div className="flex items-center gap-1" style={{ WebkitAppRegion: 'no-drag' } as any}>
-            <button
-              type="button"
-              onClick={handleMinimize}
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition cursor-pointer"
-              title="Minimalizovat"
-            >
-              <span className="material-symbols-outlined text-sm">remove</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleClose}
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-rose-600 text-gray-400 hover:text-white transition cursor-pointer"
-              title="Zavřít"
-            >
-              <span className="material-symbols-outlined text-sm">close</span>
-            </button>
+          {/* Vertical Steps List - larger spacing, larger fonts, no glow, no connecting line */}
+          <div className="space-y-7 py-2">
+            {STEPS.map((s) => {
+              const isCompleted = step > s.num;
+              const isCurrent = step === s.num;
+
+              return (
+                <div key={s.num} className="relative flex items-center gap-3.5">
+                  {/* Step Circle Indicator - clean solid look without glow effect */}
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-200 flex-shrink-0 ${
+                      isCompleted
+                        ? 'bg-emerald-500 text-white shadow-sm'
+                        : isCurrent
+                        ? 'bg-indigo-600 text-white font-bold'
+                        : 'bg-white/5 text-gray-400 border border-white/10'
+                    }`}
+                  >
+                    {isCompleted ? (
+                      <span className="material-symbols-outlined text-base font-bold">check</span>
+                    ) : (
+                      s.num
+                    )}
+                  </div>
+
+                  {/* Step Text Label - enlarged typography */}
+                  <div className="flex flex-col">
+                    <span
+                      className={`text-sm font-semibold transition-colors ${
+                        isCurrent
+                          ? 'text-white'
+                          : isCompleted
+                          ? 'text-gray-200'
+                          : 'text-gray-400'
+                      }`}
+                    >
+                      {s.label}
+                    </span>
+                    <span className="text-xs text-gray-400 leading-tight mt-0.5">{s.desc}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Scrollable Content Body (Fixed between header and footer) */}
-        <div className="flex-1 p-8 overflow-y-auto space-y-6">
+        {/* RIGHT MAIN CONTENT AREA */}
+        <div className="flex-1 bg-[#181926] p-8 overflow-y-auto space-y-6">
           {/* STEP 1: ÚVOD / VÍTEJTE */}
           {step === 1 && (
             <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
@@ -425,12 +422,20 @@ export const InstallerWizard: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
 
-        {/* FIXED BOTTOM ACTION FOOTER (Never scrolls, always visible) */}
-        <div className="h-16 px-8 border-t border-white/10 bg-[#141520]/95 backdrop-blur-md flex items-center justify-between flex-shrink-0">
-          {/* Left Action Button (Zrušit or Zpět) */}
-          <div>
-            {step === 1 && (
+      {/* 3. FULL-WIDTH FIXED BOTTOM ACTION FOOTER */}
+      <div className="h-16 w-full border-t border-white/10 bg-[#12131c] flex items-center justify-between px-6 flex-shrink-0">
+        {/* Left side of footer: UAC indicator moved from left menu */}
+        <div className="text-xs text-gray-400 flex items-center gap-2.5">
+          <span className="material-symbols-outlined text-base text-indigo-400">verified_user</span>
+          <span>Instalace bez UAC práv</span>
+        </div>
+
+        {/* Right side of footer: Action buttons */}
+        <div className="flex items-center gap-3">
+          {step === 1 && (
+            <>
               <button
                 type="button"
                 onClick={handleClose}
@@ -438,23 +443,6 @@ export const InstallerWizard: React.FC = () => {
               >
                 Zrušit
               </button>
-            )}
-
-            {step === 2 && (
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="px-5 py-2.5 text-sm font-medium text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition cursor-pointer flex items-center gap-1.5"
-              >
-                <span className="material-symbols-outlined text-base">arrow_back</span>
-                Zpět
-              </button>
-            )}
-          </div>
-
-          {/* Right Action Button */}
-          <div className="flex items-center gap-3">
-            {step === 1 && (
               <button
                 type="button"
                 onClick={() => setStep(2)}
@@ -463,9 +451,19 @@ export const InstallerWizard: React.FC = () => {
                 Další krok
                 <span className="material-symbols-outlined text-base">arrow_forward</span>
               </button>
-            )}
+            </>
+          )}
 
-            {step === 2 && (
+          {step === 2 && (
+            <>
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="px-5 py-2.5 text-sm font-medium text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition cursor-pointer flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-base">arrow_back</span>
+                Zpět
+              </button>
               <button
                 type="button"
                 onClick={handleStartInstallation}
@@ -474,43 +472,43 @@ export const InstallerWizard: React.FC = () => {
                 <span className="material-symbols-outlined text-base">install_desktop</span>
                 Instalovat
               </button>
-            )}
+            </>
+          )}
 
-            {step === 3 && (
-              <>
-                {installError ? (
-                  <button
-                    type="button"
-                    onClick={handleStartInstallation}
-                    className="px-5 py-2.5 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-xl transition cursor-pointer flex items-center gap-1.5"
-                  >
-                    <span className="material-symbols-outlined text-base">refresh</span>
-                    Zkusit znovu
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled
-                    className="px-6 py-2.5 text-sm font-medium text-gray-400 bg-white/5 rounded-xl border border-white/5 flex items-center gap-2 cursor-not-allowed"
-                  >
-                    <div className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                    Instaluji...
-                  </button>
-                )}
-              </>
-            )}
+          {step === 3 && (
+            <>
+              {installError ? (
+                <button
+                  type="button"
+                  onClick={handleStartInstallation}
+                  className="px-5 py-2.5 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-base">refresh</span>
+                  Zkusit znovu
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="px-6 py-2.5 text-sm font-medium text-gray-400 bg-white/5 rounded-xl border border-white/5 flex items-center gap-2 cursor-not-allowed"
+                >
+                  <div className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                  Instaluji...
+                </button>
+              )}
+            </>
+          )}
 
-            {step === 4 && (
-              <button
-                type="button"
-                onClick={handleFinish}
-                className="px-7 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-600/30 transition cursor-pointer flex items-center gap-2"
-              >
-                <span className="material-symbols-outlined text-base">check_circle</span>
-                Dokončit
-              </button>
-            )}
-          </div>
+          {step === 4 && (
+            <button
+              type="button"
+              onClick={handleFinish}
+              className="px-7 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-lg shadow-emerald-600/30 transition cursor-pointer flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-base">check_circle</span>
+              Dokončit
+            </button>
+          )}
         </div>
       </div>
     </div>

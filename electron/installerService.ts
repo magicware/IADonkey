@@ -2,6 +2,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { app } from 'electron';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+
+// In Electron, default 'fs' intercepts *.asar files and treats them as virtual directories.
+// To safely scan, read, and copy *.asar files as real binary files, we must use Electron's unpatched 'original-fs' module.
+let fileSystem: typeof fs = fs;
+try {
+  fileSystem = (require('original-fs') as typeof fs) || fs;
+} catch {
+  fileSystem = fs;
+}
 
 export interface InstallOptions {
   targetDir: string;
@@ -74,115 +86,121 @@ export class InstallerService {
       onProgress({ percent: 5, phase: 'Příprava instalace', detail: 'Kontrola cílové složky...' });
 
       // 1. Ensure target directory exists
-      if (!fs.existsSync(targetDir)) {
-        fs.mkdirSync(targetDir, { recursive: true });
+      if (!fileSystem.existsSync(targetDir)) {
+        fileSystem.mkdirSync(targetDir, { recursive: true });
       }
 
-    onProgress({ percent: 10, phase: 'Příprava instalace', detail: 'Ukončování běžících instancí IADonkey...' });
+      onProgress({ percent: 10, phase: 'Příprava instalace', detail: 'Ukončování běžících instancí IADonkey...' });
 
-    // Terminate running IADonkey processes from targetDir (installed version) so files like app.asar are not locked.
-    // CRITICAL: Must NEVER kill the installer itself or any of its child processes (renderer, GPU, utility).
-    try {
-      const currentPid = process.pid;
-      const escapedTarget = targetDir.replace(/'/g, "''");
-      const psCommand = `
-        $target = '${escapedTarget}'
-        $installerPid = ${currentPid}
-        $installerPids = @($installerPid)
-        try {
-          $children = Get-CimInstance Win32_Process -Filter "ParentProcessId = $installerPid" -ErrorAction SilentlyContinue
-          if ($children) {
-            foreach ($c in $children) { $installerPids += $c.ProcessId }
+      // Terminate any running IADonkey instance from targetDir or background (except the installer itself)
+      try {
+        const currentPid = process.pid;
+        const psCommand = `
+          $currentExe = (Get-Process -Id ${currentPid} -ErrorAction SilentlyContinue).Path
+          $installerDir = if ($currentExe) { Split-Path -Parent $currentExe } else { '' }
+
+          Get-Process -Name IADonkey -ErrorAction SilentlyContinue | Where-Object {
+            $p = $_
+            if ($p.Id -eq ${currentPid}) { return $false }
+            if (-not $p.Path) { return $false }
+            if ($installerDir -and $p.Path.StartsWith($installerDir, [System.StringComparison]::OrdinalIgnoreCase)) {
+              return $false
+            }
+            return $true
+          } | ForEach-Object {
+            Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
           }
-        } catch {}
+        `.trim();
 
-        Get-CimInstance Win32_Process -Filter "Name = 'IADonkey.exe'" -ErrorAction SilentlyContinue | Where-Object {
-          $p = $_
-          if ($installerPids -contains $p.ProcessId) { return $false }
+        spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psCommand], {
+          windowsHide: true,
+        });
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      } catch (err: any) {
+        console.warn('[Installer] Warning terminating processes:', err.message);
+      }
+
+      onProgress({ percent: 15, phase: 'Kopírování souborů', detail: 'Příprava seznamu souborů...' });
+
+      // 2. Collect all files from source directory using unpatched original-fs
+      const allFiles: { src: string; rel: string }[] = [];
+      function scanDir(dir: string, base: string) {
+        const entries = fileSystem.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const full = path.join(dir, entry.name);
+          const rel = path.relative(base, full);
+          if (entry.isDirectory()) {
+            scanDir(full, base);
+          } else {
+            allFiles.push({ src: full, rel });
+          }
+        }
+      }
+
+      scanDir(sourceDir, sourceDir);
+
+      const totalFiles = allFiles.length;
+      let copiedCount = 0;
+
+      for (const item of allFiles) {
+        const destPath = path.join(targetDir, item.rel);
+        const destDir = path.dirname(destPath);
+        if (!fileSystem.existsSync(destDir)) {
+          fileSystem.mkdirSync(destDir, { recursive: true });
+        }
+
+        let copied = false;
+        let attempts = 0;
+        while (!copied && attempts < 5) {
           try {
-            return ($p.ExecutablePath -and $p.ExecutablePath.StartsWith($target, [System.StringComparison]::OrdinalIgnoreCase))
-          } catch {
-            return $false
+            fileSystem.copyFileSync(item.src, destPath);
+            copied = true;
+          } catch (err: any) {
+            attempts++;
+
+            // Atomic rename-swap fallback if target file is locked by Windows background processes
+            try {
+              if (fileSystem.existsSync(destPath)) {
+                const tempOld = destPath + '.old.' + Date.now();
+                fileSystem.renameSync(destPath, tempOld);
+                fileSystem.copyFileSync(item.src, destPath);
+                try { fileSystem.unlinkSync(tempOld); } catch {}
+                copied = true;
+                break;
+              }
+            } catch {}
+
+            if (!copied) {
+              if (attempts >= 5) {
+                console.error(`[Installer] Failed to copy ${item.rel}:`, err);
+                throw new Error(`Nepodařilo se přepsat soubor ${item.rel}. Ukončete prosím aplikaci IADonkey v systémové liště.`);
+              }
+              await new Promise((r) => setTimeout(r, 400));
+            }
           }
-        } | ForEach-Object {
-          Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
         }
-      `.trim();
 
-      spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psCommand], {
-        windowsHide: true,
-      });
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    } catch (err: any) {
-      console.warn('[Installer] Warning terminating processes:', err.message);
-    }
-
-    onProgress({ percent: 15, phase: 'Kopírování souborů', detail: 'Příprava seznamu souborů...' });
-
-    // 2. Collect all files from source directory
-    const allFiles: { src: string; rel: string }[] = [];
-    function scanDir(dir: string, base: string) {
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const full = path.join(dir, entry.name);
-        const rel = path.relative(base, full);
-        if (entry.isDirectory()) {
-          scanDir(full, base);
-        } else {
-          allFiles.push({ src: full, rel });
-        }
-      }
-    }
-
-    scanDir(sourceDir, sourceDir);
-
-    const totalFiles = allFiles.length;
-    let copiedCount = 0;
-
-    for (const item of allFiles) {
-      const destPath = path.join(targetDir, item.rel);
-      const destDir = path.dirname(destPath);
-      if (!fs.existsSync(destDir)) {
-        fs.mkdirSync(destDir, { recursive: true });
+        copiedCount++;
+        const percent = Math.round(15 + (copiedCount / Math.max(1, totalFiles)) * 60);
+        onProgress({
+          percent,
+          phase: 'Kopírování souborů',
+          detail: item.rel,
+        });
       }
 
-      let copied = false;
-      let attempts = 0;
-      while (!copied && attempts < 3) {
-        try {
-          fs.copyFileSync(item.src, destPath);
-          copied = true;
-        } catch (err: any) {
-          attempts++;
-          if (attempts >= 3) {
-            console.error(`[Installer] Failed to copy ${item.rel}:`, err);
-            throw new Error(`Nepodařilo se přepsat soubor ${item.rel}. Ukončete prosím aplikaci IADonkey v systémové liště.`);
-          }
-          await new Promise((r) => setTimeout(r, 300));
-        }
-      }
-
-      copiedCount++;
-      const percent = Math.round(15 + (copiedCount / Math.max(1, totalFiles)) * 60);
-      onProgress({
-        percent,
-        phase: 'Kopírování souborů',
-        detail: item.rel,
-      });
-    }
-
-    // 3. Write installed.json metadata
-    const version = app.getVersion() || '1.1.7';
-    const metadata = {
-      version,
-      installedAt: new Date().toISOString(),
-      installPath: targetDir,
-    };
-    fs.writeFileSync(
-      path.join(targetDir, 'installed.json'),
-      JSON.stringify(metadata, null, 2),
-      'utf8'
-    );
+      // 3. Write installed.json metadata
+      const version = app.getVersion() || '1.1.8';
+      const metadata = {
+        version,
+        installedAt: new Date().toISOString(),
+        installPath: targetDir,
+      };
+      fileSystem.writeFileSync(
+        path.join(targetDir, 'installed.json'),
+        JSON.stringify(metadata, null, 2),
+        'utf8'
+      );
 
     // 4. Create Desktop Shortcut if requested
     const targetExe = path.join(targetDir, 'IADonkey.exe');
