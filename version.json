@@ -1,5 +1,5 @@
 {
   "version": "1.1.5",
-  "releaseNotes": "• Vydana nova verze 1.1.5 aplikace IADonkey.\n• Ticha aktualizace na pozadi bez rusiveho instalacniho pruvodce a prechod na moderni 1-Click instalator.\n• Prehled vsech zmen po aktualizaci naleznete v aplikaci v zalozce Nastaveni -> Kompletni changelog.",
+  "releaseNotes": "• Vydana nova verze 1.1.5 aplikace IADonkey.\n• Prehled vsech zmen po aktualizaci naleznete v aplikaci v zalozce Nastaveni -> Kompletni changelog.",
   "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.5/IADonkey-1.1.5.exe"
 }
