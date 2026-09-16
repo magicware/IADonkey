@@ -5,12 +5,24 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.7';
+export const CURRENT_APP_VERSION = '1.1.8';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.8',
+    date: '16. 9. 2026',
+    title: 'Vyladěný design instalátoru a oprava stability instalace',
+    highlights: [
+      'Větší a prostornější okno instalátoru: šířka zvětšena na 860 px a výška na 580 px pro optimální čitelnost a vzdušnost.',
+      'Oficiální ikona IADonkey: v záhlaví instalátoru je umístěno oficiální logo aplikace IADonkey namísto obecné rakety.',
+      'Čistý design kroků bez rušivých prvků: odstraněna vertikální propojovací čára a záře (glow) kolem aktivního kroku. Zvýšeno vertikální odsazení mezi jednotlivými kroky.',
+      'Větší a lépe čitelná typografie: zvětšeny fonty názvů a popisů kroků v postranním panelu, texty informačních bublin i popisky možností instalace.',
+      'Oprava pádu v kroku 3 (Instalace): vyřešeno ukončování procesů, které v předchozí verzi nechtěně zasáhlo renderer instalátoru. Instalace nyní probíhá zcela plynule od 0 do 100 %.',
+    ],
+  },
   {
     version: '1.1.7',
     date: '16. 9. 2026',

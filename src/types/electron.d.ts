@@ -109,7 +109,7 @@ declare global {
         createDesktopShortcut: boolean;
         createStartMenuShortcut: boolean;
         autoStartWithWindows: boolean;
-      }) => Promise<void>;
+      }) => Promise<{ success: boolean; error?: string }>;
       installerLaunchAndFinish?: (targetDir: string, runNow: boolean) => Promise<void>;
       installerPerformUninstall?: () => Promise<void>;
       onInstallerProgress?: (callback: (progress: { percent: number; phase: string; detail?: string }) => void) => () => void;

@@ -4,6 +4,14 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.8] - 16. 9. 2026
+### Vyladěný design instalátoru a oprava stability instalace
+- **Větší a prostornější okno instalátoru**: Šířka zvětšena na 860 px a výška na 580 px pro optimální čitelnost a vzdušnost.
+- **Oficiální ikona IADonkey**: V záhlaví instalátoru je umístěno oficiální logo aplikace IADonkey namísto obecné ikony rakety.
+- **Čistý design kroků bez rušivých prvků**: Odstraněna vertikální spojovací čára a záře (glow) kolem aktivního kroku. Zvýšeno vertikální odsazení mezi jednotlivými kroky.
+- **Větší a lépe čitelná typografie**: Zvětšeny fonty názvů a popisů kroků v postranním panelu, texty informačních bublin i popisky možností instalace.
+- **Oprava pádu v kroku 3 (Instalace)**: Vyřešeno ukončování procesů v systému Windows, které v předchozí verzi nechtěně zasáhlo renderer instalátoru. Instalace nyní probíhá zcela plynule a spolehlivě od 0 do 100 %.
+
 ## [1.1.7] - 16. 9. 2026
 ### Moderní 4-krokový instalátor a blesková In-App aktualizace bez prodlevy
 - **Samostatný moderní instalátor (React + Tailwind)**: Kompletní opuštění zastaralého Win32 NSIS. Nový instalátor je plnohodnotné tmavé frameless okno ve vizuálním stylu aplikace s vlastním záhlavím, ikonou s fialovou září a 4 přehlednými kroky (Vítejte → Nastavení cílové složky a zástupců → Průběh instalace s živým progress barem → Dokončeno se zaškrtávacím polem pro spuštění).

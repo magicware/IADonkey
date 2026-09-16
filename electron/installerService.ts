@@ -66,28 +66,53 @@ export class InstallerService {
   public static async performInstall(
     options: InstallOptions,
     onProgress: (progress: InstallProgress) => void
-  ): Promise<void> {
-    const targetDir = options.targetDir || InstallerService.getDefaultInstallPath();
-    const sourceDir = path.dirname(process.resourcesPath);
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const targetDir = options.targetDir || InstallerService.getDefaultInstallPath();
+      const sourceDir = path.dirname(process.resourcesPath);
 
-    onProgress({ percent: 5, phase: 'Příprava instalace', detail: 'Kontrola cílové složky...' });
+      onProgress({ percent: 5, phase: 'Příprava instalace', detail: 'Kontrola cílové složky...' });
 
-    // 1. Ensure target directory exists
-    if (!fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true });
-    }
+      // 1. Ensure target directory exists
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
 
     onProgress({ percent: 10, phase: 'Příprava instalace', detail: 'Ukončování běžících instancí IADonkey...' });
 
-    // Terminate any running IADonkey processes (except this installer process) so files like app.asar are not locked
+    // Terminate running IADonkey processes from targetDir (installed version) so files like app.asar are not locked.
+    // CRITICAL: Must NEVER kill the installer itself or any of its child processes (renderer, GPU, utility).
     try {
       const currentPid = process.pid;
-      spawnSync('powershell', [
-        '-NoProfile',
-        '-Command',
-        `Get-Process -Name IADonkey -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne ${currentPid} } | Stop-Process -Force -ErrorAction SilentlyContinue`,
-      ]);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const escapedTarget = targetDir.replace(/'/g, "''");
+      const psCommand = `
+        $target = '${escapedTarget}'
+        $installerPid = ${currentPid}
+        $installerPids = @($installerPid)
+        try {
+          $children = Get-CimInstance Win32_Process -Filter "ParentProcessId = $installerPid" -ErrorAction SilentlyContinue
+          if ($children) {
+            foreach ($c in $children) { $installerPids += $c.ProcessId }
+          }
+        } catch {}
+
+        Get-CimInstance Win32_Process -Filter "Name = 'IADonkey.exe'" -ErrorAction SilentlyContinue | Where-Object {
+          $p = $_
+          if ($installerPids -contains $p.ProcessId) { return $false }
+          try {
+            return ($p.ExecutablePath -and $p.ExecutablePath.StartsWith($target, [System.StringComparison]::OrdinalIgnoreCase))
+          } catch {
+            return $false
+          }
+        } | ForEach-Object {
+          Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+        }
+      `.trim();
+
+      spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psCommand], {
+        windowsHide: true,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 300));
     } catch (err: any) {
       console.warn('[Installer] Warning terminating processes:', err.message);
     }
@@ -201,7 +226,12 @@ export class InstallerService {
     }
 
     onProgress({ percent: 100, phase: 'Dokončeno', detail: 'Instalace byla úspěšně dokončena!' });
+    return { success: true };
+  } catch (err: any) {
+    console.error('[Installer] Installation error:', err);
+    return { success: false, error: err?.message || 'Nastala chyba při instalaci aplikace.' };
   }
+}
 
   /**
    * Helper to create a Windows shortcut (.lnk) via PowerShell WScript.Shell
