@@ -5,12 +5,22 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.5';
+export const CURRENT_APP_VERSION = '1.1.6';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.6',
+    date: '16. 9. 2026',
+    title: '100% tichý instalátor bez systémových oken a okamžitý start aplikace',
+    highlights: [
+      'Úplné potlačení systémového dialogu instalátoru: instalátor má přímo ve svém jádře natvrdo nastaven tichý režim (SilentInstall silent). Ani při ručním spuštění poklepáním v Průzkumníku Windows se již nikdy nezobrazí žádné bílé systémové okno s nápisem „Instaluje se, prosím vyčkejte...“ ani zelený proužek.',
+      'Okamžitý a plynulý start aplikace: po bleskovém rozbalení souborů na pozadí (cca 1 sekunda) je aplikace okamžitě spuštěna v moderním tmavém rozhraní.',
+      'Bezpečné volání z aplikace: vyřešena kompatibilita při aktualizaci ze starších verzí – i pokud starší verze nespustí balíček s tichým parametrem, instalátor sám ví, že má běžet tiše a bez zobrazení oken.',
+    ],
+  },
   {
     version: '1.1.5',
     date: '16. 9. 2026',
@@ -199,7 +209,7 @@ export const CHANGELOG_HISTORY: VersionEntry[] = [
 ];
 
 /**
- * Zde se průběžně zapisují novinky pro budoucí verzi (1.1.5).
+ * Zde se průběžně zapisují novinky pro budoucí verzi (1.1.7).
  * Po dokončení releasu se tyto položky přesunou přímo pod vydávanou verzi a toto pole se vyprázdní.
  */
 export const UPCOMING_CHANGELOG: string[] = [];

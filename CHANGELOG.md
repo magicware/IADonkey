@@ -4,6 +4,12 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.6] - 16. 9. 2026
+### 100% tichý instalátor bez systémových oken a okamžitý start aplikace
+- **Úplné potlačení systémového dialogu instalátoru**: Do jádra NSIS instalátoru byla přímo začleněna direktiva `SilentInstall silent`. Ani při ručním spuštění poklepáním v Průzkumníku Windows se již nezobrazuje žádné malé bílé systémové okénko s nápisem „Instaluje se, prosím vyčkejte...“ ani zelený proužek.
+- **Okamžitý a plynulý start aplikace**: Po tichém rozbalení souborů na pozadí (cca 1–2 sekundy) instalátor rovnou spustí novou verzi aplikace IADonkey.
+- **Bezpečné spuštění ze starších verzí**: Zajištěna plná zpětná kompatibilita při aktualizaci ze starších sestavení, která nepředávají tichý parametr – instalátor sám vynucuje tichý režim.
+
 ## [1.1.5] - 16. 9. 2026
 ### Tichá aktualizace na pozadí a moderní 1-Click instalátor
 - **Tichá aktualizace na pozadí (Silent Background Update)**: Při kliknutí na „Restartovat a spustit novou verzi“ se již nezobrazuje zastaralý vícekrokový Win32 průvodce instalací. Aplikace se ukončí, instalátor během 1–2 sekund zcela tiše a neviditelně přepíše soubory (`/S --force-run --updated`) a novou verzi automaticky spustí.
