@@ -13,6 +13,22 @@ const getAppIcon = () => {
   return undefined;
 };
 
+const getAppIconBase64 = (): string => {
+  const candidates = [
+    path.join(__dirname, '../electron/assets/icon.png'),
+    path.join(__dirname, 'assets/icon.png'),
+    path.join(process.resourcesPath || '', 'app.asar/electron/assets/icon.png'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) {
+      try {
+        return `data:image/png;base64,${fs.readFileSync(c).toString('base64')}`;
+      } catch {}
+    }
+  }
+  return '';
+};
+
 export class WindowManager {
   private mainWindow: BrowserWindow | null = null;
   private settingsWindow: BrowserWindow | null = null;
@@ -467,16 +483,10 @@ export class WindowManager {
     this.isQuitting = val;
   }
 
-  public createSplashWindow(): BrowserWindow {
+  public createSplashWindow(version: string = '1.1.12'): BrowserWindow {
     if (this.splashWindow && !this.splashWindow.isDestroyed()) {
       return this.splashWindow;
     }
-
-    const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
-      ? path.join(__dirname, 'preload.cjs')
-      : fs.existsSync(path.join(__dirname, 'preload.mjs'))
-      ? path.join(__dirname, 'preload.mjs')
-      : path.join(__dirname, 'preload.js');
 
     this.splashWindow = new BrowserWindow({
       width: 260,
@@ -485,38 +495,86 @@ export class WindowManager {
       transparent: true,
       backgroundColor: '#00000000',
       icon: getAppIcon(),
-      show: false,
+      show: true,
       center: true,
       resizable: false,
       alwaysOnTop: true,
       skipTaskbar: true,
       hasShadow: false,
       webPreferences: {
-        preload: preloadPath,
-        sandbox: false,
-        contextIsolation: true,
         nodeIntegration: false,
+        contextIsolation: true,
       },
     });
 
-    if (process.env.VITE_DEV_SERVER_URL) {
-      this.splashWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#splash`);
-    } else {
-      this.splashWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash: 'splash' });
-    }
+    const iconDataUrl = getAppIconBase64();
+    const splashHtml = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    background: transparent;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+  }
+  .card {
+    width: 240px;
+    height: 240px;
+    background-color: #141520;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.85);
+    -webkit-app-region: drag;
+  }
+  .icon {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+    border-radius: 12px;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
+  }
+  .title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.5px;
+    line-height: 1.1;
+  }
+  .version {
+    font-size: 13px;
+    font-weight: 600;
+    color: #818cf8;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    letter-spacing: 0.6px;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    ${iconDataUrl ? `<img class="icon" src="${iconDataUrl}" alt="IADonkey" />` : ''}
+    <div class="title">IADonkey</div>
+    <div class="version">v${version}</div>
+  </div>
+</body>
+</html>`;
 
-    this.splashWindow.once('ready-to-show', () => {
-      if (this.splashWindow && !this.splashWindow.isDestroyed()) {
-        this.splashWindow.show();
-        this.splashWindow.webContents.send('splash-status', this.lastSplashStatus);
-      }
-    });
-
-    this.splashWindow.webContents.on('did-finish-load', () => {
-      if (this.splashWindow && !this.splashWindow.isDestroyed()) {
-        this.splashWindow.webContents.send('splash-status', this.lastSplashStatus);
-      }
-    });
+    this.splashWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(splashHtml)}`);
+    this.splashWindow.setAlwaysOnTop(true, 'screen-saver');
+    this.splashWindow.focus();
 
     return this.splashWindow;
   }

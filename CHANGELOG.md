@@ -4,6 +4,12 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.12] - 17. 9. 2026
+### Okamžité zobrazení Splash Screenu na frame 0 a garantovaný 5s start
+- **Okamžité zobrazení Splash Screenu (Frame 0)**: Okno je vykresleno přímo z paměti pomocí samostatného odlehčeného HTML namísto čekání na objemný React bundle. Zobrazí se bleskově během 2 ms.
+- **Garantovaný 5sekundový čas běhu**: Splash screen zůstává zobrazen po dobu minimálně 5 sekund, aby uživatel jasně viděl, že aplikace startuje.
+- **Plynulá aktivace Spotlightu**: Po uplynutí 5 sekund a ověření připravenosti se splash okno plynule zavře a Spotlight automaticky vyskočí s aktivním fokusem.
+
 ## [1.1.11] - 16. 9. 2026
 ### Photoshop-style čtvercový Splash Screen a automatická aktivace Spotlightu
 - **Čistý čtvercový Splash Screen ve stylu Photoshopu**: Minimalistické tmavé čtvercové okno (260 × 260 px) se zaoblenými rohy, dominantní 48px ikonou maskota IADonkey uprostřed, názvem aplikace a štítkem verze.

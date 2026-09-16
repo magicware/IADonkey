@@ -1014,7 +1014,7 @@ app.whenReady().then(() => {
   const MIN_SPLASH_DURATION_MS = 5000;
 
   if (!isSilentStart) {
-    windowManager.createSplashWindow();
+    windowManager.createSplashWindow(app.getVersion() || '1.1.12');
   }
 
   const mainWindow = windowManager.createMainWindow();

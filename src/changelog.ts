@@ -5,12 +5,22 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.11';
+export const CURRENT_APP_VERSION = '1.1.12';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.12',
+    date: '17. 9. 2026',
+    title: 'Okamžité zobrazení Splash Screenu na frame 0 a garantovaný 5s start',
+    highlights: [
+      'Okamžité zobrazení Splash Screenu (Frame 0): okno je vykresleno přímo z paměti pomocí samostatného odlehčeného HTML namísto čekání na objemný React bundle. Zobrazí se bleskově během 2 ms.',
+      'Garantovaný 5sekundový čas běhu: splash screen zůstává zobrazen po dobu minimálně 5 sekund, aby uživatel jasně viděl, že aplikace startuje.',
+      'Plynulá aktivace Spotlightu: po uplynutí 5 sekund a ověření připravenosti se splash okno plynule zavře a Spotlight automaticky vyskočí s aktivním fokusem.',
+    ],
+  },
   {
     version: '1.1.11',
     date: '16. 9. 2026',
