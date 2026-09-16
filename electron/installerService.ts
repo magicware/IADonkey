@@ -77,6 +77,21 @@ export class InstallerService {
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
+    onProgress({ percent: 10, phase: 'Příprava instalace', detail: 'Ukončování běžících instancí IADonkey...' });
+
+    // Terminate any running IADonkey processes (except this installer process) so files like app.asar are not locked
+    try {
+      const currentPid = process.pid;
+      spawnSync('powershell', [
+        '-NoProfile',
+        '-Command',
+        `Get-Process -Name IADonkey -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne ${currentPid} } | Stop-Process -Force -ErrorAction SilentlyContinue`,
+      ]);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    } catch (err: any) {
+      console.warn('[Installer] Warning terminating processes:', err.message);
+    }
+
     onProgress({ percent: 15, phase: 'Kopírování souborů', detail: 'Příprava seznamu souborů...' });
 
     // 2. Collect all files from source directory
@@ -106,11 +121,20 @@ export class InstallerService {
         fs.mkdirSync(destDir, { recursive: true });
       }
 
-      try {
-        fs.copyFileSync(item.src, destPath);
-      } catch (err: any) {
-        // Skip busy files if already matching
-        console.warn(`[Installer] Notice copying ${item.rel}: ${err.message}`);
+      let copied = false;
+      let attempts = 0;
+      while (!copied && attempts < 3) {
+        try {
+          fs.copyFileSync(item.src, destPath);
+          copied = true;
+        } catch (err: any) {
+          attempts++;
+          if (attempts >= 3) {
+            console.error(`[Installer] Failed to copy ${item.rel}:`, err);
+            throw new Error(`Nepodařilo se přepsat soubor ${item.rel}. Ukončete prosím aplikaci IADonkey v systémové liště.`);
+          }
+          await new Promise((r) => setTimeout(r, 300));
+        }
       }
 
       copiedCount++;

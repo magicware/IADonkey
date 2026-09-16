@@ -337,10 +337,10 @@ export class WindowManager {
       : path.join(__dirname, 'preload.js');
 
     const win = new BrowserWindow({
-      width: 660,
-      height: 520,
-      minWidth: 600,
-      minHeight: 460,
+      width: 760,
+      height: 530,
+      minWidth: 700,
+      minHeight: 480,
       resizable: false,
       frame: false,
       transparent: true,
