@@ -111,7 +111,7 @@ export class WindowManager {
 
     // Hide window when it loses focus (unless devtools is active or during initial reveal)
     this.mainWindow.on('blur', () => {
-      if (Date.now() - this.lastShowTime < 1000) {
+      if (Date.now() - this.lastShowTime < 250) {
         return;
       }
       if (this.mainWindow && !this.mainWindow.webContents.isDevToolsOpened()) {
@@ -171,6 +171,7 @@ export class WindowManager {
   }
 
   public hideImmediately(): void {
+    this.mainWindow?.webContents.send('window-hide-request');
     this.mainWindow?.hide();
   }
 
@@ -490,7 +491,7 @@ export class WindowManager {
     this.isQuitting = val;
   }
 
-  public createSplashWindow(version: string = '1.1.13'): BrowserWindow {
+  public createSplashWindow(version: string = '1.1.15'): BrowserWindow {
     if (this.splashWindow && !this.splashWindow.isDestroyed()) {
       return this.splashWindow;
     }
@@ -499,15 +500,15 @@ export class WindowManager {
       width: 260,
       height: 260,
       frame: false,
-      transparent: false,
-      backgroundColor: '#141520',
+      transparent: true,
+      backgroundColor: '#00000000',
       icon: getAppIcon(),
       show: false,
       center: true,
       resizable: false,
       alwaysOnTop: true,
       skipTaskbar: true,
-      hasShadow: true,
+      hasShadow: false,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -524,27 +525,38 @@ export class WindowManager {
   html, body {
     width: 100vw;
     height: 100vh;
-    background-color: #141520;
+    background: transparent;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+  }
+  .card {
+    width: 250px;
+    height: 250px;
+    background-color: #141520;
+    border-radius: 28px;
+    border: none;
+    outline: none;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 12px;
-    user-select: none;
-    -webkit-user-select: none;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.75);
   }
   .icon {
-    width: 52px;
-    height: 52px;
+    width: 54px;
+    height: 54px;
     object-fit: contain;
-    border-radius: 12px;
+    border-radius: 14px;
     filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
   }
   .title {
-    font-size: 20px;
+    font-size: 21px;
     font-weight: 700;
     color: #ffffff;
     letter-spacing: 0.5px;
@@ -560,9 +572,11 @@ export class WindowManager {
 </style>
 </head>
 <body>
-  ${iconDataUrl ? `<img class="icon" src="${iconDataUrl}" alt="IADonkey" />` : ''}
-  <div class="title">IADonkey</div>
-  <div class="version">v${version}</div>
+  <div class="card">
+    ${iconDataUrl ? `<img class="icon" src="${iconDataUrl}" alt="IADonkey" />` : ''}
+    <div class="title">IADonkey</div>
+    <div class="version">v${version}</div>
+  </div>
 </body>
 </html>`;
 

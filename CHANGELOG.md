@@ -4,6 +4,13 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.15] - 17. 9. 2026
+### Bezrámečkový zaoblený Splash Screen a plynulý reset Spotlightu při kliknutí vedle
+- **Okamžité zobrazení Splash Screenu bez prodlevy**: Splash screen se zobrazí rovnou s kompletním obsahem (ikonou i textem) bez předchozího zobrazení prázdného tmavého okna.
+- **Čistý bezrámečkový design s výraznějším zaoblením**: Odstraněn jakýkoliv rámeček, okraj i ohraničení (borderless card) a rohy byly elegantně zaobleny (poloměr 28 px) pro moderní styl.
+- **Plynulé zavírání a reset Spotlightu při kliknutí vedle**: Vyřešeno probliknutí při opětovném vyvolání Spotlightu klávesovou zkratkou po předchozím kliknutí mimo okno. Stav skrytí se okamžitě a spolehlivě resetuje.
+- **Optimalizace náběhu procesoru**: Skenování aplikací a síťová synchronizace se spouští až s odstupem po otevření Spotlightu, takže start programu je maximálně plynulý.
+
 ## [1.1.14] - 17. 9. 2026
 ### Okamžitý náběh Splash Screenu a synchronizovaný 5s odpočet
 - **Okamžité zobrazení Splash Screenu**: Přechod na nativní neprůhledné Win32 okno s tmavým pozadím `#141520` eliminuje vrstvené DWM kompozice a zpoždění. Okno se zobrazí čistě a spolehlivě ihned po spuštění.

@@ -151,6 +151,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       setIsAltDown(e.altKey);
     };
     const handleBlur = () => {
+      setIsRevealed(false);
       setIsShiftDown(false);
       setIsCtrlDown(false);
       setIsAltDown(false);
@@ -178,16 +179,22 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
     const cleanupShown = window.electronAPI?.onWindowShown?.(() => {
       refreshExistingClonedRepos();
+      setIsRevealed(false);
       requestAnimationFrame(() => {
-        setIsRevealed(true);
+        requestAnimationFrame(() => {
+          setIsRevealed(true);
+        });
       });
       inputRef.current?.focus();
       inputRef.current?.select();
     });
 
     const cleanupFocusInput = window.electronAPI?.onFocusInput?.(() => {
+      setIsRevealed(false);
       requestAnimationFrame(() => {
-        setIsRevealed(true);
+        requestAnimationFrame(() => {
+          setIsRevealed(true);
+        });
       });
       inputRef.current?.focus();
       inputRef.current?.select();

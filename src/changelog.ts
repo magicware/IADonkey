@@ -5,12 +5,23 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.14';
+export const CURRENT_APP_VERSION = '1.1.15';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.15',
+    date: '17. 9. 2026',
+    title: 'Bezrámečkový zaoblený Splash Screen a plynulý reset Spotlightu při kliknutí vedle',
+    highlights: [
+      'Okamžité zobrazení Splash Screenu bez prodlevy: Splash screen se zobrazí rovnou s kompletním obsahem (ikonou i textem) bez předchozího zobrazení prázdného tmavého okna.',
+      'Čistý bezrámečkový design s výraznějším zaoblením: Odstraněn jakýkoliv rámeček, okraj i ohraničení (borderless card) a rohy byly elegantně zaobleny (poloměr 28 px) pro moderní styl.',
+      'Plynulé zavírání a reset Spotlightu při kliknutí vedle: Vyřešeno probliknutí při opětovném vyvolání Spotlightu klávesovou zkratkou po předchozím kliknutí mimo okno. Stav skrytí se okamžitě a spolehlivě resetuje.',
+      'Optimalizace náběhu procesoru: Skenování aplikací a síťová synchronizace se spouští až s odstupem po otevření Spotlightu, takže start programu je maximálně plynulý.',
+    ],
+  },
   {
     version: '1.1.14',
     date: '17. 9. 2026',

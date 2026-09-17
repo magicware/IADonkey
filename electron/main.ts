@@ -509,7 +509,7 @@ function setupIpcHandlers() {
   });
 
   ipcMain.handle('hide-window', () => {
-    windowManager.hideImmediately();
+    windowManager.hideSpotlight();
   });
 
   ipcMain.handle('reset-and-hide-spotlight', () => {
@@ -1011,7 +1011,7 @@ app.whenReady().then(async () => {
     process.argv.includes('--silent');
 
   if (!isSilentStart) {
-    windowManager.createSplashWindow(app.getVersion() || '1.1.13');
+    windowManager.createSplashWindow(app.getVersion() || '1.1.15');
   }
 
   const mainWindow = windowManager.createMainWindow();
@@ -1031,9 +1031,6 @@ app.whenReady().then(async () => {
   if (!isSilentStart) {
     // 1. Wait until splash screen is physically rendered and visible on screen
     await windowManager.whenSplashReady();
-
-    // Launch background tasks once splash is already visible so CPU is free during initial paint
-    launchDeferredTasks();
 
     // 2. Guaranteed 5-second display timer from the exact moment user sees the splash screen
     const minSplashPromise = new Promise((resolve) => setTimeout(resolve, 5000));
@@ -1055,6 +1052,8 @@ app.whenReady().then(async () => {
     Promise.all([minSplashPromise, mainWindowReadyPromise]).then(async () => {
       await windowManager.closeSplashWindow();
       windowManager.showSpotlight();
+      // Launch background scan and sync smoothly after spotlight is ready
+      setTimeout(() => launchDeferredTasks(), 500);
     });
   } else {
     launchDeferredTasks();
