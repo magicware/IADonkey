@@ -39,6 +39,7 @@ const getAppIconBase64 = (): string => {
 export class WindowManager {
   private mainWindow: BrowserWindow | null = null;
   private settingsWindow: BrowserWindow | null = null;
+  private powerWindow: BrowserWindow | null = null;
   private gitCloneWindow: BrowserWindow | null = null;
   private splashWindow: BrowserWindow | null = null;
   private lastSplashStatus: { percent: number; text: string } = {
@@ -241,6 +242,72 @@ export class WindowManager {
     });
 
     return this.settingsWindow;
+  }
+
+  public getPowerWindow(): BrowserWindow | null {
+    return this.powerWindow;
+  }
+
+  public closePowerWindow(): void {
+    if (this.powerWindow && !this.powerWindow.isDestroyed()) {
+      this.powerWindow.close();
+    }
+  }
+
+  public openPowerWindow(): BrowserWindow {
+    if (this.powerWindow && !this.powerWindow.isDestroyed()) {
+      if (this.powerWindow.isMinimized()) this.powerWindow.restore();
+      this.powerWindow.show();
+      this.powerWindow.focus();
+      return this.powerWindow;
+    }
+
+    const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
+      ? path.join(__dirname, 'preload.cjs')
+      : fs.existsSync(path.join(__dirname, 'preload.mjs'))
+      ? path.join(__dirname, 'preload.mjs')
+      : path.join(__dirname, 'preload.js');
+
+    this.powerWindow = new BrowserWindow({
+      width: 440,
+      height: 250,
+      minWidth: 400,
+      minHeight: 230,
+      maxWidth: 480,
+      maxHeight: 280,
+      resizable: false,
+      title: 'IADonkey – Správa aplikace',
+      icon: getAppIcon(),
+      autoHideMenuBar: true,
+      backgroundColor: '#181920',
+      show: false,
+      skipTaskbar: false,
+      webPreferences: {
+        preload: preloadPath,
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    if (process.env.VITE_DEV_SERVER_URL) {
+      this.powerWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#power`);
+    } else {
+      this.powerWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash: 'power' });
+    }
+
+    this.powerWindow.once('ready-to-show', () => {
+      if (this.powerWindow && !this.powerWindow.isDestroyed()) {
+        this.powerWindow.show();
+        this.powerWindow.focus();
+      }
+    });
+
+    this.powerWindow.on('closed', () => {
+      this.powerWindow = null;
+    });
+
+    return this.powerWindow;
   }
 
   public getGitCloneWindow(): BrowserWindow | null {
@@ -491,14 +558,14 @@ export class WindowManager {
     this.isQuitting = val;
   }
 
-  public createSplashWindow(version: string = '1.1.15'): BrowserWindow {
+  public createSplashWindow(version: string = '1.1.16'): BrowserWindow {
     if (this.splashWindow && !this.splashWindow.isDestroyed()) {
       return this.splashWindow;
     }
 
     this.splashWindow = new BrowserWindow({
-      width: 260,
-      height: 260,
+      width: 250,
+      height: 250,
       frame: false,
       transparent: true,
       backgroundColor: '#00000000',
@@ -535,25 +602,24 @@ export class WindowManager {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
   }
   .card {
-    width: 250px;
-    height: 250px;
+    width: 100%;
+    height: 100%;
     background-color: #141520;
     border-radius: 28px;
     border: none;
     outline: none;
+    box-shadow: none;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 12px;
-    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.75);
   }
   .icon {
     width: 54px;
     height: 54px;
     object-fit: contain;
     border-radius: 14px;
-    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
   }
   .title {
     font-size: 21px;

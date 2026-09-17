@@ -24,6 +24,8 @@ const DEFAULT_CONFIG: AppConfig = {
   },
   mlog: {
     baseUrl: '',
+    taskPrefix: 'T',
+    requestPrefix: 'R',
   },
   github: {
     username: '',

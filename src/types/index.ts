@@ -85,6 +85,8 @@ export interface MagicGateSettings {
 
 export interface MlogSettings {
   baseUrl: string;
+  taskPrefix?: string;
+  requestPrefix?: string;
 }
 
 export interface ExtensionsConfig {

@@ -1,6 +1,6 @@
 {
-  "version": "1.1.15",
-  "releaseNotes": "• Vydána nová verze 1.1.15 aplikace IADonkey.\n• Elegantní bezrámečkový Splash Screen s výraznějším zaoblením (border-radius 28px) a okamžitým zobrazením obsahu (bez 2s prodlevy).\n• Plynulé zavírání a reset stavu Spotlightu při kliknutí vedle (odstraněn problik při opětovném vyvolání klávesovou zkratkou).\n• Bleskový náběh aplikace díky kompletnímu odložení těžkých úloh na pozadí až po otevření Spotlightu.\n• Přehled všech změn naleznete v aplikaci v Nastavení -> Kompletní changelog.",
-  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.15/IADonkey-Setup-1.1.15.exe",
-  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.15/IADonkey-1.1.15.zip"
+  "version": "1.1.16",
+  "releaseNotes": "• Vydána nová verze 1.1.16 aplikace IADonkey.\n• Přejmenování rozšíření MLog na obecný Taskmanager se všemi popisy a ukázkovými doménami.\n• Vlastní prefixy pro Úkoly a Požadavky v nastavení Taskmanageru s živým náhledem bubliny.\n• Spotlight: dynamická detekce prefixů a automatická nabídka obou možností (úkol i požadavek) při zadání 3 a více číslic.\n• Rychlý náběh modálního okna položek ve vyhledávání (progresivní renderování bez zamrzání UI).\n• Vizuální spinner při banování a odbanování položek ve vyhledávání.\n• Dialog pro restart a ukončení aplikace po dlouhém stisku ozubeného kolečka ve Spotlightu s kruhovým indikátorem průběhu a ochranou proti probliku při kliknutí.\n• Čistý Splash Screen bez stínů a ohraničení.\n• Zachování navigace v podpoložkách při otevření nastavení a přehlednější zobrazení zdrojů dat.\n• Přehled všech změn naleznete v aplikaci v Nastavení -> Kompletní changelog.",
+  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.16/IADonkey-Setup-1.1.16.exe",
+  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.16/IADonkey-1.1.16.zip"
 }

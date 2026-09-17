@@ -4,6 +4,19 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.16] - 17. 9. 2026
+### Přejmenování na Taskmanager, plynulejší zobrazení položek a dialog správy aplikace
+- **Přejmenování MLog na Taskmanager**: Rozšíření bylo v celé aplikaci přejmenováno na obecný Taskmanager se všemi popisy, ukázkovými doménami (např. company.com) i nápovědou.
+- **Vlastní prefixy pro Úkoly a Požadavky**: V nastavení Taskmanageru lze libovolně nastavit prefix pro úkoly (výchozí T) i požadavky (výchozí R) s živým náhledem bubliny přímo v konfiguraci.
+- **Chytré vyhledávání podle čísla**: Při zadání 3 a více číslic (např. 12345) Spotlight automaticky nabídne otevření jak úkolu, tak požadavku.
+- **Okamžité otevření seznamu položek bez zamrzání**: Modální okno s přehledem načtených položek ve vyhledávání používá progresivní vykreslování v dávkách – otevření i přepínání záložek reaguje okamžitě a bez prodlevy.
+- **Vizuální indikátor banování**: Tlačítka pro vyřazení a obnovení položek z vyhledávání nyní zobrazují točící se spinner během provádění akce.
+- **Dialog pro restart a ukončení**: Dlouhým podržením (3 sekundy) ikony ozubeného kolečka ve Spotlightu se otevře okno správy aplikace na hlavním panelu Windows.
+- **Kruhový indikátor průběhu držení nastavení**: Při držení tlačítka nastavení se kolem ikony plynule vykresluje gradientní kruhový progress ring a ozubené kolečko se jemně otáčí, dokud se neotevře dialog pro restart a ukončení.
+- **Čistý Splash Screen bez stínů a ohraničení**: Odstraněn veškerý stín (box-shadow) i transparentní okraj kolem splash screenu – zobrazuje se čistá zaoblená karta bez jakéhokoliv tmavého oparu či backdropu.
+- **Zachování navigace v podpoložkách**: Otevření a zavření nastavení již neruší rozbalené zobrazení subpoložek ve Spotlightu.
+- **Přehlednější nastavení zdrojů**: Odstraněn nadbytečný oddělovač a barevně odlišeny štítky FILE, API a Mapováno.
+
 ## [1.1.15] - 17. 9. 2026
 ### Bezrámečkový zaoblený Splash Screen a plynulý reset Spotlightu při kliknutí vedle
 - **Okamžité zobrazení Splash Screenu bez prodlevy**: Splash screen se zobrazí rovnou s kompletním obsahem (ikonou i textem) bez předchozího zobrazení prázdného tmavého okna.

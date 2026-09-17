@@ -18,6 +18,10 @@ declare global {
       hideWindow: () => void;
       resetAndHideSpotlight: () => Promise<void>;
       openSettingsWindow: () => Promise<void>;
+      openPowerWindow: () => Promise<void>;
+      closePowerWindow: () => Promise<void>;
+      restartApp: () => Promise<void>;
+      quitApp: () => Promise<void>;
       openGitCloneWindow: (params: {
         repoName: string;
         repoUrl?: string;

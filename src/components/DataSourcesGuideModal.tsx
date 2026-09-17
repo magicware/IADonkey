@@ -66,7 +66,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
   const SNIPPET_ADVANCED = `{
   "id": "project-portal",
   "name": "Firemní portál",
-  "location": "https://portal.mojefirma.cz",
+  "location": "https://portal.company.cz",
   "action": "open",
   "icon": "language",
   "image": "{favicon}",
@@ -82,13 +82,13 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
     {
       "name": "Otevřít dokumentaci API",
       "action": "open",
-      "location": "https://portal.mojefirma.cz/api/docs",
+      "location": "https://portal.company.cz/api/docs",
       "icon": "api"
     },
     {
       "name": "Zkopírovat produkční URL",
       "action": "copy",
-      "location": "https://portal.mojefirma.cz",
+      "location": "https://portal.company.cz",
       "icon": "content_copy"
     }
   ],
@@ -96,14 +96,14 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
     {
       "id": "portal-stage",
       "name": "Staging prostředí",
-      "location": "https://stage.portal.mojefirma.cz",
+      "location": "https://stage.portal.company.cz",
       "action": "open",
       "icon": "science"
     },
     {
       "id": "portal-admin",
       "name": "Administrace",
-      "location": "https://portal.mojefirma.cz/admin",
+      "location": "https://portal.company.cz/admin",
       "action": "open",
       "icon": "admin_panel_settings"
     }
@@ -113,7 +113,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
   const SNIPPET_GIT = `{
   "id": "repo-frontend",
   "name": "frontend-app",
-  "location": "https://github.com/mojefirma/frontend-app",
+  "location": "https://github.com/company/frontend-app",
   "action": "open",
   "icon": "code",
   "settings": "git",
@@ -122,34 +122,34 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
   "info": {
     "Větev": "main",
     "Typ": "TypeScript / React",
-    "Organizace": "mojefirma"
+    "Organizace": "company"
   }
 }`;
 
   const SNIPPET_MAGICGATE = `{
-  "id": "instance-ostrava",
-  "name": "IS Tour - Ostrava",
-  "location": "https://ostrava.istour.cz/admin",
+  "id": "instance-production",
+  "name": "IS Tour - Produkce",
+  "location": "https://app.company.cz/admin",
   "action": "open",
   "icon": "security",
   "settings": "magicgate",
   "priority": 20,
   "info": {
-    "Server": "SRV-OST-01",
-    "Instance": "Ostrava",
-    "DB Server": "SQL-PROD-02",
-    "MLog Požadavek": "R54201"
+    "Server": "SRV-PRD-01",
+    "Instance": "Produkce",
+    "DB Server": "SQL-PROD-01",
+    "Požadavek": "R54201"
   },
   "options": [
     {
       "name": "Web",
-      "location": "https://ostrava.istour.cz",
+      "location": "https://app.company.cz",
       "action": "open",
       "image": "{favicon}"
     },
     {
       "name": "API",
-      "location": "https://ostrava.istour.cz/api",
+      "location": "https://app.company.cz/api",
       "action": "open",
       "image": "{favicon}"
     }
@@ -588,7 +588,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                   <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1">
                     <span className="font-semibold text-white">3. Automatická metadata (info)</span>
                     <p className="text-gray-400 leading-relaxed">
-                      Z XML se do informačního panelu položky (<kbd className="px-1 py-0.2 bg-white/10 rounded font-mono text-[10px]">Shift+Enter</kbd>) automaticky načítají <strong>všechny dostupné XML atributy a parametry</strong> daného serveru i instance (např. Server, Instance, DB Server, Umístění serveru, Provider, MLog Požadavek, Root Path, FTP, Zálohy a další). Veškerá tato metadata lze jedním kliknutím zkopírovat do schránky a slouží také pro vyhledávání.
+                      Z XML se do informačního panelu položky (<kbd className="px-1 py-0.2 bg-white/10 rounded font-mono text-[10px]">Shift+Enter</kbd>) automaticky načítají <strong>všechny dostupné XML atributy a parametry</strong> daného serveru i instance (např. Server, Instance, DB Server, Umístění serveru, Provider, Požadavek, Root Path, FTP, Zálohy a další). Veškerá tato metadata lze jedním kliknutím zkopírovat do schránky a slouží také pro vyhledávání.
                     </p>
                   </div>
 
@@ -602,7 +602,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                   <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1">
                     <span className="font-semibold text-white">5. Rychlé vyhledávání instancí (prefix magicgate: / mg:)</span>
                     <p className="text-gray-400 leading-relaxed">
-                      Zadáním prefixu <code className="font-mono text-amber-300">magicgate:</code> nebo <code className="font-mono text-amber-300">mg:</code> ve vyhledávači (např. <code className="font-mono text-gray-300">magicgate:</code> pro zobrazení všech nebo <code className="font-mono text-gray-300">magicgate: ostrava</code>) filtrujete výhradně v instancích MagicGate bez míchání ostatních zdrojů.
+                      Zadáním prefixu <code className="font-mono text-amber-300">magicgate:</code> nebo <code className="font-mono text-amber-300">mg:</code> ve vyhledávači (např. <code className="font-mono text-gray-300">magicgate:</code> pro zobrazení všech nebo <code className="font-mono text-gray-300">magicgate: produkce</code>) filtrujete výhradně v instancích MagicGate bez míchání ostatních zdrojů.
                     </p>
                   </div>
                 </div>

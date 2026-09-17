@@ -19,6 +19,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   hideWindow: (): Promise<void> => ipcRenderer.invoke('hide-window'),
   resetAndHideSpotlight: (): Promise<void> => ipcRenderer.invoke('reset-and-hide-spotlight'),
   openSettingsWindow: (): Promise<void> => ipcRenderer.invoke('open-settings-window'),
+  openPowerWindow: (): Promise<void> => ipcRenderer.invoke('open-power-window'),
+  closePowerWindow: (): Promise<void> => ipcRenderer.invoke('close-power-window'),
+  restartApp: (): Promise<void> => ipcRenderer.invoke('restart-app'),
+  quitApp: (): Promise<void> => ipcRenderer.invoke('quit-app'),
   openGitCloneWindow: (params: { repoName: string; repoUrl?: string; initialRecursive?: boolean; isInstanceMode?: boolean; adminUrl?: string; targetDir?: string }): Promise<void> =>
     ipcRenderer.invoke('open-git-clone-window', params),
   checkUpdate: (): Promise<UpdateInfo> => ipcRenderer.invoke('check-update'),

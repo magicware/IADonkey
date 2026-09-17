@@ -6,12 +6,12 @@ import type { LauncherItem } from '../types';
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
 
 /**
- * Detects if query is a standalone email address (e.g. alzbeta.radova@magicware.cz)
+ * Detects if query is a standalone email address (e.g. john.doe@company.com)
  * and generates a direct link to open the Gmail compose window with that recipient.
  *
  * Example:
- * Input: "alzbeta.radova@magicware.cz"
- * Generated URL: https://mail.google.com/mail/u/0/?tf=cm&fs=1&to=alzbeta.radova@magicware.cz&hl=cs
+ * Input: "john.doe@company.com"
+ * Generated URL: https://mail.google.com/mail/u/0/?tf=cm&fs=1&to=john.doe@company.com&hl=cs
  */
 export function detectEmail(query: string): LauncherItem | null {
   const trimmed = query.trim();

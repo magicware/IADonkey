@@ -60,6 +60,10 @@ export const App: React.FC = () => {
     return window.location.hash.startsWith('#git-clone') || window.location.search.includes('window=git-clone');
   });
 
+  const [isPowerView] = useState(() => {
+    return window.location.hash.startsWith('#power') || window.location.search.includes('window=power');
+  });
+
   const [gitCloneParams, setGitCloneParams] = useState(() => {
     const hash = window.location.hash;
     const qIndex = hash.indexOf('?');
@@ -351,6 +355,60 @@ export const App: React.FC = () => {
     );
   }
 
+  // Dedicated Power / Quit / Restart Window mode
+  if (isPowerView) {
+    return (
+      <main className="w-full h-screen bg-[#181920] border border-white/10 flex flex-col justify-between p-5 text-gray-200 select-none">
+        <div className="flex items-center justify-between pb-3 border-b border-white/10">
+          <div className="flex items-center gap-2.5">
+            <span className="material-symbols-outlined text-indigo-400 text-xl">power_settings_new</span>
+            <span className="font-semibold text-sm text-white">Správa aplikace IADonkey</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => window.electronAPI?.closePowerWindow?.()}
+            className="w-7 h-7 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center cursor-pointer"
+            title="Zavřít"
+          >
+            <span className="material-symbols-outlined text-base">close</span>
+          </button>
+        </div>
+
+        <div className="py-2">
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Zvolte požadovanou systémovou akci. Aplikaci můžete restartovat pro opětovné načtení procesů nebo ji zcela ukončit.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/10">
+          <button
+            type="button"
+            onClick={() => window.electronAPI?.closePowerWindow?.()}
+            className="px-3.5 py-1.5 rounded-xl text-xs font-medium text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+          >
+            Zrušit
+          </button>
+          <button
+            type="button"
+            onClick={() => window.electronAPI?.restartApp?.()}
+            className="px-3.5 py-1.5 rounded-xl text-xs font-medium bg-indigo-600/25 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/40 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+          >
+            <span className="material-symbols-outlined text-sm">restart_alt</span>
+            <span>Restartovat</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => window.electronAPI?.quitApp?.()}
+            className="px-3.5 py-1.5 rounded-xl text-xs font-medium bg-rose-600/25 hover:bg-rose-600/40 text-rose-300 border border-rose-500/40 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+          >
+            <span className="material-symbols-outlined text-sm">power_settings_new</span>
+            <span>Ukončit</span>
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   // Filter items by enabled extensions
   const visibleItems = useMemo(() => {
     return items.filter((item) => {
@@ -378,6 +436,8 @@ export const App: React.FC = () => {
       <SearchSpotlight
         items={visibleItems}
         mlogBaseUrl={config?.extensions?.mlog ? config?.mlog?.baseUrl : undefined}
+        mlogTaskPrefix={config?.mlog?.taskPrefix}
+        mlogRequestPrefix={config?.mlog?.requestPrefix}
         searchGoogle={config.searchGoogle !== false}
         defaultSearchEngine={config.defaultSearchEngine}
         defaultCloneDir={config?.github?.defaultCloneDir}

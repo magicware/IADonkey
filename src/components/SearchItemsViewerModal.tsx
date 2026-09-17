@@ -29,6 +29,9 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
   const [filterQuery, setFilterQuery] = useState('');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [collapsedItems, setCollapsedItems] = useState<Set<string>>(new Set());
+  const [renderedLimit, setRenderedLimit] = useState(50);
+  const [banningKey, setBanningKey] = useState<string | null>(null);
+  const [unbanningKey, setUnbanningKey] = useState<string | null>(null);
 
   // Close on Escape key
   useEffect(() => {
@@ -223,6 +226,58 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
       (b.sourceId && b.sourceId.toLowerCase().includes(q))
     );
   }, [banlist, filterQuery]);
+
+  // Reset progressive rendering on tab, query or open state change
+  useEffect(() => {
+    setRenderedLimit(50);
+  }, [viewTab, filterQuery, isOpen]);
+
+  // Progressively expand rendered items in lightweight background intervals
+  useEffect(() => {
+    if (!isOpen || viewTab !== 'items') return;
+    if (renderedLimit >= filteredData.length) return;
+
+    const timer = setTimeout(() => {
+      setRenderedLimit((prev) => Math.min(prev + 80, filteredData.length));
+    }, 60);
+
+    return () => clearTimeout(timer);
+  }, [renderedLimit, filteredData.length, isOpen, viewTab]);
+
+  const handleListScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollTop + clientHeight >= scrollHeight - 350) {
+      if (renderedLimit < filteredData.length) {
+        setRenderedLimit((prev) => Math.min(prev + 100, filteredData.length));
+      }
+    }
+  };
+
+  const visibleData = useMemo(() => {
+    return filteredData.slice(0, renderedLimit);
+  }, [filteredData, renderedLimit]);
+
+  const handleBan = (item: LauncherItem, key: string) => {
+    setBanningKey(key);
+    try {
+      onBanItem?.(item);
+    } finally {
+      setTimeout(() => {
+        setBanningKey(null);
+      }, 1200);
+    }
+  };
+
+  const handleUnban = (b: BannedItem, key: string) => {
+    setUnbanningKey(key);
+    try {
+      onUnbanItem?.(b);
+    } finally {
+      setTimeout(() => {
+        setUnbanningKey(null);
+      }, 1200);
+    }
+  };
 
   // Toggle collapse state for an item
   const toggleCollapse = (id: string) => {
@@ -439,14 +494,34 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                     </div>
 
                     <div className="flex justify-end">
-                      <button
-                        onClick={() => onUnbanItem?.(b)}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 border border-emerald-500/30 transition cursor-pointer"
-                        title="Odbanovat položku a obnovit její import"
-                      >
-                        <span className="material-symbols-outlined text-[15px] leading-none">restore</span>
-                        <span>Odbanovat</span>
-                      </button>
+                      {(() => {
+                        const bKey = b.id || `${b.name}-${b.location || ''}`;
+                        const isUnbanning = unbanningKey === bKey;
+                        return (
+                          <button
+                            disabled={isUnbanning}
+                            onClick={() => handleUnban(b, bKey)}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition cursor-pointer ${
+                              isUnbanning
+                                ? 'bg-amber-500/15 text-amber-400 border-amber-500/30 cursor-wait'
+                                : 'bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 border-emerald-500/30'
+                            }`}
+                            title="Odbanovat položku a obnovit její import"
+                          >
+                            {isUnbanning ? (
+                              <>
+                                <span className="material-symbols-outlined text-[15px] leading-none animate-spin">progress_activity</span>
+                                <span>Odbanovávám...</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="material-symbols-outlined text-[15px] leading-none">restore</span>
+                                <span>Odbanovat</span>
+                              </>
+                            )}
+                          </button>
+                        );
+                      })()}
                     </div>
                   </div>
                 ))
@@ -467,7 +542,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
             </div>
 
             {/* Items List */}
-            <div className="flex-1 overflow-y-auto divide-y divide-white/[0.04]">
+            <div onScroll={handleListScroll} className="flex-1 overflow-y-auto divide-y divide-white/[0.04]">
               {filteredData.length === 0 ? (
                 <div className="p-12 text-center text-gray-400 space-y-2">
                   <span className="material-symbols-outlined text-4xl text-gray-500">search_off</span>
@@ -479,7 +554,8 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                   </p>
                 </div>
               ) : (
-                filteredData.map(({ item, subitems }, idx) => {
+                <>
+                  {visibleData.map(({ item, subitems }, idx) => {
                   const itemKey = item.id || `${item.name}-${idx}`;
                   const hasSubitems = subitems.length > 0;
                   const isCollapsed = collapsedItems.has(itemKey);
@@ -659,11 +735,18 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                           )}
                           {onBanItem && item.sourceId !== 'snippet' && item.priority !== -1 && item.priority !== -1.5 && item.priority !== -2 && !item.sourceId?.startsWith('engine-') && (
                             <button
-                              onClick={() => onBanItem(item)}
-                              className="p-1 rounded hover:bg-rose-500/15 text-gray-500 hover:text-rose-400 transition cursor-pointer"
-                              title="Zabanovat položku (vyřadit z importu i vyhledávání)"
+                              disabled={banningKey === itemKey}
+                              onClick={() => handleBan(item, itemKey)}
+                              className={`p-1 rounded transition cursor-pointer ${
+                                banningKey === itemKey
+                                  ? 'bg-rose-500/20 text-rose-400 cursor-wait'
+                                  : 'hover:bg-rose-500/15 text-gray-500 hover:text-rose-400'
+                              }`}
+                              title={banningKey === itemKey ? 'Zabanovávám...' : 'Zabanovat položku (vyřadit z importu i vyhledávání)'}
                             >
-                              <span className="material-symbols-outlined text-[16px]">block</span>
+                              <span className={`material-symbols-outlined text-[16px] ${banningKey === itemKey ? 'animate-spin' : ''}`}>
+                                {banningKey === itemKey ? 'progress_activity' : 'block'}
+                              </span>
                             </button>
                           )}
                         </div>
@@ -777,8 +860,15 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                       )}
                     </div>
                   );
-                })
-              )}
+                })}
+                {renderedLimit < filteredData.length && (
+                  <div className="py-4 text-center text-xs text-gray-400 flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined text-sm animate-spin text-indigo-400">progress_activity</span>
+                    <span>Načítání dalších položek ({visibleData.length} z {filteredData.length})...</span>
+                  </div>
+                )}
+              </>
+            )}
             </div>
           </>
         )}

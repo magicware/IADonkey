@@ -13,6 +13,8 @@ import { removeDiacritics } from '../utils/text';
 interface SearchSpotlightProps {
   items: LauncherItem[];
   mlogBaseUrl?: string;
+  mlogTaskPrefix?: string;
+  mlogRequestPrefix?: string;
   searchGoogle?: boolean;
   defaultSearchEngine?: string;
   defaultCloneDir?: string;
@@ -29,6 +31,8 @@ interface SearchSpotlightProps {
 export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   items,
   mlogBaseUrl,
+  mlogTaskPrefix,
+  mlogRequestPrefix,
   searchGoogle = true,
   defaultSearchEngine,
   defaultCloneDir,
@@ -57,6 +61,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   const [engineFavicons, setEngineFavicons] = useState<Record<string, string>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const [settingsHoldProgress, setSettingsHoldProgress] = useState<number>(0);
+  const settingsHoldStartRef = useRef<number>(0);
+  const settingsHoldRafRef = useRef<number | null>(null);
+  const isLongPressRef = useRef(false);
 
   // Load and listen for search engine metadata favicons
   useEffect(() => {
@@ -78,10 +86,23 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     const unsubFocus = window.electronAPI?.onFocusInput?.(handleFocus);
     window.addEventListener('focus-search-input', handleFocus);
 
+    const handleBlur = () => {
+      if (settingsHoldRafRef.current) {
+        cancelAnimationFrame(settingsHoldRafRef.current);
+        settingsHoldRafRef.current = null;
+      }
+      setSettingsHoldProgress(0);
+    };
+    window.addEventListener('blur', handleBlur);
+
     return () => {
       unsubFavicons?.();
       unsubFocus?.();
       window.removeEventListener('focus-search-input', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+      if (settingsHoldRafRef.current) {
+        cancelAnimationFrame(settingsHoldRafRef.current);
+      }
     };
   }, []);
 
@@ -202,10 +223,6 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
     const cleanupHide = window.electronAPI?.onWindowHideRequest?.(() => {
       setIsRevealed(false);
-      setParentItem(null);
-      setActionsParentItem(null);
-      savedParentItemRef.current = null;
-      restoringIndexRef.current = null;
     });
 
     const cleanupReset = window.electronAPI?.onResetSpotlight?.(() => {
@@ -625,31 +642,34 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       }
     }
 
-    // Prefix "mlog:": searches exclusively in MLog tickets and related items
-    const mlogPrefixMatch = trimmed.match(/^mlog:\s*(.*)$/i);
-    if (mlogPrefixMatch) {
-      const mlogQuery = mlogPrefixMatch[1].trim();
-      const mlogList: LauncherItem[] = [];
+    const tPref = (mlogTaskPrefix || 'T').trim();
+    const rPref = (mlogRequestPrefix || 'R').trim();
+
+    // Prefix "taskmanager:" or "mlog:": searches exclusively in Taskmanager tickets and related items
+    const tmPrefixMatch = trimmed.match(/^(?:taskmanager|mlog):\s*(.*)$/i);
+    if (tmPrefixMatch) {
+      const tmQuery = tmPrefixMatch[1].trim();
+      const tmList: LauncherItem[] = [];
 
       if (mlogBaseUrl) {
         const cleanBase = mlogBaseUrl.trim().replace(/\/+$/, '');
-        if (mlogQuery) {
-          const directTicket = detectMlogTicket(mlogQuery, mlogBaseUrl);
+        if (tmQuery) {
+          const directTicket = detectMlogTicket(tmQuery, mlogBaseUrl, tPref, rPref);
           if (directTicket) {
-            mlogList.push(directTicket);
-            const numOnly = mlogQuery.match(/^(\d+)$/);
-            if (numOnly) {
-              const id = numOnly[1];
-              const taskItem = detectMlogTicket(`T${id}`, mlogBaseUrl);
-              const reqItem = detectMlogTicket(`R${id}`, mlogBaseUrl);
-              if (taskItem) mlogList.push(taskItem);
-              if (reqItem) mlogList.push(reqItem);
-            }
+            tmList.push(directTicket);
+          }
+          const numOnly = tmQuery.match(/^(\d+)$/);
+          if (numOnly) {
+            const id = numOnly[1];
+            const taskItem = detectMlogTicket(`${tPref}${id}`, mlogBaseUrl, tPref, rPref);
+            const reqItem = detectMlogTicket(`${rPref}${id}`, mlogBaseUrl, tPref, rPref);
+            if (taskItem && !tmList.some((it) => it.id === taskItem.id)) tmList.push(taskItem);
+            if (reqItem && !tmList.some((it) => it.id === reqItem.id)) tmList.push(reqItem);
           }
         } else {
-          mlogList.push({
-            id: 'mlog-home',
-            name: 'Otevřít MLog Helpdesk',
+          tmList.push({
+            id: 'taskmanager-home',
+            name: 'Otevřít Taskmanager',
             location: cleanBase,
             action: 'open',
             icon: 'support_agent',
@@ -660,10 +680,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         }
       }
 
-      // Also filter any items that mention MLog or this ticket
-      if (mlogQuery) {
-        const norm = removeDiacritics(mlogQuery).toLowerCase();
-        const extraMlog = items.filter((it) => {
+      // Also filter any items that mention Taskmanager or this ticket
+      if (tmQuery) {
+        const norm = removeDiacritics(tmQuery).toLowerCase();
+        const extraTm = items.filter((it) => {
           const n = removeDiacritics(it.name || '').toLowerCase();
           const l = removeDiacritics(it.location || '').toLowerCase();
           const infoM =
@@ -672,18 +692,18 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
               (v) => typeof v === 'string' && removeDiacritics(v).toLowerCase().includes(norm)
             );
           return (
-            (it.sourceId === 'mlog' || it.settings === 'mlog' || n.includes('mlog') || Boolean(infoM)) &&
+            (it.sourceId === 'mlog' || it.settings === 'mlog' || n.includes('mlog') || n.includes('taskmanager') || Boolean(infoM)) &&
             (n.includes(norm) || l.includes(norm) || Boolean(infoM))
           );
         });
-        mlogList.push(...extraMlog);
+        tmList.push(...extraTm);
       }
 
-      return mlogList;
+      return tmList;
     }
 
-    // 0. MLog ticket engine (e.g. T1, T12, T123, R54201 - active when mlogBaseUrl is configured)
-    const mlogItem = detectMlogTicket(trimmed, mlogBaseUrl);
+    // 0. Taskmanager ticket engine (active when mlogBaseUrl is configured)
+    const mlogItem = detectMlogTicket(trimmed, mlogBaseUrl, tPref, rPref);
     if (mlogItem) {
       list.push(mlogItem);
       // Also look for items that specifically reference this ticket in info
@@ -705,12 +725,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       return list;
     }
 
-    // 0a. MLog digits-only query (3 or more digits, e.g. 123 -> 1st T123, 2nd R123)
+    // 0a. Taskmanager digits-only query (3 or more digits, e.g. 123 -> offers Task and Request with configured prefixes)
     const digitsOnlyMatch = trimmed.match(/^(\d{3,})$/);
     if (digitsOnlyMatch && mlogBaseUrl) {
       const numId = digitsOnlyMatch[1];
-      const taskItem = detectMlogTicket(`T${numId}`, mlogBaseUrl);
-      const reqItem = detectMlogTicket(`R${numId}`, mlogBaseUrl);
+      const taskItem = detectMlogTicket(`${tPref}${numId}`, mlogBaseUrl, tPref, rPref);
+      const reqItem = detectMlogTicket(`${rPref}${numId}`, mlogBaseUrl, tPref, rPref);
       if (taskItem) list.push(taskItem);
       if (reqItem) list.push(reqItem);
 
@@ -720,7 +740,11 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           const hasInfoTicket = Object.values(it.info).some((v) => {
             if (typeof v === 'string') {
               const cleaned = removeDiacritics(v.replace(/\s+/g, '')).toLowerCase();
-              return cleaned.includes(`r${numId}`) || cleaned.includes(`t${numId}`) || cleaned.includes(numId);
+              return (
+                cleaned.includes(`${tPref.toLowerCase()}${numId}`) ||
+                cleaned.includes(`${rPref.toLowerCase()}${numId}`) ||
+                cleaned.includes(numId)
+              );
             }
             return false;
           });
@@ -828,7 +852,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     }
 
     return list;
-  }, [query, items, parentItem, searchGoogle, defaultSearchEngine, mlogBaseUrl, engineFavicons]);
+  }, [query, items, parentItem, searchGoogle, defaultSearchEngine, mlogBaseUrl, mlogTaskPrefix, mlogRequestPrefix, engineFavicons]);
 
   // Keep selected index within bounds or restore saved index when returning from subitems
   useEffect(() => {
@@ -1255,9 +1279,76 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   const trimmedQuery = query.trim();
   const isGitPrefix = Boolean(trimmedQuery.match(/^git:/i));
   const isMagicGatePrefix = Boolean(trimmedQuery.match(/^(?:magicgate|mg):/i));
+  const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const tPrefEsc = escapeRegex((mlogTaskPrefix || 'T').trim());
+  const rPrefEsc = escapeRegex((mlogRequestPrefix || 'R').trim());
   const isMlogMode = Boolean(
-    mlogBaseUrl?.trim() && trimmedQuery.match(/^(?:mlog:|[rRtT]\s*\d+|\d{3,})$/i)
+    mlogBaseUrl?.trim() &&
+      trimmedQuery.match(new RegExp(`^(?:taskmanager:|mlog:|(${tPrefEsc}|${rPrefEsc})\\s*\\d+|\\d{3,})$`, 'i'))
   );
+
+  const handleSettingsMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    isLongPressRef.current = false;
+    settingsHoldStartRef.current = performance.now();
+    if (settingsHoldRafRef.current) {
+      cancelAnimationFrame(settingsHoldRafRef.current);
+    }
+    const HOLD_START_DELAY = 120; // Ignore clicks under 120ms to prevent visual flicker
+    const HOLD_TOTAL_DURATION = 3000;
+    const tick = () => {
+      const elapsed = performance.now() - settingsHoldStartRef.current;
+      if (elapsed < HOLD_START_DELAY) {
+        settingsHoldRafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+      const activeDuration = HOLD_TOTAL_DURATION - HOLD_START_DELAY;
+      const pct = Math.min(100, ((elapsed - HOLD_START_DELAY) / activeDuration) * 100);
+      setSettingsHoldProgress(pct);
+      if (elapsed < HOLD_TOTAL_DURATION) {
+        settingsHoldRafRef.current = requestAnimationFrame(tick);
+      } else {
+        isLongPressRef.current = true;
+        setSettingsHoldProgress(0);
+        settingsHoldRafRef.current = null;
+        window.electronAPI?.openPowerWindow?.();
+      }
+    };
+    settingsHoldRafRef.current = requestAnimationFrame(tick);
+  };
+
+  const cancelSettingsHold = () => {
+    if (settingsHoldRafRef.current) {
+      cancelAnimationFrame(settingsHoldRafRef.current);
+      settingsHoldRafRef.current = null;
+    }
+    const elapsed = performance.now() - settingsHoldStartRef.current;
+    if (elapsed > 400) {
+      // User was intentionally holding and released before finish
+      isLongPressRef.current = true;
+    }
+    setSettingsHoldProgress(0);
+  };
+
+  const handleSettingsMouseUp = () => {
+    cancelSettingsHold();
+  };
+
+  const handleSettingsMouseLeave = () => {
+    cancelSettingsHold();
+  };
+
+  const handleSettingsClick = () => {
+    if (isLongPressRef.current) {
+      isLongPressRef.current = false;
+      return;
+    }
+    setIsRevealed(false);
+    window.electronAPI?.openSettingsWindow?.();
+    setTimeout(() => {
+      window.electronAPI?.hideWindow?.();
+    }, 90);
+  };
 
   return (
     <div
@@ -1313,7 +1404,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
               : parentItem
               ? `Hledat v podpoložkách „${parentItem.name}“...`
               : isMlogMode
-              ? 'Otevřít v MLog helpdesku...'
+              ? 'Otevřít v Taskmanageru...'
               : isMagicGatePrefix
               ? 'Hledat v MagicGate instancích...'
               : isGitPrefix
@@ -1386,17 +1477,64 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         </button>
 
         <button
-          onClick={() => {
-            setIsRevealed(false);
-            window.electronAPI?.openSettingsWindow?.();
-            setTimeout(() => {
-              window.electronAPI?.hideWindow?.();
-            }, 90);
-          }}
-          className="w-8 h-8 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center cursor-pointer shrink-0"
-          title="Otevřít nastavení v samostatném okně"
+          onMouseDown={handleSettingsMouseDown}
+          onMouseUp={handleSettingsMouseUp}
+          onMouseLeave={handleSettingsMouseLeave}
+          onClick={handleSettingsClick}
+          className={`relative w-8 h-8 rounded-lg transition-colors flex items-center justify-center cursor-pointer shrink-0 ${
+            settingsHoldProgress > 0
+              ? settingsHoldProgress > 60
+                ? 'bg-rose-500/20 text-rose-300'
+                : 'bg-indigo-500/20 text-indigo-300'
+              : 'text-gray-400 hover:text-white hover:bg-white/10'
+          }`}
+          title="Otevřít nastavení (podržením 3s otevřete správce ukončení a restartu)"
         >
-          <span className="material-symbols-outlined text-[20px] leading-none select-none">settings</span>
+          {settingsHoldProgress > 0 && (
+            <svg
+              className="absolute inset-0 w-8 h-8 pointer-events-none"
+              viewBox="0 0 32 32"
+            >
+              <defs>
+                <linearGradient id="powerHoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#818cf8" />
+                  <stop offset="100%" stopColor="#f43f5e" />
+                </linearGradient>
+              </defs>
+              {/* Background track circle */}
+              <circle
+                cx="16"
+                cy="16"
+                r="13"
+                fill="none"
+                stroke="rgba(255, 255, 255, 0.15)"
+                strokeWidth="2.5"
+              />
+              {/* Animated charging progress circle */}
+              <circle
+                cx="16"
+                cy="16"
+                r="13"
+                fill="none"
+                stroke="url(#powerHoldGrad)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeDasharray={81.68}
+                strokeDashoffset={81.68 * (1 - settingsHoldProgress / 100)}
+                transform="rotate(-90 16 16)"
+              />
+            </svg>
+          )}
+          <span
+            className="material-symbols-outlined text-[19px] leading-none select-none transition-transform duration-75"
+            style={
+              settingsHoldProgress > 0
+                ? { transform: `rotate(${(settingsHoldProgress / 100) * 180}deg)` }
+                : undefined
+            }
+          >
+            settings
+          </span>
         </button>
       </div>
 

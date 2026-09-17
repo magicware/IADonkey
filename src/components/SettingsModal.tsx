@@ -2265,7 +2265,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             >
               <div className="flex items-center gap-2.5">
                 <span className="material-symbols-outlined text-xl text-sky-400">support_agent</span>
-                <span>MLog</span>
+                <span>Taskmanager</span>
               </div>
             </button>
           )}
@@ -2692,7 +2692,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <span className={`text-[11px] uppercase font-mono px-1.5 py-0.5 rounded ${
                                   src.type === 'static'
                                     ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold'
-                                    : 'bg-white/10 text-gray-300'
+                                    : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold'
                                 }`}>
                                   {src.type}
                                 </span>
@@ -2702,7 +2702,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                   </span>
                                 )}
                                 {src.mapping && Object.keys(src.mapping).length > 0 && (
-                                  <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" title="Vlastní mapování polí je aktivní">
+                                  <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-gray-300 border border-white/10" title="Vlastní mapování polí je aktivní">
                                     Mapováno
                                   </span>
                                 )}
@@ -2813,7 +2813,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {/* Database items count info footer with items viewer button */}
-              <div className="pt-4 flex items-center justify-between border-t border-white/10 text-xs text-gray-400 gap-4 flex-wrap">
+              <div className="pt-2 flex items-center justify-between text-xs text-gray-400 gap-4 flex-wrap">
                 <span>
                   Celkem načteno: <strong className="text-white font-semibold text-[13px]">{totalIndexedCount}</strong> položek
                 </span>
@@ -2998,7 +2998,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   )}
                 </div>
 
-                {/* 2. MLog */}
+                {/* 2. Taskmanager */}
                 <div className="p-5 bg-white/[0.03] border border-white/10 rounded-2xl flex flex-col justify-between gap-4 transition hover:border-white/20">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3.5">
@@ -3007,7 +3007,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-bold text-white tracking-wide">MLog Helpdesk</h3>
+                          <h3 className="text-sm font-bold text-white tracking-wide">Taskmanager</h3>
                           {formData.mlog?.baseUrl?.trim() ? (
                             <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-medium">
                               Nakonfigurováno
@@ -3019,7 +3019,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           )}
                         </div>
                         <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                          Rychlé rozpoznávání kódů požadavků (<code className="bg-white/10 px-1 rounded">R1234</code>) a úkolů (<code className="bg-white/10 px-1 rounded">T5678</code>) a jejich okamžité otevírání v helpdesku MLog.
+                          Rychlé rozpoznávání kódů úkolů a požadavků a jejich okamžité otevírání ve vašem firemním taskmanageru.
                         </p>
                       </div>
                     </div>
@@ -3055,7 +3055,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         onClick={() => setActiveTab('mlog')}
                         className="px-3 py-1.5 rounded-lg text-xs font-medium text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 transition flex items-center gap-1 cursor-pointer"
                       >
-                        <span>Nastavení MLog</span>
+                        <span>Nastavení Taskmanageru</span>
                         <span className="material-symbols-outlined text-sm">navigate_next</span>
                       </button>
                     </div>
@@ -3390,26 +3390,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
-          {/* TAB MLog */}
+          {/* TAB Taskmanager */}
           {activeTab === 'mlog' && (
             <div className="space-y-6">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-sky-400">support_agent</span>
-                  Propojení s MLog
+                  Propojení s Taskmanagerem
                 </h3>
                 <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
-                  Nastavte základní webovou adresu (Base URL) vašeho helpdesku MLog. Po nastavení můžete ve vyhledávači
-                  rovnou zadat kód požadavku (např. <strong className="font-mono text-sky-300">R1234</strong>) nebo
-                  úkolu (např. <strong className="font-mono text-sky-300">T5678</strong>) a stiskem Enter
-                  přímo otevřít detail v prohlížeči.
+                  Nastavte základní webovou adresu (Base URL) vašeho firemního taskmanageru a volitelné prefixy pro úkoly a požadavky. Po nastavení můžete ve vyhledávači
+                  zadat kód (např. <strong className="font-mono text-sky-300">{(formData.mlog?.taskPrefix || 'T').toUpperCase()}7821</strong>, <strong className="font-mono text-sky-300">{(formData.mlog?.requestPrefix || 'R').toUpperCase()}2345</strong>) nebo
+                  přímo číslo od 3 číslic pro rychlé otevření v prohlížeči.
                 </p>
               </div>
 
               <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-4">
                 <div>
                   <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
-                    Základní webová adresa MLogu (Base URL)
+                    Základní webová adresa Taskmanageru (Base URL)
                   </label>
                   <input
                     type="url"
@@ -3423,37 +3422,100 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       handleSave(updated);
                     }}
                     className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-sky-500 outline-none font-mono"
-                    placeholder="https://mlog.magicware.cz"
+                    placeholder="https://www.company.com/tasks"
                   />
                   <span className="text-xs text-gray-400 mt-1.5 block">
-                    Zadejte adresu včetně protokolu (např. https://mlog.magicware.cz). Pokud pole necháte prázdné, detekce je vypnutá.
+                    Zadejte adresu včetně protokolu (např. https://www.company.com/tasks). Pokud pole necháte prázdné, detekce je vypnutá.
                   </span>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  <div>
+                    <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+                      Prefix pro Úkol
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.mlog?.taskPrefix ?? 'T'}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          mlog: {
+                            baseUrl: formData.mlog?.baseUrl || '',
+                            requestPrefix: formData.mlog?.requestPrefix ?? 'R',
+                            ...formData.mlog,
+                            taskPrefix: e.target.value,
+                          },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-sky-500 outline-none font-mono uppercase"
+                      placeholder="T"
+                    />
+                    <span className="text-xs text-gray-400 mt-1.5 block">
+                      Výchozí: <code className="font-mono text-gray-300">T</code> (např. {(formData.mlog?.taskPrefix || 'T').toUpperCase()}7821).
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+                      Prefix pro Požadavek
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.mlog?.requestPrefix ?? 'R'}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          mlog: {
+                            baseUrl: formData.mlog?.baseUrl || '',
+                            taskPrefix: formData.mlog?.taskPrefix ?? 'T',
+                            ...formData.mlog,
+                            requestPrefix: e.target.value,
+                          },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-sky-500 outline-none font-mono uppercase"
+                      placeholder="R"
+                    />
+                    <span className="text-xs text-gray-400 mt-1.5 block">
+                      Výchozí: <code className="font-mono text-gray-300">R</code> (např. {(formData.mlog?.requestPrefix || 'R').toUpperCase()}2345).
+                    </span>
+                  </div>
+                </div>
+
                 {formData.mlog?.baseUrl?.trim() ? (
-                  <div className="p-3 bg-sky-950/30 border border-sky-500/20 rounded-lg text-[13px] space-y-1.5">
+                  <div className="p-3.5 bg-sky-950/30 border border-sky-500/20 rounded-lg text-[13px] space-y-2">
                     <p className="font-semibold text-sky-300 flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-base">check_circle</span>
                       Detekce je aktivní pro následující vzory:
                     </p>
-                    <ul className="list-disc list-inside text-gray-300 space-y-0.5 pl-1">
+                    <ul className="list-disc list-inside text-gray-300 space-y-1 pl-1">
                       <li>
-                        Zadání <code className="text-white font-mono bg-black/30 px-1 py-0.5 rounded">R2345</code> otevře{' '}
+                        Zadání <code className="text-white font-mono bg-black/30 px-1 py-0.5 rounded">{(formData.mlog.taskPrefix || 'T').toUpperCase()}7821</code> otevře{' '}
                         <span className="font-mono text-sky-300">
-                          {formData.mlog.baseUrl.trim().replace(/\/+$/, '')}/R2345
+                          {formData.mlog.baseUrl.trim().replace(/\/+$/, '')}/{(formData.mlog.taskPrefix || 'T').toUpperCase()}7821
                         </span>
                       </li>
                       <li>
-                        Zadání <code className="text-white font-mono bg-black/30 px-1 py-0.5 rounded">T7821</code> otevře{' '}
+                        Zadání <code className="text-white font-mono bg-black/30 px-1 py-0.5 rounded">{(formData.mlog.requestPrefix || 'R').toUpperCase()}2345</code> otevře{' '}
                         <span className="font-mono text-sky-300">
-                          {formData.mlog.baseUrl.trim().replace(/\/+$/, '')}/T7821
+                          {formData.mlog.baseUrl.trim().replace(/\/+$/, '')}/{(formData.mlog.requestPrefix || 'R').toUpperCase()}2345
                         </span>
+                      </li>
+                      <li>
+                        Zadání samotného čísla od 3 číslic (např. <code className="text-white font-mono bg-black/30 px-1 py-0.5 rounded">123</code>) nabídne ve Spotlightu obě varianty ({' '}
+                        <span className="font-mono text-sky-300">{(formData.mlog.taskPrefix || 'T').toUpperCase()}123</span> i{' '}
+                        <span className="font-mono text-sky-300">{(formData.mlog.requestPrefix || 'R').toUpperCase()}123</span>).
                       </li>
                     </ul>
                   </div>
                 ) : (
                   <div className="p-3 bg-white/[0.02] border border-white/5 rounded-lg text-xs text-gray-400">
-                    Detekce je v tuto chvíli vypnutá. Pro její aktivaci vyplňte webovou adresu MLogu výše.
+                    Detekce je v tuto chvíli vypnutá. Pro její aktivaci vyplňte webovou adresu Taskmanageru výše.
                   </div>
                 )}
               </div>
@@ -3605,7 +3667,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       setFormData(updated);
                       handleSave(updated);
                     }}
-                    placeholder="např. magicware"
+                    placeholder="např. company-org"
                     className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none font-mono"
                   />
                 </div>
@@ -3814,33 +3876,57 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     )}
                   </div>
                 ) : (
-                  <div className="h-[68px] rounded-xl border border-dashed border-white/15 bg-white/[0.01] flex items-center justify-center text-xs font-medium text-gray-500 select-none">
-                    Výsledek testu
+                  <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.01] p-3.5 flex items-center justify-between gap-3 text-xs text-gray-400 select-none flex-wrap">
+                    <span>Ověřte platnost zadaného PAT tokenu a dostupnost GitHub API</span>
+                    <button
+                      type="button"
+                      disabled={!formData.github?.token?.trim() || isTestingGitHub}
+                      onClick={handleTestGitHub}
+                      className={`px-4 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 transition cursor-pointer shrink-0 ${
+                        !formData.github?.token?.trim() || isTestingGitHub
+                          ? 'bg-white/5 border-white/5 text-gray-500 cursor-not-allowed'
+                          : 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600/30'
+                      }`}
+                    >
+                      {isTestingGitHub ? (
+                        <>
+                          <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                          <span>Testuji připojení...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-sm">wifi_tethering</span>
+                          <span>Otestovat připojení</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 )}
 
-                <button
-                  type="button"
-                  disabled={!formData.github?.token?.trim() || isTestingGitHub}
-                  onClick={handleTestGitHub}
-                  className={`px-4 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 transition cursor-pointer w-fit ${
-                    !formData.github?.token?.trim() || isTestingGitHub
-                      ? 'bg-white/5 border-white/5 text-gray-500 cursor-not-allowed'
-                      : 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600/30'
-                  }`}
-                >
-                  {isTestingGitHub ? (
-                    <>
-                      <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
-                      <span>Testuji připojení...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined text-sm">wifi_tethering</span>
-                      <span>Otestovat připojení</span>
-                    </>
-                  )}
-                </button>
+                {gitHubTestResult && (
+                  <button
+                    type="button"
+                    disabled={!formData.github?.token?.trim() || isTestingGitHub}
+                    onClick={handleTestGitHub}
+                    className={`px-4 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 transition cursor-pointer w-fit ${
+                      !formData.github?.token?.trim() || isTestingGitHub
+                        ? 'bg-white/5 border-white/5 text-gray-500 cursor-not-allowed'
+                        : 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600/30'
+                    }`}
+                  >
+                    {isTestingGitHub ? (
+                      <>
+                        <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                        <span>Testuji připojení...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-sm">wifi_tethering</span>
+                        <span>Otestovat připojení znovu</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -4860,7 +4946,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       Gmail rychlé psaní
                     </div>
                     <p className="text-gray-400 text-xs leading-relaxed">
-                      Zadejte e-mailovou adresu (např. <code className="bg-white/10 px-1 rounded">jmeno@magicware.cz</code>). Stiskem Enter okamžitě otevřete okno nové zprávy v Gmailu s vyplněným příjemcem.
+                      Zadejte e-mailovou adresu (např. <code className="bg-white/10 px-1 rounded">jmeno@company.com</code>). Stiskem Enter okamžitě otevřete okno nové zprávy v Gmailu s vyplněným příjemcem.
                     </p>
                   </div>
 
@@ -4868,10 +4954,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
                       <div className="flex items-center gap-2 text-indigo-400 font-semibold">
                         <span className="material-symbols-outlined text-base">support_agent</span>
-                        MLog Helpdesk
+                        Taskmanager
                       </div>
                       <p className="text-gray-400 text-xs leading-relaxed">
-                        Zadejte kód požadavku (např. <code className="bg-white/10 px-1 rounded">R234</code>) nebo úkolu (např. <code className="bg-white/10 px-1 rounded">T7821</code>). Stiskem Enter se přímo otevře v MLogu.
+                        Zadejte kód úkolu (např. <code className="bg-white/10 px-1 rounded">{(formData.mlog?.taskPrefix || 'T').toUpperCase()}7821</code>) nebo požadavku (např. <code className="bg-white/10 px-1 rounded">{(formData.mlog?.requestPrefix || 'R').toUpperCase()}2345</code>), případně rovnou samotné číslo od 3 číslic (např. <code className="bg-white/10 px-1 rounded">123</code>), a vyhledávač nabídne obě možnosti pro přímé otevření v prohlížeči.
                       </p>
                     </div>
                   )}
@@ -4883,7 +4969,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         MagicGate přihlášení a vyhledávání
                       </div>
                       <p className="text-gray-400 text-xs leading-relaxed">
-                        Pro vyhledávání výhradně v instancích MagicGate použijte prefix <code className="bg-white/10 px-1 rounded">magicgate:</code> nebo <code className="bg-white/10 px-1 rounded">mg:</code> (např. <code className="bg-white/10 px-1 rounded">magicgate:</code> pro zobrazení všech instancí nebo <code className="bg-white/10 px-1 rounded">magicgate: ostrava</code>). U položek se <code className="bg-white/10 px-1 rounded">settings: "magicgate"</code> aplikace provede tichý handshake a otevře instanci IS Tour v prohlížeči již plně přihlášenou.
+                        Pro vyhledávání výhradně v instancích MagicGate použijte prefix <code className="bg-white/10 px-1 rounded">magicgate:</code> nebo <code className="bg-white/10 px-1 rounded">mg:</code> (např. <code className="bg-white/10 px-1 rounded">magicgate:</code> pro zobrazení všech instancí nebo <code className="bg-white/10 px-1 rounded">magicgate: produkce</code>). U položek se <code className="bg-white/10 px-1 rounded">settings: "magicgate"</code> aplikace provede tichý handshake a otevře instanci IS Tour v prohlížeči již plně přihlášenou.
                       </p>
                     </div>
                   )}
@@ -4930,7 +5016,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       Internetové vyhledávače
                     </div>
                     <p className="text-gray-400 text-xs leading-relaxed">
-                      Zadejte libovolný dotaz a na konci seznamu jej otevřete ve zvoleném vyhledávači. Kdykoliv můžete vyhledat přímo s prefixy: <code className="bg-white/10 px-1 rounded">g: dotaz</code> (Google), <code className="bg-white/10 px-1 rounded">s: dotaz</code> (Seznam) nebo <code className="bg-white/10 px-1 rounded">w: dotaz</code> (Wikipedie).
+                      Zadejte libovolný dotaz a na konci seznamu jej otevřete ve zvoleném vyhledávači. Kdykoliv můžete vyhledat přímo s prefixy: <code className="bg-white/10 px-1 rounded">g: dotaz</code> (Google), <code className="bg-white/10 px-1 rounded">s: dotaz</code> (Seznam), <code className="bg-white/10 px-1 rounded">c: dotaz</code> (Centrum) nebo <code className="bg-white/10 px-1 rounded">w: dotaz</code> (Wikipedie).
                     </p>
                   </div>
 

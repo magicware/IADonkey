@@ -1,12 +1,12 @@
-﻿import React from 'react';
+import React from 'react';
 import { CURRENT_APP_VERSION } from '../changelog';
 import appLogo from '../assets/icon.png';
 
 export const SplashScreen: React.FC = () => {
   return (
-    <div className="w-screen h-screen bg-transparent flex items-center justify-center p-3 select-none overflow-hidden font-sans">
+    <div className="w-screen h-screen bg-transparent flex items-center justify-center select-none overflow-hidden font-sans">
       <div
-        className="w-full h-full bg-[#141520] text-gray-200 border border-white/10 rounded-3xl shadow-2xl flex flex-col items-center justify-center gap-3 relative"
+        className="w-full h-full bg-[#141520] text-gray-200 rounded-[28px] flex flex-col items-center justify-center gap-3 relative shadow-none border-none outline-none"
         style={{ WebkitAppRegion: 'drag' } as any}
       >
         {/* Photoshop-style 48px app icon */}
@@ -14,7 +14,7 @@ export const SplashScreen: React.FC = () => {
           <img
             src={appLogo}
             alt="IADonkey"
-            className="w-12 h-12 object-contain rounded-xl drop-shadow-md"
+            className="w-12 h-12 object-contain rounded-xl"
           />
         </div>
 

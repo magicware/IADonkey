@@ -2,7 +2,7 @@ import type { LauncherItem } from '../types';
 
 /**
  * Checks if query looks like a valid URL or web domain.
- * Examples: 'brenna.istour.cz', 'www.brenna.cz', 'https://google.com', 'localhost:8080'
+ * Examples: 'portal.company.cz', 'www.company.cz', 'https://google.com', 'localhost:8080'
  */
 export function detectUrl(query: string): LauncherItem | null {
   const trimmed = query.trim();
@@ -22,7 +22,7 @@ export function detectUrl(query: string): LauncherItem | null {
     };
   }
 
-  // Domain with TLD like brenna.istour.cz, www.brenna.cz, sez.nam.cz, etc.
+  // Domain with TLD like portal.company.cz, www.company.cz, example.com, etc.
   const domainPattern = /^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?::\d+)?(?:\/[^\s]*)?$/;
   if (domainPattern.test(trimmed)) {
     const fullUrl = `https://${trimmed}`;

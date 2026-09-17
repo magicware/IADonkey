@@ -512,6 +512,27 @@ function setupIpcHandlers() {
     windowManager.hideSpotlight();
   });
 
+  ipcMain.handle('open-power-window', () => {
+    windowManager.openPowerWindow();
+  });
+
+  ipcMain.handle('close-power-window', () => {
+    windowManager.closePowerWindow();
+  });
+
+  ipcMain.handle('restart-app', () => {
+    windowManager.prepareForQuitOrRestart();
+    globalShortcut.unregisterAll();
+    app.relaunch();
+    app.exit(0);
+  });
+
+  ipcMain.handle('quit-app', () => {
+    windowManager.prepareForQuitOrRestart();
+    globalShortcut.unregisterAll();
+    app.quit();
+  });
+
   ipcMain.handle('reset-and-hide-spotlight', () => {
     windowManager.setSkipSpotlightRestoreOnCloneClose(true);
     windowManager.hideImmediately();
@@ -1011,7 +1032,7 @@ app.whenReady().then(async () => {
     process.argv.includes('--silent');
 
   if (!isSilentStart) {
-    windowManager.createSplashWindow(app.getVersion() || '1.1.15');
+    windowManager.createSplashWindow(app.getVersion() || '1.1.16');
   }
 
   const mainWindow = windowManager.createMainWindow();
