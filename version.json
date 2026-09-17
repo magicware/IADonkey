@@ -1,6 +1,6 @@
 {
-  "version": "1.1.13",
-  "releaseNotes": "• Vydána nová verze 1.1.13 aplikace IADonkey.\n• Spolehlivé zobrazení Splash Screenu v produkčním sestavení (oprava bundlování assetů a Base64 ikony).\n• Plná podpora zobrazení v RDP a softwarovém vykreslování (odstranění závislosti na transparentních rámcích).\n• Garantovaný 5s startovací čas Splash Screenu s následnou automatickou aktivací okna Spotlight.\n• Přehled všech změn naleznete v aplikaci v Nastavení -> Kompletní changelog.",
-  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.13/IADonkey-Setup-1.1.13.exe",
-  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.13/IADonkey-1.1.13.zip"
+  "version": "1.1.14",
+  "releaseNotes": "• Vydána nová verze 1.1.14 aplikace IADonkey.\n• Oprava zpožděného zobrazení Splash Screenu: přechod na nativní neprůhledné Win32 okno bez DWM vrstvení.\n• Synchronizovaný 5sekundový odpočet: časovač začíná běžet až po fyzickém vykreslení a zobrazení splashe na monitoru.\n• Bleskový náběh: odložení náročných úloh na pozadí (skenování aplikací a synchronizace) až po vykreslení úvodní obrazovky.\n• Přehled všech změn naleznete v aplikaci v Nastavení -> Kompletní changelog.",
+  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.14/IADonkey-Setup-1.1.14.exe",
+  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.14/IADonkey-1.1.14.zip"
 }

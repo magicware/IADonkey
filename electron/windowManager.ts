@@ -490,7 +490,7 @@ export class WindowManager {
     this.isQuitting = val;
   }
 
-  public createSplashWindow(version: string = '1.1.12'): BrowserWindow {
+  public createSplashWindow(version: string = '1.1.13'): BrowserWindow {
     if (this.splashWindow && !this.splashWindow.isDestroyed()) {
       return this.splashWindow;
     }
@@ -499,15 +499,15 @@ export class WindowManager {
       width: 260,
       height: 260,
       frame: false,
-      transparent: true,
-      backgroundColor: '#00000000',
+      transparent: false,
+      backgroundColor: '#141520',
       icon: getAppIcon(),
-      show: true,
+      show: false,
       center: true,
       resizable: false,
       alwaysOnTop: true,
       skipTaskbar: true,
-      hasShadow: false,
+      hasShadow: true,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -524,28 +524,17 @@ export class WindowManager {
   html, body {
     width: 100vw;
     height: 100vh;
-    background: transparent;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    user-select: none;
-    -webkit-user-select: none;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
-  }
-  .card {
-    width: 240px;
-    height: 240px;
     background-color: #141520;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 28px;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 12px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.85);
-    -webkit-app-region: drag;
+    user-select: none;
+    -webkit-user-select: none;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+    border: 1px solid rgba(255, 255, 255, 0.12);
   }
   .icon {
     width: 52px;
@@ -571,19 +560,57 @@ export class WindowManager {
 </style>
 </head>
 <body>
-  <div class="card">
-    ${iconDataUrl ? `<img class="icon" src="${iconDataUrl}" alt="IADonkey" />` : ''}
-    <div class="title">IADonkey</div>
-    <div class="version">v${version}</div>
-  </div>
+  ${iconDataUrl ? `<img class="icon" src="${iconDataUrl}" alt="IADonkey" />` : ''}
+  <div class="title">IADonkey</div>
+  <div class="version">v${version}</div>
 </body>
 </html>`;
 
+    this.splashWindow.once('ready-to-show', () => {
+      if (this.splashWindow && !this.splashWindow.isDestroyed()) {
+        this.splashWindow.show();
+        this.splashWindow.setAlwaysOnTop(true, 'screen-saver');
+        this.splashWindow.focus();
+      }
+    });
+
     this.splashWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(splashHtml)}`);
-    this.splashWindow.setAlwaysOnTop(true, 'screen-saver');
-    this.splashWindow.focus();
 
     return this.splashWindow;
+  }
+
+  public whenSplashReady(): Promise<void> {
+    if (!this.splashWindow || this.splashWindow.isDestroyed()) {
+      return Promise.resolve();
+    }
+    if (this.splashWindow.isVisible()) {
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve) => {
+      if (!this.splashWindow || this.splashWindow.isDestroyed()) {
+        resolve();
+        return;
+      }
+      let resolved = false;
+      const onReady = () => {
+        if (!resolved) {
+          resolved = true;
+          resolve();
+        }
+      };
+      this.splashWindow.once('ready-to-show', onReady);
+      // Safety fallback: ensure splash is displayed and resolved within 800ms
+      setTimeout(() => {
+        if (!resolved) {
+          if (this.splashWindow && !this.splashWindow.isDestroyed() && !this.splashWindow.isVisible()) {
+            this.splashWindow.show();
+            this.splashWindow.setAlwaysOnTop(true, 'screen-saver');
+            this.splashWindow.focus();
+          }
+          onReady();
+        }
+      }, 800);
+    });
   }
 
   public updateSplashStatus(percent: number, text: string): void {

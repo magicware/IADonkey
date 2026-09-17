@@ -5,12 +5,23 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.13';
+export const CURRENT_APP_VERSION = '1.1.14';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.14',
+    date: '17. 9. 2026',
+    title: 'Okamžitý náběh Splash Screenu a synchronizovaný 5s odpočet',
+    highlights: [
+      'Okamžité zobrazení Splash Screenu: Přechod na nativní neprůhledné Win32 okno s tmavým pozadím #141520 eliminuje vrstvené DWM kompozice a zpoždění. Okno se zobrazí čistě a spolehlivě ihned po spuštění.',
+      'Synchronizovaný 5sekundový odpočet: Časovač 5 sekund začíná běžet až ve chvíli, kdy je splash screen skutečně fyzicky vykreslen a viditelný na monitoru. Uživatel má garantováno celých 5 sekund zobrazení bez jakéhokoliv problikávání.',
+      'Bleskový start bez přetížení procesoru: Náročné úlohy na pozadí (skenování nainstalovaných aplikací a datová synchronizace) jsou odloženy až po zobrazení úvodní obrazovky, takže nezatěžují CPU při prvním vykreslení.',
+      'Plynulé otevření Spotlightu: Po uplynutí 5 sekund a dokončení inicializace se splash screen plynule skryje a vyhledávací okno Spotlight se automaticky zobrazí a získá okamžitý fokus.',
+    ],
+  },
   {
     version: '1.1.13',
     date: '17. 9. 2026',

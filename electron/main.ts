@@ -960,7 +960,7 @@ function startBackgroundTasks() {
 }
 
 // App lifecycle
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   store = new AppStore();
   syncManager = new DataSyncManager(store);
   updateChecker = new UpdateChecker(store);
@@ -1010,35 +1010,36 @@ app.whenReady().then(() => {
     process.argv.includes('--hidden') ||
     process.argv.includes('--silent');
 
-  const splashStartTime = Date.now();
-  const MIN_SPLASH_DURATION_MS = 5000;
-
   if (!isSilentStart) {
-    windowManager.createSplashWindow(app.getVersion() || '1.1.12');
+    windowManager.createSplashWindow(app.getVersion() || '1.1.13');
   }
 
   const mainWindow = windowManager.createMainWindow();
   windowManager.createTray(currentHotkey);
-
   registerGlobalHotkey(currentHotkey);
-  startBackgroundTasks();
 
-  // Background refresh of search engine favicons from baseUrl metadata
-  faviconService.refreshFavicons((favicons) => {
-    windowManager.getMainWindow()?.webContents.send('search-engine-favicons-updated', favicons);
-    windowManager.getSettingsWindow()?.webContents.send('search-engine-favicons-updated', favicons);
-  }).catch((err) => {
-    console.warn('[Main] Favicon refresh error:', err);
-  });
+  const launchDeferredTasks = () => {
+    startBackgroundTasks();
+    faviconService.refreshFavicons((favicons) => {
+      windowManager.getMainWindow()?.webContents.send('search-engine-favicons-updated', favicons);
+      windowManager.getSettingsWindow()?.webContents.send('search-engine-favicons-updated', favicons);
+    }).catch((err) => {
+      console.warn('[Main] Favicon refresh error:', err);
+    });
+  };
 
   if (!isSilentStart) {
-    const minTimePromise = new Promise((resolve) => {
-      const elapsed = Date.now() - splashStartTime;
-      const remaining = Math.max(0, MIN_SPLASH_DURATION_MS - elapsed);
-      setTimeout(resolve, remaining);
-    });
+    // 1. Wait until splash screen is physically rendered and visible on screen
+    await windowManager.whenSplashReady();
 
-    const readyPromise = new Promise<void>((resolve) => {
+    // Launch background tasks once splash is already visible so CPU is free during initial paint
+    launchDeferredTasks();
+
+    // 2. Guaranteed 5-second display timer from the exact moment user sees the splash screen
+    const minSplashPromise = new Promise((resolve) => setTimeout(resolve, 5000));
+
+    // 3. Verify mainWindow is loaded
+    const mainWindowReadyPromise = new Promise<void>((resolve) => {
       if (!mainWindow) {
         resolve();
         return;
@@ -1050,11 +1051,13 @@ app.whenReady().then(() => {
       }
     });
 
-    // Run splash for at least 5s, or longer if loading takes more than 5s, then reveal and focus Spotlight
-    Promise.all([minTimePromise, readyPromise]).then(async () => {
+    // Run splash for AT LEAST 5 seconds while visible, then reveal and focus Spotlight
+    Promise.all([minSplashPromise, mainWindowReadyPromise]).then(async () => {
       await windowManager.closeSplashWindow();
       windowManager.showSpotlight();
     });
+  } else {
+    launchDeferredTasks();
   }
 });
 
