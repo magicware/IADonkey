@@ -128,6 +128,35 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('reset-spotlight', handler);
   },
 
+  onTriggerEyedropper: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('trigger-eyedropper', handler);
+    return () => ipcRenderer.removeListener('trigger-eyedropper', handler);
+  },
+
+  pickScreenColor: (): Promise<string | null> => ipcRenderer.invoke('pick-screen-color'),
+
+  onColorPickedGlobal: (callback: (data: { color: string; formatted: string }) => void) => {
+    const handler = (_event: any, data: { color: string; formatted: string }) => callback(data);
+    ipcRenderer.on('color-picked-global', handler);
+    return () => ipcRenderer.removeListener('color-picked-global', handler);
+  },
+
+  openTuneColorWindow: (params: { initialColor: string }): Promise<void> =>
+    ipcRenderer.invoke('open-tune-color-window', params),
+
+  saveTuneColor: (color: string): Promise<void> =>
+    ipcRenderer.invoke('save-tune-color', color),
+
+  closeTuneColorWindow: (): Promise<void> =>
+    ipcRenderer.invoke('close-tune-color-window'),
+
+  onTuneColorApplied: (callback: (data: { color: string }) => void) => {
+    const handler = (_event: any, data: { color: string }) => callback(data);
+    ipcRenderer.on('tune-color-applied', handler);
+    return () => ipcRenderer.removeListener('tune-color-applied', handler);
+  },
+
   // Installer API
   installerGetDefaultPath: (): Promise<string> => ipcRenderer.invoke('installer-get-default-path'),
   installerBrowseFolder: (defaultPath?: string): Promise<string | null> =>

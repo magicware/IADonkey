@@ -41,6 +41,7 @@ export class WindowManager {
   private settingsWindow: BrowserWindow | null = null;
   private powerWindow: BrowserWindow | null = null;
   private gitCloneWindow: BrowserWindow | null = null;
+  private tuneColorWindow: BrowserWindow | null = null;
   private splashWindow: BrowserWindow | null = null;
   private lastSplashStatus: { percent: number; text: string } = {
     percent: 10,
@@ -110,9 +111,9 @@ export class WindowManager {
       // Keep hidden in background until requested
     });
 
-    // Hide window when it loses focus (unless devtools is active or during initial reveal)
+    // Hide window when it loses focus (unless devtools is active or during initial reveal / reactivation)
     this.mainWindow.on('blur', () => {
-      if (Date.now() - this.lastShowTime < 250) {
+      if (Date.now() - this.lastShowTime < 800) {
         return;
       }
       if (this.mainWindow && !this.mainWindow.webContents.isDevToolsOpened()) {
@@ -422,6 +423,82 @@ export class WindowManager {
     return this.gitCloneWindow;
   }
 
+  public getTuneColorWindow(): BrowserWindow | null {
+    return this.tuneColorWindow;
+  }
+
+  public closeTuneColorWindow(): void {
+    if (this.tuneColorWindow && !this.tuneColorWindow.isDestroyed()) {
+      this.tuneColorWindow.close();
+    }
+  }
+
+  public openTuneColorWindow(params: { initialColor: string }): BrowserWindow {
+    const initialColor = params.initialColor || '#6366f1';
+    const query = new URLSearchParams({ color: initialColor }).toString();
+
+    if (this.tuneColorWindow && !this.tuneColorWindow.isDestroyed()) {
+      if (this.tuneColorWindow.isMinimized()) this.tuneColorWindow.restore();
+      this.tuneColorWindow.show();
+      this.tuneColorWindow.focus();
+      this.tuneColorWindow.webContents.send('tune-color-init', { color: initialColor });
+      return this.tuneColorWindow;
+    }
+
+    const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
+      ? path.join(__dirname, 'preload.cjs')
+      : fs.existsSync(path.join(__dirname, 'preload.mjs'))
+      ? path.join(__dirname, 'preload.mjs')
+      : path.join(__dirname, 'preload.js');
+
+    this.tuneColorWindow = new BrowserWindow({
+      width: 520,
+      height: 480,
+      minWidth: 460,
+      minHeight: 420,
+      maxWidth: 640,
+      maxHeight: 600,
+      resizable: true,
+      title: 'IADonkey – Doladění barvy',
+      icon: getAppIcon(),
+      autoHideMenuBar: true,
+      backgroundColor: '#181920',
+      show: false,
+      skipTaskbar: false,
+      webPreferences: {
+        preload: preloadPath,
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    if (process.env.VITE_DEV_SERVER_URL) {
+      this.tuneColorWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}?${query}#tune-color`);
+    } else {
+      this.tuneColorWindow.loadFile(path.join(__dirname, '../dist/index.html'), {
+        hash: 'tune-color',
+        search: query,
+      });
+    }
+
+    this.tuneColorWindow.once('ready-to-show', () => {
+      if (this.tuneColorWindow && !this.tuneColorWindow.isDestroyed()) {
+        this.tuneColorWindow.show();
+        this.tuneColorWindow.focus();
+      }
+    });
+
+    this.tuneColorWindow.on('closed', () => {
+      this.tuneColorWindow = null;
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.showSpotlight();
+      }
+    });
+
+    return this.tuneColorWindow;
+  }
+
   public createInstallerWindow(): BrowserWindow {
     const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
       ? path.join(__dirname, 'preload.cjs')
@@ -564,8 +641,8 @@ export class WindowManager {
     }
 
     this.splashWindow = new BrowserWindow({
-      width: 250,
-      height: 250,
+      width: 380,
+      height: 230,
       frame: false,
       transparent: true,
       backgroundColor: '#00000000',

@@ -5,12 +5,29 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.16';
+export const CURRENT_APP_VERSION = '1.1.17';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.17',
+    date: '17. 9. 2026',
+    title: 'Rozšíření DonkeyTools, ColorMaster se systémovým kapátkem, okno doladění barvy a rychlé nástroje ve Spotlightu',
+    highlights: [
+      'Nové rozšíření DonkeyTools: Sada integrovaných pomocných nástrojů s vínovým motivem a možností centrálního zapnutí či vypnutí.',
+      'Rychlé nástroje DonkeyTools ve Spotlightu: Tlačítko nástrojů před aktualizací s vysouvací nabídkou aktivních subextensions (kolečko s kapátkem ColorMaster).',
+      'ColorMaster (správa a převod barev): Podpora rozpoznání barevných formátů (#HEX, RGB, RGBA, HSL) přímo ve Spotlightu s živým náhledem barvy, kopírováním (včetně akce pro RGBA) nebo nastavením jako barvy motivu.',
+      'Systémové kapátko (EyeDropper): Spolehlivé nabrání barvy odkudkoliv z obrazovky s nativním kurzorem kapátka a zvětšovací lupou přes globální zkratku, nabídku rychlých nástrojů ve Spotlightu, příkazy /kapatko, /picker i přímo z nastavení barev motivu. Po nasátí barvy se automaticky otevře nabídka akcí barvy ve Spotlightu a hodnota se zkopíruje do schránky.',
+      'Okno pro doladění barvy: Nová akce „Doladit barvu...“ v nabídce akcí otevře samostatné okno v hlavním panelu Windows s posuvníky složek RGB, průhlednosti a odstínu. Uložením se aplikace vrátí přímo do nabídky akcí k upravené barvě.',
+      'Interaktivní nahrávání zkratky kapátka: Nastavení zkratky pro kapátko využívá stejné nahrávání jako launcher, včetně ochrany proti kolizím s launcherem či rezervovanými klávesami s automatickým pozastavením zkratek při nahrávání.',
+      'Lomítkové příkazy (/): Spotlight podporuje rychlé systémové příkazy začínající lomítkem s našeptáváním dostupných akcí (/kapatko, /color, /picker, /barva).',
+      'Optimalizace rozvržení detailu akcí: Výška seznamu akcí byla upravena tak, aby se spodní okraj karty Spotlightu nikdy neořezával o hranice okna.',
+      'Širší obdélníkový Splash Screen: Úvodní obrazovka při startu byla rozšířena na formát 380 × 230 px pro elegantnější a vyváženější proporce.',
+      'Dynamická nápověda podle aktivních rozšíření: Seznam klávesových zkratek i karet chytrých funkcí v nápovědě dynamicky reaguje na zapnutí či vypnutí rozšíření DonkeyTools a ColorMaster.',
+    ],
+  },
   {
     version: '1.1.16',
     date: '17. 9. 2026',
@@ -327,7 +344,7 @@ export const CHANGELOG_HISTORY: VersionEntry[] = [
 ];
 
 /**
- * Zde se průběžně zapisují novinky pro budoucí verzi (1.1.7).
+ * Zde se průběžně zapisují novinky pro budoucí verzi.
  * Po dokončení releasu se tyto položky přesunou přímo pod vydávanou verzi a toto pole se vyprázdní.
  */
 export const UPCOMING_CHANGELOG: string[] = [];

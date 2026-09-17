@@ -104,6 +104,13 @@ declare global {
       onSearchEngineFaviconsUpdated: (callback: (favicons: Record<string, string>) => void) => () => void;
       onFocusInput: (callback: () => void) => () => void;
       onResetSpotlight: (callback: () => void) => () => void;
+      onTriggerEyedropper?: (callback: () => void) => () => void;
+      pickScreenColor?: () => Promise<string | null>;
+      onColorPickedGlobal?: (callback: (data: { color: string; formatted: string }) => void) => () => void;
+      openTuneColorWindow?: (params: { initialColor: string }) => Promise<void>;
+      saveTuneColor?: (color: string) => Promise<void>;
+      closeTuneColorWindow?: () => Promise<void>;
+      onTuneColorApplied?: (callback: (data: { color: string }) => void) => () => void;
 
       // Installer API
       installerGetDefaultPath?: () => Promise<string>;

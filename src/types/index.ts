@@ -20,6 +20,7 @@ export interface LauncherItem {
   shortcuts?: string[];
   actions?: LauncherAction[];
   info?: Record<string, any>;
+  colorPreview?: string;
 }
 
 export type SourceType = 'file' | 'api' | 'static';
@@ -95,6 +96,17 @@ export interface ExtensionsConfig {
   github: boolean;
   vscode?: boolean;
   androidStudio?: boolean;
+  donkeyTools?: boolean;
+}
+
+export interface ColorMasterSettings {
+  enabled: boolean;
+  hotkey?: string;
+  defaultFormat?: 'hex' | 'hex-no-hash' | 'rgb' | 'rgba' | 'hsl';
+}
+
+export interface DonkeyToolsSettings {
+  colorMaster?: ColorMasterSettings;
 }
 
 export interface VscodeSettings {
@@ -130,6 +142,7 @@ export interface AppConfig {
   vscode?: VscodeSettings;
   androidStudio?: AndroidStudioSettings;
   extensions?: ExtensionsConfig;
+  donkeyTools?: DonkeyToolsSettings;
   banlist?: BannedItem[];
   updateUrl: string;
   lastDeclinedVersion: string | null;

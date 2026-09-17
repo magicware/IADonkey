@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LauncherItem, LauncherAction, SyncProgress, SnippetsConfig } from '../types';
+import { LauncherItem, LauncherAction, SyncProgress, SnippetsConfig, ColorMasterSettings, AppConfig } from '../types';
 import { MaterialIcon } from './MaterialIcon';
 import { evaluateExpression } from '../utils/calculator';
 import { detectUrl } from '../utils/urlHelper';
@@ -9,6 +9,14 @@ import { getDynamicSnippets } from '../utils/snippets';
 import { formatLastSyncDate } from '../utils/dateHelper';
 import { SEARCH_ENGINES } from '../constants/searchEngines';
 import { removeDiacritics } from '../utils/text';
+import {
+  parseColorQuery,
+  createColorLauncherItem,
+  getDonkeyToolsCommands,
+  pickScreenColor,
+  formatColorValue,
+} from '../utils/colorMaster';
+import { applyPrimaryColor, applyActionsColor } from '../utils/theme';
 
 interface SearchSpotlightProps {
   items: LauncherItem[];
@@ -20,6 +28,9 @@ interface SearchSpotlightProps {
   defaultCloneDir?: string;
   vscodeEnabled?: boolean;
   androidStudioEnabled?: boolean;
+  donkeyToolsEnabled?: boolean;
+  colorMasterConfig?: ColorMasterSettings;
+  onSaveConfig?: (newConfig: AppConfig) => Promise<void>;
   onOpenSettings: () => void;
   onRefreshData: () => void;
   isSyncing?: boolean;
@@ -38,6 +49,9 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   defaultCloneDir,
   vscodeEnabled = false,
   androidStudioEnabled = false,
+  donkeyToolsEnabled = false,
+  colorMasterConfig,
+  onSaveConfig,
   onOpenSettings,
   onRefreshData,
   isSyncing = false,
@@ -65,6 +79,72 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   const settingsHoldStartRef = useRef<number>(0);
   const settingsHoldRafRef = useRef<number | null>(null);
   const isLongPressRef = useRef(false);
+
+  const [isDonkeyToolsOpen, setIsDonkeyToolsOpen] = useState(false);
+  const donkeyToolsRef = useRef<HTMLDivElement>(null);
+
+  const isColorMasterActive = Boolean(donkeyToolsEnabled && colorMasterConfig?.enabled !== false);
+  const showDonkeyToolsIcon = Boolean(donkeyToolsEnabled && isColorMasterActive);
+
+  // Click outside to close DonkeyTools quick tools menu
+  useEffect(() => {
+    if (!isDonkeyToolsOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (donkeyToolsRef.current && !donkeyToolsRef.current.contains(e.target as Node)) {
+        setIsDonkeyToolsOpen(false);
+      }
+    };
+    window.addEventListener('mousedown', handleClickOutside);
+    return () => window.removeEventListener('mousedown', handleClickOutside);
+  }, [isDonkeyToolsOpen]);
+
+  const handlePickColor = async () => {
+    try {
+      setIsDonkeyToolsOpen(false);
+      await pickScreenColor();
+    } catch (err) {
+      console.error('Pick color error:', err);
+    }
+  };
+
+  // Listen to global color picker and tune color applied
+  useEffect(() => {
+    if (window.electronAPI?.onTuneColorApplied) {
+      const unsub = window.electronAPI.onTuneColorApplied((data: { color: string }) => {
+        if (data.color) {
+          const parsed = parseColorQuery(data.color);
+          const format = colorMasterConfig?.defaultFormat || 'hex';
+          if (parsed) {
+            const newItem = createColorLauncherItem(parsed, format);
+            setQuery(data.color);
+            setActionsParentItem(newItem);
+            setSelectedActionIndex(0);
+          }
+        }
+      });
+      return () => unsub?.();
+    }
+  }, [colorMasterConfig]);
+
+  useEffect(() => {
+    if (window.electronAPI?.onColorPickedGlobal) {
+      const unsub = window.electronAPI.onColorPickedGlobal((data: { color: string; formatted: string }) => {
+        if (data.color) {
+          const parsed = parseColorQuery(data.color);
+          const format = colorMasterConfig?.defaultFormat || 'hex';
+          setQuery(data.color);
+          if (parsed) {
+            const newItem = createColorLauncherItem(parsed, format);
+            setActionsParentItem(newItem);
+            setSelectedActionIndex(0);
+          }
+          setIsRevealed(true);
+          inputRef.current?.focus();
+        }
+      });
+      return () => unsub?.();
+    }
+  }, [colorMasterConfig]);
 
   // Load and listen for search engine metadata favicons
   useEffect(() => {
@@ -200,14 +280,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
     const cleanupShown = window.electronAPI?.onWindowShown?.(() => {
       refreshExistingClonedRepos();
-      setIsRevealed(false);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setIsRevealed(true);
-        });
-      });
+      setIsRevealed(true);
       inputRef.current?.focus();
-      inputRef.current?.select();
     });
 
     const cleanupFocusInput = window.electronAPI?.onFocusInput?.(() => {
@@ -484,6 +558,18 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         return false;
       });
       return [...dynamicSnippets, ...customSnippets];
+    }
+
+    // Special DonkeyTools commands prefix: "/" (e.g. /kapatko, /picker, /color)
+    // Commands are ONLY shown when query starts with a slash and DonkeyTools is enabled
+    if (trimmed.startsWith('/') && donkeyToolsEnabled) {
+      if (isColorMasterActive) {
+        const dtCommands = getDonkeyToolsCommands(trimmed);
+        if (dtCommands.length > 0) {
+          return dtCommands;
+        }
+      }
+      return [];
     }
 
     // Prefix "git:": searches exclusively in git repositories
@@ -763,6 +849,15 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       list.push(emailItem);
     }
 
+    // 0c. ColorMaster regex color engine (priority -1.2, active when ColorMaster is enabled)
+    if (isColorMasterActive) {
+      const parsedColor = parseColorQuery(trimmed);
+      if (parsedColor) {
+        const colorItem = createColorLauncherItem(parsedColor, colorMasterConfig?.defaultFormat);
+        list.push(colorItem);
+      }
+    }
+
     // 1. Calculator engine (priority -1)
     const calcItem = evaluateExpression(trimmed);
     if (calcItem) {
@@ -904,6 +999,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   // Smooth close helper - fades out in CSS before hiding native window
   const handleClose = () => {
     setIsRevealed(false);
+    setIsDonkeyToolsOpen(false);
     setTimeout(() => {
       setParentItem(null);
       setActionsParentItem(null);
@@ -916,6 +1012,31 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   // Execute selected item
   const handleExecute = async (item: LauncherItem) => {
     if (!item) return;
+
+    if (item.action === 'pick-color') {
+      await handlePickColor();
+      return;
+    }
+
+    if (item.id === 'colormaster-detected-color' && item.colorPreview) {
+      const format = colorMasterConfig?.defaultFormat || 'hex';
+      const parsed = parseColorQuery(item.colorPreview);
+      const toCopy = parsed ? formatColorValue(parsed, format) : item.colorPreview;
+      if (window.electronAPI) {
+        try {
+          await window.electronAPI.executeAction({
+            action: 'copy',
+            location: toCopy,
+          });
+        } catch (err) {
+          console.error('Clipboard copy error via electronAPI:', err);
+        }
+      } else {
+        await navigator.clipboard.writeText(toCopy);
+      }
+      handleClose();
+      return;
+    }
 
     if (item.action === 'copy' || item.action === 'paste') {
       const toCopy = item.location || item.name;
@@ -1021,6 +1142,13 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       return;
     }
 
+    if (actionType === 'tune-color') {
+      const colorToTune = effectiveLocation || parent.colorPreview || parent.name || '#6366f1';
+      window.electronAPI?.openTuneColorWindow?.({ initialColor: colorToTune });
+      window.electronAPI?.hideWindow?.();
+      return;
+    }
+
     if (actionType === 'copy') {
       if (window.electronAPI) {
         try {
@@ -1059,6 +1187,28 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       setTimeout(() => {
         handleClose();
       }, 60);
+      return;
+    }
+
+    if (actionType === 'set-primary-color') {
+      applyPrimaryColor(effectiveLocation);
+      if (window.electronAPI?.getConfig && window.electronAPI?.saveConfig) {
+        const cfg = await window.electronAPI.getConfig();
+        await window.electronAPI.saveConfig({ ...cfg, primaryColor: effectiveLocation });
+      }
+      exitActions();
+      handleClose();
+      return;
+    }
+
+    if (actionType === 'set-actions-color') {
+      applyActionsColor(effectiveLocation);
+      if (window.electronAPI?.getConfig && window.electronAPI?.saveConfig) {
+        const cfg = await window.electronAPI.getConfig();
+        await window.electronAPI.saveConfig({ ...cfg, actionsColor: effectiveLocation });
+      }
+      exitActions();
+      handleClose();
       return;
     }
 
@@ -1179,7 +1329,9 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       handleExecute(currentItem);
     } else if (e.key === 'Escape') {
       e.preventDefault();
-      if (parentItem) {
+      if (isDonkeyToolsOpen) {
+        setIsDonkeyToolsOpen(false);
+      } else if (parentItem) {
         exitSubitems();
       } else {
         handleClose();
@@ -1352,14 +1504,14 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
   return (
     <div
-      className={`w-full flex flex-col bg-[#1c1d24] border border-white/10 rounded-2xl shadow-2xl overflow-hidden text-gray-100 spotlight-card ${
+      className={`w-full flex flex-col bg-[#1c1d24] border border-white/10 rounded-2xl shadow-2xl overflow-visible text-gray-100 spotlight-card ${
         isRevealed ? 'revealed' : ''
       }`}
     >
       {/* Top Search Input Bar */}
       <div
-        className={`flex items-center px-4 py-3.5 gap-3 bg-white/[0.02] ${
-          results.length > 0 || parentItem || actionsParentItem ? 'border-b border-white/10' : ''
+        className={`flex items-center px-4 py-3.5 gap-3 bg-white/[0.02] rounded-t-2xl ${
+          results.length > 0 || parentItem || actionsParentItem ? 'border-b border-white/10' : 'rounded-b-2xl'
         }`}
       >
         <span
@@ -1434,6 +1586,48 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         ) : null}
 
         <div className="h-5 w-[1px] bg-white/15 mx-0.5 shrink-0 self-center" />
+
+        {/* DonkeyTools Quick Tools Button & Subextensions Flyout */}
+        {showDonkeyToolsIcon && (
+          <div className="relative shrink-0 self-center" ref={donkeyToolsRef}>
+            <button
+              type="button"
+              onClick={() => setIsDonkeyToolsOpen((prev) => !prev)}
+              className={`relative w-8 h-8 rounded-lg transition-colors flex items-center justify-center cursor-pointer shrink-0 ${
+                isDonkeyToolsOpen
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-sm'
+                  : 'text-gray-400 hover:text-white hover:bg-white/10'
+              }`}
+              title="DonkeyTools – Rychlé nástroje"
+            >
+              <span className="material-symbols-outlined text-[20px] leading-none select-none">
+                construction
+              </span>
+            </button>
+
+            {/* Subextensions vertical circle buttons list */}
+            {isDonkeyToolsOpen && (
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 flex flex-col items-center gap-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                {/* ColorMaster Subextension - Eyedropper */}
+                {isColorMasterActive && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDonkeyToolsOpen(false);
+                      handlePickColor();
+                    }}
+                    className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all shadow-xl bg-[#1c1d28] hover:bg-rose-500/25 border border-white/15 hover:border-rose-400/50 text-gray-300 hover:text-rose-200 hover:scale-105 active:scale-95"
+                    title="ColorMaster – Kapátko (nabrat barvu z obrazovky)"
+                  >
+                    <span className="material-symbols-outlined text-[19px] leading-none select-none">
+                      colorize
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <button
           type="button"
@@ -1559,6 +1753,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           >
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-base text-purple-400">arrow_back</span>
+              {actionsParentItem.colorPreview && (
+                <div
+                  className="w-4 h-4 rounded border border-white/20 shadow-inner flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: actionsParentItem.colorPreview }}
+                />
+              )}
               <span>
                 {hasItemActions(actionsParentItem) && hasItemInfo(actionsParentItem)
                   ? 'Akce a informace:'
@@ -1577,7 +1777,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           {/* Unified Actions & Info Scrollable View */}
           <div
             ref={listRef}
-            className="max-h-[430px] overflow-y-auto p-2 focus:outline-none space-y-2"
+            className="max-h-[385px] overflow-y-auto p-2 focus:outline-none space-y-2"
           >
             {/* 1. Compact Info Section (BEFORE actions) */}
             {hasItemInfo(actionsParentItem) && (() => {
@@ -1803,7 +2003,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
             <div
               ref={listRef}
-              className="max-h-[430px] overflow-y-auto divide-y divide-white/[0.04] p-1.5 focus:outline-none"
+              className="max-h-[400px] overflow-y-auto divide-y divide-white/[0.04] p-1.5 focus:outline-none"
             >
               {results.map((item, idx) => {
                 const isSelected = idx === selectedIndex;
@@ -1838,8 +2038,14 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                     <div className="flex items-center gap-3 shrink-0">
                       <div className="relative flex-shrink-0">
                         <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
-                          <MaterialIcon
-                            icon={item.icon?.trim() ? item.icon : parentItem?.icon}
+                          {item.colorPreview ? (
+                            <div
+                              className="w-7 h-7 rounded-lg border border-white/20 shadow-inner flex items-center justify-center shrink-0"
+                              style={{ backgroundColor: item.colorPreview }}
+                            />
+                          ) : (
+                            <MaterialIcon
+                              icon={item.icon?.trim() ? item.icon : parentItem?.icon}
                             image={item.image?.trim() ? item.image : parentItem?.image}
                             location={item.location || parentItem?.location}
                             colorClass={
@@ -1868,6 +2074,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                             }
                             className="w-7 h-7"
                           />
+                        )}
                         </div>
                         {hasOptions && (
                           <div

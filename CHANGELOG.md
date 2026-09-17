@@ -4,6 +4,19 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.17] - 17. 9. 2026
+### Rozšíření DonkeyTools, ColorMaster se systémovým kapátkem, okno doladění barvy a rychlé nástroje ve Spotlightu
+- **Nové rozšíření DonkeyTools**: Přidána sada integrovaných pomocných nástrojů DonkeyTools s vínovým motivem a možností centrálního zapnutí/vypnutí v nastavení rozšíření.
+- **Rychlé nástroje DonkeyTools ve Spotlightu**: Před tlačítkem aktualizace ve Spotlightu se při aktivním DonkeyTools zobrazuje ikona nástrojů, která po kliknutí vysune svislou nabídku zapnutých subextensions v kolečkách (včetně ikony kapátka).
+- **ColorMaster (správa a převod barev)**: První nástroj ze sady DonkeyTools pro práci s barvami. Umožňuje přímé zadávání barev v různých formátech (#HEX, rgb, rgba, hsl), okamžitý náhled barvy v pruhu Spotlightu a nabídku akcí (Shift+Enter) pro zkopírování v požadovaném formátu (včetně akce pro RGBA) nebo nastavení jako barvy motivu aplikace.
+- **Systémové kapátko (EyeDropper)**: Spolehlivé nabrání barvy odkudkoliv z obrazovky s nativním kurzorem kapátka a zvětšovací lupou přes globální zkratku, nabídku rychlých nástrojů ve Spotlightu, příkazy `/kapatko`, `/picker` i přímo z nastavení barev motivu aplikace. Po nasátí barvy se automaticky otevře nabídka akcí barvy ve Spotlightu a hodnota se zkopíruje do schránky.
+- **Okno pro doladění barvy**: Nová akce „Doladit barvu...“ v nabídce akcí otevře samostatné okno v hlavním panelu Windows (taskbar) s posuvníky složek RGB, průhlednosti a odstínu. Po stisku tlačítka Uložit se aplikace vrátí rovnou do nabídky akcí k upravené barvě.
+- **Interaktivní nahrávání zkratky kapátka**: Nastavení zkratky pro kapátko v DonkeyTools přebírá plnou funkcionalitu nahrávání jako launcher, včetně ochrany proti kolizím se zkratkou launcheru i rezervovanými klávesami s automatickým pozastavením zkratek při nahrávání.
+- **Lomítkové příkazy (/)**: Podpora rychlých příkazů začínajících znakem `/` ve vyhledávacím poli Spotlightu s našeptávačem dostupných akcí (`/kapatko`, `/color`, `/picker`, `/barva`).
+- **Optimalizace rozvržení detailu akcí**: Výška seznamu akcí byla přizpůsobena tak, aby se spodní okraj karty Spotlightu nikdy neořezával o hranice okna.
+- **Širší obdélníkový Splash Screen**: Splash okno bylo rozšířeno na obdélníkový formát (380 × 230 px) pro vyváženější a modernější vizuální dojem při startu.
+- **Dynamická nápověda podle aktivních rozšíření**: Seznam klávesových zkratek i karet chytrých funkcí v nápovědě se automaticky přizpůsobuje zapnutým či vypnutým rozšířením a jejich podnástrojům (DonkeyTools, ColorMaster).
+
 ## [1.1.16] - 17. 9. 2026
 ### Přejmenování na Taskmanager, plynulejší zobrazení položek a dialog správy aplikace
 - **Přejmenování MLog na Taskmanager**: Rozšíření bylo v celé aplikaci přejmenováno na obecný Taskmanager se všemi popisy, ukázkovými doménami (např. company.com) i nápovědou.

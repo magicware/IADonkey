@@ -10,6 +10,7 @@ import { SEARCH_ENGINES } from '../constants/searchEngines';
 import { getDynamicSnippets } from '../utils/snippets';
 import { MaterialIcon } from './MaterialIcon';
 import { IconPickerInput } from './IconPickerInput';
+import { pickScreenColor, parseColorQuery, formatColorValue } from '../utils/colorMaster';
 
 interface SettingsModalProps {
   config: AppConfig;
@@ -91,6 +92,23 @@ const ColorPickerSection: React.FC<ColorPickerSectionProps> = ({
               style={{ backgroundColor: preset.hex }}
             />
           ))}
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const picked = await pickScreenColor();
+                if (picked) {
+                  onColorChange(picked);
+                }
+              } catch (err) {
+                console.error('Eyedropper error in ColorPickerSection:', err);
+              }
+            }}
+            title="Nabrat barvu z obrazovky (Kapátko)"
+            className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-gray-300 hover:text-white transition flex items-center justify-center cursor-pointer ml-1"
+          >
+            <span className="material-symbols-outlined text-sm">colorize</span>
+          </button>
         </div>
       </div>
     </div>
@@ -144,7 +162,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   updateStatusMessage,
   updateInfo,
 }) => {
-  const [activeTab, setActiveTab] = useState<'sources' | 'extensions' | 'magicgate' | 'mlog' | 'github' | 'vscode' | 'android-studio' | 'snippets' | 'general' | 'updates' | 'help'>('sources');
+  const [activeTab, setActiveTab] = useState<'sources' | 'extensions' | 'magicgate' | 'mlog' | 'github' | 'vscode' | 'android-studio' | 'donkey-tools' | 'snippets' | 'general' | 'updates' | 'help'>('sources');
   const [formData, setFormData] = useState<AppConfig>(config);
   const [editingSource, setEditingSource] = useState<DataSource | null>(null);
   const [isAddingSource, setIsAddingSource] = useState<'file' | 'api' | 'static' | null>(null);
@@ -155,6 +173,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isRecordingHotkey, setIsRecordingHotkey] = useState(false);
   const [recordedModifiers, setRecordedModifiers] = useState<string[]>([]);
   const [hotkeyError, setHotkeyError] = useState<string | null>(null);
+  const [isRecordingColorMasterHotkey, setIsRecordingColorMasterHotkey] = useState(false);
+  const [colorMasterRecordedModifiers, setColorMasterRecordedModifiers] = useState<string[]>([]);
+  const [colorMasterHotkeyError, setColorMasterHotkeyError] = useState<string | null>(null);
   const [isSharedDropdownOpen, setIsSharedDropdownOpen] = useState(false);
   const [hoveredEyeId, setHoveredEyeId] = useState<string | null>(null);
   const [copiedSourceId, setCopiedSourceId] = useState<string | null>(null);
@@ -174,6 +195,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const pressedKeysRef = useRef<Set<string>>(new Set());
   const maxComboRef = useRef<string[]>([]);
   const originalHotkeyRef = useRef<string>(config.hotkey || 'Ctrl+Alt+Space');
+  const colorMasterPressedKeysRef = useRef<Set<string>>(new Set());
+  const colorMasterMaxComboRef = useRef<string[]>([]);
+  const colorMasterOriginalHotkeyRef = useRef<string>(config.donkeyTools?.colorMaster?.hotkey || '');
   const contentRef = useRef<HTMLDivElement>(null);
   const importSnippetsFileRef = useRef<HTMLInputElement>(null);
   const [snippetFeedback, setSnippetFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -192,6 +216,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (formData.extensions?.github) count++;
     if (formData.extensions?.vscode) count++;
     if (formData.extensions?.androidStudio) count++;
+    if (formData.extensions?.donkeyTools) count++;
     return count;
   }, [formData.extensions]);
 
@@ -994,6 +1019,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         return;
       }
 
+      // Check collision with ColorMaster hotkey
+      const cmHotkey = formData.donkeyTools?.colorMaster?.hotkey;
+      if (cmHotkey && finalHotkey.toLowerCase() === cmHotkey.toLowerCase()) {
+        const fallback = originalHotkeyRef.current || 'Ctrl+Alt+Space';
+        setFormData((prev) => ({ ...prev, hotkey: fallback }));
+        setHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou pro kapátko ColorMaster.`);
+        setIsRecordingHotkey(false);
+        pressedKeysRef.current.clear();
+        maxComboRef.current = [];
+        setRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
       setHotkeyError(null);
       const updated = { ...formData, hotkey: finalHotkey };
       setFormData(updated);
@@ -1002,6 +1042,220 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       pressedKeysRef.current.clear();
       maxComboRef.current = [];
       setRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+  };
+
+  const handleColorMasterHotkeyFocus = () => {
+    setIsRecordingColorMasterHotkey(true);
+    setColorMasterHotkeyError(null);
+    colorMasterOriginalHotkeyRef.current = formData.donkeyTools?.colorMaster?.hotkey || '';
+    colorMasterPressedKeysRef.current.clear();
+    colorMasterMaxComboRef.current = [];
+    setColorMasterRecordedModifiers([]);
+    window.electronAPI?.pauseGlobalHotkey?.();
+  };
+
+  const handleColorMasterHotkeyBlur = () => {
+    setIsRecordingColorMasterHotkey(false);
+    colorMasterPressedKeysRef.current.clear();
+    colorMasterMaxComboRef.current = [];
+    setColorMasterRecordedModifiers([]);
+    window.electronAPI?.resumeGlobalHotkey?.();
+  };
+
+  const handleColorMasterHotkeyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Escape cancels recording and restores original hotkey
+    if (e.key === 'Escape') {
+      const fallback = colorMasterOriginalHotkeyRef.current || '';
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          colorMaster: {
+            enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
+            hotkey: fallback,
+            defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
+          },
+        },
+      };
+      setFormData(updated);
+      setColorMasterHotkeyError(null);
+      setIsRecordingColorMasterHotkey(false);
+      colorMasterPressedKeysRef.current.clear();
+      colorMasterMaxComboRef.current = [];
+      setColorMasterRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+
+    // Backspace when nothing held resets / clears the hotkey
+    if (e.key === 'Backspace' && colorMasterPressedKeysRef.current.size === 0) {
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          colorMaster: {
+            enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
+            hotkey: '',
+            defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
+          },
+        },
+      };
+      setFormData(updated);
+      handleSave(updated);
+      setColorMasterHotkeyError(null);
+      setIsRecordingColorMasterHotkey(false);
+      colorMasterPressedKeysRef.current.clear();
+      colorMasterMaxComboRef.current = [];
+      setColorMasterRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+
+    // Normalize key
+    let keyName = e.key;
+    if (keyName === 'Control') keyName = 'Ctrl';
+    else if (keyName === 'Alt') keyName = 'Alt';
+    else if (keyName === 'Shift') keyName = 'Shift';
+    else if (keyName === 'Meta') keyName = 'Super';
+    else if (keyName === ' ') keyName = 'Space';
+    else if (keyName === 'ArrowUp') keyName = 'Up';
+    else if (keyName === 'ArrowDown') keyName = 'Down';
+    else if (keyName === 'ArrowLeft') keyName = 'Left';
+    else if (keyName === 'ArrowRight') keyName = 'Right';
+    else if (/^[a-z]$/i.test(keyName)) keyName = keyName.toUpperCase();
+
+    colorMasterPressedKeysRef.current.add(keyName);
+
+    // Sort order: Modifiers first, then normal keys
+    const order = ['Ctrl', 'Alt', 'Shift', 'Super'];
+    const currentKeys = Array.from(colorMasterPressedKeysRef.current);
+    currentKeys.sort((a, b) => {
+      const idxA = order.indexOf(a);
+      const idxB = order.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    colorMasterMaxComboRef.current = currentKeys;
+    setColorMasterRecordedModifiers(currentKeys);
+    setColorMasterHotkeyError(null);
+  };
+
+  const handleColorMasterHotkeyKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const combo = colorMasterMaxComboRef.current;
+
+    // If only 1 key was pressed and released: reset to previous hotkey + display red error
+    if (combo.length === 1) {
+      const fallback = colorMasterOriginalHotkeyRef.current || '';
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          colorMaster: {
+            enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
+            hotkey: fallback,
+            defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
+          },
+        },
+      };
+      setFormData(updated);
+      setColorMasterHotkeyError('Je potřeba minimálně dvojkombinace kláves');
+      setIsRecordingColorMasterHotkey(false);
+      colorMasterPressedKeysRef.current.clear();
+      colorMasterMaxComboRef.current = [];
+      setColorMasterRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+
+    // If at least 2 keys were pressed: check reserved hotkey collision and collision with launcher hotkey
+    if (combo.length >= 2) {
+      const finalHotkey = combo.join('+');
+      const conflictReason = getReservedHotkeyCollision(combo);
+
+      if (conflictReason) {
+        const fallback = colorMasterOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            colorMaster: {
+              enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
+              hotkey: fallback,
+              defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
+            },
+          },
+        };
+        setFormData(updated);
+        setColorMasterHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – ${conflictReason}. Byla zachována původní zkratka.`);
+        setIsRecordingColorMasterHotkey(false);
+        colorMasterPressedKeysRef.current.clear();
+        colorMasterMaxComboRef.current = [];
+        setColorMasterRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      // Check collision with main launcher hotkey
+      const launcherHotkey = formData.hotkey || 'Ctrl+Alt+Space';
+      if (finalHotkey.toLowerCase() === launcherHotkey.toLowerCase()) {
+        const fallback = colorMasterOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            colorMaster: {
+              enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
+              hotkey: fallback,
+              defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
+            },
+          },
+        };
+        setFormData(updated);
+        setColorMasterHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje s globální zkratkou pro vyvolání launcheru.`);
+        setIsRecordingColorMasterHotkey(false);
+        colorMasterPressedKeysRef.current.clear();
+        colorMasterMaxComboRef.current = [];
+        setColorMasterRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      setColorMasterHotkeyError(null);
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          colorMaster: {
+            enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
+            hotkey: finalHotkey,
+            defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
+          },
+        },
+      };
+      setFormData(updated);
+      handleSave(updated);
+      setIsRecordingColorMasterHotkey(false);
+      colorMasterPressedKeysRef.current.clear();
+      colorMasterMaxComboRef.current = [];
+      setColorMasterRecordedModifiers([]);
       (e.target as HTMLInputElement).blur();
       window.electronAPI?.resumeGlobalHotkey?.();
       return;
@@ -2326,6 +2580,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
           )}
 
+          {/* DonkeyTools tab - visible only when extension is enabled */}
+          {formData.extensions?.donkeyTools && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('donkey-tools')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer pl-6 ${
+                activeTab === 'donkey-tools'
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-sm'
+                  : 'text-gray-400 hover:text-rose-200 hover:bg-white/[0.04] border border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-xl text-rose-400">construction</span>
+                <span>DonkeyTools</span>
+              </div>
+            </button>
+          )}
+
           {/* Snippets tab */}
           <button
             type="button"
@@ -2405,6 +2677,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeTab === 'github' && 'GitHub repozitáře'}
               {activeTab === 'vscode' && 'Visual Studio Code (VS Code)'}
               {activeTab === 'android-studio' && 'Android Studio'}
+              {activeTab === 'donkey-tools' && 'DonkeyTools – Systémové nástroje a utility'}
               {activeTab === 'snippets' && 'Uživatelské snippety'}
               {activeTab === 'general' && 'Obecné nastavení aplikace'}
               {activeTab === 'updates' && 'Aktualizace aplikace'}
@@ -2418,6 +2691,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeTab === 'github' && 'Přístup k osobním i firemním repozitářům a rychlému klonování'}
               {activeTab === 'vscode' && 'Konfigurace cesty k editoru VS Code pro otevírání repozitářů a projektů'}
               {activeTab === 'android-studio' && 'Konfigurace cesty k Android Studiu pro otevírání mobilních a Kotlin/Java projektů'}
+              {activeTab === 'donkey-tools' && 'Správa vestavěných utilit, modulu ColorMaster a klávesových zkratek'}
               {activeTab === 'snippets' && 'Předem definované textové zkratky a osobní údaje pro rychlé vložení'}
               {activeTab === 'general' && 'Globální klávesová zkratka, barva motivu a vyhledávání programů'}
               {activeTab === 'updates' && 'Kontrola nových verzí a historie změn IADonkey'}
@@ -3254,6 +3528,80 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         className="px-3 py-1.5 rounded-lg text-xs font-medium text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/20 transition flex items-center gap-1 cursor-pointer"
                       >
                         <span>Nastavení Android Studio</span>
+                        <span className="material-symbols-outlined text-sm">navigate_next</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 6. DonkeyTools */}
+                <div className="p-5 bg-white/[0.03] border border-white/10 rounded-2xl flex flex-col justify-between gap-4 transition hover:border-white/20">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0 text-rose-400">
+                        <span className="material-symbols-outlined text-2xl">construction</span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-bold text-white tracking-wide">DonkeyTools</h3>
+                          {formData.extensions?.donkeyTools && formData.donkeyTools?.colorMaster?.enabled !== false ? (
+                            <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded font-medium">
+                              ColorMaster aktivní
+                            </span>
+                          ) : (
+                            <span className="text-[10px] bg-white/5 text-gray-400 border border-white/10 px-1.5 py-0.5 rounded font-medium">
+                              {formData.extensions?.donkeyTools ? 'Nástroje vypnuty' : 'Vypnuto'}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                          Sada vestavěných systémových nástrojů a utilit – ColorMaster pro rozpoznávání barev (#HEX, RGB, HSL), převody formátů, systémové kapátko s lupou a budoucí nástroje vyvolatelné zkratkou nebo lomítkem (/).
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={formData.extensions?.donkeyTools ?? false}
+                          onChange={(e) => {
+                            const updated = {
+                              ...formData,
+                              extensions: {
+                                ...formData.extensions,
+                                magicgate: formData.extensions?.magicgate ?? false,
+                                mlog: formData.extensions?.mlog ?? false,
+                                github: formData.extensions?.github ?? false,
+                                vscode: formData.extensions?.vscode ?? false,
+                                androidStudio: formData.extensions?.androidStudio ?? false,
+                                donkeyTools: e.target.checked,
+                              },
+                              donkeyTools: formData.donkeyTools || {
+                                colorMaster: {
+                                  enabled: true,
+                                  hotkey: '',
+                                  defaultFormat: 'hex',
+                                },
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                        />
+                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-600" />
+                      </label>
+                    </div>
+                  </div>
+                  {formData.extensions?.donkeyTools && (
+                    <div className="pt-3 border-t border-white/5 flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Záložka je dostupná v levém menu</span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('donkey-tools')}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Nastavení DonkeyTools</span>
                         <span className="material-symbols-outlined text-sm">navigate_next</span>
                       </button>
                     </div>
@@ -4149,6 +4497,215 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
+          {/* TAB: DonkeyTools */}
+          {activeTab === 'donkey-tools' && (
+            <div className="space-y-6 animate-fade-in max-w-4xl">
+              <div>
+                <h3 className="font-semibold text-white text-base flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg text-rose-400">construction</span>
+                  DonkeyTools – Systémové nástroje a utility
+                </h3>
+                <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
+                  Konfigurace vestavěných produktivních nástrojů pro práci s barvami, měřením a systémovými akcemi. Všechny nástroje lze rychle vyvolat ve vyhledávači pomocí prefixu <code className="bg-white/10 px-1.5 py-0.5 rounded text-rose-300 font-mono">/</code> (např. <code className="bg-white/10 px-1 rounded font-mono">/kapatko</code>).
+                </p>
+              </div>
+
+              {/* SECTION 1: ColorMaster */}
+              <div className="p-5 bg-white/[0.03] border border-white/10 rounded-2xl space-y-4 transition hover:border-white/20">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0 text-rose-400">
+                      <span className="material-symbols-outlined text-2xl">palette</span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-white tracking-wide">ColorMaster</h4>
+                        <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded font-medium">
+                          Nástroj na barvy
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                        Chytré rozpoznávání barevných kódů (#HEX, RGB, HSL) přímo ve Spotlight vyhledávači s okamžitým náhledem barvy a převodem formátů. Obsahuje systémové kapátko s lupou pro nabrání barvy z kteréhokoliv pixelu obrazovky.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={formData.donkeyTools?.colorMaster?.enabled ?? true}
+                        onChange={(e) => {
+                          const updated = {
+                            ...formData,
+                            donkeyTools: {
+                              ...formData.donkeyTools,
+                              colorMaster: {
+                                enabled: e.target.checked,
+                                hotkey: formData.donkeyTools?.colorMaster?.hotkey || '',
+                                defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
+                              },
+                            },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                      />
+                      <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-600" />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Sub-settings when ColorMaster is enabled */}
+                {(formData.donkeyTools?.colorMaster?.enabled ?? true) && (
+                  <div className="pt-4 border-t border-white/5 space-y-4">
+                    {/* Hotkey configuration & Eyedropper test */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-gray-300">
+                        Globální klávesová zkratka pro kapátko (volitelné)
+                      </label>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              readOnly
+                              value={
+                                isRecordingColorMasterHotkey
+                                  ? (colorMasterRecordedModifiers.length > 0
+                                      ? colorMasterRecordedModifiers.join(' + ')
+                                      : 'Stiskněte klávesy...')
+                                  : formData.donkeyTools?.colorMaster?.hotkey || ''
+                              }
+                              onFocus={handleColorMasterHotkeyFocus}
+                              onBlur={handleColorMasterHotkeyBlur}
+                              onKeyDown={handleColorMasterHotkeyKeyDown}
+                              onKeyUp={handleColorMasterHotkeyKeyUp}
+                              className={`w-64 border rounded-xl px-3 py-2.5 text-sm font-mono cursor-pointer transition outline-none select-none text-center font-semibold ${
+                                colorMasterHotkeyError
+                                  ? 'bg-rose-950/30 border-rose-500 text-rose-300 ring-2 ring-rose-500/30'
+                                  : isRecordingColorMasterHotkey
+                                  ? 'bg-rose-950/60 border-rose-400 ring-2 ring-rose-500/50 text-rose-200'
+                                  : 'bg-black/30 border-white/10 text-white hover:border-white/20'
+                              }`}
+                              placeholder="Klikněte pro nastavení zkratky"
+                            />
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const picked = await pickScreenColor();
+                                if (picked) {
+                                  const parsed = parseColorQuery(picked);
+                                  const fmt = formData.donkeyTools?.colorMaster?.defaultFormat || 'hex';
+                                  const formatted = parsed ? formatColorValue(parsed, fmt) : picked;
+                                  if (window.electronAPI) {
+                                    await window.electronAPI.executeAction({
+                                      action: 'copy',
+                                      location: formatted,
+                                    });
+                                  } else {
+                                    await navigator.clipboard.writeText(formatted);
+                                  }
+                                }
+                              } catch (err) {
+                                console.error('Test eyedropper error:', err);
+                              }
+                            }}
+                            className="px-3.5 py-2.5 rounded-xl text-xs font-medium text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                            title="Otevře systémové kapátko s lupou pro vyzkoušení"
+                          >
+                            <span className="material-symbols-outlined text-base">colorize</span>
+                            <span>Vyzkoušet kapátko</span>
+                          </button>
+                        </div>
+
+                        {colorMasterHotkeyError && (
+                          <div className="flex items-center gap-1.5 text-xs text-rose-400 font-semibold animate-fade-in">
+                            <span className="material-symbols-outlined text-sm">error</span>
+                            <span>{colorMasterHotkeyError}</span>
+                          </div>
+                        )}
+
+                        <span className="text-[12px] text-gray-400">
+                          {isRecordingColorMasterHotkey ? (
+                            <span className="text-rose-400 font-medium animate-pulse">
+                              Stiskněte klávesovou kombinaci (např. Shift+Alt+C). Esc zruší, Backspace zkratku odstraní.
+                            </span>
+                          ) : (
+                            <span>Klikněte do pole a stiskněte kombinaci kláves (např. Shift+Alt+C). Zkratka nesmí kolidovat se zkratkou launcheru ani s rezervovanými klávesami. Backspace zkratku vymaže.</span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Default format selector */}
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                      <label className="block text-xs font-semibold text-gray-300">
+                        Výchozí formát pro zkopírování do schránky
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        {[
+                          { id: 'hex', label: 'HEX (#RRGGBB)', example: '#2563EB' },
+                          { id: 'hex-no-hash', label: 'HEX bez #', example: '2563EB' },
+                          { id: 'rgb', label: 'RGB', example: 'rgb(37, 99, 235)' },
+                          { id: 'rgba', label: 'RGBA', example: 'rgba(37, 99, 235, 1)' },
+                          { id: 'hsl', label: 'HSL', example: 'hsl(221, 83%, 53%)' },
+                        ].map((fmt) => {
+                          const isSelected = (formData.donkeyTools?.colorMaster?.defaultFormat || 'hex') === fmt.id;
+                          return (
+                            <button
+                              key={fmt.id}
+                              type="button"
+                              onClick={() => {
+                                const updated = {
+                                  ...formData,
+                                  donkeyTools: {
+                                    ...formData.donkeyTools,
+                                    colorMaster: {
+                                      enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
+                                      hotkey: formData.donkeyTools?.colorMaster?.hotkey || '',
+                                      defaultFormat: fmt.id as any,
+                                    },
+                                  },
+                                };
+                                setFormData(updated);
+                                handleSave(updated);
+                              }}
+                              className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between gap-1 ${
+                                isSelected
+                                  ? 'bg-rose-500/15 border-rose-500/40 text-white shadow-sm'
+                                  : 'bg-white/[0.02] border-white/5 text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
+                              }`}
+                            >
+                              <span className="text-xs font-semibold">{fmt.label}</span>
+                              <span className="font-mono text-[10px] text-gray-400 truncate">{fmt.example}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Usage examples banner */}
+                    <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1 text-[11px] text-gray-400">
+                      <span className="font-semibold text-rose-300 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-sm">info</span>
+                        Jak ColorMaster používat ve vyhledávači
+                      </span>
+                      <ul className="list-disc list-inside space-y-0.5 text-gray-400 pl-1">
+                        <li>Zadejte <code className="bg-white/10 px-1 rounded text-white font-mono">/kapatko</code> pro spuštění kapátka přímo z launcheru.</li>
+                        <li>Zadejte kód barvy (např. <code className="bg-white/10 px-1 rounded text-white font-mono">#ff8800</code>, <code className="bg-white/10 px-1 rounded text-white font-mono">rgb(255, 128, 0)</code> nebo <code className="bg-white/10 px-1 rounded text-white font-mono">hsl(32, 100%, 50%)</code>) – vyhledávač okamžitě zobrazí živý barevný vzorník a převody formátů.</li>
+                        <li>Stiskem <kbd className="bg-white/10 px-1 rounded font-mono text-[10px]">Shift+Enter</kbd> na barvě otevřete akce: kopírování jednotlivých formátů nebo přímé nastavení barvy jako motivu IADonkey!</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* TAB: Snippets */}
           {activeTab === 'snippets' && (
             <div className="space-y-8 animate-fade-in max-w-4xl">
@@ -4890,6 +5447,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <kbd className="px-2.5 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm whitespace-nowrap">:klicove_slovo</kbd>
                   </div>
 
+                  {formData.extensions?.donkeyTools && formData.donkeyTools?.colorMaster?.enabled !== false && !!formData.donkeyTools?.colorMaster?.hotkey?.trim() && (
+                    <div className="py-3 flex items-center justify-between">
+                      <div>
+                        <span className="font-medium text-white">Vyvolání kapátka (ColorMaster)</span>
+                        <p className="text-gray-400 text-xs mt-0.5">Spustí systémové kapátko s lupou a nabere barvu do schránky odkudkoliv z Windows.</p>
+                      </div>
+                      <kbd className="px-2.5 py-1 bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded-lg font-mono font-semibold shadow-sm">
+                        {formData.donkeyTools.colorMaster.hotkey}
+                      </kbd>
+                    </div>
+                  )}
+
                   <div className="py-3 flex items-center justify-between">
                     <div>
                       <span className="font-medium text-white">Globální vyvolání launcheru</span>
@@ -5006,6 +5575,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </div>
                       <p className="text-gray-400 text-xs leading-relaxed">
                         Aplikace se nabízí, pokud repozitář z GitHubu používá jazyk Kotlin nebo Java. V nabídce akcí (<kbd className="bg-white/10 px-1 rounded font-mono text-[11px] whitespace-nowrap">Shift+Enter</kbd>) nebo v okně klonování jej můžete okamžitě otevřít přímo v Android Studiu.
+                      </p>
+                    </div>
+                  )}
+
+                  {formData.extensions?.donkeyTools && formData.donkeyTools?.colorMaster?.enabled !== false && (
+                    <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                      <div className="flex items-center gap-2 text-rose-400 font-semibold">
+                        <span className="material-symbols-outlined text-base">palette</span>
+                        ColorMaster (DonkeyTools)
+                      </div>
+                      <p className="text-gray-400 text-xs leading-relaxed">
+                        Napište kód barvy přímo do vyhledávání (např. <code className="bg-white/10 px-1 rounded">#ff4400</code>, <code className="bg-white/10 px-1 rounded">rgb(255, 68, 0)</code> nebo <code className="bg-white/10 px-1 rounded">hsl(16, 100%, 50%)</code>) pro okamžitý náhled barvy. V nabídce akcí (<kbd className="bg-white/10 px-1 rounded font-mono text-[11px] whitespace-nowrap">Shift+Enter</kbd>) ji můžete zkopírovat v libovolném formátu nebo nastavit jako barvu motivu. Systémové kapátko spustíte zkratkou <kbd className="bg-white/10 px-1 rounded font-mono text-[11px] whitespace-nowrap">{formData.donkeyTools?.colorMaster?.hotkey || 'Shift+Alt+C'}</kbd> nebo příkazem <code className="bg-white/10 px-1 rounded">/kapatko</code>.
+                      </p>
+                    </div>
+                  )}
+
+                  {formData.extensions?.donkeyTools && (
+                    <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                      <div className="flex items-center gap-2 text-rose-300 font-semibold">
+                        <span className="material-symbols-outlined text-base">terminal</span>
+                        Příkazy DonkeyTools
+                      </div>
+                      <p className="text-gray-400 text-xs leading-relaxed">
+                        Zadejte do vyhledávače lomítko <code className="bg-white/10 px-1 rounded">/</code> pro zobrazení rychlých příkazů sady DonkeyTools (např. <code className="bg-white/10 px-1 rounded">/kapatko</code>, <code className="bg-white/10 px-1 rounded">/picker</code> pro aktivaci kapátka výběru barvy z obrazovky).
                       </p>
                     </div>
                   )}

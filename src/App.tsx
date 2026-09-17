@@ -9,6 +9,7 @@ import { GitCloneModal } from './components/GitCloneModal';
 import { InstallerWizard } from './components/InstallerWizard';
 import { UninstallerModal } from './components/UninstallerModal';
 import { SplashScreen } from './components/SplashScreen';
+import { TuneColorModal } from './components/TuneColorModal';
 import { CURRENT_APP_VERSION, getLatestRelease } from './changelog';
 import { applyPrimaryColor, applyActionsColor } from './utils/theme';
 
@@ -27,6 +28,14 @@ const DEFAULT_CONFIG: AppConfig = {
     mlog: false,
     github: false,
     vscode: false,
+    donkeyTools: false,
+  },
+  donkeyTools: {
+    colorMaster: {
+      enabled: true,
+      hotkey: '',
+      defaultFormat: 'hex',
+    },
   },
   updateUrl: 'https://raw.githubusercontent.com/magicware/IADonkey/main/version.json',
   lastDeclinedVersion: null,
@@ -62,6 +71,10 @@ export const App: React.FC = () => {
 
   const [isPowerView] = useState(() => {
     return window.location.hash.startsWith('#power') || window.location.search.includes('window=power');
+  });
+
+  const [isTuneColorView, setIsTuneColorView] = useState(() => {
+    return window.location.hash.startsWith('#tune-color') || window.location.search.includes('window=tune-color');
   });
 
   const [gitCloneParams, setGitCloneParams] = useState(() => {
@@ -113,6 +126,7 @@ export const App: React.FC = () => {
     const handleHash = () => {
       setIsSettingsView(window.location.hash === '#settings' || window.location.search.includes('window=settings'));
       setIsGitCloneView(window.location.hash.startsWith('#git-clone') || window.location.search.includes('window=git-clone'));
+      setIsTuneColorView(window.location.hash.startsWith('#tune-color') || window.location.search.includes('window=tune-color'));
     };
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
@@ -409,6 +423,14 @@ export const App: React.FC = () => {
     );
   }
 
+  // Dedicated Tune Color Window mode (displays in Windows taskbar)
+  if (isTuneColorView) {
+    const rawSearch = window.location.search || (window.location.hash.includes('?') ? window.location.hash.slice(window.location.hash.indexOf('?') + 1) : '');
+    const params = new URLSearchParams(rawSearch);
+    const initialColor = params.get('color') || '#6366f1';
+    return <TuneColorModal initialColor={initialColor} />;
+  }
+
   // Filter items by enabled extensions
   const visibleItems = useMemo(() => {
     return items.filter((item) => {
@@ -443,6 +465,9 @@ export const App: React.FC = () => {
         defaultCloneDir={config?.github?.defaultCloneDir}
         vscodeEnabled={config.extensions?.vscode ?? false}
         androidStudioEnabled={config.extensions?.androidStudio ?? false}
+        donkeyToolsEnabled={config.extensions?.donkeyTools ?? false}
+        colorMasterConfig={config.donkeyTools?.colorMaster}
+        onSaveConfig={handleSaveConfig}
         onOpenSettings={() => {
           if (window.electronAPI?.openSettingsWindow) {
             window.electronAPI.openSettingsWindow();

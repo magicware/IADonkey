@@ -1,7 +1,10 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, dialog, shell, clipboard } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, dialog, shell, clipboard, protocol } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import { AppStore } from './store';
 import { DataSyncManager } from './dataSync';
 import { UpdateChecker } from './updater';
@@ -14,12 +17,35 @@ import { faviconService } from './faviconService';
 import { fetchInstanceSectionRepos, runMultiRepoClone, MagicGateSectionRepo } from './magicGateService';
 import { InstallerService } from './installerService';
 
+// Register file scheme as secure
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'file',
+    privileges: {
+      standard: true,
+      secure: true,
+      bypassCSP: true,
+      allowServiceWorkers: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
+  },
+]);
+
 // Enforce single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();
   process.exit(0);
 }
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[Main] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('[Main] Uncaught Exception:', error);
+});
 
 let store: AppStore;
 let syncManager: DataSyncManager;
@@ -73,7 +99,218 @@ function registerGlobalHotkey(hotkey: string) {
   }
 }
 
+function getColorPickerExePath(): string {
+  const candidates = [
+    path.join(app.getAppPath(), 'electron', 'assets', 'color-picker.exe'),
+    path.join(app.getAppPath(), 'dist-electron', 'assets', 'color-picker.exe'),
+    path.join(process.cwd(), 'electron', 'assets', 'color-picker.exe'),
+    path.join(process.cwd(), 'dist-electron', 'assets', 'color-picker.exe'),
+    path.join(__dirname, 'assets', 'color-picker.exe'),
+    path.join(__dirname, '..', 'electron', 'assets', 'color-picker.exe'),
+    path.join(process.resourcesPath, 'electron', 'assets', 'color-picker.exe'),
+    path.join(process.resourcesPath, 'app.asar.unpacked', 'electron', 'assets', 'color-picker.exe'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) {
+      console.log('[Main] Found color-picker.exe at:', c);
+      return c;
+    }
+  }
+  console.warn('[Main] color-picker.exe not found in candidates, falling back to:', candidates[0]);
+  return candidates[0];
+}
+
+async function pickScreenColorNative(instant = false): Promise<string | null> {
+  const exePath = getColorPickerExePath();
+  if (!fs.existsSync(exePath)) {
+    console.error('[Main] color-picker.exe not found at:', exePath);
+    return null;
+  }
+  console.log('[Main] Launching color-picker.exe:', exePath, instant ? '--instant' : '(loupe mode)');
+
+  // If Spotlight window is visible, hide it temporarily so user can pick what is under it
+  const mainWin = windowManager ? windowManager.getMainWindow() : null;
+  const wasMainVisible = mainWin && !mainWin.isDestroyed() && mainWin.isVisible();
+  if (wasMainVisible) {
+    mainWin.hide();
+    await new Promise((r) => setTimeout(r, 60));
+  }
+
+  return new Promise((resolve) => {
+    try {
+      const args = instant ? ['--instant'] : [];
+      const child = spawn(exePath, args, {
+        windowsHide: false,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+
+      let stdoutData = '';
+      let stderrData = '';
+      child.stdout?.on('data', (data) => {
+        stdoutData += data.toString();
+      });
+      child.stderr?.on('data', (data) => {
+        stderrData += data.toString();
+      });
+
+      const restoreWindows = () => {
+        setTimeout(() => {
+          if (wasMainVisible && windowManager) {
+            windowManager.showSpotlight();
+          } else {
+            const settingsWin = windowManager ? windowManager.getSettingsWindow() : null;
+            if (settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible()) {
+              settingsWin.focus();
+            }
+          }
+        }, 80);
+      };
+
+      child.on('close', (code) => {
+        if (stderrData.trim()) {
+          console.warn('[Main] color-picker.exe stderr:', stderrData.trim());
+        }
+        const trimmed = stdoutData.trim();
+        console.log('[Main] color-picker.exe closed with code:', code, 'stdout:', trimmed);
+        const pickedColor =
+          trimmed.startsWith('#') && (trimmed.length === 7 || trimmed.length === 9)
+            ? trimmed.toUpperCase()
+            : null;
+
+        if (pickedColor) {
+          const currentCfg = store ? store.getConfig() : null;
+          const fmt = currentCfg?.donkeyTools?.colorMaster?.defaultFormat || 'hex';
+          let formatted = pickedColor;
+          const r = parseInt(pickedColor.slice(1, 3), 16);
+          const g = parseInt(pickedColor.slice(3, 5), 16);
+          const b = parseInt(pickedColor.slice(5, 7), 16);
+          if (fmt === 'hex-no-hash') {
+            formatted = pickedColor.replace('#', '');
+          } else if (fmt === 'rgb') {
+            formatted = `rgb(${r}, ${g}, ${b})`;
+          } else if (fmt === 'rgba') {
+            formatted = `rgba(${r}, ${g}, ${b}, 1)`;
+          } else if (fmt === 'hsl') {
+            const rN = r / 255, gN = g / 255, bN = b / 255;
+            const max = Math.max(rN, gN, bN), min = Math.min(rN, gN, bN);
+            let h = 0, s = 0, l = (max + min) / 2;
+            if (max !== min) {
+              const d = max - min;
+              s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+              switch (max) {
+                case rN: h = (gN - bN) / d + (gN < bN ? 6 : 0); break;
+                case gN: h = (bN - rN) / d + 2; break;
+                case bN: h = (rN - gN) / d + 4; break;
+              }
+              h /= 6;
+            }
+            formatted = `hsl(${Math.round(h * 360)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`;
+          }
+          clipboard.writeText(formatted);
+          console.log(`[Main] Picked color ${formatted} copied to clipboard`);
+
+          if (windowManager) {
+            windowManager.showSpotlight();
+            const win = windowManager.getMainWindow();
+            if (win && !win.isDestroyed()) {
+              win.webContents.send('color-picked-global', { color: pickedColor, formatted });
+            }
+          }
+        } else {
+          // Cancelled (Esc or right-click)
+          if (wasMainVisible && windowManager) {
+            windowManager.showSpotlight();
+          } else {
+            const settingsWin = windowManager ? windowManager.getSettingsWindow() : null;
+            if (settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible()) {
+              settingsWin.focus();
+            }
+          }
+        }
+
+        resolve(pickedColor);
+      });
+
+      child.on('error', (err) => {
+        if (wasMainVisible && windowManager) {
+          windowManager.showSpotlight();
+        }
+        console.error('[Main] Failed to execute color-picker.exe:', err);
+        resolve(null);
+      });
+    } catch (err) {
+      if (wasMainVisible && windowManager) {
+        windowManager.showSpotlight();
+      }
+      console.error('[Main] Error launching screen color picker:', err);
+      resolve(null);
+    }
+  });
+}
+
+let currentColorMasterHotkey = '';
+function registerColorMasterHotkey(hotkey?: string) {
+  try {
+    if (currentColorMasterHotkey) {
+      globalShortcut.unregister(currentColorMasterHotkey);
+      currentColorMasterHotkey = '';
+    }
+    const config = store ? store.getConfig() : null;
+    const isEnabled = Boolean(config?.extensions?.donkeyTools && config?.donkeyTools?.colorMaster?.enabled !== false);
+    if (!isEnabled || !hotkey || !hotkey.trim()) {
+      return;
+    }
+    const cleanHotkey = hotkey.trim();
+    const registered = globalShortcut.register(cleanHotkey, async () => {
+      try {
+        console.log('[Main] ColorMaster hotkey triggered, opening screen color picker...');
+        await pickScreenColorNative();
+      } catch (err) {
+        console.error('[Main] Error in ColorMaster hotkey callback:', err);
+      }
+    });
+    if (!registered) {
+      console.warn(`[Main] Failed to register ColorMaster shortcut: ${cleanHotkey}`);
+    } else {
+      currentColorMasterHotkey = cleanHotkey;
+      console.log(`[Main] Successfully registered ColorMaster shortcut: ${cleanHotkey}`);
+    }
+  } catch (err) {
+    console.error(`[Main] Error registering ColorMaster shortcut ${hotkey}:`, err);
+  }
+}
+
 function setupIpcHandlers() {
+  ipcMain.handle('pick-screen-color', async () => {
+    try {
+      return await pickScreenColorNative();
+    } catch (err) {
+      console.error('[Main] Error handling pick-screen-color IPC:', err);
+      return null;
+    }
+  });
+
+  ipcMain.handle('open-tune-color-window', (_event, params: { initialColor: string }) => {
+    windowManager.openTuneColorWindow(params);
+  });
+
+  ipcMain.handle('save-tune-color', (_event, color: string) => {
+    const win = windowManager.getMainWindow();
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('tune-color-applied', { color });
+    }
+    windowManager.closeTuneColorWindow();
+    windowManager.showSpotlight();
+  });
+
+  ipcMain.handle('close-tune-color-window', () => {
+    windowManager.closeTuneColorWindow();
+    const win = windowManager.getMainWindow();
+    if (win && !win.isDestroyed()) {
+      windowManager.showSpotlight();
+    }
+  });
+
   ipcMain.handle('get-config', () => {
     return store.getConfig();
   });
@@ -86,6 +323,9 @@ function setupIpcHandlers() {
     if (newConfig.hotkey && newConfig.hotkey !== oldConfig.hotkey) {
       registerGlobalHotkey(newConfig.hotkey);
     }
+
+    // If ColorMaster hotkey or DonkeyTools settings changed, re-register
+    registerColorMasterHotkey(newConfig.donkeyTools?.colorMaster?.hotkey);
 
     // If searchInstalledApps setting changed, refresh items in UI
     if (newConfig.searchInstalledApps !== oldConfig.searchInstalledApps) {
@@ -168,6 +408,10 @@ function setupIpcHandlers() {
       globalShortcut.unregister(currentHotkey);
       console.log(`[Main] Global hotkey paused for input recording: ${currentHotkey}`);
     }
+    if (currentColorMasterHotkey) {
+      globalShortcut.unregister(currentColorMasterHotkey);
+      console.log(`[Main] ColorMaster hotkey paused for input recording: ${currentColorMasterHotkey}`);
+    }
   });
 
   ipcMain.handle('resume-global-hotkey', () => {
@@ -177,6 +421,7 @@ function setupIpcHandlers() {
       registerGlobalHotkey(hotkey);
       console.log(`[Main] Global hotkey resumed: ${hotkey}`);
     }
+    registerColorMasterHotkey(cfg.donkeyTools?.colorMaster?.hotkey);
   });
 
   ipcMain.handle('get-items', () => {
@@ -1038,6 +1283,7 @@ app.whenReady().then(async () => {
   const mainWindow = windowManager.createMainWindow();
   windowManager.createTray(currentHotkey);
   registerGlobalHotkey(currentHotkey);
+  registerColorMasterHotkey(initialConfig.donkeyTools?.colorMaster?.hotkey);
 
   const launchDeferredTasks = () => {
     startBackgroundTasks();
