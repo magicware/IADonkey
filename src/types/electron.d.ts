@@ -149,6 +149,7 @@ declare global {
       deleteFastSnap?: (filePath: string) => Promise<{ success: boolean; error?: string }>;
       showFastSnapInFolder?: (filePath: string) => Promise<void>;
       chooseFastSnapFolder?: () => Promise<string | null>;
+      getFastSnapInitData?: () => Promise<{ screenshotUrl: string; width: number; height: number; scaleFactor: number } | null>;
       onFastSnapInitData?: (callback: (data: { screenshotUrl: string; width: number; height: number; scaleFactor: number }) => void) => () => void;
       onFastSnapCleanup?: (callback: () => void) => () => void;
     };

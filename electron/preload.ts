@@ -207,6 +207,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('fastsnap-show-in-folder', filePath),
   chooseFastSnapFolder: (): Promise<string | null> =>
     ipcRenderer.invoke('fastsnap-choose-folder'),
+  getFastSnapInitData: (): Promise<{ screenshotUrl: string; width: number; height: number; scaleFactor: number } | null> =>
+    ipcRenderer.invoke('fastsnap-get-init-data'),
   onFastSnapInitData: (callback: (data: { screenshotUrl: string; width: number; height: number; scaleFactor: number }) => void) => {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on('fastsnap-init-data', handler);

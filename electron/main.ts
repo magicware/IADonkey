@@ -1,7 +1,7 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, dialog, shell, clipboard, protocol, desktopCapturer, screen, nativeImage, ClipboardItem } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -190,12 +190,12 @@ async function pickScreenColorNative(instant = false): Promise<string | null> {
 
   console.log('[Main] Launching color-picker.exe:', exePath, instant ? '--instant' : '(loupe mode)');
 
-  // If Spotlight window is visible, hide it temporarily so user can pick what is under it
+  // If Spotlight window is visible, hide it with animation so user can pick what is under it
   const mainWin = windowManager ? windowManager.getMainWindow() : null;
   const wasMainVisible = mainWin && !mainWin.isDestroyed() && mainWin.isVisible();
-  if (wasMainVisible) {
-    mainWin.hide();
-    await new Promise((r) => setTimeout(r, 60));
+  if (wasMainVisible && windowManager) {
+    windowManager.hideSpotlight();
+    await new Promise((r) => setTimeout(r, 100));
   }
 
   return new Promise((resolve) => {
@@ -413,6 +413,7 @@ function registerFastSnapHotkey(hotkey?: string) {
 
 let currentCapturedScreenImage: Electron.NativeImage | null = null;
 let currentCapturedBounds: { x: number; y: number; width: number; height: number; scaleFactor: number } | null = null;
+let currentFastSnapInitData: { screenshotUrl: string; width: number; height: number; scaleFactor: number } | null = null;
 
 async function writeNativeImageToClipboard(nativeImg: Electron.NativeImage): Promise<void> {
   // 1. Zkusíme staré Electron API pokud existuje
@@ -505,12 +506,15 @@ async function startFastSnapProcess(): Promise<void> {
       scaleFactor,
     };
 
-    // Uložíme do dočasného souboru pro bleskové načtení v okně bez masivního base64 stringu v IPC
-    const tempFile = path.join(app.getPath('temp'), 'iadonkey_fastsnap_capture.png');
-    fs.writeFileSync(tempFile, currentCapturedScreenImage.toPNG());
-    const fileUrl = pathToFileURL(tempFile).href;
+    const dataUrl = currentCapturedScreenImage.toDataURL();
+    currentFastSnapInitData = {
+      screenshotUrl: dataUrl,
+      width: bounds.width,
+      height: bounds.height,
+      scaleFactor,
+    };
 
-    windowManager.createSnipperWindow(bounds, fileUrl, scaleFactor);
+    windowManager.createSnipperWindow(bounds, dataUrl, scaleFactor);
   } catch (err: any) {
     console.error('[Main] startFastSnapProcess error:', err);
     diagnosticsService.recordCrash('Spuštění FastSnap', err);
@@ -589,10 +593,15 @@ function setupIpcHandlers() {
     await startFastSnapProcess();
   });
 
+  ipcMain.handle('fastsnap-get-init-data', () => {
+    return currentFastSnapInitData;
+  });
+
   ipcMain.handle('fastsnap-cancel', () => {
     windowManager.closeSnipperWindow();
     currentCapturedScreenImage = null;
     currentCapturedBounds = null;
+    currentFastSnapInitData = null;
   });
 
   ipcMain.handle('fastsnap-finish-crop', async (_event, cropArea: { x: number; y: number; width: number; height: number; windowWidth?: number; windowHeight?: number }) => {
@@ -620,6 +629,7 @@ function setupIpcHandlers() {
       const croppedImage = currentCapturedScreenImage.crop(cropRect);
       currentCapturedScreenImage = null;
       currentCapturedBounds = null;
+      currentFastSnapInitData = null;
 
       // 1. Zkopírovat do schránky
       await writeNativeImageToClipboard(croppedImage);

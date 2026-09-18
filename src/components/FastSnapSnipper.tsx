@@ -16,6 +16,19 @@ export const FastSnapSnipper: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Okamžité vyžádání dat při prvním mountu komponenty (řeší možný race condition)
+    if (window.electronAPI?.getFastSnapInitData) {
+      window.electronAPI.getFastSnapInitData().then((data) => {
+        if (data) {
+          setInitData(data);
+          setIsFinished(false);
+          setIsDragging(false);
+          setStartPos(null);
+          setCurrentPos(null);
+        }
+      });
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (window.electronAPI?.cancelFastSnap) {
@@ -110,7 +123,7 @@ export const FastSnapSnipper: React.FC = () => {
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 select-none overflow-hidden cursor-crosshair z-50 bg-black"
+      className="fixed inset-0 select-none overflow-hidden cursor-crosshair z-50 bg-transparent"
       style={{ width: '100vw', height: '100vh' }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -128,6 +141,9 @@ export const FastSnapSnipper: React.FC = () => {
           className="absolute inset-0 w-full h-full object-fill pointer-events-none"
           style={{ width: '100vw', height: '100vh', objectFit: 'fill' }}
           draggable={false}
+          onError={(err) => {
+            console.error('[FastSnap] Image load error:', err);
+          }}
         />
       )}
 

@@ -110,6 +110,9 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         status: 'info',
       });
       setIsDonkeyToolsOpen(false);
+      setIsRevealed(false);
+      await new Promise((r) => setTimeout(r, 110));
+      await window.electronAPI?.resetAndHideSpotlight?.();
       await pickScreenColor();
     } catch (err) {
       console.error('Pick color error:', err);
@@ -125,6 +128,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         status: 'info',
       });
       setIsDonkeyToolsOpen(false);
+      setIsRevealed(false);
+      await new Promise((r) => setTimeout(r, 110));
       await window.electronAPI?.resetAndHideSpotlight?.();
       await window.electronAPI?.startFastSnap?.();
     } catch (err) {
@@ -310,12 +315,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     });
 
     const cleanupFocusInput = window.electronAPI?.onFocusInput?.(() => {
-      setIsRevealed(false);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setIsRevealed(true);
-        });
-      });
+      setIsRevealed(true);
       inputRef.current?.focus();
       inputRef.current?.select();
     });
@@ -1070,6 +1070,9 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     }
 
     if (item.action === 'fastsnap') {
+      setIsDonkeyToolsOpen(false);
+      setIsRevealed(false);
+      await new Promise((r) => setTimeout(r, 110));
       await window.electronAPI?.resetAndHideSpotlight?.();
       await window.electronAPI?.startFastSnap?.();
       return;
