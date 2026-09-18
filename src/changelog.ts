@@ -5,12 +5,27 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.18';
+export const CURRENT_APP_VERSION = '1.1.19';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.19',
+    date: '19. 9. 2026',
+    title: 'Subrozšíření QuickCap pro výstřižky obrazovky, správce výstřižků a sjednocený design nástrojů',
+    highlights: [
+      'Subrozšíření QuickCap (výstřižky obrazovky): Nový vestavěný nástroj v DonkeyTools pro bleskové pořízení výstřižku libovolné části obrazovky.',
+      'Celoobrazovkový interaktivní výběr: Výběr obdélníkové oblasti pokrývá celou plochu monitoru včetně lišty Windows se ztmaveným pozadím a živým zobrazením rozměrů v pixelech.',
+      'Automatické uložení a vložení do schránky: Pořízený snímek se ihned zkopíruje do schránky pro vložení (Ctrl+V) a uloží jako PNG do složky (výchozí: Obrázky\\IADonkey Screenshots).',
+      'Globální klávesová zkratka & příkazy: Volitelná globální klávesová zkratka s interaktivním nahráváním a ochranou proti kolizím. Podpora příkazů ve Spotlightu: /quickcap, /cap, /vystrizek, /snip, /screenshot, /snap.',
+      'Správce výstřižků v Nastavení: Možnost volby vlastní cílové složky pro ukládání, přímé tlačítko pro otevření složky v Průzkumníku Windows a galerie posledních 10 výstřižků (náhled, rozměry, datum pořízení, zkopírovat znovu, otevřít v Průzkumníku, smazat).',
+      'Plynulé skrytí Spotlightu: Při aktivaci nástrojů (QuickCap, kapátko) se okno Spotlightu plynule animovaně skryje, čímž se zamezí nechtěnému probliknutí při dalším vyvolání.',
+      'Sjednocený design ikonek nástrojů: Ikonky aktivních subnástrojů v rozbalovacím menu DonkeyTools ve Spotlightu mají stejné zaoblení (rounded-lg) jako ostatní ovládací prvky.',
+      'Výchozí stav subextensions: Jednotlivá subrozšíření v DonkeyTools jsou ve výchozím stavu vypnutá (opt-in) a aplikace spolehlivě pamatuje volbu uživatele.',
+    ],
+  },
   {
     version: '1.1.18',
     date: '18. 9. 2026',

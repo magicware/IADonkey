@@ -4,6 +4,27 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.19] - 19. 9. 2026
+### Subrozšíření QuickCap pro výstřižky obrazovky, správce výstřižků a sjednocený design nástrojů
+- **Subrozšíření QuickCap (výstřižky obrazovky)**: Nový vestavěný nástroj v rámci rozšíření DonkeyTools pro bleskové pořízení výstřižku libovolné části obrazovky.
+- **Celoobrazovkový interaktivní výběr**: Výběr obdélníkové oblasti pokrývá celou plochu monitoru včetně lišty Windows se ztmaveným pozadím a živým odečtem rozměrů v pixelech.
+- **Automatické uložení a vložení do schránky**: Pořízený snímek se ihned zkopíruje do schránky pro vložení (Ctrl+V) a uloží jako PNG do vybrané složky (výchozí: `Obrázky\IADonkey Screenshots\QuickCap_YYYY-MM-DD_HH-mm-ss.png`).
+- **Globální klávesová zkratka & příkazy**: Volitelná globální klávesová zkratka s interaktivním nahráváním a ochranou proti kolizím. Podpora příkazů ve Spotlightu: `/quickcap`, `/cap`, `/vystrizek`, `/snip`, `/screenshot`, `/snap`.
+- **Správce výstřižků v Nastavení**: Možnost volby vlastní cílové složky pro ukládání, přímé tlačítko pro otevření složky v Průzkumníku Windows a galerie posledních 10 výstřižků (náhled, rozměry, datum pořízení, zkopírovat znovu, otevřít v Průzkumníku, smazat).
+- **Plynulé skrytí Spotlightu**: Při aktivaci nástrojů (QuickCap, kapátko) se okno Spotlightu plynule animovaně skryje, čímž se zamezí nechtěnému probliknutí při dalším vyvolání.
+- **Sjednocený design ikonek nástrojů**: Ikonky aktivních subnástrojů v rozbalovacím menu DonkeyTools ve Spotlightu mají stejné zaoblení (`rounded-lg`) jako ostatní ovládací prvky Spotlightu.
+- **Výchozí stav subextensions**: Jednotlivá subrozšíření v DonkeyTools jsou ve výchozím stavu vypnutá (opt-in) a aplikace spolehlivě pamatuje volbu uživatele.
+
+## [1.1.18] - 18. 9. 2026
+### Diagnostický Crashlog systém s exportem časové osy, auditní Action Log a oprava kapátka v Release
+- **Oprava systémového kapátka v produkčním balíčku**: Doplněna konfigurace asarUnpack pro nativní color-picker.exe a záložní automatická extrakce do systémové složky aplikace – kapátko v Release verzi již neproblikává a spolehlivě snímá barvy.
+- **Diagnostický crashlog systém (složka crashlog/)**: Automatické zachytávání pádů, systémových chyb a neobsloužených výjimek do dedikované složky s detailním časem, kontextem a stack tracem.
+- **Automaticky navázaná časová osa akcí (Action Log Timeline)**: Každý crashlog v sobě obsahuje chronologický snímek akcí před selháním se zvýrazněním momentu, kdy k chybě došlo.
+- **Export chybových protokolů do souboru (.txt / .log)**: U každého záznamu v Nápovědě je tlačítko Exportovat pro uložení formátovaného diagnostického balíčku.
+- **Průběžný auditní Action Log**: Zaznamenávání provedených uživatelských akcí (výběr položky, otevření nabídky akcí, vstup do podpoložek, spuštění nástrojů, kopírování z infokarty, synchronizace) v 50prvkovém FIFO ring-bufferu.
+- **Nové uspořádání Nápovědy**: V záložce Nápověda (Help) je nejprve přehledný Action Log a pod ním Chybové protokoly s možností zobrazení detailu a vyčištění historie.
+- **Ochrana podpoložek před AutoLoginem**: Podpoložky (např. Web, API, BO) u instancí IS Tour již nezdědí nastavení magicgate, takže se otevírají okamžitě bez chybného handshake a falešných pádů.
+
 ## [1.1.17] - 17. 9. 2026
 ### Rozšíření DonkeyTools, ColorMaster se systémovým kapátkem, okno doladění barvy a rychlé nástroje ve Spotlightu
 - **Nové rozšíření DonkeyTools**: Přidána sada integrovaných pomocných nástrojů DonkeyTools s vínovým motivem a možností centrálního zapnutí/vypnutí v nastavení rozšíření.
