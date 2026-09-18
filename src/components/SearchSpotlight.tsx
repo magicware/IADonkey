@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LauncherItem, LauncherAction, SyncProgress, SnippetsConfig, ColorMasterSettings, FastSnapSettings, AppConfig } from '../types';
+import { LauncherItem, LauncherAction, SyncProgress, SnippetsConfig, ColorMasterSettings, QuickCapSettings, FastSnapSettings, AppConfig } from '../types';
 import { MaterialIcon } from './MaterialIcon';
 import { evaluateExpression } from '../utils/calculator';
 import { detectUrl } from '../utils/urlHelper';
@@ -30,6 +30,7 @@ interface SearchSpotlightProps {
   androidStudioEnabled?: boolean;
   donkeyToolsEnabled?: boolean;
   colorMasterConfig?: ColorMasterSettings;
+  quickCapConfig?: QuickCapSettings;
   fastSnapConfig?: FastSnapSettings;
   onSaveConfig?: (newConfig: AppConfig) => Promise<void>;
   onOpenSettings: () => void;
@@ -46,12 +47,13 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   mlogTaskPrefix,
   mlogRequestPrefix,
   searchGoogle = true,
-  defaultSearchEngine,
+  defaultSearchEngine = 'google',
   defaultCloneDir,
   vscodeEnabled = false,
   androidStudioEnabled = false,
   donkeyToolsEnabled = false,
   colorMasterConfig,
+  quickCapConfig,
   fastSnapConfig,
   onSaveConfig,
   onOpenSettings,
@@ -86,8 +88,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   const donkeyToolsRef = useRef<HTMLDivElement>(null);
 
   const isColorMasterActive = Boolean(donkeyToolsEnabled && colorMasterConfig?.enabled === true);
-  const isFastSnapActive = Boolean(donkeyToolsEnabled && fastSnapConfig?.enabled === true);
-  const showDonkeyToolsIcon = Boolean(donkeyToolsEnabled && (isColorMasterActive || isFastSnapActive));
+  const isQuickCapActive = Boolean(donkeyToolsEnabled && (quickCapConfig?.enabled === true || fastSnapConfig?.enabled === true));
+  const showDonkeyToolsIcon = Boolean(donkeyToolsEnabled && (isColorMasterActive || isQuickCapActive));
 
   // Click outside to close DonkeyTools quick tools menu
   useEffect(() => {
@@ -119,11 +121,11 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     }
   };
 
-  const handleStartFastSnap = async () => {
+  const handleStartQuickCap = async () => {
     try {
       window.electronAPI?.logAction?.({
         type: 'action',
-        title: 'Spuštění FastSnap z DonkeyTools',
+        title: 'Spuštění QuickCap z DonkeyTools',
         details: 'Výběr nástroje výstřižku v nabídce rychlých nástrojů',
         status: 'info',
       });
@@ -131,9 +133,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       setIsRevealed(false);
       await new Promise((r) => setTimeout(r, 110));
       await window.electronAPI?.resetAndHideSpotlight?.();
-      await window.electronAPI?.startFastSnap?.();
+      const startFn = window.electronAPI?.startQuickCap || window.electronAPI?.startFastSnap;
+      if (startFn) {
+        await startFn();
+      }
     } catch (err) {
-      console.error('FastSnap start error:', err);
+      console.error('QuickCap start error:', err);
     }
   };
 
@@ -608,7 +613,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     if (trimmed.startsWith('/') && donkeyToolsEnabled) {
       const dtCommands = getDonkeyToolsCommands(trimmed, {
         colorMasterEnabled: isColorMasterActive,
-        fastSnapEnabled: isFastSnapActive,
+        quickCapEnabled: isQuickCapActive,
+        fastSnapEnabled: isQuickCapActive,
       });
       if (dtCommands.length > 0) {
         return dtCommands;
@@ -1069,12 +1075,15 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       return;
     }
 
-    if (item.action === 'fastsnap') {
+    if (item.action === 'quickcap' || item.action === 'fastsnap') {
       setIsDonkeyToolsOpen(false);
       setIsRevealed(false);
       await new Promise((r) => setTimeout(r, 110));
       await window.electronAPI?.resetAndHideSpotlight?.();
-      await window.electronAPI?.startFastSnap?.();
+      const startFn = window.electronAPI?.startQuickCap || window.electronAPI?.startFastSnap;
+      if (startFn) {
+        await startFn();
+      }
       return;
     }
 
@@ -1707,16 +1716,16 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                   </button>
                 )}
 
-                {/* FastSnap Subextension - Snipping tool */}
-                {isFastSnapActive && (
+                {/* QuickCap Subextension - Snipping tool */}
+                {isQuickCapActive && (
                   <button
                     type="button"
                     onClick={() => {
                       setIsDonkeyToolsOpen(false);
-                      handleStartFastSnap();
+                      handleStartQuickCap();
                     }}
                     className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all shadow-xl bg-[#1c1d28] hover:bg-rose-500/25 border border-white/15 hover:border-rose-400/50 text-gray-300 hover:text-rose-200 hover:scale-105 active:scale-95"
-                    title="FastSnap – Výstřižek obrazovky"
+                    title="QuickCap – Výstřižek obrazovky"
                   >
                     <span className="material-symbols-outlined text-[20px] leading-none select-none">
                       crop

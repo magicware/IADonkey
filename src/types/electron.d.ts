@@ -140,11 +140,24 @@ declare global {
       logAction?: (entry: Omit<ActionLogEntry, 'id' | 'timestamp'> & { timestamp?: string }) => Promise<void>;
       exportCrashReport?: (fileName: string) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
 
-      // FastSnap API
+      // QuickCap (dříve FastSnap) API
+      startQuickCap?: () => Promise<void>;
+      finishQuickCap?: (cropArea: { x: number; y: number; width: number; height: number; windowWidth?: number; windowHeight?: number }) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+      cancelQuickCap?: () => Promise<void>;
+      getRecentQuickCaps?: () => Promise<import('./index').QuickCapRecentItem[]>;
+      copyQuickCapToClipboard?: (filePath: string) => Promise<{ success: boolean; error?: string }>;
+      deleteQuickCap?: (filePath: string) => Promise<{ success: boolean; error?: string }>;
+      showQuickCapInFolder?: (filePath: string) => Promise<void>;
+      chooseQuickCapFolder?: () => Promise<string | null>;
+      getQuickCapInitData?: () => Promise<{ screenshotUrl: string; width: number; height: number; scaleFactor: number } | null>;
+      onQuickCapInitData?: (callback: (data: { screenshotUrl: string; width: number; height: number; scaleFactor: number }) => void) => () => void;
+      onQuickCapCleanup?: (callback: () => void) => () => void;
+
+      // Zpětná kompatibilita pro FastSnap
       startFastSnap?: () => Promise<void>;
       finishFastSnap?: (cropArea: { x: number; y: number; width: number; height: number; windowWidth?: number; windowHeight?: number }) => Promise<{ success: boolean; filePath?: string; error?: string }>;
       cancelFastSnap?: () => Promise<void>;
-      getRecentFastSnaps?: () => Promise<import('./index').FastSnapRecentItem[]>;
+      getRecentFastSnaps?: () => Promise<import('./index').QuickCapRecentItem[]>;
       copyFastSnapToClipboard?: (filePath: string) => Promise<{ success: boolean; error?: string }>;
       deleteFastSnap?: (filePath: string) => Promise<{ success: boolean; error?: string }>;
       showFastSnapInFolder?: (filePath: string) => Promise<void>;

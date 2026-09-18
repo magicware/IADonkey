@@ -371,49 +371,55 @@ function registerColorMasterHotkey(hotkey?: string) {
   }
 }
 
-let currentFastSnapHotkey = '';
-function registerFastSnapHotkey(hotkey?: string) {
+let currentQuickCapHotkey = '';
+function registerQuickCapHotkey(hotkey?: string) {
   try {
-    if (currentFastSnapHotkey) {
-      globalShortcut.unregister(currentFastSnapHotkey);
-      currentFastSnapHotkey = '';
+    if (currentQuickCapHotkey) {
+      globalShortcut.unregister(currentQuickCapHotkey);
+      currentQuickCapHotkey = '';
     }
     const config = store ? store.getConfig() : null;
-    const isEnabled = Boolean(config?.extensions?.donkeyTools && config?.donkeyTools?.fastSnap?.enabled === true);
-    if (!isEnabled || !hotkey || !hotkey.trim()) {
+    const quickCapCfg = config?.donkeyTools?.quickCap || config?.donkeyTools?.fastSnap;
+    const isEnabled = Boolean(config?.extensions?.donkeyTools && quickCapCfg?.enabled === true);
+    const targetHotkey = hotkey || quickCapCfg?.hotkey;
+    if (!isEnabled || !targetHotkey || !targetHotkey.trim()) {
       return;
     }
-    const cleanHotkey = hotkey.trim();
+    const cleanHotkey = targetHotkey.trim();
     const registered = globalShortcut.register(cleanHotkey, async () => {
       try {
-        console.log('[Main] FastSnap hotkey triggered');
+        console.log('[Main] QuickCap hotkey triggered');
         diagnosticsService.logAction({
           type: 'shortcut',
-          title: `Zkratka FastSnap: ${cleanHotkey}`,
+          title: `Zkratka QuickCap: ${cleanHotkey}`,
           details: 'Spuštění výstřižku přes klávesovou zkratku',
           status: 'info',
         });
-        await startFastSnapProcess();
+        await startQuickCapProcess();
       } catch (err) {
-        console.error('[Main] Error in FastSnap hotkey callback:', err);
-        diagnosticsService.recordCrash('Volání FastSnap z klávesové zkratky', err, { hotkey: cleanHotkey });
+        console.error('[Main] Error in QuickCap hotkey callback:', err);
+        diagnosticsService.recordCrash('Volání QuickCap z klávesové zkratky', err, { hotkey: cleanHotkey });
       }
     });
     if (!registered) {
-      console.warn(`[Main] Failed to register FastSnap shortcut: ${cleanHotkey}`);
+      console.warn(`[Main] Failed to register QuickCap shortcut: ${cleanHotkey}`);
     } else {
-      currentFastSnapHotkey = cleanHotkey;
-      console.log(`[Main] Successfully registered FastSnap shortcut: ${cleanHotkey}`);
+      currentQuickCapHotkey = cleanHotkey;
+      console.log(`[Main] Successfully registered QuickCap shortcut: ${cleanHotkey}`);
     }
   } catch (err) {
-    console.error(`[Main] Error registering FastSnap shortcut ${hotkey}:`, err);
-    diagnosticsService.recordCrash('Registrace zkratky FastSnap', err, { hotkey });
+    console.error(`[Main] Error registering QuickCap shortcut ${hotkey}:`, err);
+    diagnosticsService.recordCrash('Registrace zkratky QuickCap', err, { hotkey });
   }
+}
+function registerFastSnapHotkey(hotkey?: string) {
+  registerQuickCapHotkey(hotkey);
 }
 
 let currentCapturedScreenImage: Electron.NativeImage | null = null;
 let currentCapturedBounds: { x: number; y: number; width: number; height: number; scaleFactor: number } | null = null;
-let currentFastSnapInitData: { screenshotUrl: string; width: number; height: number; scaleFactor: number } | null = null;
+let currentQuickCapInitData: { screenshotUrl: string; width: number; height: number; scaleFactor: number } | null = null;
+const currentFastSnapInitData = currentQuickCapInitData;
 
 async function writeNativeImageToClipboard(nativeImg: Electron.NativeImage): Promise<void> {
   // 1. Zkusíme staré Electron API pokud existuje
@@ -445,20 +451,21 @@ async function writeNativeImageToClipboard(nativeImg: Electron.NativeImage): Pro
   }
 }
 
-function getFastSnapSaveDirectory(): string {
+function getQuickCapSaveDirectory(): string {
   const config = store ? store.getConfig() : null;
-  const configured = config?.donkeyTools?.fastSnap?.saveDirectory;
+  const configured = config?.donkeyTools?.quickCap?.saveDirectory || config?.donkeyTools?.fastSnap?.saveDirectory;
   if (configured && configured.trim()) {
     return configured.trim();
   }
   return path.join(app.getPath('pictures'), 'IADonkey Screenshots');
 }
+const getFastSnapSaveDirectory = getQuickCapSaveDirectory;
 
-async function startFastSnapProcess(): Promise<void> {
+async function startQuickCapProcess(): Promise<void> {
   try {
     diagnosticsService.logAction({
       type: 'action',
-      title: 'Spuštění FastSnap (Výstřižek obrazovky)',
+      title: 'Spuštění QuickCap (Výstřižek obrazovky)',
       details: 'Příprava snímku a otevření výběrového okna',
       status: 'info',
     });
@@ -507,7 +514,7 @@ async function startFastSnapProcess(): Promise<void> {
     };
 
     const dataUrl = currentCapturedScreenImage.toDataURL();
-    currentFastSnapInitData = {
+    currentQuickCapInitData = {
       screenshotUrl: dataUrl,
       width: bounds.width,
       height: bounds.height,
@@ -516,16 +523,17 @@ async function startFastSnapProcess(): Promise<void> {
 
     windowManager.createSnipperWindow(bounds, dataUrl, scaleFactor);
   } catch (err: any) {
-    console.error('[Main] startFastSnapProcess error:', err);
-    diagnosticsService.recordCrash('Spuštění FastSnap', err);
+    console.error('[Main] startQuickCapProcess error:', err);
+    diagnosticsService.recordCrash('Spuštění QuickCap', err);
     diagnosticsService.logAction({
       type: 'error',
-      title: 'Chyba při spuštění FastSnap',
+      title: 'Chyba při spuštění QuickCap',
       details: err?.message || String(err),
       status: 'error',
     });
   }
 }
+const startFastSnapProcess = startQuickCapProcess;
 
 
 function setupIpcHandlers() {
@@ -588,23 +596,29 @@ function setupIpcHandlers() {
     }
   });
 
-  // FastSnap IPC Handlers
-  ipcMain.handle('fastsnap-start', async () => {
-    await startFastSnapProcess();
-  });
+  // QuickCap (dříve FastSnap) IPC Handlers
+  const handleQuickCapStart = async () => {
+    await startQuickCapProcess();
+  };
+  ipcMain.handle('quickcap-start', handleQuickCapStart);
+  ipcMain.handle('fastsnap-start', handleQuickCapStart);
 
-  ipcMain.handle('fastsnap-get-init-data', () => {
-    return currentFastSnapInitData;
-  });
+  const handleQuickCapGetInitData = () => {
+    return currentQuickCapInitData;
+  };
+  ipcMain.handle('quickcap-get-init-data', handleQuickCapGetInitData);
+  ipcMain.handle('fastsnap-get-init-data', handleQuickCapGetInitData);
 
-  ipcMain.handle('fastsnap-cancel', () => {
+  const handleQuickCapCancel = () => {
     windowManager.closeSnipperWindow();
     currentCapturedScreenImage = null;
     currentCapturedBounds = null;
-    currentFastSnapInitData = null;
-  });
+    currentQuickCapInitData = null;
+  };
+  ipcMain.handle('quickcap-cancel', handleQuickCapCancel);
+  ipcMain.handle('fastsnap-cancel', handleQuickCapCancel);
 
-  ipcMain.handle('fastsnap-finish-crop', async (_event, cropArea: { x: number; y: number; width: number; height: number; windowWidth?: number; windowHeight?: number }) => {
+  const handleQuickCapFinishCrop = async (_event: any, cropArea: { x: number; y: number; width: number; height: number; windowWidth?: number; windowHeight?: number }) => {
     try {
       windowManager.closeSnipperWindow();
 
@@ -629,13 +643,13 @@ function setupIpcHandlers() {
       const croppedImage = currentCapturedScreenImage.crop(cropRect);
       currentCapturedScreenImage = null;
       currentCapturedBounds = null;
-      currentFastSnapInitData = null;
+      currentQuickCapInitData = null;
 
       // 1. Zkopírovat do schránky
       await writeNativeImageToClipboard(croppedImage);
 
       // 2. Uložit do cílové složky
-      const saveDir = getFastSnapSaveDirectory();
+      const saveDir = getQuickCapSaveDirectory();
       if (!fs.existsSync(saveDir)) {
         fs.mkdirSync(saveDir, { recursive: true });
       }
@@ -643,12 +657,12 @@ function setupIpcHandlers() {
       const now = new Date();
       const pad = (n: number) => n.toString().padStart(2, '0');
       const timeStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
-      let fileName = `FastSnap_${timeStr}.png`;
+      let fileName = `QuickCap_${timeStr}.png`;
       let filePath = path.join(saveDir, fileName);
 
       let counter = 1;
       while (fs.existsSync(filePath)) {
-        fileName = `FastSnap_${timeStr}_${counter}.png`;
+        fileName = `QuickCap_${timeStr}_${counter}.png`;
         filePath = path.join(saveDir, fileName);
         counter++;
       }
@@ -657,28 +671,30 @@ function setupIpcHandlers() {
 
       diagnosticsService.logAction({
         type: 'action',
-        title: `FastSnap výstřižek uložen: ${fileName}`,
+        title: `QuickCap výstřižek uložen: ${fileName}`,
         details: `Rozměry: ${cropArea.width}×${cropArea.height} px (fyzicky ${cropRect.width}×${cropRect.height} px), zkopírováno do schránky a uloženo do: ${filePath}`,
         status: 'success',
       });
 
       return { success: true, filePath };
     } catch (err: any) {
-      console.error('[Main] fastsnap-finish-crop error:', err);
-      diagnosticsService.recordCrash('Uložení výstřižku FastSnap', err, { cropArea });
+      console.error('[Main] quickcap-finish-crop error:', err);
+      diagnosticsService.recordCrash('Uložení výstřižku QuickCap', err, { cropArea });
       diagnosticsService.logAction({
         type: 'error',
-        title: 'Chyba při ukládání výstřižku FastSnap',
+        title: 'Chyba při ukládání výstřižku QuickCap',
         details: err?.message || String(err),
         status: 'error',
       });
       return { success: false, error: err?.message || String(err) };
     }
-  });
+  };
+  ipcMain.handle('quickcap-finish-crop', handleQuickCapFinishCrop);
+  ipcMain.handle('fastsnap-finish-crop', handleQuickCapFinishCrop);
 
-  ipcMain.handle('fastsnap-get-recent', async () => {
+  const handleQuickCapGetRecent = async () => {
     try {
-      const saveDir = getFastSnapSaveDirectory();
+      const saveDir = getQuickCapSaveDirectory();
       if (!fs.existsSync(saveDir)) {
         return [];
       }
@@ -721,12 +737,14 @@ function setupIpcHandlers() {
 
       return itemsWithThumbnails;
     } catch (err) {
-      console.error('[Main] fastsnap-get-recent error:', err);
+      console.error('[Main] quickcap-get-recent error:', err);
       return [];
     }
-  });
+  };
+  ipcMain.handle('quickcap-get-recent', handleQuickCapGetRecent);
+  ipcMain.handle('fastsnap-get-recent', handleQuickCapGetRecent);
 
-  ipcMain.handle('fastsnap-copy-to-clipboard', async (_event, filePath: string) => {
+  const handleQuickCapCopyToClipboard = async (_event: any, filePath: string) => {
     try {
       if (!fs.existsSync(filePath)) {
         return { success: false, error: 'Soubor neexistuje' };
@@ -743,9 +761,11 @@ function setupIpcHandlers() {
     } catch (err: any) {
       return { success: false, error: err?.message || String(err) };
     }
-  });
+  };
+  ipcMain.handle('quickcap-copy-to-clipboard', handleQuickCapCopyToClipboard);
+  ipcMain.handle('fastsnap-copy-to-clipboard', handleQuickCapCopyToClipboard);
 
-  ipcMain.handle('fastsnap-delete', async (_event, filePath: string) => {
+  const handleQuickCapDelete = async (_event: any, filePath: string) => {
     try {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
@@ -760,30 +780,36 @@ function setupIpcHandlers() {
     } catch (err: any) {
       return { success: false, error: err?.message || String(err) };
     }
-  });
+  };
+  ipcMain.handle('quickcap-delete', handleQuickCapDelete);
+  ipcMain.handle('fastsnap-delete', handleQuickCapDelete);
 
-  ipcMain.handle('fastsnap-show-in-folder', (_event, filePath: string) => {
+  const handleQuickCapShowInFolder = (_event: any, filePath: string) => {
     if (fs.existsSync(filePath)) {
       shell.showItemInFolder(filePath);
     } else {
-      const dir = getFastSnapSaveDirectory();
+      const dir = getQuickCapSaveDirectory();
       if (fs.existsSync(dir)) {
         shell.openPath(dir);
       }
     }
-  });
+  };
+  ipcMain.handle('quickcap-show-in-folder', handleQuickCapShowInFolder);
+  ipcMain.handle('fastsnap-show-in-folder', handleQuickCapShowInFolder);
 
-  ipcMain.handle('fastsnap-choose-folder', async () => {
+  const handleQuickCapChooseFolder = async () => {
     const res = await dialog.showOpenDialog({
-      title: 'Vyberte složku pro ukládání výstřižků FastSnap',
-      defaultPath: getFastSnapSaveDirectory(),
+      title: 'Vyberte složku pro ukládání výstřižků QuickCap',
+      defaultPath: getQuickCapSaveDirectory(),
       properties: ['openDirectory', 'createDirectory'],
     });
     if (!res.canceled && res.filePaths.length > 0) {
       return res.filePaths[0];
     }
     return null;
-  });
+  };
+  ipcMain.handle('quickcap-choose-folder', handleQuickCapChooseFolder);
+  ipcMain.handle('fastsnap-choose-folder', handleQuickCapChooseFolder);
 
   ipcMain.handle('get-config', () => {
     return store.getConfig();
@@ -800,7 +826,7 @@ function setupIpcHandlers() {
 
     // If ColorMaster hotkey or DonkeyTools settings changed, re-register
     registerColorMasterHotkey(newConfig.donkeyTools?.colorMaster?.hotkey);
-    registerFastSnapHotkey(newConfig.donkeyTools?.fastSnap?.hotkey);
+    registerQuickCapHotkey(newConfig.donkeyTools?.quickCap?.hotkey || newConfig.donkeyTools?.fastSnap?.hotkey);
 
     // If searchInstalledApps setting changed, refresh items in UI
     if (newConfig.searchInstalledApps !== oldConfig.searchInstalledApps) {
@@ -887,9 +913,9 @@ function setupIpcHandlers() {
       globalShortcut.unregister(currentColorMasterHotkey);
       console.log(`[Main] ColorMaster hotkey paused for input recording: ${currentColorMasterHotkey}`);
     }
-    if (currentFastSnapHotkey) {
-      globalShortcut.unregister(currentFastSnapHotkey);
-      console.log(`[Main] FastSnap hotkey paused for input recording: ${currentFastSnapHotkey}`);
+    if (currentQuickCapHotkey) {
+      globalShortcut.unregister(currentQuickCapHotkey);
+      console.log(`[Main] QuickCap hotkey paused for input recording: ${currentQuickCapHotkey}`);
     }
   });
 
@@ -901,7 +927,7 @@ function setupIpcHandlers() {
       console.log(`[Main] Global hotkey resumed: ${hotkey}`);
     }
     registerColorMasterHotkey(cfg.donkeyTools?.colorMaster?.hotkey);
-    registerFastSnapHotkey(cfg.donkeyTools?.fastSnap?.hotkey);
+    registerQuickCapHotkey(cfg.donkeyTools?.quickCap?.hotkey || cfg.donkeyTools?.fastSnap?.hotkey);
   });
 
   ipcMain.handle('get-items', () => {
@@ -1802,7 +1828,7 @@ app.whenReady().then(async () => {
   windowManager.createTray(currentHotkey);
   registerGlobalHotkey(currentHotkey);
   registerColorMasterHotkey(initialConfig.donkeyTools?.colorMaster?.hotkey);
-  registerFastSnapHotkey(initialConfig.donkeyTools?.fastSnap?.hotkey);
+  registerQuickCapHotkey(initialConfig.donkeyTools?.quickCap?.hotkey || initialConfig.donkeyTools?.fastSnap?.hotkey);
 
   const launchDeferredTasks = () => {
     startBackgroundTasks();

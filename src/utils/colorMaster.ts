@@ -302,7 +302,7 @@ export function createColorLauncherItem(
  */
 export function getDonkeyToolsCommands(
   query: string,
-  options?: { colorMasterEnabled?: boolean; fastSnapEnabled?: boolean }
+  options?: { colorMasterEnabled?: boolean; quickCapEnabled?: boolean; fastSnapEnabled?: boolean }
 ): LauncherItem[] {
   const trimmed = query.trim().toLowerCase();
   if (!trimmed.startsWith('/')) return [];
@@ -311,7 +311,7 @@ export function getDonkeyToolsCommands(
   const list: LauncherItem[] = [];
 
   const isColorMasterActive = options ? options.colorMasterEnabled === true : true;
-  const isFastSnapActive = options ? options.fastSnapEnabled === true : true;
+  const isQuickCapActive = options ? (options.quickCapEnabled ?? options.fastSnapEnabled ?? true) : true;
 
   // /kapatko (kapátko / eyedropper / picker / barva)
   if (isColorMasterActive) {
@@ -336,25 +336,27 @@ export function getDonkeyToolsCommands(
     }
   }
 
-  // /fastsnap (/snap, /vystrizek, /snip, /screenshot)
-  if (isFastSnapActive) {
-    const isFastSnapMatch =
+  // /quickcap (/cap, /vystrizek, /snip, /screenshot, /fastsnap, /snap)
+  if (isQuickCapActive) {
+    const isQuickCapMatch =
       command === '' ||
-      'fastsnap'.includes(command) ||
-      'snap'.includes(command) ||
+      'quickcap'.includes(command) ||
+      'cap'.includes(command) ||
       'vystrizek'.includes(command) ||
       'snip'.includes(command) ||
-      'screenshot'.includes(command);
+      'screenshot'.includes(command) ||
+      'fastsnap'.includes(command) ||
+      'snap'.includes(command);
 
-    if (isFastSnapMatch) {
+    if (isQuickCapMatch) {
       list.push({
-        id: 'donkeytools-fastsnap',
-        name: '/fastsnap',
-        location: 'FastSnap – Výstřižek obrazovky s uložením a schránkou',
-        action: 'fastsnap',
+        id: 'donkeytools-quickcap',
+        name: '/quickcap',
+        location: 'QuickCap – Výstřižek obrazovky s uložením a schránkou',
+        action: 'quickcap',
         icon: 'crop',
         priority: -1.4,
-        shortcuts: ['/snap', '/vystrizek', '/snip', '/screenshot'],
+        shortcuts: ['/cap', '/vystrizek', '/snip', '/screenshot', '/fastsnap', '/snap'],
       });
     }
   }

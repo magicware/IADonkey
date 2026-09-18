@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-interface FastSnapInitData {
+interface QuickCapInitData {
   screenshotUrl: string;
   width: number;
   height: number;
   scaleFactor: number;
 }
 
-export const FastSnapSnipper: React.FC = () => {
-  const [initData, setInitData] = useState<FastSnapInitData | null>(null);
+export const QuickCapSnipper: React.FC = () => {
+  const [initData, setInitData] = useState<QuickCapInitData | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startPos, setStartPos] = useState<{ x: number; y: number } | null>(null);
   const [currentPos, setCurrentPos] = useState<{ x: number; y: number } | null>(null);
@@ -17,8 +17,9 @@ export const FastSnapSnipper: React.FC = () => {
 
   useEffect(() => {
     // Okamžité vyžádání dat při prvním mountu komponenty (řeší možný race condition)
-    if (window.electronAPI?.getFastSnapInitData) {
-      window.electronAPI.getFastSnapInitData().then((data) => {
+    const fetchInit = window.electronAPI?.getQuickCapInitData || window.electronAPI?.getFastSnapInitData;
+    if (fetchInit) {
+      fetchInit().then((data) => {
         if (data) {
           setInitData(data);
           setIsFinished(false);
@@ -31,7 +32,9 @@ export const FastSnapSnipper: React.FC = () => {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (window.electronAPI?.cancelFastSnap) {
+        if (window.electronAPI?.cancelQuickCap) {
+          window.electronAPI.cancelQuickCap();
+        } else if (window.electronAPI?.cancelFastSnap) {
           window.electronAPI.cancelFastSnap();
         }
       }
@@ -40,8 +43,9 @@ export const FastSnapSnipper: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
 
     let unsubscribeInit: (() => void) | undefined;
-    if (window.electronAPI?.onFastSnapInitData) {
-      unsubscribeInit = window.electronAPI.onFastSnapInitData((data) => {
+    const listenInit = window.electronAPI?.onQuickCapInitData || window.electronAPI?.onFastSnapInitData;
+    if (listenInit) {
+      unsubscribeInit = listenInit((data) => {
         setInitData(data);
         setIsFinished(false);
         setIsDragging(false);
@@ -51,8 +55,9 @@ export const FastSnapSnipper: React.FC = () => {
     }
 
     let unsubscribeCleanup: (() => void) | undefined;
-    if (window.electronAPI?.onFastSnapCleanup) {
-      unsubscribeCleanup = window.electronAPI.onFastSnapCleanup(() => {
+    const listenCleanup = window.electronAPI?.onQuickCapCleanup || window.electronAPI?.onFastSnapCleanup;
+    if (listenCleanup) {
+      unsubscribeCleanup = listenCleanup(() => {
         setInitData(null);
         setIsFinished(false);
         setIsDragging(false);
@@ -98,8 +103,9 @@ export const FastSnapSnipper: React.FC = () => {
 
     setIsFinished(true);
 
-    if (window.electronAPI?.finishFastSnap) {
-      await window.electronAPI.finishFastSnap({
+    const finishFn = window.electronAPI?.finishQuickCap || window.electronAPI?.finishFastSnap;
+    if (finishFn) {
+      await finishFn({
         x: Math.round(x),
         y: Math.round(y),
         width: Math.round(width),
@@ -130,7 +136,11 @@ export const FastSnapSnipper: React.FC = () => {
       onMouseUp={handleMouseUp}
       onContextMenu={(e) => {
         e.preventDefault();
-        window.electronAPI?.cancelFastSnap?.();
+        if (window.electronAPI?.cancelQuickCap) {
+          window.electronAPI.cancelQuickCap();
+        } else {
+          window.electronAPI?.cancelFastSnap?.();
+        }
       }}
     >
       {/* 1. Podkladový screenshot přes celou obrazovku */}
@@ -142,7 +152,7 @@ export const FastSnapSnipper: React.FC = () => {
           style={{ width: '100vw', height: '100vh', objectFit: 'fill' }}
           draggable={false}
           onError={(err) => {
-            console.error('[FastSnap] Image load error:', err);
+            console.error('[QuickCap] Image load error:', err);
           }}
         />
       )}

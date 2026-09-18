@@ -506,6 +506,7 @@ export class WindowManager {
 
   public closeSnipperWindow(): void {
     if (this.snipperWindow && !this.snipperWindow.isDestroyed()) {
+      this.snipperWindow.webContents.send('quickcap-cleanup');
       this.snipperWindow.webContents.send('fastsnap-cleanup');
       this.snipperWindow.hide();
     }
@@ -521,12 +522,14 @@ export class WindowManager {
       win.setAlwaysOnTop(true, 'screen-saver');
       win.show();
       win.focus();
-      win.webContents.send('fastsnap-init-data', {
+      const initPayload = {
         screenshotUrl,
         width: displayBounds.width,
         height: displayBounds.height,
         scaleFactor,
-      });
+      };
+      win.webContents.send('quickcap-init-data', initPayload);
+      win.webContents.send('fastsnap-init-data', initPayload);
     };
 
     if (this.snipperWindow && !this.snipperWindow.isDestroyed()) {
@@ -567,10 +570,10 @@ export class WindowManager {
     this.snipperWindow.setAlwaysOnTop(true, 'screen-saver');
 
     if (process.env.VITE_DEV_SERVER_URL) {
-      this.snipperWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#fastsnap`);
+      this.snipperWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#quickcap`);
     } else {
       this.snipperWindow.loadFile(path.join(__dirname, '../dist/index.html'), {
-        hash: 'fastsnap',
+        hash: 'quickcap',
       });
     }
 

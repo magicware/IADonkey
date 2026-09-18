@@ -105,13 +105,15 @@ export interface ColorMasterSettings {
   defaultFormat?: 'hex' | 'hex-no-hash' | 'rgb' | 'rgba' | 'hsl';
 }
 
-export interface FastSnapSettings {
+export interface QuickCapSettings {
   enabled: boolean;
   hotkey?: string;
   saveDirectory?: string;
 }
 
-export interface FastSnapRecentItem {
+export type FastSnapSettings = QuickCapSettings;
+
+export interface QuickCapRecentItem {
   name: string;
   path: string;
   createdAt: number;
@@ -121,9 +123,12 @@ export interface FastSnapRecentItem {
   height?: number;
 }
 
+export type FastSnapRecentItem = QuickCapRecentItem;
+
 export interface DonkeyToolsSettings {
   colorMaster?: ColorMasterSettings;
-  fastSnap?: FastSnapSettings;
+  quickCap?: QuickCapSettings;
+  fastSnap?: QuickCapSettings;
 }
 
 export interface VscodeSettings {

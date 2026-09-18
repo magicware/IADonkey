@@ -193,30 +193,73 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportCrashReport: (fileName: string): Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }> =>
     ipcRenderer.invoke('export-crash-report', fileName),
 
-  // FastSnap API
-  startFastSnap: (): Promise<void> => ipcRenderer.invoke('fastsnap-start'),
+  // QuickCap (dříve FastSnap) API
+  startQuickCap: (): Promise<void> => ipcRenderer.invoke('quickcap-start'),
+  finishQuickCap: (cropArea: { x: number; y: number; width: number; height: number; windowWidth?: number; windowHeight?: number }): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke('quickcap-finish-crop', cropArea),
+  cancelQuickCap: (): Promise<void> => ipcRenderer.invoke('quickcap-cancel'),
+  getRecentQuickCaps: (): Promise<any[]> => ipcRenderer.invoke('quickcap-get-recent'),
+  copyQuickCapToClipboard: (filePath: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('quickcap-copy-to-clipboard', filePath),
+  deleteQuickCap: (filePath: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('quickcap-delete', filePath),
+  showQuickCapInFolder: (filePath: string): Promise<void> =>
+    ipcRenderer.invoke('quickcap-show-in-folder', filePath),
+  chooseQuickCapFolder: (): Promise<string | null> =>
+    ipcRenderer.invoke('quickcap-choose-folder'),
+  getQuickCapInitData: (): Promise<{ screenshotUrl: string; width: number; height: number; scaleFactor: number } | null> =>
+    ipcRenderer.invoke('quickcap-get-init-data'),
+  onQuickCapInitData: (callback: (data: { screenshotUrl: string; width: number; height: number; scaleFactor: number }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('quickcap-init-data', handler);
+    ipcRenderer.on('fastsnap-init-data', handler);
+    return () => {
+      ipcRenderer.removeListener('quickcap-init-data', handler);
+      ipcRenderer.removeListener('fastsnap-init-data', handler);
+    };
+  },
+  onQuickCapCleanup: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('quickcap-cleanup', handler);
+    ipcRenderer.on('fastsnap-cleanup', handler);
+    return () => {
+      ipcRenderer.removeListener('quickcap-cleanup', handler);
+      ipcRenderer.removeListener('fastsnap-cleanup', handler);
+    };
+  },
+
+  // Zpětná kompatibilita pro FastSnap
+  startFastSnap: (): Promise<void> => ipcRenderer.invoke('quickcap-start'),
   finishFastSnap: (cropArea: { x: number; y: number; width: number; height: number; windowWidth?: number; windowHeight?: number }): Promise<{ success: boolean; filePath?: string; error?: string }> =>
-    ipcRenderer.invoke('fastsnap-finish-crop', cropArea),
-  cancelFastSnap: (): Promise<void> => ipcRenderer.invoke('fastsnap-cancel'),
-  getRecentFastSnaps: (): Promise<any[]> => ipcRenderer.invoke('fastsnap-get-recent'),
+    ipcRenderer.invoke('quickcap-finish-crop', cropArea),
+  cancelFastSnap: (): Promise<void> => ipcRenderer.invoke('quickcap-cancel'),
+  getRecentFastSnaps: (): Promise<any[]> => ipcRenderer.invoke('quickcap-get-recent'),
   copyFastSnapToClipboard: (filePath: string): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke('fastsnap-copy-to-clipboard', filePath),
+    ipcRenderer.invoke('quickcap-copy-to-clipboard', filePath),
   deleteFastSnap: (filePath: string): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke('fastsnap-delete', filePath),
+    ipcRenderer.invoke('quickcap-delete', filePath),
   showFastSnapInFolder: (filePath: string): Promise<void> =>
-    ipcRenderer.invoke('fastsnap-show-in-folder', filePath),
+    ipcRenderer.invoke('quickcap-show-in-folder', filePath),
   chooseFastSnapFolder: (): Promise<string | null> =>
-    ipcRenderer.invoke('fastsnap-choose-folder'),
+    ipcRenderer.invoke('quickcap-choose-folder'),
   getFastSnapInitData: (): Promise<{ screenshotUrl: string; width: number; height: number; scaleFactor: number } | null> =>
-    ipcRenderer.invoke('fastsnap-get-init-data'),
+    ipcRenderer.invoke('quickcap-get-init-data'),
   onFastSnapInitData: (callback: (data: { screenshotUrl: string; width: number; height: number; scaleFactor: number }) => void) => {
     const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('quickcap-init-data', handler);
     ipcRenderer.on('fastsnap-init-data', handler);
-    return () => ipcRenderer.removeListener('fastsnap-init-data', handler);
+    return () => {
+      ipcRenderer.removeListener('quickcap-init-data', handler);
+      ipcRenderer.removeListener('fastsnap-init-data', handler);
+    };
   },
   onFastSnapCleanup: (callback: () => void) => {
     const handler = () => callback();
+    ipcRenderer.on('quickcap-cleanup', handler);
     ipcRenderer.on('fastsnap-cleanup', handler);
-    return () => ipcRenderer.removeListener('fastsnap-cleanup', handler);
+    return () => {
+      ipcRenderer.removeListener('quickcap-cleanup', handler);
+      ipcRenderer.removeListener('fastsnap-cleanup', handler);
+    };
   },
 });

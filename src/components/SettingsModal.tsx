@@ -199,16 +199,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const colorMasterMaxComboRef = useRef<string[]>([]);
   const colorMasterOriginalHotkeyRef = useRef<string>(config.donkeyTools?.colorMaster?.hotkey || '');
 
-  // FastSnap state & refs
-  const [isRecordingFastSnapHotkey, setIsRecordingFastSnapHotkey] = useState(false);
-  const [fastSnapRecordedModifiers, setFastSnapRecordedModifiers] = useState<string[]>([]);
-  const [fastSnapHotkeyError, setFastSnapHotkeyError] = useState<string | null>(null);
-  const fastSnapPressedKeysRef = useRef<Set<string>>(new Set());
-  const fastSnapMaxComboRef = useRef<string[]>([]);
-  const fastSnapOriginalHotkeyRef = useRef<string>(config.donkeyTools?.fastSnap?.hotkey || '');
-  const [recentFastSnaps, setRecentFastSnaps] = useState<import('../types').FastSnapRecentItem[]>([]);
-  const [isLoadingFastSnaps, setIsLoadingFastSnaps] = useState(false);
-  const [copiedFastSnapPath, setCopiedFastSnapPath] = useState<string | null>(null);
+  // QuickCap (dříve FastSnap) state & refs
+  const [isRecordingQuickCapHotkey, setIsRecordingQuickCapHotkey] = useState(false);
+  const [quickCapRecordedModifiers, setQuickCapRecordedModifiers] = useState<string[]>([]);
+  const [quickCapHotkeyError, setQuickCapHotkeyError] = useState<string | null>(null);
+  const quickCapPressedKeysRef = useRef<Set<string>>(new Set());
+  const quickCapMaxComboRef = useRef<string[]>([]);
+  const quickCapOriginalHotkeyRef = useRef<string>(config.donkeyTools?.quickCap?.hotkey || config.donkeyTools?.fastSnap?.hotkey || '');
+  const [recentQuickCaps, setRecentQuickCaps] = useState<import('../types').QuickCapRecentItem[]>([]);
+  const [isLoadingQuickCaps, setIsLoadingQuickCaps] = useState(false);
+  const [copiedQuickCapPath, setCopiedQuickCapPath] = useState<string | null>(null);
 
   const contentRef = useRef<HTMLDivElement>(null);
   const importSnippetsFileRef = useRef<HTMLInputElement>(null);
@@ -742,7 +742,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       contentRef.current.scrollTop = 0;
     }
     if (activeTab === 'donkey-tools') {
-      loadRecentFastSnaps();
+      loadRecentQuickCaps();
     }
   }, [activeTab]);
 
@@ -1372,73 +1372,87 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
-  const handleFastSnapHotkeyFocus = () => {
-    setIsRecordingFastSnapHotkey(true);
-    setFastSnapHotkeyError(null);
-    fastSnapOriginalHotkeyRef.current = formData.donkeyTools?.fastSnap?.hotkey || '';
-    fastSnapPressedKeysRef.current.clear();
-    fastSnapMaxComboRef.current = [];
-    setFastSnapRecordedModifiers([]);
+  const handleQuickCapHotkeyFocus = () => {
+    setIsRecordingQuickCapHotkey(true);
+    setQuickCapHotkeyError(null);
+    quickCapOriginalHotkeyRef.current = formData.donkeyTools?.quickCap?.hotkey || formData.donkeyTools?.fastSnap?.hotkey || '';
+    quickCapPressedKeysRef.current.clear();
+    quickCapMaxComboRef.current = [];
+    setQuickCapRecordedModifiers([]);
     window.electronAPI?.pauseGlobalHotkey?.();
   };
 
-  const handleFastSnapHotkeyBlur = () => {
-    setIsRecordingFastSnapHotkey(false);
-    fastSnapPressedKeysRef.current.clear();
-    fastSnapMaxComboRef.current = [];
-    setFastSnapRecordedModifiers([]);
+  const handleQuickCapHotkeyBlur = () => {
+    setIsRecordingQuickCapHotkey(false);
+    quickCapPressedKeysRef.current.clear();
+    quickCapMaxComboRef.current = [];
+    setQuickCapRecordedModifiers([]);
     window.electronAPI?.resumeGlobalHotkey?.();
   };
 
-  const handleFastSnapHotkeyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleQuickCapHotkeyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     e.preventDefault();
     e.stopPropagation();
 
     // Escape cancels recording and restores original hotkey
     if (e.key === 'Escape') {
-      const fallback = fastSnapOriginalHotkeyRef.current || '';
+      const fallback = quickCapOriginalHotkeyRef.current || '';
+      const isEnabled = formData.donkeyTools?.quickCap?.enabled ?? formData.donkeyTools?.fastSnap?.enabled ?? false;
+      const saveDir = formData.donkeyTools?.quickCap?.saveDirectory || formData.donkeyTools?.fastSnap?.saveDirectory;
       const updated = {
         ...formData,
         donkeyTools: {
           ...formData.donkeyTools,
-          fastSnap: {
-            enabled: formData.donkeyTools?.fastSnap?.enabled ?? false,
+          quickCap: {
+            enabled: isEnabled,
             hotkey: fallback,
-            saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
+            saveDirectory: saveDir,
+          },
+          fastSnap: {
+            enabled: isEnabled,
+            hotkey: fallback,
+            saveDirectory: saveDir,
           },
         },
       };
       setFormData(updated);
-      setFastSnapHotkeyError(null);
-      setIsRecordingFastSnapHotkey(false);
-      fastSnapPressedKeysRef.current.clear();
-      fastSnapMaxComboRef.current = [];
-      setFastSnapRecordedModifiers([]);
+      setQuickCapHotkeyError(null);
+      setIsRecordingQuickCapHotkey(false);
+      quickCapPressedKeysRef.current.clear();
+      quickCapMaxComboRef.current = [];
+      setQuickCapRecordedModifiers([]);
       (e.target as HTMLInputElement).blur();
       window.electronAPI?.resumeGlobalHotkey?.();
       return;
     }
 
     // Backspace when nothing held resets / clears the hotkey
-    if (e.key === 'Backspace' && fastSnapPressedKeysRef.current.size === 0) {
+    if (e.key === 'Backspace' && quickCapPressedKeysRef.current.size === 0) {
+      const isEnabled = formData.donkeyTools?.quickCap?.enabled ?? formData.donkeyTools?.fastSnap?.enabled ?? false;
+      const saveDir = formData.donkeyTools?.quickCap?.saveDirectory || formData.donkeyTools?.fastSnap?.saveDirectory;
       const updated = {
         ...formData,
         donkeyTools: {
           ...formData.donkeyTools,
-          fastSnap: {
-            enabled: formData.donkeyTools?.fastSnap?.enabled ?? false,
+          quickCap: {
+            enabled: isEnabled,
             hotkey: '',
-            saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
+            saveDirectory: saveDir,
+          },
+          fastSnap: {
+            enabled: isEnabled,
+            hotkey: '',
+            saveDirectory: saveDir,
           },
         },
       };
       setFormData(updated);
       handleSave(updated);
-      setFastSnapHotkeyError(null);
-      setIsRecordingFastSnapHotkey(false);
-      fastSnapPressedKeysRef.current.clear();
-      fastSnapMaxComboRef.current = [];
-      setFastSnapRecordedModifiers([]);
+      setQuickCapHotkeyError(null);
+      setIsRecordingQuickCapHotkey(false);
+      quickCapPressedKeysRef.current.clear();
+      quickCapMaxComboRef.current = [];
+      setQuickCapRecordedModifiers([]);
       (e.target as HTMLInputElement).blur();
       window.electronAPI?.resumeGlobalHotkey?.();
       return;
@@ -1457,11 +1471,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     else if (keyName === 'ArrowRight') keyName = 'Right';
     else if (/^[a-z]$/i.test(keyName)) keyName = keyName.toUpperCase();
 
-    fastSnapPressedKeysRef.current.add(keyName);
+    quickCapPressedKeysRef.current.add(keyName);
 
     // Sort order: Modifiers first, then normal keys
     const order = ['Ctrl', 'Alt', 'Shift', 'Super'];
-    const currentKeys = Array.from(fastSnapPressedKeysRef.current);
+    const currentKeys = Array.from(quickCapPressedKeysRef.current);
     currentKeys.sort((a, b) => {
       const idxA = order.indexOf(a);
       const idxB = order.indexOf(b);
@@ -1471,37 +1485,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       return a.localeCompare(b);
     });
 
-    fastSnapMaxComboRef.current = currentKeys;
+    quickCapMaxComboRef.current = currentKeys;
     const mods = currentKeys.filter((k) => order.includes(k));
-    setFastSnapRecordedModifiers(mods);
+    setQuickCapRecordedModifiers(mods);
   };
 
-  const handleFastSnapHotkeyKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleQuickCapHotkeyKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const combo = fastSnapMaxComboRef.current;
+    const combo = quickCapMaxComboRef.current;
+    const isEnabled = formData.donkeyTools?.quickCap?.enabled ?? formData.donkeyTools?.fastSnap?.enabled ?? false;
+    const saveDir = formData.donkeyTools?.quickCap?.saveDirectory || formData.donkeyTools?.fastSnap?.saveDirectory;
 
     // If only 1 key was pressed and released: reset to previous hotkey + display red error
     if (combo.length === 1) {
-      const fallback = fastSnapOriginalHotkeyRef.current || '';
+      const fallback = quickCapOriginalHotkeyRef.current || '';
       const updated = {
         ...formData,
         donkeyTools: {
           ...formData.donkeyTools,
-          fastSnap: {
-            enabled: formData.donkeyTools?.fastSnap?.enabled ?? false,
+          quickCap: {
+            enabled: isEnabled,
             hotkey: fallback,
-            saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
+            saveDirectory: saveDir,
+          },
+          fastSnap: {
+            enabled: isEnabled,
+            hotkey: fallback,
+            saveDirectory: saveDir,
           },
         },
       };
       setFormData(updated);
-      setFastSnapHotkeyError('Je potřeba minimálně dvojkombinace kláves');
-      setIsRecordingFastSnapHotkey(false);
-      fastSnapPressedKeysRef.current.clear();
-      fastSnapMaxComboRef.current = [];
-      setFastSnapRecordedModifiers([]);
+      setQuickCapHotkeyError('Je potřeba minimálně dvojkombinace kláves');
+      setIsRecordingQuickCapHotkey(false);
+      quickCapPressedKeysRef.current.clear();
+      quickCapMaxComboRef.current = [];
+      setQuickCapRecordedModifiers([]);
       (e.target as HTMLInputElement).blur();
       window.electronAPI?.resumeGlobalHotkey?.();
       return;
@@ -1513,24 +1534,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       const conflictReason = getReservedHotkeyCollision(combo);
 
       if (conflictReason) {
-        const fallback = fastSnapOriginalHotkeyRef.current || '';
+        const fallback = quickCapOriginalHotkeyRef.current || '';
         const updated = {
           ...formData,
           donkeyTools: {
             ...formData.donkeyTools,
-            fastSnap: {
-              enabled: formData.donkeyTools?.fastSnap?.enabled ?? false,
+            quickCap: {
+              enabled: isEnabled,
               hotkey: fallback,
-              saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
+              saveDirectory: saveDir,
+            },
+            fastSnap: {
+              enabled: isEnabled,
+              hotkey: fallback,
+              saveDirectory: saveDir,
             },
           },
         };
         setFormData(updated);
-        setFastSnapHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – ${conflictReason}. Byla zachována původní zkratka.`);
-        setIsRecordingFastSnapHotkey(false);
-        fastSnapPressedKeysRef.current.clear();
-        fastSnapMaxComboRef.current = [];
-        setFastSnapRecordedModifiers([]);
+        setQuickCapHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – ${conflictReason}. Byla zachována původní zkratka.`);
+        setIsRecordingQuickCapHotkey(false);
+        quickCapPressedKeysRef.current.clear();
+        quickCapMaxComboRef.current = [];
+        setQuickCapRecordedModifiers([]);
         (e.target as HTMLInputElement).blur();
         window.electronAPI?.resumeGlobalHotkey?.();
         return;
@@ -1539,24 +1565,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       // Check collision with main launcher hotkey
       const launcherHotkey = formData.hotkey || 'Ctrl+Alt+Space';
       if (finalHotkey.toLowerCase() === launcherHotkey.toLowerCase()) {
-        const fallback = fastSnapOriginalHotkeyRef.current || '';
+        const fallback = quickCapOriginalHotkeyRef.current || '';
         const updated = {
           ...formData,
           donkeyTools: {
             ...formData.donkeyTools,
-            fastSnap: {
-              enabled: formData.donkeyTools?.fastSnap?.enabled ?? false,
+            quickCap: {
+              enabled: isEnabled,
               hotkey: fallback,
-              saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
+              saveDirectory: saveDir,
+            },
+            fastSnap: {
+              enabled: isEnabled,
+              hotkey: fallback,
+              saveDirectory: saveDir,
             },
           },
         };
         setFormData(updated);
-        setFastSnapHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou vyhledávacího okna. Byla zachována původní zkratka.`);
-        setIsRecordingFastSnapHotkey(false);
-        fastSnapPressedKeysRef.current.clear();
-        fastSnapMaxComboRef.current = [];
-        setFastSnapRecordedModifiers([]);
+        setQuickCapHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou vyhledávacího okna. Byla zachována původní zkratka.`);
+        setIsRecordingQuickCapHotkey(false);
+        quickCapPressedKeysRef.current.clear();
+        quickCapMaxComboRef.current = [];
+        setQuickCapRecordedModifiers([]);
         (e.target as HTMLInputElement).blur();
         window.electronAPI?.resumeGlobalHotkey?.();
         return;
@@ -1565,103 +1596,128 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       // Check collision with ColorMaster hotkey
       const colorMasterHotkey = formData.donkeyTools?.colorMaster?.hotkey || '';
       if (colorMasterHotkey && finalHotkey.toLowerCase() === colorMasterHotkey.toLowerCase()) {
-        const fallback = fastSnapOriginalHotkeyRef.current || '';
+        const fallback = quickCapOriginalHotkeyRef.current || '';
         const updated = {
           ...formData,
           donkeyTools: {
             ...formData.donkeyTools,
-            fastSnap: {
-              enabled: formData.donkeyTools?.fastSnap?.enabled ?? false,
+            quickCap: {
+              enabled: isEnabled,
               hotkey: fallback,
-              saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
+              saveDirectory: saveDir,
+            },
+            fastSnap: {
+              enabled: isEnabled,
+              hotkey: fallback,
+              saveDirectory: saveDir,
             },
           },
         };
         setFormData(updated);
-        setFastSnapHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou ColorMaster kapátka. Byla zachována původní zkratka.`);
-        setIsRecordingFastSnapHotkey(false);
-        fastSnapPressedKeysRef.current.clear();
-        fastSnapMaxComboRef.current = [];
-        setFastSnapRecordedModifiers([]);
+        setQuickCapHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou ColorMaster kapátka. Byla zachována původní zkratka.`);
+        setIsRecordingQuickCapHotkey(false);
+        quickCapPressedKeysRef.current.clear();
+        quickCapMaxComboRef.current = [];
+        setQuickCapRecordedModifiers([]);
         (e.target as HTMLInputElement).blur();
         window.electronAPI?.resumeGlobalHotkey?.();
         return;
       }
 
-      setFastSnapHotkeyError(null);
+      setQuickCapHotkeyError(null);
       const updated = {
         ...formData,
         donkeyTools: {
           ...formData.donkeyTools,
-          fastSnap: {
-            enabled: formData.donkeyTools?.fastSnap?.enabled ?? false,
+          quickCap: {
+            enabled: isEnabled,
             hotkey: finalHotkey,
-            saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
+            saveDirectory: saveDir,
+          },
+          fastSnap: {
+            enabled: isEnabled,
+            hotkey: finalHotkey,
+            saveDirectory: saveDir,
           },
         },
       };
       setFormData(updated);
       handleSave(updated);
-      setIsRecordingFastSnapHotkey(false);
-      fastSnapPressedKeysRef.current.clear();
-      fastSnapMaxComboRef.current = [];
-      setFastSnapRecordedModifiers([]);
+      setIsRecordingQuickCapHotkey(false);
+      quickCapPressedKeysRef.current.clear();
+      quickCapMaxComboRef.current = [];
+      setQuickCapRecordedModifiers([]);
       (e.target as HTMLInputElement).blur();
       window.electronAPI?.resumeGlobalHotkey?.();
       return;
     }
   };
 
-  const loadRecentFastSnaps = async () => {
-    if (!window.electronAPI?.getRecentFastSnaps) return;
-    setIsLoadingFastSnaps(true);
+  const loadRecentQuickCaps = async () => {
+    const getRecent = window.electronAPI?.getRecentQuickCaps || window.electronAPI?.getRecentFastSnaps;
+    if (!getRecent) return;
+    setIsLoadingQuickCaps(true);
     try {
-      const items = await window.electronAPI.getRecentFastSnaps();
-      setRecentFastSnaps(items || []);
+      const items = await getRecent();
+      setRecentQuickCaps(items || []);
     } catch (err) {
-      console.error('Failed to load recent fastsnaps:', err);
+      console.error('Failed to load recent quickcaps:', err);
     } finally {
-      setIsLoadingFastSnaps(false);
+      setIsLoadingQuickCaps(false);
     }
   };
 
-  const handleCopyFastSnap = async (itemPath: string) => {
-    if (!window.electronAPI?.copyFastSnapToClipboard) return;
-    const res = await window.electronAPI.copyFastSnapToClipboard(itemPath);
+  const handleCopyQuickCap = async (itemPath: string) => {
+    const copyFn = window.electronAPI?.copyQuickCapToClipboard || window.electronAPI?.copyFastSnapToClipboard;
+    if (!copyFn) return;
+    const res = await copyFn(itemPath);
     if (res?.success) {
-      setCopiedFastSnapPath(itemPath);
-      setTimeout(() => setCopiedFastSnapPath(null), 2000);
+      setCopiedQuickCapPath(itemPath);
+      setTimeout(() => setCopiedQuickCapPath(null), 2000);
     }
   };
 
-  const handleDeleteFastSnap = async (itemPath: string) => {
-    if (!window.electronAPI?.deleteFastSnap) return;
-    await window.electronAPI.deleteFastSnap(itemPath);
-    await loadRecentFastSnaps();
+  const handleDeleteQuickCap = async (itemPath: string) => {
+    const deleteFn = window.electronAPI?.deleteQuickCap || window.electronAPI?.deleteFastSnap;
+    if (!deleteFn) return;
+    await deleteFn(itemPath);
+    await loadRecentQuickCaps();
   };
 
-  const handleShowFastSnapInFolder = (itemPath: string) => {
-    window.electronAPI?.showFastSnapInFolder?.(itemPath);
+  const handleShowQuickCapInFolder = (itemPath: string) => {
+    if (window.electronAPI?.showQuickCapInFolder) {
+      window.electronAPI.showQuickCapInFolder(itemPath);
+    } else {
+      window.electronAPI?.showFastSnapInFolder?.(itemPath);
+    }
   };
 
-  const handleChooseFastSnapFolder = async () => {
-    if (!window.electronAPI?.chooseFastSnapFolder) return;
-    const chosen = await window.electronAPI.chooseFastSnapFolder();
+  const handleChooseQuickCapFolder = async () => {
+    const chooseFn = window.electronAPI?.chooseQuickCapFolder || window.electronAPI?.chooseFastSnapFolder;
+    if (!chooseFn) return;
+    const chosen = await chooseFn();
     if (chosen) {
+      const isEnabled = formData.donkeyTools?.quickCap?.enabled ?? formData.donkeyTools?.fastSnap?.enabled ?? false;
+      const hotkey = formData.donkeyTools?.quickCap?.hotkey || formData.donkeyTools?.fastSnap?.hotkey || '';
       const updated = {
         ...formData,
         donkeyTools: {
           ...formData.donkeyTools,
+          quickCap: {
+            enabled: isEnabled,
+            hotkey,
+            saveDirectory: chosen,
+          },
           fastSnap: {
-            enabled: formData.donkeyTools?.fastSnap?.enabled ?? false,
-            hotkey: formData.donkeyTools?.fastSnap?.hotkey || '',
+            enabled: isEnabled,
+            hotkey,
             saveDirectory: chosen,
           },
         },
       };
       setFormData(updated);
       handleSave(updated);
-      loadRecentFastSnaps();
+      loadRecentQuickCaps();
     }
   };
 
@@ -3951,7 +4007,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             (() => {
                               const activeCount = [
                                 formData.donkeyTools?.colorMaster?.enabled === true,
-                                formData.donkeyTools?.fastSnap?.enabled === true,
+                                (formData.donkeyTools?.quickCap?.enabled ?? formData.donkeyTools?.fastSnap?.enabled) === true,
                               ].filter(Boolean).length;
                               if (activeCount > 0) {
                                 return (
@@ -5122,7 +5178,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 )}
               </div>
 
-              {/* SUB-EXTENSION 2: FastSnap */}
+              {/* SUB-EXTENSION 2: QuickCap */}
               <div className="p-5 bg-white/[0.03] border border-white/10 rounded-2xl space-y-4 transition hover:border-white/20">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3.5">
@@ -5131,7 +5187,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-bold text-white tracking-wide">FastSnap</h4>
+                        <h4 className="text-sm font-bold text-white tracking-wide">QuickCap</h4>
                         <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded font-medium">
                           Výstřižky obrazovky
                         </span>
@@ -5146,16 +5202,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <input
                         type="checkbox"
                         className="sr-only peer"
-                        checked={formData.donkeyTools?.fastSnap?.enabled ?? false}
+                        checked={(formData.donkeyTools?.quickCap?.enabled ?? formData.donkeyTools?.fastSnap?.enabled ?? false)}
                         onChange={(e) => {
+                          const isEnabled = e.target.checked;
+                          const currentSub = formData.donkeyTools?.quickCap || formData.donkeyTools?.fastSnap;
                           const updated = {
                             ...formData,
                             donkeyTools: {
                               ...formData.donkeyTools,
+                              quickCap: {
+                                enabled: isEnabled,
+                                hotkey: currentSub?.hotkey || '',
+                                saveDirectory: currentSub?.saveDirectory,
+                              },
                               fastSnap: {
-                                enabled: e.target.checked,
-                                hotkey: formData.donkeyTools?.fastSnap?.hotkey || '',
-                                saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
+                                enabled: isEnabled,
+                                hotkey: currentSub?.hotkey || '',
+                                saveDirectory: currentSub?.saveDirectory,
                               },
                             },
                           };
@@ -5168,8 +5231,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </div>
 
-                {/* Sub-settings when FastSnap is enabled */}
-                {(formData.donkeyTools?.fastSnap?.enabled ?? false) && (
+                {/* Sub-settings when QuickCap is enabled */}
+                {(formData.donkeyTools?.quickCap?.enabled ?? formData.donkeyTools?.fastSnap?.enabled ?? false) && (
                   <div className="pt-4 border-t border-white/5 space-y-5">
                     {/* Hotkey configuration & Snipper test */}
                     <div className="space-y-2">
@@ -5183,20 +5246,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               type="text"
                               readOnly
                               value={
-                                isRecordingFastSnapHotkey
-                                  ? (fastSnapRecordedModifiers.length > 0
-                                      ? fastSnapRecordedModifiers.join(' + ')
+                                isRecordingQuickCapHotkey
+                                  ? (quickCapRecordedModifiers.length > 0
+                                      ? quickCapRecordedModifiers.join(' + ')
                                       : 'Stiskněte klávesy...')
-                                  : formData.donkeyTools?.fastSnap?.hotkey || ''
+                                  : (formData.donkeyTools?.quickCap?.hotkey || formData.donkeyTools?.fastSnap?.hotkey || '')
                               }
-                              onFocus={handleFastSnapHotkeyFocus}
-                              onBlur={handleFastSnapHotkeyBlur}
-                              onKeyDown={handleFastSnapHotkeyKeyDown}
-                              onKeyUp={handleFastSnapHotkeyKeyUp}
+                              onFocus={handleQuickCapHotkeyFocus}
+                              onBlur={handleQuickCapHotkeyBlur}
+                              onKeyDown={handleQuickCapHotkeyKeyDown}
+                              onKeyUp={handleQuickCapHotkeyKeyUp}
                               className={`w-64 border rounded-xl px-3 py-2.5 text-sm font-mono cursor-pointer transition outline-none select-none text-center font-semibold ${
-                                fastSnapHotkeyError
+                                quickCapHotkeyError
                                   ? 'bg-rose-950/30 border-rose-500 text-rose-300 ring-2 ring-rose-500/30'
-                                  : isRecordingFastSnapHotkey
+                                  : isRecordingQuickCapHotkey
                                   ? 'bg-rose-950/60 border-rose-400 ring-2 ring-rose-500/50 text-rose-200'
                                   : 'bg-black/30 border-white/10 text-white hover:border-white/20'
                               }`}
@@ -5207,7 +5270,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              window.electronAPI?.startFastSnap?.();
+                              (window.electronAPI?.startQuickCap || window.electronAPI?.startFastSnap)?.();
                             }}
                             className="px-3.5 py-2.5 rounded-xl text-xs font-medium text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition flex items-center gap-1.5 cursor-pointer shrink-0"
                             title="Spustí výběr výstřižku z obrazovky"
@@ -5217,15 +5280,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           </button>
                         </div>
 
-                        {fastSnapHotkeyError && (
+                        {quickCapHotkeyError && (
                           <div className="flex items-center gap-1.5 text-xs text-rose-400 font-semibold animate-fade-in">
                             <span className="material-symbols-outlined text-sm">error</span>
-                            <span>{fastSnapHotkeyError}</span>
+                            <span>{quickCapHotkeyError}</span>
                           </div>
                         )}
 
                         <span className="text-[12px] text-gray-400">
-                          {isRecordingFastSnapHotkey ? (
+                          {isRecordingQuickCapHotkey ? (
                             <span className="text-rose-400 font-medium animate-pulse">
                               Stiskněte klávesovou kombinaci (např. Ctrl+Shift+S). Esc zruší, Backspace zkratku odstraní.
                             </span>
@@ -5243,11 +5306,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </label>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
                         <div className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-gray-300 truncate">
-                          {formData.donkeyTools?.fastSnap?.saveDirectory || 'Výchozí: Obrázky\\IADonkey Screenshots'}
+                          {formData.donkeyTools?.quickCap?.saveDirectory || formData.donkeyTools?.fastSnap?.saveDirectory || 'Výchozí: Obrázky\\IADonkey Screenshots'}
                         </div>
                         <button
                           type="button"
-                          onClick={handleChooseFastSnapFolder}
+                          onClick={handleChooseQuickCapFolder}
                           className="px-3 py-2 rounded-xl text-xs font-medium text-gray-200 bg-white/5 hover:bg-white/10 border border-white/10 transition flex items-center gap-1.5 cursor-pointer shrink-0"
                         >
                           <span className="material-symbols-outlined text-base">folder_open</span>
@@ -5255,7 +5318,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleShowFastSnapInFolder('')}
+                          onClick={() => handleShowQuickCapInFolder('')}
                           className="px-3 py-2 rounded-xl text-xs font-medium text-gray-200 bg-white/5 hover:bg-white/10 border border-white/10 transition flex items-center gap-1.5 cursor-pointer shrink-0"
                           title="Otevře složku v Průzkumníku souborů Windows"
                         >
@@ -5269,19 +5332,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div className="space-y-2 pt-2 border-t border-white/5">
                       <div className="flex items-center justify-between">
                         <label className="block text-xs font-semibold text-gray-300">
-                          Poslední výstřižky ({recentFastSnaps.length})
+                          Poslední výstřižky ({recentQuickCaps.length})
                         </label>
                       </div>
 
-                      {recentFastSnaps.length === 0 ? (
+                      {recentQuickCaps.length === 0 ? (
                         <div className="p-4 bg-white/[0.01] border border-white/5 rounded-xl text-center text-xs text-gray-400 flex flex-col items-center gap-1.5">
                           <span className="material-symbols-outlined text-2xl text-gray-400">image_not_supported</span>
-                          <span>Zatím žádné pořízené výstřižky. Zkuste vyzkoušet tlačítko výše nebo zadat <code className="bg-white/10 px-1 rounded text-white font-mono">/fastsnap</code> ve vyhledávači.</span>
+                          <span>Zatím žádné pořízené výstřižky. Zkuste vyzkoušet tlačítko výše nebo zadat <code className="bg-white/10 px-1 rounded text-white font-mono">/quickcap</code> ve vyhledávači.</span>
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1">
-                          {recentFastSnaps.map((snap) => {
-                            const isCopied = copiedFastSnapPath === snap.path;
+                          {recentQuickCaps.map((snap) => {
+                            const isCopied = copiedQuickCapPath === snap.path;
                             const dateStr = new Date(snap.createdAt).toLocaleString('cs-CZ', {
                               dateStyle: 'short',
                               timeStyle: 'medium',
@@ -5296,7 +5359,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     src={snap.dataUrl}
                                     alt={snap.name}
                                     className="w-16 h-12 object-cover rounded-lg bg-black/50 border border-white/10 shrink-0 cursor-pointer"
-                                    onClick={() => handleCopyFastSnap(snap.path)}
+                                    onClick={() => handleCopyQuickCap(snap.path)}
                                     title="Kliknutím vložíte do schránky"
                                   />
                                 ) : (
@@ -5307,7 +5370,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <div className="min-w-0 flex-1">
                                   <div
                                     className="text-xs font-medium text-white truncate cursor-pointer hover:text-rose-300"
-                                    onClick={() => handleCopyFastSnap(snap.path)}
+                                    onClick={() => handleCopyQuickCap(snap.path)}
                                     title={snap.name}
                                   >
                                     {snap.name}
@@ -5322,7 +5385,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <div className="flex items-center gap-1 shrink-0">
                                   <button
                                     type="button"
-                                    onClick={() => handleCopyFastSnap(snap.path)}
+                                    onClick={() => handleCopyQuickCap(snap.path)}
                                     className={`p-1.5 rounded-lg text-xs transition cursor-pointer ${
                                       isCopied
                                         ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
@@ -5336,7 +5399,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => handleShowFastSnapInFolder(snap.path)}
+                                    onClick={() => handleShowQuickCapInFolder(snap.path)}
                                     className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition cursor-pointer"
                                     title="Zobrazit ve složce"
                                   >
@@ -5344,7 +5407,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => handleDeleteFastSnap(snap.path)}
+                                    onClick={() => handleDeleteQuickCap(snap.path)}
                                     className="p-1.5 text-rose-400/70 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition cursor-pointer"
                                     title="Smazat výstřižek"
                                   >
@@ -5362,10 +5425,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1 text-[11px] text-gray-400">
                       <span className="font-semibold text-rose-300 flex items-center gap-1.5">
                         <span className="material-symbols-outlined text-sm">info</span>
-                        Jak FastSnap používat
+                        Jak QuickCap používat
                       </span>
                       <ul className="list-disc list-inside space-y-0.5 text-gray-400 pl-1">
-                        <li>Zadejte <code className="bg-white/10 px-1 rounded text-white font-mono">/fastsnap</code>, <code className="bg-white/10 px-1 rounded text-white font-mono">/snap</code> nebo <code className="bg-white/10 px-1 rounded text-white font-mono">/vystrizek</code> pro spuštění z launcheru.</li>
+                        <li>Zadejte <code className="bg-white/10 px-1 rounded text-white font-mono">/quickcap</code>, <code className="bg-white/10 px-1 rounded text-white font-mono">/cap</code> nebo <code className="bg-white/10 px-1 rounded text-white font-mono">/vystrizek</code> pro spuštění z launcheru.</li>
                         <li>Nebo použijte nakonfigurovanou globální klávesovou zkratku odkudkoliv z Windows.</li>
                         <li>Táhněte myší pro výběr oblasti. Uvolněním tlačítka myši se snímek ihned zkopíruje do schránky a uloží na disk.</li>
                         <li>Stiskem <kbd className="bg-white/10 px-1 rounded font-mono text-[10px]">Esc</kbd> pořízení výstřižku zrušíte bez uložení.</li>
@@ -6130,14 +6193,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   )}
 
-                  {formData.extensions?.donkeyTools && formData.donkeyTools?.fastSnap?.enabled === true && !!formData.donkeyTools?.fastSnap?.hotkey?.trim() && (
+                  {formData.extensions?.donkeyTools && ((formData.donkeyTools?.quickCap?.enabled ?? formData.donkeyTools?.fastSnap?.enabled) === true) && !!(formData.donkeyTools?.quickCap?.hotkey || formData.donkeyTools?.fastSnap?.hotkey)?.trim() && (
                     <div className="py-3 flex items-center justify-between">
                       <div>
-                        <span className="font-medium text-white">Výstřižek obrazovky (FastSnap)</span>
+                        <span className="font-medium text-white">Výstřižek obrazovky (QuickCap)</span>
                         <p className="text-gray-400 text-xs mt-0.5">Spustí celoobrazovkový výběr výstřižku s automatickým uložením a zkopírováním do schránky.</p>
                       </div>
                       <kbd className="px-2.5 py-1 bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded-lg font-mono font-semibold shadow-sm">
-                        {formData.donkeyTools.fastSnap.hotkey}
+                        {formData.donkeyTools?.quickCap?.hotkey || formData.donkeyTools?.fastSnap?.hotkey}
                       </kbd>
                     </div>
                   )}
@@ -6274,14 +6337,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   )}
 
-                  {formData.extensions?.donkeyTools && formData.donkeyTools?.fastSnap?.enabled === true && (
+                  {formData.extensions?.donkeyTools && ((formData.donkeyTools?.quickCap?.enabled ?? formData.donkeyTools?.fastSnap?.enabled) === true) && (
                     <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
                       <div className="flex items-center gap-2 text-rose-400 font-semibold">
                         <span className="material-symbols-outlined text-base">crop</span>
-                        FastSnap (DonkeyTools)
+                        QuickCap (DonkeyTools)
                       </div>
                       <p className="text-gray-400 text-xs leading-relaxed">
-                        Rychlé pořízení výstřižku libovolné oblasti obrazovky. Snímek se automaticky uloží do vybrané složky a současně vloží do systémové schránky pro okamžité vložení (Ctrl+V). Výstřižek spustíte příkazem <code className="bg-white/10 px-1 rounded">/fastsnap</code>, ikonkou ve Spotlightu nebo nastavenou globální klávesovou zkratkou.
+                        Rychlé pořízení výstřižku libovolné oblasti obrazovky. Snímek se automaticky uloží do vybrané složky a současně vloží do systémové schránky pro okamžité vložení (Ctrl+V). Výstřižek spustíte příkazem <code className="bg-white/10 px-1 rounded">/quickcap</code>, ikonkou ve Spotlightu nebo nastavenou globální klávesovou zkratkou.
                       </p>
                     </div>
                   )}
@@ -6293,7 +6356,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         Příkazy DonkeyTools
                       </div>
                       <p className="text-gray-400 text-xs leading-relaxed">
-                        Zadejte do vyhledávače lomítko <code className="bg-white/10 px-1 rounded">/</code> pro zobrazení rychlých příkazů aktivních nástrojů DonkeyTools (např. <code className="bg-white/10 px-1 rounded">/kapatko</code> pro nabrání barvy, <code className="bg-white/10 px-1 rounded">/fastsnap</code> pro výstřižek obrazovky).
+                        Zadejte do vyhledávače lomítko <code className="bg-white/10 px-1 rounded">/</code> pro zobrazení rychlých příkazů aktivních nástrojů DonkeyTools (např. <code className="bg-white/10 px-1 rounded">/kapatko</code> pro nabrání barvy, <code className="bg-white/10 px-1 rounded">/quickcap</code> pro výstřižek obrazovky).
                       </p>
                     </div>
                   )}

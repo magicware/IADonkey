@@ -10,7 +10,7 @@ import { InstallerWizard } from './components/InstallerWizard';
 import { UninstallerModal } from './components/UninstallerModal';
 import { SplashScreen } from './components/SplashScreen';
 import { TuneColorModal } from './components/TuneColorModal';
-import { FastSnapSnipper } from './components/FastSnapSnipper';
+import { QuickCapSnipper } from './components/QuickCapSnipper';
 import { CURRENT_APP_VERSION, getLatestRelease } from './changelog';
 import { applyPrimaryColor, applyActionsColor } from './utils/theme';
 
@@ -37,7 +37,7 @@ const DEFAULT_CONFIG: AppConfig = {
       hotkey: '',
       defaultFormat: 'hex',
     },
-    fastSnap: {
+    quickCap: {
       enabled: false,
       hotkey: '',
     },
@@ -82,8 +82,13 @@ export const App: React.FC = () => {
     return window.location.hash.startsWith('#tune-color') || window.location.search.includes('window=tune-color');
   });
 
-  const [isFastSnapView] = useState(() => {
-    return window.location.hash.startsWith('#fastsnap') || window.location.search.includes('window=fastsnap');
+  const [isQuickCapView] = useState(() => {
+    return (
+      window.location.hash.startsWith('#quickcap') ||
+      window.location.hash.startsWith('#fastsnap') ||
+      window.location.search.includes('window=quickcap') ||
+      window.location.search.includes('window=fastsnap')
+    );
   });
 
   const [gitCloneParams, setGitCloneParams] = useState(() => {
@@ -458,9 +463,9 @@ export const App: React.FC = () => {
     return <TuneColorModal initialColor={initialColor} />;
   }
 
-  // FastSnap Snipper Screen Overlay mode
-  if (isFastSnapView) {
-    return <FastSnapSnipper />;
+  // QuickCap Snipper Screen Overlay mode
+  if (isQuickCapView) {
+    return <QuickCapSnipper />;
   }
 
   // Filter items by enabled extensions
@@ -499,7 +504,8 @@ export const App: React.FC = () => {
         androidStudioEnabled={config.extensions?.androidStudio ?? false}
         donkeyToolsEnabled={config.extensions?.donkeyTools ?? false}
         colorMasterConfig={config.donkeyTools?.colorMaster}
-        fastSnapConfig={config.donkeyTools?.fastSnap}
+        quickCapConfig={config.donkeyTools?.quickCap || config.donkeyTools?.fastSnap}
+        fastSnapConfig={config.donkeyTools?.quickCap || config.donkeyTools?.fastSnap}
         onSaveConfig={handleSaveConfig}
         onOpenSettings={() => {
           if (window.electronAPI?.openSettingsWindow) {

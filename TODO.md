@@ -7,9 +7,9 @@ Aktuální seznam otevřených úkolů a vylepšení k realizaci.
 - [ ] **1. Analýza měřítka a integrace do spotlightu a nastavení**
   - Prověřit možnosti pravítka / měření vzdáleností a rozměrů na obrazovce (pixel ruler / screen scale) s možností vyvolání z launcheru a nastavení parametrů.
 
-- [ ] **2. Integrace výstřižků obrazovky (FastSnap)**
-  - Vytvoření subrozšíření FastSnap v rámci DonkeyTools.
-  - Globální nastavitelná klávesová zkratka a příkazy ve Spotlightu (`/fastsnap`, `/snap`, `/vystrizek`, `/snip`).
+- [x] **2. Integrace výstřižků obrazovky (QuickCap)**
+  - Vytvoření subrozšíření QuickCap v rámci DonkeyTools.
+  - Globální nastavitelná klávesová zkratka a příkazy ve Spotlightu (`/quickcap`, `/cap`, `/vystrizek`, `/snip`, `/fastsnap`, `/snap`).
   - Celoobrazovkový výběr obdélníkové oblasti s live rozměry v px a ztmaveným pozadím.
   - Automatické uložení PNG do uživatelské složky a vložení do schránky (`clipboard.writeImage`).
   - Správce výstřižků v Nastavení: nastavení cílové složky, tlačítko pro otevření v Průzkumníku, galerie posledních 10 výstřižků (znovu zkopírovat, smazat, zobrazit ve složce).
@@ -22,5 +22,5 @@ Aktuální seznam otevřených úkolů a vylepšení k realizaci.
 
 - [ ] **4. Analýza systémových notifikací**
   - Prověřit možnosti a chování systémových notifikací v OS Windows (Electron Notification API / native toast notifikace).
-  - Navrhnout integraci do IADonkey (upozornění na dokončení synchronizace, pořízení výstřižku FastSnap, aktualizace, chyby).
+  - Navrhnout integraci do IADonkey (upozornění na dokončení synchronizace, pořízení výstřižku QuickCap, aktualizace, chyby).
   - Zvážit možnosti uživatelského nastavení a chování při tichém režimu.
