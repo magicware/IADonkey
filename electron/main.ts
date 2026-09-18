@@ -1,7 +1,7 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, dialog, shell, clipboard, protocol, desktopCapturer, screen, nativeImage, ClipboardItem } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -462,19 +462,18 @@ async function startFastSnapProcess(): Promise<void> {
       status: 'info',
     });
 
-    const mainWin = windowManager ? windowManager.getMainWindow() : null;
-    const wasMainVisible = mainWin && !mainWin.isDestroyed() && mainWin.isVisible();
-    if (wasMainVisible) {
-      mainWin.hide();
+    if (windowManager) {
+      windowManager.setSkipSpotlightRestoreOnCloneClose(true);
+      windowManager.hideImmediately();
+      windowManager.getMainWindow()?.webContents.send('reset-spotlight');
     }
     const settingsWin = windowManager ? windowManager.getSettingsWindow() : null;
-    const wasSettingsVisible = settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible();
-    if (wasSettingsVisible) {
+    if (settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible()) {
       settingsWin.hide();
     }
 
-    // Krátká prodleva pro překreslení obrazovky bez oken aplikace
-    await new Promise((r) => setTimeout(r, 100));
+    // Krátká minimální prodleva pro překreslení DWM bez oken aplikace
+    await new Promise((r) => setTimeout(r, 40));
 
     const cursorPoint = screen.getCursorScreenPoint();
     const targetDisplay = screen.getDisplayNearestPoint(cursorPoint) || screen.getPrimaryDisplay();
@@ -506,8 +505,12 @@ async function startFastSnapProcess(): Promise<void> {
       scaleFactor,
     };
 
-    const dataUrl = currentCapturedScreenImage.toDataURL();
-    windowManager.createSnipperWindow(bounds, dataUrl, scaleFactor);
+    // Uložíme do dočasného souboru pro bleskové načtení v okně bez masivního base64 stringu v IPC
+    const tempFile = path.join(app.getPath('temp'), 'iadonkey_fastsnap_capture.png');
+    fs.writeFileSync(tempFile, currentCapturedScreenImage.toPNG());
+    const fileUrl = pathToFileURL(tempFile).href;
+
+    windowManager.createSnipperWindow(bounds, fileUrl, scaleFactor);
   } catch (err: any) {
     console.error('[Main] startFastSnapProcess error:', err);
     diagnosticsService.recordCrash('Spuštění FastSnap', err);

@@ -26,16 +26,32 @@ export const FastSnapSnipper: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
 
-    let unsubscribe: (() => void) | undefined;
+    let unsubscribeInit: (() => void) | undefined;
     if (window.electronAPI?.onFastSnapInitData) {
-      unsubscribe = window.electronAPI.onFastSnapInitData((data) => {
+      unsubscribeInit = window.electronAPI.onFastSnapInitData((data) => {
         setInitData(data);
+        setIsFinished(false);
+        setIsDragging(false);
+        setStartPos(null);
+        setCurrentPos(null);
+      });
+    }
+
+    let unsubscribeCleanup: (() => void) | undefined;
+    if (window.electronAPI?.onFastSnapCleanup) {
+      unsubscribeCleanup = window.electronAPI.onFastSnapCleanup(() => {
+        setInitData(null);
+        setIsFinished(false);
+        setIsDragging(false);
+        setStartPos(null);
+        setCurrentPos(null);
       });
     }
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      if (unsubscribe) unsubscribe();
+      if (unsubscribeInit) unsubscribeInit();
+      if (unsubscribeCleanup) unsubscribeCleanup();
     };
   }, []);
 
@@ -95,6 +111,7 @@ export const FastSnapSnipper: React.FC = () => {
     <div
       ref={containerRef}
       className="fixed inset-0 select-none overflow-hidden cursor-crosshair z-50 bg-black"
+      style={{ width: '100vw', height: '100vh' }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -109,6 +126,7 @@ export const FastSnapSnipper: React.FC = () => {
           src={initData.screenshotUrl}
           alt="Desktop Background"
           className="absolute inset-0 w-full h-full object-fill pointer-events-none"
+          style={{ width: '100vw', height: '100vh', objectFit: 'fill' }}
           draggable={false}
         />
       )}

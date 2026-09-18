@@ -506,18 +506,32 @@ export class WindowManager {
 
   public closeSnipperWindow(): void {
     if (this.snipperWindow && !this.snipperWindow.isDestroyed()) {
-      this.snipperWindow.close();
-      this.snipperWindow = null;
+      this.snipperWindow.webContents.send('fastsnap-cleanup');
+      this.snipperWindow.hide();
     }
   }
 
   public createSnipperWindow(
     displayBounds: { x: number; y: number; width: number; height: number },
-    screenshotDataUrl: string,
+    screenshotUrl: string,
     scaleFactor: number
   ): BrowserWindow {
+    const applyFullScreenAndShow = (win: BrowserWindow) => {
+      win.setBounds(displayBounds);
+      win.setAlwaysOnTop(true, 'screen-saver');
+      win.show();
+      win.focus();
+      win.webContents.send('fastsnap-init-data', {
+        screenshotUrl,
+        width: displayBounds.width,
+        height: displayBounds.height,
+        scaleFactor,
+      });
+    };
+
     if (this.snipperWindow && !this.snipperWindow.isDestroyed()) {
-      this.closeSnipperWindow();
+      applyFullScreenAndShow(this.snipperWindow);
+      return this.snipperWindow;
     }
 
     const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
@@ -539,6 +553,8 @@ export class WindowManager {
       resizable: false,
       movable: false,
       show: false,
+      fullscreen: true,
+      hasShadow: false,
       enableLargerThanScreen: true,
       webPreferences: {
         preload: preloadPath,
@@ -547,6 +563,8 @@ export class WindowManager {
         nodeIntegration: false,
       },
     });
+
+    this.snipperWindow.setAlwaysOnTop(true, 'screen-saver');
 
     if (process.env.VITE_DEV_SERVER_URL) {
       this.snipperWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#fastsnap`);
@@ -558,14 +576,7 @@ export class WindowManager {
 
     this.snipperWindow.once('ready-to-show', () => {
       if (this.snipperWindow && !this.snipperWindow.isDestroyed()) {
-        this.snipperWindow.show();
-        this.snipperWindow.focus();
-        this.snipperWindow.webContents.send('fastsnap-init-data', {
-          screenshotUrl: screenshotDataUrl,
-          width: displayBounds.width,
-          height: displayBounds.height,
-          scaleFactor,
-        });
+        applyFullScreenAndShow(this.snipperWindow);
       }
     });
 

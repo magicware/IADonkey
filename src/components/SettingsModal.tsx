@@ -5271,14 +5271,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <label className="block text-xs font-semibold text-gray-300">
                           Poslední výstřižky ({recentFastSnaps.length})
                         </label>
-                        <button
-                          type="button"
-                          onClick={loadRecentFastSnaps}
-                          className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 cursor-pointer"
-                        >
-                          <span className={`material-symbols-outlined text-sm ${isLoadingFastSnaps ? 'animate-spin' : ''}`}>refresh</span>
-                          <span>Obnovit</span>
-                        </button>
                       </div>
 
                       {recentFastSnaps.length === 0 ? (
@@ -5368,7 +5360,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                     {/* Usage examples banner */}
                     <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1 text-[11px] text-gray-400">
-                      <span className="font-semibold text-indigo-300 flex items-center gap-1.5">
+                      <span className="font-semibold text-rose-300 flex items-center gap-1.5">
                         <span className="material-symbols-outlined text-sm">info</span>
                         Jak FastSnap používat
                       </span>

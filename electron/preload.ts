@@ -212,4 +212,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('fastsnap-init-data', handler);
     return () => ipcRenderer.removeListener('fastsnap-init-data', handler);
   },
+  onFastSnapCleanup: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('fastsnap-cleanup', handler);
+    return () => ipcRenderer.removeListener('fastsnap-cleanup', handler);
+  },
 });

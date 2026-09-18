@@ -125,6 +125,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         status: 'info',
       });
       setIsDonkeyToolsOpen(false);
+      await window.electronAPI?.resetAndHideSpotlight?.();
       await window.electronAPI?.startFastSnap?.();
     } catch (err) {
       console.error('FastSnap start error:', err);

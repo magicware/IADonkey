@@ -150,6 +150,7 @@ declare global {
       showFastSnapInFolder?: (filePath: string) => Promise<void>;
       chooseFastSnapFolder?: () => Promise<string | null>;
       onFastSnapInitData?: (callback: (data: { screenshotUrl: string; width: number; height: number; scaleFactor: number }) => void) => () => void;
+      onFastSnapCleanup?: (callback: () => void) => () => void;
     };
   }
 }
