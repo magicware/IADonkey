@@ -10,6 +10,7 @@ import { InstallerWizard } from './components/InstallerWizard';
 import { UninstallerModal } from './components/UninstallerModal';
 import { SplashScreen } from './components/SplashScreen';
 import { TuneColorModal } from './components/TuneColorModal';
+import { FastSnapSnipper } from './components/FastSnapSnipper';
 import { CURRENT_APP_VERSION, getLatestRelease } from './changelog';
 import { applyPrimaryColor, applyActionsColor } from './utils/theme';
 
@@ -35,6 +36,10 @@ const DEFAULT_CONFIG: AppConfig = {
       enabled: true,
       hotkey: '',
       defaultFormat: 'hex',
+    },
+    fastSnap: {
+      enabled: true,
+      hotkey: '',
     },
   },
   updateUrl: 'https://raw.githubusercontent.com/magicware/IADonkey/main/version.json',
@@ -75,6 +80,10 @@ export const App: React.FC = () => {
 
   const [isTuneColorView, setIsTuneColorView] = useState(() => {
     return window.location.hash.startsWith('#tune-color') || window.location.search.includes('window=tune-color');
+  });
+
+  const [isFastSnapView] = useState(() => {
+    return window.location.hash.startsWith('#fastsnap') || window.location.search.includes('window=fastsnap');
   });
 
   const [gitCloneParams, setGitCloneParams] = useState(() => {
@@ -447,6 +456,11 @@ export const App: React.FC = () => {
     const params = new URLSearchParams(rawSearch);
     const initialColor = params.get('color') || '#6366f1';
     return <TuneColorModal initialColor={initialColor} />;
+  }
+
+  // FastSnap Snipper Screen Overlay mode
+  if (isFastSnapView) {
+    return <FastSnapSnipper />;
   }
 
   // Filter items by enabled extensions

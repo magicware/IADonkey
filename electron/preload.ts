@@ -192,4 +192,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('log-action', entry),
   exportCrashReport: (fileName: string): Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }> =>
     ipcRenderer.invoke('export-crash-report', fileName),
+
+  // FastSnap API
+  startFastSnap: (): Promise<void> => ipcRenderer.invoke('fastsnap-start'),
+  finishFastSnap: (cropArea: { x: number; y: number; width: number; height: number }): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke('fastsnap-finish-crop', cropArea),
+  cancelFastSnap: (): Promise<void> => ipcRenderer.invoke('fastsnap-cancel'),
+  getRecentFastSnaps: (): Promise<any[]> => ipcRenderer.invoke('fastsnap-get-recent'),
+  copyFastSnapToClipboard: (filePath: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('fastsnap-copy-to-clipboard', filePath),
+  deleteFastSnap: (filePath: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('fastsnap-delete', filePath),
+  showFastSnapInFolder: (filePath: string): Promise<void> =>
+    ipcRenderer.invoke('fastsnap-show-in-folder', filePath),
+  chooseFastSnapFolder: (): Promise<string | null> =>
+    ipcRenderer.invoke('fastsnap-choose-folder'),
+  onFastSnapInitData: (callback: (data: { screenshotUrl: string; width: number; height: number; scaleFactor: number }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('fastsnap-init-data', handler);
+    return () => ipcRenderer.removeListener('fastsnap-init-data', handler);
+  },
 });

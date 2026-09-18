@@ -198,6 +198,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const colorMasterPressedKeysRef = useRef<Set<string>>(new Set());
   const colorMasterMaxComboRef = useRef<string[]>([]);
   const colorMasterOriginalHotkeyRef = useRef<string>(config.donkeyTools?.colorMaster?.hotkey || '');
+
+  // FastSnap state & refs
+  const [isRecordingFastSnapHotkey, setIsRecordingFastSnapHotkey] = useState(false);
+  const [fastSnapRecordedModifiers, setFastSnapRecordedModifiers] = useState<string[]>([]);
+  const [fastSnapHotkeyError, setFastSnapHotkeyError] = useState<string | null>(null);
+  const fastSnapPressedKeysRef = useRef<Set<string>>(new Set());
+  const fastSnapMaxComboRef = useRef<string[]>([]);
+  const fastSnapOriginalHotkeyRef = useRef<string>(config.donkeyTools?.fastSnap?.hotkey || '');
+  const [recentFastSnaps, setRecentFastSnaps] = useState<import('../types').FastSnapRecentItem[]>([]);
+  const [isLoadingFastSnaps, setIsLoadingFastSnaps] = useState(false);
+  const [copiedFastSnapPath, setCopiedFastSnapPath] = useState<string | null>(null);
+
   const contentRef = useRef<HTMLDivElement>(null);
   const importSnippetsFileRef = useRef<HTMLInputElement>(null);
   const [snippetFeedback, setSnippetFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -728,6 +740,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   useEffect(() => {
     if (contentRef.current) {
       contentRef.current.scrollTop = 0;
+    }
+    if (activeTab === 'donkey-tools') {
+      loadRecentFastSnaps();
     }
   }, [activeTab]);
 
@@ -1354,6 +1369,299 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       (e.target as HTMLInputElement).blur();
       window.electronAPI?.resumeGlobalHotkey?.();
       return;
+    }
+  };
+
+  const handleFastSnapHotkeyFocus = () => {
+    setIsRecordingFastSnapHotkey(true);
+    setFastSnapHotkeyError(null);
+    fastSnapOriginalHotkeyRef.current = formData.donkeyTools?.fastSnap?.hotkey || '';
+    fastSnapPressedKeysRef.current.clear();
+    fastSnapMaxComboRef.current = [];
+    setFastSnapRecordedModifiers([]);
+    window.electronAPI?.pauseGlobalHotkey?.();
+  };
+
+  const handleFastSnapHotkeyBlur = () => {
+    setIsRecordingFastSnapHotkey(false);
+    fastSnapPressedKeysRef.current.clear();
+    fastSnapMaxComboRef.current = [];
+    setFastSnapRecordedModifiers([]);
+    window.electronAPI?.resumeGlobalHotkey?.();
+  };
+
+  const handleFastSnapHotkeyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Escape cancels recording and restores original hotkey
+    if (e.key === 'Escape') {
+      const fallback = fastSnapOriginalHotkeyRef.current || '';
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          fastSnap: {
+            enabled: formData.donkeyTools?.fastSnap?.enabled ?? true,
+            hotkey: fallback,
+            saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
+          },
+        },
+      };
+      setFormData(updated);
+      setFastSnapHotkeyError(null);
+      setIsRecordingFastSnapHotkey(false);
+      fastSnapPressedKeysRef.current.clear();
+      fastSnapMaxComboRef.current = [];
+      setFastSnapRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+
+    // Backspace when nothing held resets / clears the hotkey
+    if (e.key === 'Backspace' && fastSnapPressedKeysRef.current.size === 0) {
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          fastSnap: {
+            enabled: formData.donkeyTools?.fastSnap?.enabled ?? true,
+            hotkey: '',
+            saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
+          },
+        },
+      };
+      setFormData(updated);
+      handleSave(updated);
+      setFastSnapHotkeyError(null);
+      setIsRecordingFastSnapHotkey(false);
+      fastSnapPressedKeysRef.current.clear();
+      fastSnapMaxComboRef.current = [];
+      setFastSnapRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+
+    // Normalize key
+    let keyName = e.key;
+    if (keyName === 'Control') keyName = 'Ctrl';
+    else if (keyName === 'Alt') keyName = 'Alt';
+    else if (keyName === 'Shift') keyName = 'Shift';
+    else if (keyName === 'Meta') keyName = 'Super';
+    else if (keyName === ' ') keyName = 'Space';
+    else if (keyName === 'ArrowUp') keyName = 'Up';
+    else if (keyName === 'ArrowDown') keyName = 'Down';
+    else if (keyName === 'ArrowLeft') keyName = 'Left';
+    else if (keyName === 'ArrowRight') keyName = 'Right';
+    else if (/^[a-z]$/i.test(keyName)) keyName = keyName.toUpperCase();
+
+    fastSnapPressedKeysRef.current.add(keyName);
+
+    // Sort order: Modifiers first, then normal keys
+    const order = ['Ctrl', 'Alt', 'Shift', 'Super'];
+    const currentKeys = Array.from(fastSnapPressedKeysRef.current);
+    currentKeys.sort((a, b) => {
+      const idxA = order.indexOf(a);
+      const idxB = order.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    fastSnapMaxComboRef.current = currentKeys;
+    const mods = currentKeys.filter((k) => order.includes(k));
+    setFastSnapRecordedModifiers(mods);
+  };
+
+  const handleFastSnapHotkeyKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const combo = fastSnapMaxComboRef.current;
+
+    // If only 1 key was pressed and released: reset to previous hotkey + display red error
+    if (combo.length === 1) {
+      const fallback = fastSnapOriginalHotkeyRef.current || '';
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          fastSnap: {
+            enabled: formData.donkeyTools?.fastSnap?.enabled ?? true,
+            hotkey: fallback,
+            saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
+          },
+        },
+      };
+      setFormData(updated);
+      setFastSnapHotkeyError('Je potřeba minimálně dvojkombinace kláves');
+      setIsRecordingFastSnapHotkey(false);
+      fastSnapPressedKeysRef.current.clear();
+      fastSnapMaxComboRef.current = [];
+      setFastSnapRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+
+    // If at least 2 keys were pressed: check reserved hotkey collision and collision with launcher / colorMaster hotkey
+    if (combo.length >= 2) {
+      const finalHotkey = combo.join('+');
+      const conflictReason = getReservedHotkeyCollision(combo);
+
+      if (conflictReason) {
+        const fallback = fastSnapOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            fastSnap: {
+              enabled: formData.donkeyTools?.fastSnap?.enabled ?? true,
+              hotkey: fallback,
+              saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
+            },
+          },
+        };
+        setFormData(updated);
+        setFastSnapHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – ${conflictReason}. Byla zachována původní zkratka.`);
+        setIsRecordingFastSnapHotkey(false);
+        fastSnapPressedKeysRef.current.clear();
+        fastSnapMaxComboRef.current = [];
+        setFastSnapRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      // Check collision with main launcher hotkey
+      const launcherHotkey = formData.hotkey || 'Ctrl+Alt+Space';
+      if (finalHotkey.toLowerCase() === launcherHotkey.toLowerCase()) {
+        const fallback = fastSnapOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            fastSnap: {
+              enabled: formData.donkeyTools?.fastSnap?.enabled ?? true,
+              hotkey: fallback,
+              saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
+            },
+          },
+        };
+        setFormData(updated);
+        setFastSnapHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou vyhledávacího okna. Byla zachována původní zkratka.`);
+        setIsRecordingFastSnapHotkey(false);
+        fastSnapPressedKeysRef.current.clear();
+        fastSnapMaxComboRef.current = [];
+        setFastSnapRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      // Check collision with ColorMaster hotkey
+      const colorMasterHotkey = formData.donkeyTools?.colorMaster?.hotkey || '';
+      if (colorMasterHotkey && finalHotkey.toLowerCase() === colorMasterHotkey.toLowerCase()) {
+        const fallback = fastSnapOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            fastSnap: {
+              enabled: formData.donkeyTools?.fastSnap?.enabled ?? true,
+              hotkey: fallback,
+              saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
+            },
+          },
+        };
+        setFormData(updated);
+        setFastSnapHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou ColorMaster kapátka. Byla zachována původní zkratka.`);
+        setIsRecordingFastSnapHotkey(false);
+        fastSnapPressedKeysRef.current.clear();
+        fastSnapMaxComboRef.current = [];
+        setFastSnapRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      setFastSnapHotkeyError(null);
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          fastSnap: {
+            enabled: formData.donkeyTools?.fastSnap?.enabled ?? true,
+            hotkey: finalHotkey,
+            saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
+          },
+        },
+      };
+      setFormData(updated);
+      handleSave(updated);
+      setIsRecordingFastSnapHotkey(false);
+      fastSnapPressedKeysRef.current.clear();
+      fastSnapMaxComboRef.current = [];
+      setFastSnapRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+  };
+
+  const loadRecentFastSnaps = async () => {
+    if (!window.electronAPI?.getRecentFastSnaps) return;
+    setIsLoadingFastSnaps(true);
+    try {
+      const items = await window.electronAPI.getRecentFastSnaps();
+      setRecentFastSnaps(items || []);
+    } catch (err) {
+      console.error('Failed to load recent fastsnaps:', err);
+    } finally {
+      setIsLoadingFastSnaps(false);
+    }
+  };
+
+  const handleCopyFastSnap = async (itemPath: string) => {
+    if (!window.electronAPI?.copyFastSnapToClipboard) return;
+    const res = await window.electronAPI.copyFastSnapToClipboard(itemPath);
+    if (res?.success) {
+      setCopiedFastSnapPath(itemPath);
+      setTimeout(() => setCopiedFastSnapPath(null), 2000);
+    }
+  };
+
+  const handleDeleteFastSnap = async (itemPath: string) => {
+    if (!window.electronAPI?.deleteFastSnap) return;
+    await window.electronAPI.deleteFastSnap(itemPath);
+    await loadRecentFastSnaps();
+  };
+
+  const handleShowFastSnapInFolder = (itemPath: string) => {
+    window.electronAPI?.showFastSnapInFolder?.(itemPath);
+  };
+
+  const handleChooseFastSnapFolder = async () => {
+    if (!window.electronAPI?.chooseFastSnapFolder) return;
+    const chosen = await window.electronAPI.chooseFastSnapFolder();
+    if (chosen) {
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          fastSnap: {
+            enabled: formData.donkeyTools?.fastSnap?.enabled ?? true,
+            hotkey: formData.donkeyTools?.fastSnap?.hotkey || '',
+            saveDirectory: chosen,
+          },
+        },
+      };
+      setFormData(updated);
+      handleSave(updated);
+      loadRecentFastSnaps();
     }
   };
 
@@ -4798,6 +5106,267 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* SUB-EXTENSION 2: FastSnap */}
+              <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 shrink-0">
+                      <span className="material-symbols-outlined text-2xl">crop</span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-white tracking-wide">FastSnap</h4>
+                        <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.5 rounded font-medium">
+                          Výstřižky obrazovky
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                        Rychlé pořízení výstřižku libovolné oblasti obrazovky. Snímek se automaticky uloží do vybrané složky a současně vloží do systémové schránky pro okamžité vložení (Ctrl+V).
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={formData.donkeyTools?.fastSnap?.enabled ?? true}
+                        onChange={(e) => {
+                          const updated = {
+                            ...formData,
+                            donkeyTools: {
+                              ...formData.donkeyTools,
+                              fastSnap: {
+                                enabled: e.target.checked,
+                                hotkey: formData.donkeyTools?.fastSnap?.hotkey || '',
+                                saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
+                              },
+                            },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                      />
+                      <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Sub-settings when FastSnap is enabled */}
+                {(formData.donkeyTools?.fastSnap?.enabled ?? true) && (
+                  <div className="pt-4 border-t border-white/5 space-y-5">
+                    {/* Hotkey configuration & Snipper test */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-gray-300">
+                        Globální klávesová zkratka pro pořízení výstřižku (volitelné)
+                      </label>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              readOnly
+                              value={
+                                isRecordingFastSnapHotkey
+                                  ? (fastSnapRecordedModifiers.length > 0
+                                      ? fastSnapRecordedModifiers.join(' + ')
+                                      : 'Stiskněte klávesy...')
+                                  : formData.donkeyTools?.fastSnap?.hotkey || ''
+                              }
+                              onFocus={handleFastSnapHotkeyFocus}
+                              onBlur={handleFastSnapHotkeyBlur}
+                              onKeyDown={handleFastSnapHotkeyKeyDown}
+                              onKeyUp={handleFastSnapHotkeyKeyUp}
+                              className={`w-64 border rounded-xl px-3 py-2.5 text-sm font-mono cursor-pointer transition outline-none select-none text-center font-semibold ${
+                                fastSnapHotkeyError
+                                  ? 'bg-rose-950/30 border-rose-500 text-rose-300 ring-2 ring-rose-500/30'
+                                  : isRecordingFastSnapHotkey
+                                  ? 'bg-indigo-950/60 border-indigo-400 ring-2 ring-indigo-500/50 text-indigo-200'
+                                  : 'bg-black/30 border-white/10 text-white hover:border-white/20'
+                              }`}
+                              placeholder="Klikněte pro nastavení zkratky"
+                            />
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              window.electronAPI?.startFastSnap?.();
+                            }}
+                            className="px-3.5 py-2.5 rounded-xl text-xs font-medium text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                            title="Spustí výběr výstřižku z obrazovky"
+                          >
+                            <span className="material-symbols-outlined text-base">crop</span>
+                            <span>Vyzkoušet výstřižek</span>
+                          </button>
+                        </div>
+
+                        {fastSnapHotkeyError && (
+                          <div className="flex items-center gap-1.5 text-xs text-rose-400 font-semibold animate-fade-in">
+                            <span className="material-symbols-outlined text-sm">error</span>
+                            <span>{fastSnapHotkeyError}</span>
+                          </div>
+                        )}
+
+                        <span className="text-[12px] text-gray-400">
+                          {isRecordingFastSnapHotkey ? (
+                            <span className="text-indigo-400 font-medium animate-pulse">
+                              Stiskněte klávesovou kombinaci (např. Ctrl+Shift+S). Esc zruší, Backspace zkratku odstraní.
+                            </span>
+                          ) : (
+                            <span>Klikněte do pole a stiskněte klávesy (např. Ctrl+Shift+S). Zkratka nesmí kolidovat s ostatními. Backspace zkratku vymaže.</span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Target folder setting */}
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                      <label className="block text-xs font-semibold text-gray-300">
+                        Složka pro ukládání výstřižků
+                      </label>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+                        <div className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-gray-300 truncate">
+                          {formData.donkeyTools?.fastSnap?.saveDirectory || 'Výchozí: Obrázky\\IADonkey Screenshots'}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleChooseFastSnapFolder}
+                          className="px-3 py-2 rounded-xl text-xs font-medium text-gray-200 bg-white/5 hover:bg-white/10 border border-white/10 transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                        >
+                          <span className="material-symbols-outlined text-base">folder_open</span>
+                          <span>Změnit složku...</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleShowFastSnapInFolder('')}
+                          className="px-3 py-2 rounded-xl text-xs font-medium text-gray-200 bg-white/5 hover:bg-white/10 border border-white/10 transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                          title="Otevře složku v Průzkumníku souborů Windows"
+                        >
+                          <span className="material-symbols-outlined text-base">open_in_new</span>
+                          <span>Otevřít v Průzkumníku</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Gallery: Recent 10 screenshots */}
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-semibold text-gray-300">
+                          Poslední výstřižky ({recentFastSnaps.length})
+                        </label>
+                        <button
+                          type="button"
+                          onClick={loadRecentFastSnaps}
+                          className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
+                        >
+                          <span className={`material-symbols-outlined text-sm ${isLoadingFastSnaps ? 'animate-spin' : ''}`}>refresh</span>
+                          <span>Obnovit</span>
+                        </button>
+                      </div>
+
+                      {recentFastSnaps.length === 0 ? (
+                        <div className="p-4 bg-white/[0.01] border border-white/5 rounded-xl text-center text-xs text-gray-400 flex flex-col items-center gap-1.5">
+                          <span className="material-symbols-outlined text-2xl text-gray-400">image_not_supported</span>
+                          <span>Zatím žádné pořízené výstřižky. Zkuste vyzkoušet tlačítko výše nebo zadat <code className="bg-white/10 px-1 rounded text-white font-mono">/fastsnap</code> ve vyhledávači.</span>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                          {recentFastSnaps.map((snap) => {
+                            const isCopied = copiedFastSnapPath === snap.path;
+                            const dateStr = new Date(snap.createdAt).toLocaleString('cs-CZ', {
+                              dateStyle: 'short',
+                              timeStyle: 'medium',
+                            });
+                            return (
+                              <div
+                                key={snap.path}
+                                className="group relative p-2.5 bg-black/30 hover:bg-black/50 border border-white/5 hover:border-indigo-500/30 rounded-xl transition flex gap-3 items-center"
+                              >
+                                {snap.dataUrl ? (
+                                  <img
+                                    src={snap.dataUrl}
+                                    alt={snap.name}
+                                    className="w-16 h-12 object-cover rounded-lg bg-black/50 border border-white/10 shrink-0 cursor-pointer"
+                                    onClick={() => handleCopyFastSnap(snap.path)}
+                                    title="Kliknutím vložíte do schránky"
+                                  />
+                                ) : (
+                                  <div className="w-16 h-12 bg-white/5 rounded-lg border border-white/10 flex items-center justify-center shrink-0">
+                                    <span className="material-symbols-outlined text-gray-400">image</span>
+                                  </div>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <div
+                                    className="text-xs font-medium text-white truncate cursor-pointer hover:text-indigo-300"
+                                    onClick={() => handleCopyFastSnap(snap.path)}
+                                    title={snap.name}
+                                  >
+                                    {snap.name}
+                                  </div>
+                                  <div className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-2">
+                                    <span>{dateStr}</span>
+                                    {snap.width && snap.height && (
+                                      <span className="font-mono text-indigo-400/80">{snap.width}×{snap.height}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyFastSnap(snap.path)}
+                                    className={`p-1.5 rounded-lg text-xs transition cursor-pointer ${
+                                      isCopied
+                                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                        : 'text-gray-400 hover:text-white hover:bg-white/10'
+                                    }`}
+                                    title="Zkopírovat znovu do schránky"
+                                  >
+                                    <span className="material-symbols-outlined text-base">
+                                      {isCopied ? 'check' : 'content_copy'}
+                                    </span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleShowFastSnapInFolder(snap.path)}
+                                    className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition cursor-pointer"
+                                    title="Zobrazit ve složce"
+                                  >
+                                    <span className="material-symbols-outlined text-base">folder_open</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteFastSnap(snap.path)}
+                                    className="p-1.5 text-rose-400/70 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition cursor-pointer"
+                                    title="Smazat výstřižek"
+                                  >
+                                    <span className="material-symbols-outlined text-base">delete</span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Usage examples banner */}
+                    <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1 text-[11px] text-gray-400">
+                      <span className="font-semibold text-indigo-300 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-sm">info</span>
+                        Jak FastSnap používat
+                      </span>
+                      <ul className="list-disc list-inside space-y-0.5 text-gray-400 pl-1">
+                        <li>Zadejte <code className="bg-white/10 px-1 rounded text-white font-mono">/fastsnap</code>, <code className="bg-white/10 px-1 rounded text-white font-mono">/snap</code> nebo <code className="bg-white/10 px-1 rounded text-white font-mono">/vystrizek</code> pro spuštění z launcheru.</li>
+                        <li>Nebo použijte nakonfigurovanou globální klávesovou zkratku odkudkoliv z Windows.</li>
+                        <li>Táhněte myší pro výběr oblasti. Uvolněním tlačítka myši se snímek ihned zkopíruje do schránky a uloží na disk.</li>
+                        <li>Stiskem <kbd className="bg-white/10 px-1 rounded font-mono text-[10px]">Esc</kbd> pořízení výstřižku zrušíte bez uložení.</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -5550,6 +6119,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </div>
                       <kbd className="px-2.5 py-1 bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded-lg font-mono font-semibold shadow-sm">
                         {formData.donkeyTools.colorMaster.hotkey}
+                      </kbd>
+                    </div>
+                  )}
+
+                  {formData.extensions?.donkeyTools && formData.donkeyTools?.fastSnap?.enabled !== false && !!formData.donkeyTools?.fastSnap?.hotkey?.trim() && (
+                    <div className="py-3 flex items-center justify-between">
+                      <div>
+                        <span className="font-medium text-white">Výstřižek obrazovky (FastSnap)</span>
+                        <p className="text-gray-400 text-xs mt-0.5">Spustí celoobrazovkový výběr výstřižku s automatickým uložením a zkopírováním do schránky.</p>
+                      </div>
+                      <kbd className="px-2.5 py-1 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-lg font-mono font-semibold shadow-sm">
+                        {formData.donkeyTools.fastSnap.hotkey}
                       </kbd>
                     </div>
                   )}

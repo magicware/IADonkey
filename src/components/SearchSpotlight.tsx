@@ -1049,6 +1049,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       return;
     }
 
+    if (item.action === 'fastsnap') {
+      await window.electronAPI?.resetAndHideSpotlight?.();
+      await window.electronAPI?.startFastSnap?.();
+      return;
+    }
+
     if (item.id === 'colormaster-detected-color' && item.colorPreview) {
       const format = colorMasterConfig?.defaultFormat || 'hex';
       const parsed = parseColorQuery(item.colorPreview);

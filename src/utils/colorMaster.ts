@@ -328,6 +328,27 @@ export function getDonkeyToolsCommands(query: string): LauncherItem[] {
     });
   }
 
+  // /fastsnap (/snap, /vystrizek, /snip, /screenshot)
+  const isFastSnapMatch =
+    command === '' ||
+    'fastsnap'.includes(command) ||
+    'snap'.includes(command) ||
+    'vystrizek'.includes(command) ||
+    'snip'.includes(command) ||
+    'screenshot'.includes(command);
+
+  if (isFastSnapMatch) {
+    list.push({
+      id: 'donkeytools-fastsnap',
+      name: '/fastsnap',
+      location: 'FastSnap – Výstřižek obrazovky s uložením a schránkou',
+      action: 'fastsnap',
+      icon: 'crop',
+      priority: -1.4,
+      shortcuts: ['/snap', '/vystrizek', '/snip', '/screenshot'],
+    });
+  }
+
   return list;
 }
 

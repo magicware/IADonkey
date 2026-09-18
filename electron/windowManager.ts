@@ -42,6 +42,7 @@ export class WindowManager {
   private powerWindow: BrowserWindow | null = null;
   private gitCloneWindow: BrowserWindow | null = null;
   private tuneColorWindow: BrowserWindow | null = null;
+  private snipperWindow: BrowserWindow | null = null;
   private splashWindow: BrowserWindow | null = null;
   private lastSplashStatus: { percent: number; text: string } = {
     percent: 10,
@@ -499,6 +500,82 @@ export class WindowManager {
     return this.tuneColorWindow;
   }
 
+  public getSnipperWindow(): BrowserWindow | null {
+    return this.snipperWindow;
+  }
+
+  public closeSnipperWindow(): void {
+    if (this.snipperWindow && !this.snipperWindow.isDestroyed()) {
+      this.snipperWindow.close();
+      this.snipperWindow = null;
+    }
+  }
+
+  public createSnipperWindow(
+    displayBounds: { x: number; y: number; width: number; height: number },
+    screenshotDataUrl: string,
+    scaleFactor: number
+  ): BrowserWindow {
+    if (this.snipperWindow && !this.snipperWindow.isDestroyed()) {
+      this.closeSnipperWindow();
+    }
+
+    const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
+      ? path.join(__dirname, 'preload.cjs')
+      : fs.existsSync(path.join(__dirname, 'preload.mjs'))
+      ? path.join(__dirname, 'preload.mjs')
+      : path.join(__dirname, 'preload.js');
+
+    this.snipperWindow = new BrowserWindow({
+      x: displayBounds.x,
+      y: displayBounds.y,
+      width: displayBounds.width,
+      height: displayBounds.height,
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      resizable: false,
+      movable: false,
+      show: false,
+      enableLargerThanScreen: true,
+      webPreferences: {
+        preload: preloadPath,
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    if (process.env.VITE_DEV_SERVER_URL) {
+      this.snipperWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#fastsnap`);
+    } else {
+      this.snipperWindow.loadFile(path.join(__dirname, '../dist/index.html'), {
+        hash: 'fastsnap',
+      });
+    }
+
+    this.snipperWindow.once('ready-to-show', () => {
+      if (this.snipperWindow && !this.snipperWindow.isDestroyed()) {
+        this.snipperWindow.show();
+        this.snipperWindow.focus();
+        this.snipperWindow.webContents.send('fastsnap-init-data', {
+          screenshotUrl: screenshotDataUrl,
+          width: displayBounds.width,
+          height: displayBounds.height,
+          scaleFactor,
+        });
+      }
+    });
+
+    this.snipperWindow.on('closed', () => {
+      this.snipperWindow = null;
+    });
+
+    return this.snipperWindow;
+  }
+
   public createInstallerWindow(): BrowserWindow {
     const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
       ? path.join(__dirname, 'preload.cjs')
@@ -799,6 +876,18 @@ export class WindowManager {
       if (this.splashWindow && !this.splashWindow.isDestroyed()) {
         this.splashWindow.destroy();
         this.splashWindow = null;
+      }
+    } catch {}
+    try {
+      if (this.snipperWindow && !this.snipperWindow.isDestroyed()) {
+        this.snipperWindow.destroy();
+        this.snipperWindow = null;
+      }
+    } catch {}
+    try {
+      if (this.tuneColorWindow && !this.tuneColorWindow.isDestroyed()) {
+        this.tuneColorWindow.destroy();
+        this.tuneColorWindow = null;
       }
     } catch {}
     try {

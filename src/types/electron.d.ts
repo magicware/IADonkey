@@ -139,6 +139,17 @@ declare global {
       clearCrashLogs?: () => Promise<void>;
       logAction?: (entry: Omit<ActionLogEntry, 'id' | 'timestamp'> & { timestamp?: string }) => Promise<void>;
       exportCrashReport?: (fileName: string) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
+
+      // FastSnap API
+      startFastSnap?: () => Promise<void>;
+      finishFastSnap?: (cropArea: { x: number; y: number; width: number; height: number }) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+      cancelFastSnap?: () => Promise<void>;
+      getRecentFastSnaps?: () => Promise<import('./index').FastSnapRecentItem[]>;
+      copyFastSnapToClipboard?: (filePath: string) => Promise<{ success: boolean; error?: string }>;
+      deleteFastSnap?: (filePath: string) => Promise<{ success: boolean; error?: string }>;
+      showFastSnapInFolder?: (filePath: string) => Promise<void>;
+      chooseFastSnapFolder?: () => Promise<string | null>;
+      onFastSnapInitData?: (callback: (data: { screenshotUrl: string; width: number; height: number; scaleFactor: number }) => void) => () => void;
     };
   }
 }

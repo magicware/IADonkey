@@ -105,8 +105,25 @@ export interface ColorMasterSettings {
   defaultFormat?: 'hex' | 'hex-no-hash' | 'rgb' | 'rgba' | 'hsl';
 }
 
+export interface FastSnapSettings {
+  enabled: boolean;
+  hotkey?: string;
+  saveDirectory?: string;
+}
+
+export interface FastSnapRecentItem {
+  name: string;
+  path: string;
+  createdAt: number;
+  size: number;
+  dataUrl?: string;
+  width?: number;
+  height?: number;
+}
+
 export interface DonkeyToolsSettings {
   colorMaster?: ColorMasterSettings;
+  fastSnap?: FastSnapSettings;
 }
 
 export interface VscodeSettings {
