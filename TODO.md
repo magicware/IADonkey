@@ -24,3 +24,7 @@ Aktuální seznam otevřených úkolů a vylepšení k realizaci.
   - Prověřit možnosti a chování systémových notifikací v OS Windows (Electron Notification API / native toast notifikace).
   - Navrhnout integraci do IADonkey (upozornění na dokončení synchronizace, pořízení výstřižku QuickCap, aktualizace, chyby).
   - Zvážit možnosti uživatelského nastavení a chování při tichém režimu.
+
+- [ ] **5. Vyřešit problém s backdropem u okna Release Notes**
+  - Opravit černé pozadí pod oknem Release Notes, které je uřízlé / neodpovídá zaoblení okna či hranicím obsahu.
+  - Prověřit nastavení Electron okna (backgroundColor, transparent), stíny a backdrop v CSS.
