@@ -1,4 +1,4 @@
-import { AppConfig, LauncherItem, UpdateInfo, SyncProgress, DataSource, GithubSettings, MaterialIconDef } from './index';
+import { AppConfig, LauncherItem, UpdateInfo, SyncProgress, DataSource, GithubSettings, MaterialIconDef, ActionLogEntry, CrashLogEntry } from './index';
 
 declare global {
   interface Window {
@@ -130,6 +130,15 @@ declare global {
       // Splash Screen API
       getSplashStatus?: () => Promise<{ percent: number; text: string }>;
       onSplashStatus?: (callback: (status: { percent: number; text: string }) => void) => () => void;
+
+      // Diagnostics & Logs API
+      getActionLogs?: () => Promise<ActionLogEntry[]>;
+      clearActionLogs?: () => Promise<void>;
+      getCrashLogs?: () => Promise<CrashLogEntry[]>;
+      openCrashLogFolder?: () => Promise<void>;
+      clearCrashLogs?: () => Promise<void>;
+      logAction?: (entry: Omit<ActionLogEntry, 'id' | 'timestamp'> & { timestamp?: string }) => Promise<void>;
+      exportCrashReport?: (fileName: string) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
     };
   }
 }

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { AppConfig, LauncherItem, UpdateInfo } from '../src/types';
+import { AppConfig, LauncherItem, UpdateInfo, ActionLogEntry, CrashLogEntry } from '../src/types';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   downloadMaterialIcons: (): Promise<any> => ipcRenderer.invoke('download-material-icons'),
@@ -181,4 +181,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('splash-status', handler);
     return () => ipcRenderer.removeListener('splash-status', handler);
   },
+
+  // Diagnostics & Logs API
+  getActionLogs: (): Promise<ActionLogEntry[]> => ipcRenderer.invoke('get-action-logs'),
+  clearActionLogs: (): Promise<void> => ipcRenderer.invoke('clear-action-logs'),
+  getCrashLogs: (): Promise<CrashLogEntry[]> => ipcRenderer.invoke('get-crash-logs'),
+  openCrashLogFolder: (): Promise<void> => ipcRenderer.invoke('open-crash-log-folder'),
+  clearCrashLogs: (): Promise<void> => ipcRenderer.invoke('clear-crash-logs'),
+  logAction: (entry: Omit<ActionLogEntry, 'id' | 'timestamp'> & { timestamp?: string }): Promise<void> =>
+    ipcRenderer.invoke('log-action', entry),
+  exportCrashReport: (fileName: string): Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }> =>
+    ipcRenderer.invoke('export-crash-report', fileName),
 });

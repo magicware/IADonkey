@@ -100,6 +100,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
   const handlePickColor = async () => {
     try {
+      window.electronAPI?.logAction?.({
+        type: 'color-picker',
+        title: 'Spuštění kapátka z DonkeyTools',
+        details: 'Výběr nástroje kapátka v nabídce rychlých nástrojů',
+        status: 'info',
+      });
       setIsDonkeyToolsOpen(false);
       await pickScreenColor();
     } catch (err) {
@@ -322,6 +328,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   // Enter subitems mode
   const enterSubitems = (item: LauncherItem) => {
     if (!item.options || item.options.length === 0) return;
+    window.electronAPI?.logAction?.({
+      type: 'options',
+      title: `Otevření podpoložek (options): ${item.name}`,
+      details: `Počet podpoložek: ${item.options.length}`,
+      status: 'info',
+    });
     setActionsParentItem(null);
     setSavedQueryBeforeSubitems(query);
     setSavedIndexBeforeSubitems(selectedIndex);
@@ -481,6 +493,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   // Enter actions / info mode for an item
   const enterActions = (item: LauncherItem) => {
     if (!hasItemActionsOrInfo(item)) return;
+    window.electronAPI?.logAction?.({
+      type: 'action',
+      title: `Otevření nabídky akcí: ${item.name}`,
+      details: item.location ? `Cíl: ${item.location}` : undefined,
+      status: 'info',
+    });
     refreshExistingClonedRepos();
     setActionsParentItem(item);
     setSelectedActionIndex(0);
@@ -498,6 +516,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   const handleCopyInfoValue = async (key: string, value: string) => {
     if (!value) return;
     try {
+      window.electronAPI?.logAction?.({
+        type: 'action',
+        title: `Zkopírována informace položky: ${key}`,
+        details: value,
+        status: 'success',
+      });
       if (window.electronAPI) {
         await window.electronAPI.executeAction({
           action: 'copy',
@@ -527,7 +551,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         icon: it.icon?.trim() ? it.icon : parentItem.icon,
         image: it.image?.trim() ? it.image : parentItem.image,
         sourceId: it.sourceId || parentItem.sourceId,
-        settings: it.settings || parentItem.settings,
+        settings: it.settings || (parentItem.settings === 'magicgate' ? undefined : parentItem.settings),
       }));
       if (!trimmed) {
         return subitems;
@@ -1013,6 +1037,13 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   const handleExecute = async (item: LauncherItem) => {
     if (!item) return;
 
+    window.electronAPI?.logAction?.({
+      type: 'action',
+      title: `Vybrána položka: ${item.name}`,
+      details: `Akce: ${item.action || 'open'}, cíl: ${item.location || item.name}`,
+      status: 'info',
+    });
+
     if (item.action === 'pick-color') {
       await handlePickColor();
       return;
@@ -1114,6 +1145,13 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     const actionType = actionItem.action;
     const effectiveSettings = actionItem.settings || parent.settings;
     const effectiveLocation = actionItem.location || parent.location || '';
+
+    window.electronAPI?.logAction?.({
+      type: 'action',
+      title: `Vyvolána akce: ${actionItem.name} (${parent.name})`,
+      details: `Typ: ${actionType || 'open'}, cíl: ${effectiveLocation || '—'}`,
+      status: 'info',
+    });
 
     if (actionType === 'clone' || actionType === 'clonerecursive') {
       exitActions();
@@ -1495,6 +1533,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       isLongPressRef.current = false;
       return;
     }
+    window.electronAPI?.logAction?.({
+      type: 'window',
+      title: 'Otevření okna Nastavení',
+      details: 'Kliknutí na ozubené kolečko v záhlaví Spotlightu',
+      status: 'info',
+    });
     setIsRevealed(false);
     window.electronAPI?.openSettingsWindow?.();
     setTimeout(() => {
@@ -1592,7 +1636,16 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           <div className="relative shrink-0 self-center" ref={donkeyToolsRef}>
             <button
               type="button"
-              onClick={() => setIsDonkeyToolsOpen((prev) => !prev)}
+              onClick={() => {
+                const nextState = !isDonkeyToolsOpen;
+                setIsDonkeyToolsOpen(nextState);
+                window.electronAPI?.logAction?.({
+                  type: 'ui',
+                  title: nextState ? 'Otevření nabídky DonkeyTools' : 'Zavření nabídky DonkeyTools',
+                  details: 'Kliknutí na tlačítko rychlých nástrojů v záhlaví Spotlightu',
+                  status: 'info',
+                });
+              }}
               className={`relative w-8 h-8 rounded-lg transition-colors flex items-center justify-center cursor-pointer shrink-0 ${
                 isDonkeyToolsOpen
                   ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-sm'

@@ -206,3 +206,22 @@ export interface DownloadProgress {
   transferred: number;
   total: number;
 }
+
+export interface ActionLogEntry {
+  id: string;
+  timestamp: string;
+  type: 'shortcut' | 'color-picker' | 'color-master' | 'action' | 'window' | 'sync' | 'error' | 'options' | 'ui';
+  title: string;
+  details?: string;
+  status: 'success' | 'error' | 'warn' | 'info';
+}
+
+export interface CrashLogEntry {
+  id: string;
+  fileName: string;
+  filePath: string;
+  timestamp: string;
+  action: string;
+  errorSnippet: string;
+  fullContent: string;
+}

@@ -226,14 +226,32 @@ export const App: React.FC = () => {
 
   const handleRefreshData = async () => {
     setIsSyncing(true);
+    window.electronAPI?.logAction?.({
+      type: 'sync',
+      title: 'Spuštěna synchronizace dat',
+      details: 'Kliknutí na tlačítko synchronizace v záhlaví Spotlightu',
+      status: 'info',
+    });
     if (window.electronAPI) {
       try {
         const freshItems = await window.electronAPI.syncNow();
         setItems(freshItems || []);
         const freshConfig = await window.electronAPI.getConfig();
         if (freshConfig) setConfig(freshConfig);
+        window.electronAPI?.logAction?.({
+          type: 'sync',
+          title: 'Synchronizace dat dokončena',
+          details: `Načteno ${freshItems?.length || 0} položek`,
+          status: 'success',
+        });
       } catch (err) {
         console.error('Sync failed:', err);
+        window.electronAPI?.logAction?.({
+          type: 'sync',
+          title: 'Synchronizace dat selhala',
+          details: String(err),
+          status: 'error',
+        });
       } finally {
         setIsSyncing(false);
       }

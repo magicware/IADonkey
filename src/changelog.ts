@@ -5,12 +5,26 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.17';
+export const CURRENT_APP_VERSION = '1.1.18';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.18',
+    date: '18. 9. 2026',
+    title: 'Diagnostický Crashlog systém s exportem časové osy, auditní Action Log a oprava kapátka v Release',
+    highlights: [
+      'Oprava systémového kapátka v produkčním balíčku: Doplněna konfigurace asarUnpack pro nativní color-picker.exe a záložní automatická extrakce do systémové složky aplikace – kapátko v Release verzi již neproblikává a spolehlivě snímá barvy.',
+      'Diagnostický crashlog systém (složka crashlog/): Automatické zachytávání pádů, systémových chyb a neobsloužených výjimek do dedikované složky s detailním časem, kontextem a stack tracem.',
+      'Automaticky navázaná časová osa akcí (Action Log Timeline): Každý crashlog v sobě obsahuje chronologický snímek akcí před selháním se zvýrazněním momentu, kdy k chybě došlo.',
+      'Export chybových protokolů do souboru (.txt / .log): U každého záznamu v Nápovědě je tlačítko Exportovat pro uložení formátovaného diagnostického balíčku.',
+      'Průběžný auditní Action Log: Zaznamenávání provedených uživatelských akcí (výběr položky, otevření nabídky akcí, vstup do podpoložek, spuštění nástrojů, kopírování z infokarty, synchronizace) v 50prvkovém FIFO ring-bufferu.',
+      'Nové uspořádání Nápovědy: V záložce Nápověda (Help) je nejprve přehledný Action Log a pod ním Chybové protokoly s možností zobrazení detailu a vyčištění historie.',
+      'Ochrana podpoložek před AutoLoginem: Podpoložky (např. Web, API, BO) u instancí IS Tour již nezdědí nastavení magicgate, takže se otevírají okamžitě bez chybného handshake a falešných pádů.',
+    ],
+  },
   {
     version: '1.1.17',
     date: '17. 9. 2026',

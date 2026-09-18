@@ -10,12 +10,13 @@ import { DataSyncManager } from './dataSync';
 import { UpdateChecker } from './updater';
 import { WindowManager } from './windowManager';
 import { AppScanner } from './appScanner';
-import { AppConfig, LauncherItem } from '../src/types';
+import { AppConfig, LauncherItem, ActionLogEntry } from '../src/types';
 import { getMagicGateAutoLoginUrl } from './magicGate';
 import { testGitHubConnection } from './githubService';
 import { faviconService } from './faviconService';
 import { fetchInstanceSectionRepos, runMultiRepoClone, MagicGateSectionRepo } from './magicGateService';
 import { InstallerService } from './installerService';
+import { diagnosticsService } from './diagnosticsService';
 
 // Register file scheme as secure
 protocol.registerSchemesAsPrivileged([
@@ -41,10 +42,12 @@ if (!gotTheLock) {
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('[Main] Unhandled Rejection at:', promise, 'reason:', reason);
+  diagnosticsService.recordCrash('Neošetřené odmítnutí Promise (unhandledRejection)', reason, { promise: String(promise) });
 });
 
 process.on('uncaughtException', (error) => {
   console.error('[Main] Uncaught Exception:', error);
+  diagnosticsService.recordCrash('Globální neošetřená výjimka (uncaughtException)', error);
 });
 
 let store: AppStore;
@@ -79,6 +82,13 @@ function registerGlobalHotkey(hotkey: string) {
       }
       lastHotkeyToggle = now;
 
+      diagnosticsService.logAction({
+        type: 'shortcut',
+        title: `Zkratka launcheru: ${hotkey}`,
+        details: 'Přepnutí zobrazení vyhledávacího okna Spotlight',
+        status: 'info',
+      });
+
       const win = windowManager.getMainWindow();
       if (win && win.isVisible() && (now - windowManager.getLastShowTime() > 500)) {
         windowManager.hideSpotlight();
@@ -96,36 +106,88 @@ function registerGlobalHotkey(hotkey: string) {
     }
   } catch (err) {
     console.error(`[Main] Error registering shortcut ${hotkey}:`, err);
+    diagnosticsService.recordCrash('Registrace globální zkratky launcheru', err, { hotkey });
   }
 }
 
 function getColorPickerExePath(): string {
   const candidates = [
+    // 1. Packaged unpacked resources (prioritní pro produkční sestavení s asarUnpack)
+    path.join(process.resourcesPath, 'app.asar.unpacked', 'electron', 'assets', 'color-picker.exe'),
+    path.join(process.resourcesPath, 'app.asar.unpacked', 'assets', 'color-picker.exe'),
+    path.join(process.resourcesPath, 'electron', 'assets', 'color-picker.exe'),
+    path.join(process.resourcesPath, 'assets', 'color-picker.exe'),
+    path.join(process.resourcesPath, 'color-picker.exe'),
+    // 2. Standardní cesty pro vývojové prostředí (dev mode)
     path.join(app.getAppPath(), 'electron', 'assets', 'color-picker.exe'),
     path.join(app.getAppPath(), 'dist-electron', 'assets', 'color-picker.exe'),
     path.join(process.cwd(), 'electron', 'assets', 'color-picker.exe'),
     path.join(process.cwd(), 'dist-electron', 'assets', 'color-picker.exe'),
     path.join(__dirname, 'assets', 'color-picker.exe'),
     path.join(__dirname, '..', 'electron', 'assets', 'color-picker.exe'),
-    path.join(process.resourcesPath, 'electron', 'assets', 'color-picker.exe'),
-    path.join(process.resourcesPath, 'app.asar.unpacked', 'electron', 'assets', 'color-picker.exe'),
   ];
+
   for (const c of candidates) {
     if (fs.existsSync(c)) {
-      console.log('[Main] Found color-picker.exe at:', c);
-      return c;
+      // Pokud soubor leží uvnitř app.asar (který Windows CreateProcess neumí přímo spustit)
+      if (c.includes('app.asar') && !c.includes('app.asar.unpacked')) {
+        const unpackedAttempt = c.replace('app.asar', 'app.asar.unpacked');
+        if (fs.existsSync(unpackedAttempt)) {
+          console.log('[Main] Found unpacked color-picker.exe at:', unpackedAttempt);
+          return unpackedAttempt;
+        }
+
+        // Záchranná automatická extrakce binárky z ASAR do userData/bin/color-picker.exe
+        try {
+          const extractedDir = path.join(app.getPath('userData'), 'bin');
+          if (!fs.existsSync(extractedDir)) {
+            fs.mkdirSync(extractedDir, { recursive: true });
+          }
+          const extractedPath = path.join(extractedDir, 'color-picker.exe');
+          const data = fs.readFileSync(c);
+          fs.writeFileSync(extractedPath, data);
+          console.log('[Main] Auto-extracted color-picker.exe from asar archive to:', extractedPath);
+          return extractedPath;
+        } catch (extractErr) {
+          console.error('[Main] Failed to extract color-picker.exe from asar archive:', extractErr);
+          diagnosticsService.recordCrash('Extrakce color-picker.exe z ASAR archivu', extractErr, { sourcePath: c });
+        }
+      } else {
+        console.log('[Main] Found executable color-picker.exe at:', c);
+        return c;
+      }
     }
   }
+
+  // Zkontrolovat, zda již dříve nebyla binárka extrahována do userData/bin/color-picker.exe
+  try {
+    const extractedPath = path.join(app.getPath('userData'), 'bin', 'color-picker.exe');
+    if (fs.existsSync(extractedPath)) {
+      return extractedPath;
+    }
+  } catch {}
+
   console.warn('[Main] color-picker.exe not found in candidates, falling back to:', candidates[0]);
   return candidates[0];
 }
 
 async function pickScreenColorNative(instant = false): Promise<string | null> {
   const exePath = getColorPickerExePath();
+
+  diagnosticsService.logAction({
+    type: 'color-picker',
+    title: 'Spuštění kapátka (ColorMaster)',
+    details: `Cesta k exe: ${exePath}, režim: ${instant ? 'Okamžitý' : 'Lupa pod kurzorem'}`,
+    status: 'info',
+  });
+
   if (!fs.existsSync(exePath)) {
-    console.error('[Main] color-picker.exe not found at:', exePath);
+    const notFoundErr = new Error(`Spustitelný soubor kapátka nebyl nalezen na cestě: ${exePath}`);
+    console.error('[Main]', notFoundErr.message);
+    diagnosticsService.recordCrash('Spuštění kapátka (soubor nenalezen)', notFoundErr, { exePath, instant });
     return null;
   }
+
   console.log('[Main] Launching color-picker.exe:', exePath, instant ? '--instant' : '(loupe mode)');
 
   // If Spotlight window is visible, hide it temporarily so user can pick what is under it
@@ -209,6 +271,13 @@ async function pickScreenColorNative(instant = false): Promise<string | null> {
           clipboard.writeText(formatted);
           console.log(`[Main] Picked color ${formatted} copied to clipboard`);
 
+          diagnosticsService.logAction({
+            type: 'color-picker',
+            title: `Nabrání barvy: ${pickedColor}`,
+            details: `Zkopírováno do schránky jako ${formatted}`,
+            status: 'success',
+          });
+
           if (windowManager) {
             windowManager.showSpotlight();
             const win = windowManager.getMainWindow();
@@ -217,7 +286,19 @@ async function pickScreenColorNative(instant = false): Promise<string | null> {
             }
           }
         } else {
-          // Cancelled (Esc or right-click)
+          // Cancelled (Esc or right-click) or failure
+          if (code !== 0 && code !== 1) {
+            const exitErr = new Error(`color-picker.exe byl neočekávaně ukončen s kódem ${code}: ${stderrData.trim() || stdoutData.trim() || 'Bez výstupu'}`);
+            diagnosticsService.recordCrash('Chyba běhu kapátka (color-picker.exe exit)', exitErr, { code, stderr: stderrData, stdout: stdoutData, exePath });
+          } else {
+            diagnosticsService.logAction({
+              type: 'color-picker',
+              title: 'Kapátko zrušeno',
+              details: 'Výběr barvy byl ukončen stiskem Escape nebo pravého tlačítka',
+              status: 'info',
+            });
+          }
+
           if (wasMainVisible && windowManager) {
             windowManager.showSpotlight();
           } else {
@@ -236,6 +317,7 @@ async function pickScreenColorNative(instant = false): Promise<string | null> {
           windowManager.showSpotlight();
         }
         console.error('[Main] Failed to execute color-picker.exe:', err);
+        diagnosticsService.recordCrash('Selhání spuštění procesu kapátka (child process error)', err, { exePath, instant });
         resolve(null);
       });
     } catch (err) {
@@ -243,6 +325,7 @@ async function pickScreenColorNative(instant = false): Promise<string | null> {
         windowManager.showSpotlight();
       }
       console.error('[Main] Error launching screen color picker:', err);
+      diagnosticsService.recordCrash('Výjimka při vyvolání kapátka', err, { exePath, instant });
       resolve(null);
     }
   });
@@ -264,9 +347,16 @@ function registerColorMasterHotkey(hotkey?: string) {
     const registered = globalShortcut.register(cleanHotkey, async () => {
       try {
         console.log('[Main] ColorMaster hotkey triggered, opening screen color picker...');
+        diagnosticsService.logAction({
+          type: 'shortcut',
+          title: `Zkratka ColorMaster: ${cleanHotkey}`,
+          details: 'Spuštění kapátka přes klávesovou zkratku',
+          status: 'info',
+        });
         await pickScreenColorNative();
       } catch (err) {
         console.error('[Main] Error in ColorMaster hotkey callback:', err);
+        diagnosticsService.recordCrash('Volání kapátka z klávesové zkratky', err, { hotkey: cleanHotkey });
       }
     });
     if (!registered) {
@@ -277,8 +367,10 @@ function registerColorMasterHotkey(hotkey?: string) {
     }
   } catch (err) {
     console.error(`[Main] Error registering ColorMaster shortcut ${hotkey}:`, err);
+    diagnosticsService.recordCrash('Registrace zkratky ColorMaster', err, { hotkey });
   }
 }
+
 
 function setupIpcHandlers() {
   ipcMain.handle('pick-screen-color', async () => {
@@ -288,6 +380,35 @@ function setupIpcHandlers() {
       console.error('[Main] Error handling pick-screen-color IPC:', err);
       return null;
     }
+  });
+
+  // Diagnostics & Action Log IPC
+  ipcMain.handle('get-action-logs', () => {
+    return diagnosticsService.getActionLogs();
+  });
+
+  ipcMain.handle('clear-action-logs', () => {
+    diagnosticsService.clearActionLogs();
+  });
+
+  ipcMain.handle('get-crash-logs', () => {
+    return diagnosticsService.getCrashLogs();
+  });
+
+  ipcMain.handle('open-crash-log-folder', async () => {
+    await diagnosticsService.openCrashLogFolder();
+  });
+
+  ipcMain.handle('clear-crash-logs', () => {
+    diagnosticsService.clearCrashLogs();
+  });
+
+  ipcMain.handle('log-action', (_event, entry: Omit<ActionLogEntry, 'id' | 'timestamp'> & { timestamp?: string }) => {
+    diagnosticsService.logAction(entry);
+  });
+
+  ipcMain.handle('export-crash-report', async (_event, fileName: string) => {
+    return await diagnosticsService.exportCrashReport(fileName);
   });
 
   ipcMain.handle('open-tune-color-window', (_event, params: { initialColor: string }) => {
@@ -696,12 +817,25 @@ function setupIpcHandlers() {
     const { action, location, settings } = data;
     if (!location) return;
 
+    diagnosticsService.logAction({
+      type: 'action',
+      title: `Provedení akce: ${action || 'open'}`,
+      details: `Cíl: ${location}${settings ? ` (${settings})` : ''}`,
+      status: 'info',
+    });
+
     try {
       const trimmed = location.trim();
       const isUrl = /^https?:\/\//i.test(trimmed) || /^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}/i.test(trimmed);
 
       if (action === 'paste' || action === 'copy') {
         clipboard.writeText(location);
+        diagnosticsService.logAction({
+          type: 'action',
+          title: 'Zkopírováno do schránky',
+          details: location,
+          status: 'success',
+        });
         windowManager.hideImmediately();
         return;
       }
@@ -717,22 +851,47 @@ function setupIpcHandlers() {
               fullUrl = autoLoginUrl;
             } catch (mgErr: any) {
               console.error('[Main] MagicGate login error, falling back to direct URL:', mgErr?.message || mgErr);
+              diagnosticsService.recordCrash('MagicGate přihlašovací handshake', mgErr, { url: fullUrl });
             }
           }
 
           await shell.openExternal(fullUrl);
+          diagnosticsService.logAction({
+            type: 'action',
+            title: 'Otevření webové adresy v prohlížeči',
+            details: fullUrl,
+            status: 'success',
+          });
         } else {
           // File or folder path on disk
           const openErr = await shell.openPath(trimmed);
           if (openErr) {
             console.error(`[Main] openPath error: ${openErr}`);
             // Fallback try as external url
-            await shell.openExternal(trimmed);
+            try {
+              await shell.openExternal(trimmed);
+              diagnosticsService.logAction({
+                type: 'action',
+                title: 'Otevření cíle přes výchozí protokol',
+                details: trimmed,
+                status: 'success',
+              });
+            } catch (extErr) {
+              diagnosticsService.recordCrash('Chyba při otevírání cesty/URL', extErr, { location: trimmed, openErr });
+            }
+          } else {
+            diagnosticsService.logAction({
+              type: 'action',
+              title: 'Otevření souboru nebo složky na disku',
+              details: trimmed,
+              status: 'success',
+            });
           }
         }
       }
     } catch (err) {
       console.error('[Main] Failed to execute action:', err);
+      diagnosticsService.recordCrash(`Chyba při provádění akce ${action || 'open'}`, err, { action, location, settings });
     }
   });
 
