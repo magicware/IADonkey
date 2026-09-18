@@ -1687,7 +1687,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
               </span>
             </button>
 
-            {/* Subextensions vertical circle buttons list */}
+            {/* Subextensions vertical buttons list */}
             {isDonkeyToolsOpen && (
               <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 flex flex-col items-center gap-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
                 {/* ColorMaster Subextension - Eyedropper */}
@@ -1698,10 +1698,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       setIsDonkeyToolsOpen(false);
                       handlePickColor();
                     }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all shadow-xl bg-[#1c1d28] hover:bg-rose-500/25 border border-white/15 hover:border-rose-400/50 text-gray-300 hover:text-rose-200 hover:scale-105 active:scale-95"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all shadow-xl bg-[#1c1d28] hover:bg-rose-500/25 border border-white/15 hover:border-rose-400/50 text-gray-300 hover:text-rose-200 hover:scale-105 active:scale-95"
                     title="ColorMaster – Kapátko (nabrat barvu z obrazovky)"
                   >
-                    <span className="material-symbols-outlined text-[19px] leading-none select-none">
+                    <span className="material-symbols-outlined text-[20px] leading-none select-none">
                       colorize
                     </span>
                   </button>
@@ -1715,10 +1715,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       setIsDonkeyToolsOpen(false);
                       handleStartFastSnap();
                     }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all shadow-xl bg-[#1c1d28] hover:bg-rose-500/25 border border-white/15 hover:border-rose-400/50 text-gray-300 hover:text-rose-200 hover:scale-105 active:scale-95"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all shadow-xl bg-[#1c1d28] hover:bg-rose-500/25 border border-white/15 hover:border-rose-400/50 text-gray-300 hover:text-rose-200 hover:scale-105 active:scale-95"
                     title="FastSnap – Výstřižek obrazovky"
                   >
-                    <span className="material-symbols-outlined text-[19px] leading-none select-none">
+                    <span className="material-symbols-outlined text-[20px] leading-none select-none">
                       crop
                     </span>
                   </button>
