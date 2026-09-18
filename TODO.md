@@ -19,3 +19,8 @@ Aktuální seznam otevřených úkolů a vylepšení k realizaci.
   - Sledování schránky, historie 100 záznamů, deduplikace a posun na vrchol.
   - Plovoucí kompaktní okno s klávesovou navigací, vyhledáváním a vícenásobným výběrem pomocí Shift.
   - Zachování fokusu a automatické vložení (auto-paste): uložení aktivního okna, skrytí EasyClip, návrat fokusu a syntéza `Ctrl+V`.
+
+- [ ] **4. Analýza systémových notifikací**
+  - Prověřit možnosti a chování systémových notifikací v OS Windows (Electron Notification API / native toast notifikace).
+  - Navrhnout integraci do IADonkey (upozornění na dokončení synchronizace, pořízení výstřižku FastSnap, aktualizace, chyby).
+  - Zvážit možnosti uživatelského nastavení a chování při tichém režimu.
