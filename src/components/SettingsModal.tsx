@@ -1188,7 +1188,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         donkeyTools: {
           ...formData.donkeyTools,
           colorMaster: {
-            enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
+            enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
             hotkey: fallback,
             defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
           },
@@ -1212,7 +1212,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         donkeyTools: {
           ...formData.donkeyTools,
           colorMaster: {
-            enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
+            enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
             hotkey: '',
             defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
           },
@@ -1276,7 +1276,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         donkeyTools: {
           ...formData.donkeyTools,
           colorMaster: {
-            enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
+            enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
             hotkey: fallback,
             defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
           },
@@ -1305,7 +1305,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           donkeyTools: {
             ...formData.donkeyTools,
             colorMaster: {
-              enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
+              enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
               hotkey: fallback,
               defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
             },
@@ -1331,7 +1331,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           donkeyTools: {
             ...formData.donkeyTools,
             colorMaster: {
-              enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
+              enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
               hotkey: fallback,
               defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
             },
@@ -1354,7 +1354,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         donkeyTools: {
           ...formData.donkeyTools,
           colorMaster: {
-            enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
+            enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
             hotkey: finalHotkey,
             defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
           },
@@ -1402,7 +1402,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         donkeyTools: {
           ...formData.donkeyTools,
           fastSnap: {
-            enabled: formData.donkeyTools?.fastSnap?.enabled ?? true,
+            enabled: formData.donkeyTools?.fastSnap?.enabled ?? false,
             hotkey: fallback,
             saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
           },
@@ -1426,7 +1426,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         donkeyTools: {
           ...formData.donkeyTools,
           fastSnap: {
-            enabled: formData.donkeyTools?.fastSnap?.enabled ?? true,
+            enabled: formData.donkeyTools?.fastSnap?.enabled ?? false,
             hotkey: '',
             saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
           },
@@ -1490,7 +1490,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         donkeyTools: {
           ...formData.donkeyTools,
           fastSnap: {
-            enabled: formData.donkeyTools?.fastSnap?.enabled ?? true,
+            enabled: formData.donkeyTools?.fastSnap?.enabled ?? false,
             hotkey: fallback,
             saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
           },
@@ -1519,7 +1519,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           donkeyTools: {
             ...formData.donkeyTools,
             fastSnap: {
-              enabled: formData.donkeyTools?.fastSnap?.enabled ?? true,
+              enabled: formData.donkeyTools?.fastSnap?.enabled ?? false,
               hotkey: fallback,
               saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
             },
@@ -1545,7 +1545,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           donkeyTools: {
             ...formData.donkeyTools,
             fastSnap: {
-              enabled: formData.donkeyTools?.fastSnap?.enabled ?? true,
+              enabled: formData.donkeyTools?.fastSnap?.enabled ?? false,
               hotkey: fallback,
               saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
             },
@@ -1571,7 +1571,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           donkeyTools: {
             ...formData.donkeyTools,
             fastSnap: {
-              enabled: formData.donkeyTools?.fastSnap?.enabled ?? true,
+              enabled: formData.donkeyTools?.fastSnap?.enabled ?? false,
               hotkey: fallback,
               saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
             },
@@ -1594,7 +1594,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         donkeyTools: {
           ...formData.donkeyTools,
           fastSnap: {
-            enabled: formData.donkeyTools?.fastSnap?.enabled ?? true,
+            enabled: formData.donkeyTools?.fastSnap?.enabled ?? false,
             hotkey: finalHotkey,
             saveDirectory: formData.donkeyTools?.fastSnap?.saveDirectory,
           },
@@ -1653,7 +1653,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         donkeyTools: {
           ...formData.donkeyTools,
           fastSnap: {
-            enabled: formData.donkeyTools?.fastSnap?.enabled ?? true,
+            enabled: formData.donkeyTools?.fastSnap?.enabled ?? false,
             hotkey: formData.donkeyTools?.fastSnap?.hotkey || '',
             saveDirectory: chosen,
           },
@@ -3947,13 +3947,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="text-sm font-bold text-white tracking-wide">DonkeyTools</h3>
-                          {formData.extensions?.donkeyTools && formData.donkeyTools?.colorMaster?.enabled !== false ? (
-                            <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded font-medium">
-                              ColorMaster aktivní
-                            </span>
+                          {formData.extensions?.donkeyTools ? (
+                            (() => {
+                              const activeCount = [
+                                formData.donkeyTools?.colorMaster?.enabled === true,
+                                formData.donkeyTools?.fastSnap?.enabled === true,
+                              ].filter(Boolean).length;
+                              if (activeCount > 0) {
+                                return (
+                                  <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded font-medium">
+                                    {activeCount} {activeCount === 1 ? 'nástroj aktivní' : 'nástroje aktivní'}
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span className="text-[10px] bg-white/5 text-gray-400 border border-white/10 px-1.5 py-0.5 rounded font-medium">
+                                  Nástroje vypnuty
+                                </span>
+                              );
+                            })()
                           ) : (
                             <span className="text-[10px] bg-white/5 text-gray-400 border border-white/10 px-1.5 py-0.5 rounded font-medium">
-                              {formData.extensions?.donkeyTools ? 'Nástroje vypnuty' : 'Vypnuto'}
+                              Vypnuto
                             </span>
                           )}
                         </div>
@@ -4937,7 +4952,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <input
                         type="checkbox"
                         className="sr-only peer"
-                        checked={formData.donkeyTools?.colorMaster?.enabled ?? true}
+                        checked={formData.donkeyTools?.colorMaster?.enabled ?? false}
                         onChange={(e) => {
                           const updated = {
                             ...formData,
@@ -4960,7 +4975,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 {/* Sub-settings when ColorMaster is enabled */}
-                {(formData.donkeyTools?.colorMaster?.enabled ?? true) && (
+                {(formData.donkeyTools?.colorMaster?.enabled ?? false) && (
                   <div className="pt-4 border-t border-white/5 space-y-4">
                     {/* Hotkey configuration & Eyedropper test */}
                     <div className="space-y-2">
@@ -5068,7 +5083,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                   donkeyTools: {
                                     ...formData.donkeyTools,
                                     colorMaster: {
-                                      enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
+                                      enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
                                       hotkey: formData.donkeyTools?.colorMaster?.hotkey || '',
                                       defaultFormat: fmt.id as any,
                                     },
@@ -5108,16 +5123,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {/* SUB-EXTENSION 2: FastSnap */}
-              <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl space-y-4">
+              <div className="p-5 bg-white/[0.03] border border-white/10 rounded-2xl space-y-4 transition hover:border-white/20">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3.5">
-                    <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0 text-rose-400">
                       <span className="material-symbols-outlined text-2xl">crop</span>
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="text-sm font-bold text-white tracking-wide">FastSnap</h4>
-                        <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.5 rounded font-medium">
+                        <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded font-medium">
                           Výstřižky obrazovky
                         </span>
                       </div>
@@ -5131,7 +5146,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <input
                         type="checkbox"
                         className="sr-only peer"
-                        checked={formData.donkeyTools?.fastSnap?.enabled ?? true}
+                        checked={formData.donkeyTools?.fastSnap?.enabled ?? false}
                         onChange={(e) => {
                           const updated = {
                             ...formData,
@@ -5148,13 +5163,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           handleSave(updated);
                         }}
                       />
-                      <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+                      <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-600" />
                     </label>
                   </div>
                 </div>
 
                 {/* Sub-settings when FastSnap is enabled */}
-                {(formData.donkeyTools?.fastSnap?.enabled ?? true) && (
+                {(formData.donkeyTools?.fastSnap?.enabled ?? false) && (
                   <div className="pt-4 border-t border-white/5 space-y-5">
                     {/* Hotkey configuration & Snipper test */}
                     <div className="space-y-2">
@@ -5182,7 +5197,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 fastSnapHotkeyError
                                   ? 'bg-rose-950/30 border-rose-500 text-rose-300 ring-2 ring-rose-500/30'
                                   : isRecordingFastSnapHotkey
-                                  ? 'bg-indigo-950/60 border-indigo-400 ring-2 ring-indigo-500/50 text-indigo-200'
+                                  ? 'bg-rose-950/60 border-rose-400 ring-2 ring-rose-500/50 text-rose-200'
                                   : 'bg-black/30 border-white/10 text-white hover:border-white/20'
                               }`}
                               placeholder="Klikněte pro nastavení zkratky"
@@ -5194,7 +5209,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             onClick={() => {
                               window.electronAPI?.startFastSnap?.();
                             }}
-                            className="px-3.5 py-2.5 rounded-xl text-xs font-medium text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                            className="px-3.5 py-2.5 rounded-xl text-xs font-medium text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition flex items-center gap-1.5 cursor-pointer shrink-0"
                             title="Spustí výběr výstřižku z obrazovky"
                           >
                             <span className="material-symbols-outlined text-base">crop</span>
@@ -5211,7 +5226,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                         <span className="text-[12px] text-gray-400">
                           {isRecordingFastSnapHotkey ? (
-                            <span className="text-indigo-400 font-medium animate-pulse">
+                            <span className="text-rose-400 font-medium animate-pulse">
                               Stiskněte klávesovou kombinaci (např. Ctrl+Shift+S). Esc zruší, Backspace zkratku odstraní.
                             </span>
                           ) : (
@@ -5259,7 +5274,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <button
                           type="button"
                           onClick={loadRecentFastSnaps}
-                          className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
+                          className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 cursor-pointer"
                         >
                           <span className={`material-symbols-outlined text-sm ${isLoadingFastSnaps ? 'animate-spin' : ''}`}>refresh</span>
                           <span>Obnovit</span>
@@ -5282,7 +5297,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             return (
                               <div
                                 key={snap.path}
-                                className="group relative p-2.5 bg-black/30 hover:bg-black/50 border border-white/5 hover:border-indigo-500/30 rounded-xl transition flex gap-3 items-center"
+                                className="group relative p-2.5 bg-black/30 hover:bg-black/50 border border-white/5 hover:border-rose-500/30 rounded-xl transition flex gap-3 items-center"
                               >
                                 {snap.dataUrl ? (
                                   <img
@@ -5299,7 +5314,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 )}
                                 <div className="min-w-0 flex-1">
                                   <div
-                                    className="text-xs font-medium text-white truncate cursor-pointer hover:text-indigo-300"
+                                    className="text-xs font-medium text-white truncate cursor-pointer hover:text-rose-300"
                                     onClick={() => handleCopyFastSnap(snap.path)}
                                     title={snap.name}
                                   >
@@ -5308,7 +5323,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                   <div className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-2">
                                     <span>{dateStr}</span>
                                     {snap.width && snap.height && (
-                                      <span className="font-mono text-indigo-400/80">{snap.width}×{snap.height}</span>
+                                      <span className="font-mono text-rose-400/80">{snap.width}×{snap.height}</span>
                                     )}
                                   </div>
                                 </div>
@@ -6111,7 +6126,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <kbd className="px-2.5 py-1 bg-white/10 rounded-lg font-mono text-gray-200 font-semibold shadow-sm whitespace-nowrap">:klicove_slovo</kbd>
                   </div>
 
-                  {formData.extensions?.donkeyTools && formData.donkeyTools?.colorMaster?.enabled !== false && !!formData.donkeyTools?.colorMaster?.hotkey?.trim() && (
+                  {formData.extensions?.donkeyTools && formData.donkeyTools?.colorMaster?.enabled === true && !!formData.donkeyTools?.colorMaster?.hotkey?.trim() && (
                     <div className="py-3 flex items-center justify-between">
                       <div>
                         <span className="font-medium text-white">Vyvolání kapátka (ColorMaster)</span>
@@ -6123,13 +6138,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   )}
 
-                  {formData.extensions?.donkeyTools && formData.donkeyTools?.fastSnap?.enabled !== false && !!formData.donkeyTools?.fastSnap?.hotkey?.trim() && (
+                  {formData.extensions?.donkeyTools && formData.donkeyTools?.fastSnap?.enabled === true && !!formData.donkeyTools?.fastSnap?.hotkey?.trim() && (
                     <div className="py-3 flex items-center justify-between">
                       <div>
                         <span className="font-medium text-white">Výstřižek obrazovky (FastSnap)</span>
                         <p className="text-gray-400 text-xs mt-0.5">Spustí celoobrazovkový výběr výstřižku s automatickým uložením a zkopírováním do schránky.</p>
                       </div>
-                      <kbd className="px-2.5 py-1 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-lg font-mono font-semibold shadow-sm">
+                      <kbd className="px-2.5 py-1 bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded-lg font-mono font-semibold shadow-sm">
                         {formData.donkeyTools.fastSnap.hotkey}
                       </kbd>
                     </div>
@@ -6255,7 +6270,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   )}
 
-                  {formData.extensions?.donkeyTools && formData.donkeyTools?.colorMaster?.enabled !== false && (
+                  {formData.extensions?.donkeyTools && formData.donkeyTools?.colorMaster?.enabled === true && (
                     <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
                       <div className="flex items-center gap-2 text-rose-400 font-semibold">
                         <span className="material-symbols-outlined text-base">palette</span>
@@ -6267,6 +6282,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   )}
 
+                  {formData.extensions?.donkeyTools && formData.donkeyTools?.fastSnap?.enabled === true && (
+                    <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                      <div className="flex items-center gap-2 text-rose-400 font-semibold">
+                        <span className="material-symbols-outlined text-base">crop</span>
+                        FastSnap (DonkeyTools)
+                      </div>
+                      <p className="text-gray-400 text-xs leading-relaxed">
+                        Rychlé pořízení výstřižku libovolné oblasti obrazovky. Snímek se automaticky uloží do vybrané složky a současně vloží do systémové schránky pro okamžité vložení (Ctrl+V). Výstřižek spustíte příkazem <code className="bg-white/10 px-1 rounded">/fastsnap</code>, ikonkou ve Spotlightu nebo nastavenou globální klávesovou zkratkou.
+                      </p>
+                    </div>
+                  )}
+
                   {formData.extensions?.donkeyTools && (
                     <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
                       <div className="flex items-center gap-2 text-rose-300 font-semibold">
@@ -6274,7 +6301,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         Příkazy DonkeyTools
                       </div>
                       <p className="text-gray-400 text-xs leading-relaxed">
-                        Zadejte do vyhledávače lomítko <code className="bg-white/10 px-1 rounded">/</code> pro zobrazení rychlých příkazů sady DonkeyTools (např. <code className="bg-white/10 px-1 rounded">/kapatko</code>, <code className="bg-white/10 px-1 rounded">/picker</code> pro aktivaci kapátka výběru barvy z obrazovky).
+                        Zadejte do vyhledávače lomítko <code className="bg-white/10 px-1 rounded">/</code> pro zobrazení rychlých příkazů aktivních nástrojů DonkeyTools (např. <code className="bg-white/10 px-1 rounded">/kapatko</code> pro nabrání barvy, <code className="bg-white/10 px-1 rounded">/fastsnap</code> pro výstřižek obrazovky).
                       </p>
                     </div>
                   )}

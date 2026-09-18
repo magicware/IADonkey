@@ -300,53 +300,63 @@ export function createColorLauncherItem(
 /**
  * Returns available DonkeyTools commands when query starts with '/'
  */
-export function getDonkeyToolsCommands(query: string): LauncherItem[] {
+export function getDonkeyToolsCommands(
+  query: string,
+  options?: { colorMasterEnabled?: boolean; fastSnapEnabled?: boolean }
+): LauncherItem[] {
   const trimmed = query.trim().toLowerCase();
   if (!trimmed.startsWith('/')) return [];
 
   const command = trimmed.slice(1).trim();
   const list: LauncherItem[] = [];
 
-  // /kapatko (kapátko / eyedropper / picker / barva)
-  const isKapatkoMatch =
-    command === '' ||
-    'kapatko'.includes(command) ||
-    'picker'.includes(command) ||
-    'color'.includes(command) ||
-    'barva'.includes(command) ||
-    'eyedropper'.includes(command);
+  const isColorMasterActive = options ? options.colorMasterEnabled === true : true;
+  const isFastSnapActive = options ? options.fastSnapEnabled === true : true;
 
-  if (isKapatkoMatch) {
-    list.push({
-      id: 'donkeytools-kapatko',
-      name: '/kapatko',
-      location: 'ColorMaster – Nabrat barvu z obrazovky (EyeDropper)',
-      action: 'pick-color',
-      icon: 'colorize',
-      priority: -1.5,
-      shortcuts: ['/picker', '/eyedropper', '/color', '/barva'],
-    });
+  // /kapatko (kapátko / eyedropper / picker / barva)
+  if (isColorMasterActive) {
+    const isKapatkoMatch =
+      command === '' ||
+      'kapatko'.includes(command) ||
+      'picker'.includes(command) ||
+      'color'.includes(command) ||
+      'barva'.includes(command) ||
+      'eyedropper'.includes(command);
+
+    if (isKapatkoMatch) {
+      list.push({
+        id: 'donkeytools-kapatko',
+        name: '/kapatko',
+        location: 'ColorMaster – Nabrat barvu z obrazovky (EyeDropper)',
+        action: 'pick-color',
+        icon: 'colorize',
+        priority: -1.5,
+        shortcuts: ['/picker', '/eyedropper', '/color', '/barva'],
+      });
+    }
   }
 
   // /fastsnap (/snap, /vystrizek, /snip, /screenshot)
-  const isFastSnapMatch =
-    command === '' ||
-    'fastsnap'.includes(command) ||
-    'snap'.includes(command) ||
-    'vystrizek'.includes(command) ||
-    'snip'.includes(command) ||
-    'screenshot'.includes(command);
+  if (isFastSnapActive) {
+    const isFastSnapMatch =
+      command === '' ||
+      'fastsnap'.includes(command) ||
+      'snap'.includes(command) ||
+      'vystrizek'.includes(command) ||
+      'snip'.includes(command) ||
+      'screenshot'.includes(command);
 
-  if (isFastSnapMatch) {
-    list.push({
-      id: 'donkeytools-fastsnap',
-      name: '/fastsnap',
-      location: 'FastSnap – Výstřižek obrazovky s uložením a schránkou',
-      action: 'fastsnap',
-      icon: 'crop',
-      priority: -1.4,
-      shortcuts: ['/snap', '/vystrizek', '/snip', '/screenshot'],
-    });
+    if (isFastSnapMatch) {
+      list.push({
+        id: 'donkeytools-fastsnap',
+        name: '/fastsnap',
+        location: 'FastSnap – Výstřižek obrazovky s uložením a schránkou',
+        action: 'fastsnap',
+        icon: 'crop',
+        priority: -1.4,
+        shortcuts: ['/snap', '/vystrizek', '/snip', '/screenshot'],
+      });
+    }
   }
 
   return list;

@@ -33,12 +33,12 @@ const DEFAULT_CONFIG: AppConfig = {
   },
   donkeyTools: {
     colorMaster: {
-      enabled: true,
+      enabled: false,
       hotkey: '',
       defaultFormat: 'hex',
     },
     fastSnap: {
-      enabled: true,
+      enabled: false,
       hotkey: '',
     },
   },
@@ -499,6 +499,7 @@ export const App: React.FC = () => {
         androidStudioEnabled={config.extensions?.androidStudio ?? false}
         donkeyToolsEnabled={config.extensions?.donkeyTools ?? false}
         colorMasterConfig={config.donkeyTools?.colorMaster}
+        fastSnapConfig={config.donkeyTools?.fastSnap}
         onSaveConfig={handleSaveConfig}
         onOpenSettings={() => {
           if (window.electronAPI?.openSettingsWindow) {

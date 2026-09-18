@@ -195,7 +195,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // FastSnap API
   startFastSnap: (): Promise<void> => ipcRenderer.invoke('fastsnap-start'),
-  finishFastSnap: (cropArea: { x: number; y: number; width: number; height: number }): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+  finishFastSnap: (cropArea: { x: number; y: number; width: number; height: number; windowWidth?: number; windowHeight?: number }): Promise<{ success: boolean; filePath?: string; error?: string }> =>
     ipcRenderer.invoke('fastsnap-finish-crop', cropArea),
   cancelFastSnap: (): Promise<void> => ipcRenderer.invoke('fastsnap-cancel'),
   getRecentFastSnaps: (): Promise<any[]> => ipcRenderer.invoke('fastsnap-get-recent'),

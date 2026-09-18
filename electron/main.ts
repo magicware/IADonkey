@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, dialog, shell, clipboard, protocol, desktopCapturer, screen, nativeImage } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, dialog, shell, clipboard, protocol, desktopCapturer, screen, nativeImage, ClipboardItem } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -339,7 +339,7 @@ function registerColorMasterHotkey(hotkey?: string) {
       currentColorMasterHotkey = '';
     }
     const config = store ? store.getConfig() : null;
-    const isEnabled = Boolean(config?.extensions?.donkeyTools && config?.donkeyTools?.colorMaster?.enabled !== false);
+    const isEnabled = Boolean(config?.extensions?.donkeyTools && config?.donkeyTools?.colorMaster?.enabled === true);
     if (!isEnabled || !hotkey || !hotkey.trim()) {
       return;
     }
@@ -379,7 +379,7 @@ function registerFastSnapHotkey(hotkey?: string) {
       currentFastSnapHotkey = '';
     }
     const config = store ? store.getConfig() : null;
-    const isEnabled = Boolean(config?.extensions?.donkeyTools && config?.donkeyTools?.fastSnap?.enabled !== false);
+    const isEnabled = Boolean(config?.extensions?.donkeyTools && config?.donkeyTools?.fastSnap?.enabled === true);
     if (!isEnabled || !hotkey || !hotkey.trim()) {
       return;
     }
@@ -413,6 +413,36 @@ function registerFastSnapHotkey(hotkey?: string) {
 
 let currentCapturedScreenImage: Electron.NativeImage | null = null;
 let currentCapturedBounds: { x: number; y: number; width: number; height: number; scaleFactor: number } | null = null;
+
+async function writeNativeImageToClipboard(nativeImg: Electron.NativeImage): Promise<void> {
+  // 1. Zkusíme staré Electron API pokud existuje
+  if (typeof (clipboard as any).writeImage === 'function') {
+    (clipboard as any).writeImage(nativeImg);
+    return;
+  }
+  // 2. Electron 44+ W3C ClipboardItem API
+  try {
+    const pngBuffer = nativeImg.toPNG();
+    const ItemClass = typeof ClipboardItem !== 'undefined' ? ClipboardItem : (globalThis as any).ClipboardItem;
+    if (ItemClass && typeof clipboard.write === 'function') {
+      const blob = new Blob([new Uint8Array(pngBuffer)], { type: 'image/png' });
+      const item = new ItemClass({ 'image/png': blob });
+      await clipboard.write([item]);
+      return;
+    }
+  } catch (err) {
+    console.warn('[Main] ClipboardItem write failed, trying fallback:', err);
+  }
+  // 3. Fallback přes clipboard.write({ image: nativeImg })
+  if (typeof (clipboard as any).write === 'function') {
+    try {
+      await (clipboard as any).write({ image: nativeImg });
+      return;
+    } catch (err) {
+      console.error('[Main] clipboard.write fallback failed:', err);
+    }
+  }
+}
 
 function getFastSnapSaveDirectory(): string {
   const config = store ? store.getConfig() : null;
@@ -562,7 +592,7 @@ function setupIpcHandlers() {
     currentCapturedBounds = null;
   });
 
-  ipcMain.handle('fastsnap-finish-crop', async (_event, cropArea: { x: number; y: number; width: number; height: number }) => {
+  ipcMain.handle('fastsnap-finish-crop', async (_event, cropArea: { x: number; y: number; width: number; height: number; windowWidth?: number; windowHeight?: number }) => {
     try {
       windowManager.closeSnipperWindow();
 
@@ -570,12 +600,18 @@ function setupIpcHandlers() {
         throw new Error('Snímek obrazovky není k dispozici pro ořez.');
       }
 
-      const scale = currentCapturedBounds?.scaleFactor || 1;
+      const imgSize = currentCapturedScreenImage.getSize();
+      const winW = cropArea.windowWidth || currentCapturedBounds?.width || imgSize.width;
+      const winH = cropArea.windowHeight || currentCapturedBounds?.height || imgSize.height;
+
+      const scaleX = imgSize.width / winW;
+      const scaleY = imgSize.height / winH;
+
       const cropRect = {
-        x: Math.max(0, Math.round(cropArea.x * scale)),
-        y: Math.max(0, Math.round(cropArea.y * scale)),
-        width: Math.max(1, Math.round(cropArea.width * scale)),
-        height: Math.max(1, Math.round(cropArea.height * scale)),
+        x: Math.max(0, Math.min(imgSize.width - 1, Math.round(cropArea.x * scaleX))),
+        y: Math.max(0, Math.min(imgSize.height - 1, Math.round(cropArea.y * scaleY))),
+        width: Math.max(1, Math.min(imgSize.width - Math.round(cropArea.x * scaleX), Math.round(cropArea.width * scaleX))),
+        height: Math.max(1, Math.min(imgSize.height - Math.round(cropArea.y * scaleY), Math.round(cropArea.height * scaleY))),
       };
 
       const croppedImage = currentCapturedScreenImage.crop(cropRect);
@@ -583,7 +619,7 @@ function setupIpcHandlers() {
       currentCapturedBounds = null;
 
       // 1. Zkopírovat do schránky
-      (clipboard as any).writeImage(croppedImage);
+      await writeNativeImageToClipboard(croppedImage);
 
       // 2. Uložit do cílové složky
       const saveDir = getFastSnapSaveDirectory();
@@ -683,7 +719,7 @@ function setupIpcHandlers() {
         return { success: false, error: 'Soubor neexistuje' };
       }
       const img = nativeImage.createFromPath(filePath);
-      (clipboard as any).writeImage(img);
+      await writeNativeImageToClipboard(img);
       diagnosticsService.logAction({
         type: 'action',
         title: 'Výstřižek zkopírován do schránky',

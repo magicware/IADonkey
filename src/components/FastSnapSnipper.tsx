@@ -75,6 +75,8 @@ export const FastSnapSnipper: React.FC = () => {
         y: Math.round(y),
         width: Math.round(width),
         height: Math.round(height),
+        windowWidth: window.innerWidth,
+        windowHeight: window.innerHeight,
       });
     }
   };
@@ -101,64 +103,51 @@ export const FastSnapSnipper: React.FC = () => {
         window.electronAPI?.cancelFastSnap?.();
       }}
     >
-      {/* 1. Podkladový screenshot */}
+      {/* 1. Podkladový screenshot přes celou obrazovku */}
       {initData?.screenshotUrl && (
         <img
           src={initData.screenshotUrl}
           alt="Desktop Background"
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          className="absolute inset-0 w-full h-full object-fill pointer-events-none"
           draggable={false}
         />
       )}
 
-      {/* 2. Ztmavení celé obrazovky */}
-      <div className="absolute inset-0 bg-black/45 pointer-events-none transition-opacity duration-150" />
+      {/* 2. Ztmavení celé obrazovky když není žádný aktivní výběr */}
+      {(!selectionBox || selectionBox.w <= 0 || selectionBox.h <= 0) && (
+        <div className="absolute inset-0 bg-black/45 pointer-events-none transition-opacity duration-150" />
+      )}
 
       {/* 3. Nápověda nahoře uprostřed (pokud se netáhne) */}
-      {!isDragging && !selectionBox && (
+      {!isDragging && (!selectionBox || selectionBox.w <= 0 || selectionBox.h <= 0) && (
         <div className="absolute top-6 left-1/2 -translate-x-1/2 pointer-events-none flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/90 text-slate-100 text-sm font-medium shadow-2xl border border-white/15 backdrop-blur-md animate-fade-in">
-          <span className="material-symbols-rounded text-indigo-400 text-lg">crop</span>
+          <span className="material-symbols-rounded text-rose-400 text-lg">crop</span>
           <span>Táhněte myší pro výběr výstřižku</span>
           <span className="text-slate-400 text-xs px-1.5 py-0.5 rounded bg-white/10 border border-white/10">Esc pro zrušení</span>
         </div>
       )}
 
-      {/* 4. Ostrý průhledný výřez nad ztmavením */}
-      {selectionBox && selectionBox.w > 0 && selectionBox.h > 0 && initData?.screenshotUrl && (
+      {/* 4. Ostrý průhledný výřez nad ztmavením pomocí box-shadow (dokonalé zarovnání bez duplicitního obrazu) */}
+      {selectionBox && selectionBox.w > 0 && selectionBox.h > 0 && (
         <div
-          className="absolute pointer-events-none border-2 border-indigo-500 shadow-2xl"
+          className="absolute pointer-events-none border-2 border-rose-500"
           style={{
             left: selectionBox.x,
             top: selectionBox.y,
             width: selectionBox.w,
             height: selectionBox.h,
+            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.45)',
           }}
         >
-          {/* Výřez původního snímku bez ztmavení */}
-          <div className="absolute inset-0 overflow-hidden">
-            <img
-              src={initData.screenshotUrl}
-              alt="Clear cutout"
-              className="absolute max-w-none pointer-events-none"
-              style={{
-                left: -selectionBox.x,
-                top: -selectionBox.y,
-                width: initData.width,
-                height: initData.height,
-              }}
-              draggable={false}
-            />
-          </div>
-
-          {/* Rohové úchyty pro profesionální vizuál */}
-          <div className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-white border border-indigo-600 rounded-sm" />
-          <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-white border border-indigo-600 rounded-sm" />
-          <div className="absolute -bottom-1 -left-1 w-2.5 h-2.5 bg-white border border-indigo-600 rounded-sm" />
-          <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-white border border-indigo-600 rounded-sm" />
+          {/* Rohové úchyty */}
+          <div className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-white border border-rose-600 rounded-sm" />
+          <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-white border border-rose-600 rounded-sm" />
+          <div className="absolute -bottom-1 -left-1 w-2.5 h-2.5 bg-white border border-rose-600 rounded-sm" />
+          <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-white border border-rose-600 rounded-sm" />
 
           {/* Badge s rozměry */}
           <div
-            className={`absolute left-1/2 -translate-x-1/2 px-2.5 py-1 rounded bg-indigo-600/95 text-white font-mono text-xs font-semibold shadow-lg backdrop-blur-sm pointer-events-none flex items-center gap-1.5 whitespace-nowrap ${
+            className={`absolute left-1/2 -translate-x-1/2 px-2.5 py-1 rounded bg-rose-600 text-white font-mono text-xs font-semibold shadow-lg backdrop-blur-sm pointer-events-none flex items-center gap-1.5 whitespace-nowrap ${
               selectionBox.y > 35 ? '-top-8' : 'bottom-2'
             }`}
           >

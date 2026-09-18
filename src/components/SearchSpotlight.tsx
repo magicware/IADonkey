@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LauncherItem, LauncherAction, SyncProgress, SnippetsConfig, ColorMasterSettings, AppConfig } from '../types';
+import { LauncherItem, LauncherAction, SyncProgress, SnippetsConfig, ColorMasterSettings, FastSnapSettings, AppConfig } from '../types';
 import { MaterialIcon } from './MaterialIcon';
 import { evaluateExpression } from '../utils/calculator';
 import { detectUrl } from '../utils/urlHelper';
@@ -30,6 +30,7 @@ interface SearchSpotlightProps {
   androidStudioEnabled?: boolean;
   donkeyToolsEnabled?: boolean;
   colorMasterConfig?: ColorMasterSettings;
+  fastSnapConfig?: FastSnapSettings;
   onSaveConfig?: (newConfig: AppConfig) => Promise<void>;
   onOpenSettings: () => void;
   onRefreshData: () => void;
@@ -51,6 +52,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   androidStudioEnabled = false,
   donkeyToolsEnabled = false,
   colorMasterConfig,
+  fastSnapConfig,
   onSaveConfig,
   onOpenSettings,
   onRefreshData,
@@ -83,8 +85,9 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   const [isDonkeyToolsOpen, setIsDonkeyToolsOpen] = useState(false);
   const donkeyToolsRef = useRef<HTMLDivElement>(null);
 
-  const isColorMasterActive = Boolean(donkeyToolsEnabled && colorMasterConfig?.enabled !== false);
-  const showDonkeyToolsIcon = Boolean(donkeyToolsEnabled && isColorMasterActive);
+  const isColorMasterActive = Boolean(donkeyToolsEnabled && colorMasterConfig?.enabled === true);
+  const isFastSnapActive = Boolean(donkeyToolsEnabled && fastSnapConfig?.enabled === true);
+  const showDonkeyToolsIcon = Boolean(donkeyToolsEnabled && (isColorMasterActive || isFastSnapActive));
 
   // Click outside to close DonkeyTools quick tools menu
   useEffect(() => {
@@ -110,6 +113,21 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       await pickScreenColor();
     } catch (err) {
       console.error('Pick color error:', err);
+    }
+  };
+
+  const handleStartFastSnap = async () => {
+    try {
+      window.electronAPI?.logAction?.({
+        type: 'action',
+        title: 'Spuštění FastSnap z DonkeyTools',
+        details: 'Výběr nástroje výstřižku v nabídce rychlých nástrojů',
+        status: 'info',
+      });
+      setIsDonkeyToolsOpen(false);
+      await window.electronAPI?.startFastSnap?.();
+    } catch (err) {
+      console.error('FastSnap start error:', err);
     }
   };
 
@@ -587,11 +605,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     // Special DonkeyTools commands prefix: "/" (e.g. /kapatko, /picker, /color)
     // Commands are ONLY shown when query starts with a slash and DonkeyTools is enabled
     if (trimmed.startsWith('/') && donkeyToolsEnabled) {
-      if (isColorMasterActive) {
-        const dtCommands = getDonkeyToolsCommands(trimmed);
-        if (dtCommands.length > 0) {
-          return dtCommands;
-        }
+      const dtCommands = getDonkeyToolsCommands(trimmed, {
+        colorMasterEnabled: isColorMasterActive,
+        fastSnapEnabled: isFastSnapActive,
+      });
+      if (dtCommands.length > 0) {
+        return dtCommands;
       }
       return [];
     }
@@ -1680,6 +1699,23 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                   >
                     <span className="material-symbols-outlined text-[19px] leading-none select-none">
                       colorize
+                    </span>
+                  </button>
+                )}
+
+                {/* FastSnap Subextension - Snipping tool */}
+                {isFastSnapActive && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDonkeyToolsOpen(false);
+                      handleStartFastSnap();
+                    }}
+                    className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all shadow-xl bg-[#1c1d28] hover:bg-rose-500/25 border border-white/15 hover:border-rose-400/50 text-gray-300 hover:text-rose-200 hover:scale-105 active:scale-95"
+                    title="FastSnap – Výstřižek obrazovky"
+                  >
+                    <span className="material-symbols-outlined text-[19px] leading-none select-none">
+                      crop
                     </span>
                   </button>
                 )}

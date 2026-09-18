@@ -142,7 +142,7 @@ declare global {
 
       // FastSnap API
       startFastSnap?: () => Promise<void>;
-      finishFastSnap?: (cropArea: { x: number; y: number; width: number; height: number }) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+      finishFastSnap?: (cropArea: { x: number; y: number; width: number; height: number; windowWidth?: number; windowHeight?: number }) => Promise<{ success: boolean; filePath?: string; error?: string }>;
       cancelFastSnap?: () => Promise<void>;
       getRecentFastSnaps?: () => Promise<import('./index').FastSnapRecentItem[]>;
       copyFastSnapToClipboard?: (filePath: string) => Promise<{ success: boolean; error?: string }>;
