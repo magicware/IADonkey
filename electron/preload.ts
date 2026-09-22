@@ -51,10 +51,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('magicgate-clone-start', params),
   downloadInstanceCmsContent: (params: { instanceName?: string; adminUrl: string; targetDir?: string }): Promise<{ success: boolean; targetPath?: string; error?: string; fileCount?: number }> =>
     ipcRenderer.invoke('magicgate-download-cms-content', params),
+  openCmsDownloadWindow: (params: { instanceName: string; adminUrl: string; targetDir: string }): Promise<void> =>
+    ipcRenderer.invoke('open-cms-download-window', params),
   onMagicGateCloneProgress: (callback: (data: { current: number; total: number; repoName: string; log: string }) => void) => {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on('magicgate-clone-progress', handler);
     return () => ipcRenderer.removeListener('magicgate-clone-progress', handler);
+  },
+  onCmsDownloadProgress: (callback: (data: { step: string; percent?: number; loadedBytes?: number; totalBytes?: number; log?: string }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('magicgate-download-cms-progress', handler);
+    return () => ipcRenderer.removeListener('magicgate-download-cms-progress', handler);
+  },
+  onCmsDownloadParams: (callback: (params: { instanceName: string; adminUrl: string; targetDir: string }) => void) => {
+    const handler = (_event: any, params: any) => callback(params);
+    ipcRenderer.on('cms-download-params', handler);
+    return () => ipcRenderer.removeListener('cms-download-params', handler);
   },
   onGitCloneParams: (callback: (params: { repoName: string; repoUrl?: string; recursive?: boolean; initialRecursive?: boolean; isInstanceMode?: boolean; adminUrl?: string }) => void) => {
     const handler = (_event: any, params: any) => callback(params);

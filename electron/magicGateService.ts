@@ -292,6 +292,17 @@ export async function runMultiRepoClone(params: {
 }
 
 /**
+ * Normalizes instance target directory for CMSinFS content: {baseDir}/{instanceName}
+ */
+export function normalizeInstanceCmsPath(baseDir?: string, instanceName?: string): string {
+  if (!baseDir || !baseDir.trim()) return '';
+  const cleanBase = baseDir.trim().replace(/[\\/]+$/, '');
+  const cleanInst = (instanceName || 'instance').trim().replace(/^[\\/]+|[\\/]+$/g, '');
+  const sep = cleanBase.includes('/') && !cleanBase.includes('\\') ? '/' : '\\';
+  return `${cleanBase}${sep}${cleanInst}`;
+}
+
+/**
  * Downloads and extracts CMSinFS web content ZIP from an instance's Administration endpoint.
  * URL: {adminUrl}/CmsFsContentHandler.ashx
  * Headers:
@@ -305,8 +316,15 @@ export async function downloadInstanceCmsContent(params: {
   userName?: string;
   password?: string;
   instanceName?: string;
+  onProgress?: (data: {
+    step: 'connecting' | 'downloading' | 'purging' | 'extracting' | 'done';
+    percent?: number;
+    loadedBytes?: number;
+    totalBytes?: number;
+    log?: string;
+  }) => void;
 }): Promise<{ success: boolean; targetPath?: string; error?: string; fileCount?: number }> {
-  const { adminUrl, targetDir, userName, password, instanceName } = params;
+  const { adminUrl, targetDir, userName, password, instanceName, onProgress } = params;
 
   if (!adminUrl || !adminUrl.trim()) {
     return { success: false, error: 'Instance nemá zadanou URL adresu administrace.' };
@@ -335,6 +353,8 @@ export async function downloadInstanceCmsContent(params: {
   }
 
   try {
+    onProgress?.({ step: 'connecting', log: `Připojování k administraci instance ${instanceName || ''}...` });
+
     const res = await fetch(endpoint, {
       method: 'POST',
       headers,
@@ -353,8 +373,39 @@ export async function downloadInstanceCmsContent(params: {
       };
     }
 
-    const arrayBuffer = await res.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    onProgress?.({ step: 'downloading', log: 'Zahajuji stahování webového archivu CMSinFS...' });
+
+    let buffer: Buffer;
+    if (res.body && typeof (res.body as any).getReader === 'function') {
+      const contentLengthHeader = res.headers.get('content-length');
+      const totalBytes = contentLengthHeader ? parseInt(contentLengthHeader, 10) : undefined;
+      let loadedBytes = 0;
+      const chunks: Uint8Array[] = [];
+      const reader = (res.body as any).getReader();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          chunks.push(value);
+          loadedBytes += value.length;
+          const percent = totalBytes && totalBytes > 0 ? Math.min(100, Math.round((loadedBytes / totalBytes) * 100)) : undefined;
+          onProgress?.({
+            step: 'downloading',
+            percent,
+            loadedBytes,
+            totalBytes,
+            log: totalBytes
+              ? `Stahování: ${(loadedBytes / 1024 / 1024).toFixed(1)} MB / ${(totalBytes / 1024 / 1024).toFixed(1)} MB (${percent}%)`
+              : `Stahování: ${(loadedBytes / 1024 / 1024).toFixed(1)} MB`,
+          });
+        }
+      }
+      buffer = Buffer.concat(chunks);
+    } else {
+      const arrayBuffer = await res.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+    }
 
     // ZIP magic bytes check: PK.. (0x50, 0x4B)
     if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
@@ -364,6 +415,8 @@ export async function downloadInstanceCmsContent(params: {
         error: rawText ? `Server vrátil chybu: ${rawText.slice(0, 250)}` : 'Server nevrátil platný ZIP archiv.',
       };
     }
+
+    onProgress?.({ step: 'purging', log: `Čištění cílové složky ${path.basename(cleanTarget)}...` });
 
     // Prepare target directory: if exists, purge contents; if not, create
     try {
@@ -405,7 +458,11 @@ export async function downloadInstanceCmsContent(params: {
       }
     }
 
+    onProgress?.({ step: 'extracting', log: `Rozbalování ${zipEntries.length} souborů do ${path.basename(cleanTarget)}...` });
+
     zip.extractAllTo(cleanTarget, true);
+
+    onProgress?.({ step: 'done', log: `Hotovo. Rozbaleno ${zipEntries.length} souborů.` });
 
     return {
       success: true,

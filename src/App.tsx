@@ -6,6 +6,7 @@ import { UpdateDialog } from './components/UpdateDialog';
 import { WhatsNewModal } from './components/WhatsNewModal';
 import { ChangelogModal } from './components/ChangelogModal';
 import { GitCloneModal } from './components/GitCloneModal';
+import { CmsDownloadModal } from './components/CmsDownloadModal';
 import { InstallerWizard } from './components/InstallerWizard';
 import { UninstallerModal } from './components/UninstallerModal';
 import { SplashScreen } from './components/SplashScreen';
@@ -91,6 +92,33 @@ export const App: React.FC = () => {
     );
   });
 
+  const [isCmsDownloadView, setIsCmsDownloadView] = useState(() => {
+    return window.location.hash.startsWith('#cms-download') || window.location.search.includes('window=cms-download');
+  });
+
+  const [cmsDownloadParams, setCmsDownloadParams] = useState(() => {
+    const hash = window.location.hash;
+    const qIndex = hash.indexOf('?');
+    if (qIndex !== -1) {
+      const sp = new URLSearchParams(hash.slice(qIndex + 1));
+      return {
+        instanceName: sp.get('instanceName') || '',
+        adminUrl: sp.get('adminUrl') || '',
+        targetDir: sp.get('targetDir') || '',
+      };
+    }
+    const search = window.location.search;
+    if (search) {
+      const sp = new URLSearchParams(search);
+      return {
+        instanceName: sp.get('instanceName') || '',
+        adminUrl: sp.get('adminUrl') || '',
+        targetDir: sp.get('targetDir') || '',
+      };
+    }
+    return { instanceName: '', adminUrl: '', targetDir: '' };
+  });
+
   const [gitCloneParams, setGitCloneParams] = useState(() => {
     const hash = window.location.hash;
     const qIndex = hash.indexOf('?');
@@ -140,10 +168,25 @@ export const App: React.FC = () => {
     const handleHash = () => {
       setIsSettingsView(window.location.hash === '#settings' || window.location.search.includes('window=settings'));
       setIsGitCloneView(window.location.hash.startsWith('#git-clone') || window.location.search.includes('window=git-clone'));
+      setIsCmsDownloadView(window.location.hash.startsWith('#cms-download') || window.location.search.includes('window=cms-download'));
       setIsTuneColorView(window.location.hash.startsWith('#tune-color') || window.location.search.includes('window=tune-color'));
     };
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
+
+  // Listen to cms-download params updates if window was already open
+  useEffect(() => {
+    if (window.electronAPI?.onCmsDownloadParams) {
+      const unsubscribe = window.electronAPI.onCmsDownloadParams((params: any) => {
+        setCmsDownloadParams({
+          instanceName: params.instanceName || '',
+          adminUrl: params.adminUrl || '',
+          targetDir: params.targetDir || '',
+        });
+      });
+      return () => unsubscribe();
+    }
   }, []);
 
   // Listen to git-clone params updates if window was already open
@@ -397,6 +440,20 @@ export const App: React.FC = () => {
         vscodeEnabled={config.extensions?.vscode ?? false}
         androidStudioEnabled={config.extensions?.androidStudio ?? false}
         repoLanguage={gitCloneParams.repoLanguage}
+      />
+    );
+  }
+
+  // Dedicated CMSinFS Download Window mode
+  if (isCmsDownloadView) {
+    return (
+      <CmsDownloadModal
+        isOpen={true}
+        onClose={() => window.close()}
+        instanceName={cmsDownloadParams.instanceName}
+        adminUrl={cmsDownloadParams.adminUrl}
+        targetDir={cmsDownloadParams.targetDir}
+        vscodeEnabled={config.extensions?.vscode ?? false}
       />
     );
   }

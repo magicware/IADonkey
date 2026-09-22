@@ -92,6 +92,23 @@ declare global {
         error?: string;
         fileCount?: number;
       }>;
+      openCmsDownloadWindow: (params: {
+        instanceName: string;
+        adminUrl: string;
+        targetDir: string;
+      }) => Promise<void>;
+      onCmsDownloadProgress: (callback: (data: {
+        step: string;
+        percent?: number;
+        loadedBytes?: number;
+        totalBytes?: number;
+        log?: string;
+      }) => void) => () => void;
+      onCmsDownloadParams: (callback: (params: {
+        instanceName: string;
+        adminUrl: string;
+        targetDir: string;
+      }) => void) => () => void;
       onMagicGateCloneProgress: (callback: (data: { current: number; total: number; repoName: string; log: string }) => void) => () => void;
       onGitCloneParams: (callback: (params: {
         repoName: string;

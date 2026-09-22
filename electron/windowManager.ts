@@ -41,6 +41,7 @@ export class WindowManager {
   private settingsWindow: BrowserWindow | null = null;
   private powerWindow: BrowserWindow | null = null;
   private gitCloneWindow: BrowserWindow | null = null;
+  private cmsDownloadWindow: BrowserWindow | null = null;
   private tuneColorWindow: BrowserWindow | null = null;
   private snipperWindow: BrowserWindow | null = null;
   private splashWindow: BrowserWindow | null = null;
@@ -422,6 +423,86 @@ export class WindowManager {
     });
 
     return this.gitCloneWindow;
+  }
+
+  public getCmsDownloadWindow(): BrowserWindow | null {
+    return this.cmsDownloadWindow;
+  }
+
+  public closeCmsDownloadWindow(): void {
+    if (this.cmsDownloadWindow && !this.cmsDownloadWindow.isDestroyed()) {
+      this.cmsDownloadWindow.close();
+    }
+  }
+
+  public openCmsDownloadWindow(params: {
+    instanceName: string;
+    adminUrl: string;
+    targetDir: string;
+  }): BrowserWindow {
+    const query = new URLSearchParams({
+      instanceName: params.instanceName,
+      adminUrl: params.adminUrl,
+      targetDir: params.targetDir,
+    }).toString();
+
+    const payload = {
+      instanceName: params.instanceName,
+      adminUrl: params.adminUrl,
+      targetDir: params.targetDir,
+    };
+
+    if (this.cmsDownloadWindow && !this.cmsDownloadWindow.isDestroyed()) {
+      if (this.cmsDownloadWindow.isMinimized()) this.cmsDownloadWindow.restore();
+      this.cmsDownloadWindow.show();
+      this.cmsDownloadWindow.focus();
+      this.cmsDownloadWindow.webContents.send('cms-download-params', payload);
+      return this.cmsDownloadWindow;
+    }
+
+    const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
+      ? path.join(__dirname, 'preload.cjs')
+      : fs.existsSync(path.join(__dirname, 'preload.mjs'))
+      ? path.join(__dirname, 'preload.mjs')
+      : path.join(__dirname, 'preload.js');
+
+    this.cmsDownloadWindow = new BrowserWindow({
+      width: 580,
+      height: 480,
+      minWidth: 500,
+      minHeight: 400,
+      title: `IADonkey – Stažení CMSinFS zdrojáků (${params.instanceName})`,
+      icon: getAppIcon(),
+      autoHideMenuBar: true,
+      backgroundColor: '#181920',
+      show: false,
+      webPreferences: {
+        preload: preloadPath,
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    if (process.env.VITE_DEV_SERVER_URL) {
+      this.cmsDownloadWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#cms-download?${query}`);
+    } else {
+      this.cmsDownloadWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash: `cms-download?${query}` });
+    }
+
+    this.cmsDownloadWindow.once('ready-to-show', () => {
+      if (this.cmsDownloadWindow && !this.cmsDownloadWindow.isDestroyed()) {
+        this.cmsDownloadWindow.show();
+        this.cmsDownloadWindow.focus();
+        this.cmsDownloadWindow.webContents.send('cms-download-params', payload);
+      }
+    });
+
+    this.cmsDownloadWindow.on('closed', () => {
+      this.cmsDownloadWindow = null;
+    });
+
+    return this.cmsDownloadWindow;
   }
 
   public getTuneColorWindow(): BrowserWindow | null {

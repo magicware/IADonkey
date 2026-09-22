@@ -1328,11 +1328,16 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     if (actionType === 'mgdownloadcontent') {
       exitActions();
       const adminUrl = effectiveLocation;
-      if (adminUrl) {
-        window.electronAPI?.downloadInstanceCmsContent?.({
+      if (adminUrl && instanceSourceCodesPath) {
+        const cleanBase = instanceSourceCodesPath.trim().replace(/[\\/]+$/, '');
+        const cleanInst = (parent.name || 'instance').trim().replace(/^[\\/]+|[\\/]+$/g, '');
+        const sep = cleanBase.includes('/') && !cleanBase.includes('\\') ? '/' : '\\';
+        const targetDir = `${cleanBase}${sep}${cleanInst}`;
+
+        window.electronAPI?.openCmsDownloadWindow?.({
           instanceName: parent.name,
           adminUrl,
-          targetDir: instanceSourceCodesPath,
+          targetDir,
         });
       }
       setTimeout(() => {
@@ -2262,7 +2267,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                         </div>
                         <div className="text-xs mt-0.5 font-mono text-gray-400 truncate">
                           {action.action === 'mgdownloadcontent' && instanceSourceCodesPath
-                            ? `Cíl: ${instanceSourceCodesPath}`
+                            ? `Cíl: ${instanceSourceCodesPath.trim().replace(/[\\/]+$/, '')}\\${actionsParentItem?.name || ''}`
                             : (action.location || actionsParentItem.location || '')}
                         </div>
                       </div>

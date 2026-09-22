@@ -4258,12 +4258,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     Cesta ke zdrojovým kódům instance
                   </h4>
                   <p className="text-[13px] text-gray-400 mb-3 leading-relaxed">
-                    Cílová složka na vašem počítači pro stažení a rozbalení zdrojových kódů webu (CMSinFS) z vybrané instance IS Tour pro programátory. Pokud není složka vybrána, možnost stažení zdrojáků se v akcích instance nenabízí.
+                    Základní složka na vašem počítači pro stažení zdrojových kódů webu (CMSinFS) z vybrané instance IS Tour pro programátory. Ke zvolené složce se pro každou instanci automaticky vytvoří podsložka s jejím názvem (<code className="font-mono text-amber-300">&#123;složka&#125;\&#123;instance&#125;\</code>). Pokud není složka vybrána, možnost stažení zdrojáků se v akcích instance nenabízí.
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-medium text-gray-300 mb-1.5">Cílová složka pro zdrojové kódy (CMSinFS)</label>
+                  <label className="block text-[13px] font-medium text-gray-300 mb-1.5">Základní složka pro zdrojové kódy (CMSinFS)</label>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
@@ -4318,7 +4318,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     )}
                   </div>
                   <span className="text-xs text-gray-400 mt-1.5 block">
-                    Při spuštění akce na instanci se obsah této cílové složky nejprve kompletně vyčistí a poté se do ní rozbalí aktuální zdrojové kódy z instance.
+                    Při spuštění akce na instanci se podsložka dané instance nejprve kompletně vyčistí (aby nezůstaly staré soubory) a poté se do ní rozbalí aktuální zdrojové kódy z instance.
                   </span>
                 </div>
               </div>
