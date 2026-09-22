@@ -131,16 +131,6 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [status, onClose]);
 
-  // Closing from footer buttons should NOT restore Spotlight
-  const handleFooterClose = async () => {
-    if (window.electronAPI?.closeCmsDownloadWindow) {
-      await window.electronAPI.closeCmsDownloadWindow(false);
-    } else {
-      await window.electronAPI?.resetAndHideSpotlight?.();
-      onClose();
-    }
-  };
-
   const handleOpenInExplorer = () => {
     if (targetDir && window.electronAPI?.openPath) {
       window.electronAPI.openPath(targetDir);
@@ -149,8 +139,14 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
 
   const handleOpenInVscode = async () => {
     if (targetDir && window.electronAPI?.openInVscode) {
-      await window.electronAPI.openInVscode(targetDir);
-      await handleFooterClose();
+      if (window.electronAPI?.closeCmsDownloadWindow) {
+        await window.electronAPI.openInVscode(targetDir);
+        await window.electronAPI.closeCmsDownloadWindow(false);
+      } else {
+        await window.electronAPI?.resetAndHideSpotlight?.();
+        await window.electronAPI.openInVscode(targetDir);
+        onClose();
+      }
     }
   };
 
@@ -331,7 +327,7 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
             </div>
             <button
               type="button"
-              onClick={handleFooterClose}
+              onClick={onClose}
               className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white rounded-xl text-xs font-normal transition cursor-pointer"
             >
               Zavřít
@@ -341,7 +337,7 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
           <>
             <button
               type="button"
-              onClick={handleFooterClose}
+              onClick={onClose}
               className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl text-xs font-normal transition cursor-pointer"
             >
               {status === 'error' ? 'Zavřít' : 'Zrušit'}
