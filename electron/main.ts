@@ -995,6 +995,11 @@ function setupIpcHandlers() {
     windowManager.openCmsDownloadWindow(params);
   });
 
+  ipcMain.handle('close-cms-download-window', (_event, restoreSpotlight: boolean = false) => {
+    windowManager.setSkipSpotlightRestoreOnCmsDownloadClose(!restoreSpotlight);
+    windowManager.closeCmsDownloadWindow();
+  });
+
   ipcMain.handle('magicgate-download-cms-content', async (event, params: {
     adminUrl: string;
     instanceName?: string;
@@ -1525,6 +1530,7 @@ function setupIpcHandlers() {
 
   ipcMain.handle('reset-and-hide-spotlight', () => {
     windowManager.setSkipSpotlightRestoreOnCloneClose(true);
+    windowManager.setSkipSpotlightRestoreOnCmsDownloadClose(true);
     windowManager.hideImmediately();
     windowManager.getMainWindow()?.webContents.send('reset-spotlight');
   });

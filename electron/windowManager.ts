@@ -53,9 +53,14 @@ export class WindowManager {
   private isQuitting = false;
   private lastShowTime = 0;
   private shouldRestoreSpotlightOnCloneClose = true;
+  private shouldRestoreSpotlightOnCmsDownloadClose = true;
 
   public setSkipSpotlightRestoreOnCloneClose(skip: boolean): void {
     this.shouldRestoreSpotlightOnCloneClose = !skip;
+  }
+
+  public setSkipSpotlightRestoreOnCmsDownloadClose(skip: boolean): void {
+    this.shouldRestoreSpotlightOnCmsDownloadClose = !skip;
   }
 
   constructor(
@@ -484,6 +489,8 @@ export class WindowManager {
       },
     });
 
+    this.shouldRestoreSpotlightOnCmsDownloadClose = true;
+
     if (process.env.VITE_DEV_SERVER_URL) {
       this.cmsDownloadWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#cms-download?${query}`);
     } else {
@@ -500,9 +507,17 @@ export class WindowManager {
 
     this.cmsDownloadWindow.on('closed', () => {
       this.cmsDownloadWindow = null;
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        this.showSpotlight();
-        this.mainWindow.webContents.send('focus-input');
+      if (this.shouldRestoreSpotlightOnCmsDownloadClose) {
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.showSpotlight();
+          this.mainWindow.webContents.send('focus-input');
+        }
+      } else {
+        this.shouldRestoreSpotlightOnCmsDownloadClose = true;
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.hideSpotlight();
+          this.mainWindow.webContents.send('reset-spotlight');
+        }
       }
     });
 

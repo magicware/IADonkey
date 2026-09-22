@@ -53,6 +53,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('magicgate-download-cms-content', params),
   openCmsDownloadWindow: (params: { instanceName: string; adminUrl: string; targetDir: string }): Promise<void> =>
     ipcRenderer.invoke('open-cms-download-window', params),
+  closeCmsDownloadWindow: (restoreSpotlight: boolean = false): Promise<void> =>
+    ipcRenderer.invoke('close-cms-download-window', restoreSpotlight),
   onMagicGateCloneProgress: (callback: (data: { current: number; total: number; repoName: string; log: string }) => void) => {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on('magicgate-clone-progress', handler);

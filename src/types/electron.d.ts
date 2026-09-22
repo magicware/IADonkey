@@ -97,6 +97,7 @@ declare global {
         adminUrl: string;
         targetDir: string;
       }) => Promise<void>;
+      closeCmsDownloadWindow?: (restoreSpotlight?: boolean) => Promise<void>;
       onCmsDownloadProgress: (callback: (data: {
         step: string;
         percent?: number;
