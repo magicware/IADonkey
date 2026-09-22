@@ -208,7 +208,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             {
               name: 'Zavřít',
               action: 'close',
-              location: 'Zavřít a resetovat vyhledávač',
+              location: 'Již zkopírováno ve schránce',
               icon: 'close',
             },
             {
@@ -2196,14 +2196,14 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       : isAndroid
                       ? 'bg-pink-800/40 border-pink-500/50 text-white shadow-md'
                       : isClose
-                      ? 'bg-white/[0.08] border-white/20 text-white shadow-md'
+                      ? 'bg-rose-800/40 border-rose-500/50 text-white shadow-md'
                       : 'bg-purple-600/30 border-purple-500/40 text-white shadow-md'
                     : isVscode
                     ? 'hover:bg-cyan-950/30 text-gray-200 border-white/5 bg-black/20 hover:border-cyan-500/30'
                     : isAndroid
                     ? 'hover:bg-pink-950/30 text-gray-200 border-white/5 bg-black/20 hover:border-pink-500/30'
                     : isClose
-                    ? 'hover:bg-white/[0.05] text-gray-200 border-white/5 bg-black/20 hover:border-white/20'
+                    ? 'hover:bg-rose-950/30 text-gray-200 border-white/5 bg-black/20 hover:border-rose-500/30'
                     : 'hover:bg-white/[0.05] text-gray-200 border-white/5 bg-black/20 hover:border-purple-500/30';
 
                   const iconContainerClass = isVscode
@@ -2211,7 +2211,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                     : isAndroid
                     ? 'bg-pink-900/40 border-pink-500/50 text-pink-300'
                     : isClose
-                    ? 'bg-white/10 border-white/20 text-gray-300'
+                    ? 'bg-rose-900/40 border-rose-500/50 text-rose-300'
                     : 'bg-purple-600/20 border-purple-500/30 text-purple-300';
 
                   const dividerClass = isSelected
@@ -2219,6 +2219,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       ? 'bg-cyan-400/40'
                       : isAndroid
                       ? 'bg-pink-400/40'
+                      : isClose
+                      ? 'bg-rose-400/40'
                       : 'bg-white/20'
                     : 'bg-white/[0.08]';
 
@@ -2227,7 +2229,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                     : isAndroid
                     ? 'bg-pink-950/70 border-pink-500/50 text-pink-300'
                     : isClose
-                    ? 'bg-white/10 border-white/20 text-gray-300'
+                    ? 'bg-rose-950/70 border-rose-500/50 text-rose-300'
                     : 'bg-purple-950/70 border-purple-500/40 text-purple-300';
 
                   const selectIndicatorClass = isVscode
@@ -2235,7 +2237,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                     : isAndroid
                     ? 'text-pink-300'
                     : isClose
-                    ? 'text-gray-300'
+                    ? 'text-rose-300'
                     : 'text-purple-300';
 
                   return (
@@ -2281,7 +2283,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                               : action.action}
                           </span>
                         </div>
-                        <div className="text-xs mt-0.5 font-mono text-gray-400 truncate">
+                        <div className={`text-xs mt-0.5 font-mono truncate ${isClose ? 'text-rose-300/90 font-medium' : 'text-gray-400'}`}>
                           {action.action === 'mgdownloadcontent' && instanceSourceCodesPath
                             ? `Cíl: ${instanceSourceCodesPath.trim().replace(/[\\/]+$/, '')}\\${actionsParentItem?.name || ''}`
                             : (action.location || actionsParentItem.location || '')}
