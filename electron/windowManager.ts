@@ -819,7 +819,7 @@ export class WindowManager {
     }
 
     this.splashWindow = new BrowserWindow({
-      width: 400,
+      width: 380,
       height: 400,
       frame: false,
       transparent: true,
@@ -868,7 +868,7 @@ export class WindowManager {
     flex-direction: column;
     align-items: flex-start;
     justify-content: flex-start;
-    padding: 49px 49px 45px 49px;
+    padding: 39px 39px 35px 39px;
     text-align: left;
   }
   .icon {
