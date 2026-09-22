@@ -313,50 +313,48 @@ export function getDonkeyToolsCommands(
   const isColorMasterActive = options ? options.colorMasterEnabled === true : true;
   const isQuickCapActive = options ? (options.quickCapEnabled ?? options.fastSnapEnabled ?? true) : true;
 
-  // /kapatko (kapátko / eyedropper / picker / barva)
+  // ColorMaster (kapátko / eyedropper / picker / barva)
   if (isColorMasterActive) {
-    const isKapatkoMatch =
+    const shortcuts = ['/kapatko', '/picker', '/eyedropper', '/color', '/barva'];
+    const isColorMasterMatch =
       command === '' ||
-      'kapatko'.includes(command) ||
-      'picker'.includes(command) ||
-      'color'.includes(command) ||
-      'barva'.includes(command) ||
-      'eyedropper'.includes(command);
+      'colormaster'.includes(command) ||
+      shortcuts.some((s) => s.replace(/^\//, '').includes(command)) ||
+      'nabrat barvu'.includes(command);
 
-    if (isKapatkoMatch) {
+    if (isColorMasterMatch) {
       list.push({
         id: 'donkeytools-kapatko',
-        name: '/kapatko',
-        location: 'ColorMaster – Nabrat barvu z obrazovky (EyeDropper)',
+        name: 'ColorMaster',
+        location: 'Nabrat barvu z obrazovky (EyeDropper)',
         action: 'pick-color',
         icon: 'colorize',
         priority: -1.5,
-        shortcuts: ['/picker', '/eyedropper', '/color', '/barva'],
+        sourceId: 'donkeytools',
+        shortcuts,
       });
     }
   }
 
-  // /quickcap (/cap, /vystrizek, /snip, /screenshot, /fastsnap, /snap)
+  // QuickCap (/quickcap, /cap, /vystrizek, /snip, /screenshot, /snap)
   if (isQuickCapActive) {
+    const shortcuts = ['/quickcap', '/cap', '/vystrizek', '/snip', '/screenshot', '/snap'];
     const isQuickCapMatch =
       command === '' ||
       'quickcap'.includes(command) ||
-      'cap'.includes(command) ||
-      'vystrizek'.includes(command) ||
-      'snip'.includes(command) ||
-      'screenshot'.includes(command) ||
-      'fastsnap'.includes(command) ||
-      'snap'.includes(command);
+      shortcuts.some((s) => s.replace(/^\//, '').includes(command)) ||
+      'vystrizek obrazovky'.includes(command);
 
     if (isQuickCapMatch) {
       list.push({
         id: 'donkeytools-quickcap',
-        name: '/quickcap',
-        location: 'QuickCap – Výstřižek obrazovky s uložením a schránkou',
+        name: 'QuickCap',
+        location: 'Výstřižek obrazovky s uložením a schránkou',
         action: 'quickcap',
         icon: 'crop',
         priority: -1.4,
-        shortcuts: ['/cap', '/vystrizek', '/snip', '/screenshot', '/fastsnap', '/snap'],
+        sourceId: 'donkeytools',
+        shortcuts,
       });
     }
   }

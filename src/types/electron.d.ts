@@ -152,6 +152,7 @@ declare global {
       getQuickCapInitData?: () => Promise<{ screenshotUrl: string; width: number; height: number; scaleFactor: number } | null>;
       onQuickCapInitData?: (callback: (data: { screenshotUrl: string; width: number; height: number; scaleFactor: number }) => void) => () => void;
       onQuickCapCleanup?: (callback: () => void) => () => void;
+      onQuickCapCaptured?: (callback: (data: { filePath: string; fileName: string; dataUrl: string; width: number; height: number }) => void) => () => void;
 
       // Zpětná kompatibilita pro FastSnap
       startFastSnap?: () => Promise<void>;

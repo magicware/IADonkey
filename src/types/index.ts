@@ -21,6 +21,7 @@ export interface LauncherItem {
   actions?: LauncherAction[];
   info?: Record<string, any>;
   colorPreview?: string;
+  imagePreview?: string;
 }
 
 export type SourceType = 'file' | 'api' | 'static';

@@ -227,6 +227,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.removeListener('fastsnap-cleanup', handler);
     };
   },
+  onQuickCapCaptured: (callback: (data: { filePath: string; fileName: string; dataUrl: string; width: number; height: number }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('quickcap-captured-global', handler);
+    return () => {
+      ipcRenderer.removeListener('quickcap-captured-global', handler);
+    };
+  },
 
   // Zpětná kompatibilita pro FastSnap
   startFastSnap: (): Promise<void> => ipcRenderer.invoke('quickcap-start'),

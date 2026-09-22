@@ -181,6 +181,64 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     }
   }, [colorMasterConfig]);
 
+  // Listen to QuickCap screenshot captured event
+  useEffect(() => {
+    if (window.electronAPI?.onQuickCapCaptured) {
+      const unsub = window.electronAPI.onQuickCapCaptured((data: {
+        filePath: string;
+        fileName: string;
+        dataUrl?: string;
+        width: number;
+        height: number;
+      }) => {
+        const item: LauncherItem = {
+          id: `quickcap-${Date.now()}`,
+          name: data.fileName,
+          location: data.filePath,
+          icon: 'crop',
+          imagePreview: data.dataUrl,
+          info: {
+            'Název': data.fileName,
+            'Rozměry': `${data.width} × ${data.height} px`,
+            'Cesta': data.filePath,
+          },
+          actions: [
+            {
+              name: 'Upravit (v přípravě)',
+              action: 'edit-quickcap',
+              location: data.filePath,
+              icon: 'edit',
+            },
+            {
+              name: 'Otevřít',
+              action: 'open',
+              location: data.filePath,
+              icon: 'open_in_new',
+            },
+            {
+              name: 'Otevřít v malování',
+              action: 'open-paint',
+              location: data.filePath,
+              icon: 'draw',
+            },
+            {
+              name: 'Otevřít ve složce',
+              action: 'show-in-folder',
+              location: data.filePath,
+              icon: 'folder_open',
+            },
+          ],
+        };
+        setQuery('');
+        setActionsParentItem(item);
+        setSelectedActionIndex(1); // Select 'Otevřít' by default since 'Upravit' is in preparation
+        setIsRevealed(true);
+        inputRef.current?.focus();
+      });
+      return () => unsub?.();
+    }
+  }, []);
+
   // Load and listen for search engine metadata favicons
   useEffect(() => {
     if (window.electronAPI?.getSearchEngineFavicons) {
@@ -1288,6 +1346,41 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       return;
     }
 
+    if (actionType === 'edit-quickcap') {
+      // V přípravě – momentálně nic nedělá
+      window.electronAPI?.logAction?.({
+        type: 'action',
+        title: 'Akce v přípravě: Upravit výstřižek',
+        details: 'Tato funkce bude dostupná v další aktualizaci',
+        status: 'info',
+      });
+      return;
+    }
+
+    if (actionType === 'open-paint') {
+      exitActions();
+      if (window.electronAPI) {
+        await window.electronAPI.executeAction({
+          action: 'open-paint',
+          location: effectiveLocation,
+        });
+      }
+      handleClose();
+      return;
+    }
+
+    if (actionType === 'show-in-folder') {
+      exitActions();
+      if (window.electronAPI) {
+        await window.electronAPI.executeAction({
+          action: 'show-in-folder',
+          location: effectiveLocation,
+        });
+      }
+      handleClose();
+      return;
+    }
+
     // Default / 'open' action
     if (actionType === 'open' || !actionType) {
       exitActions();
@@ -1887,8 +1980,30 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             ref={listRef}
             className="max-h-[385px] overflow-y-auto p-2 focus:outline-none space-y-2"
           >
-            {/* 1. Compact Info Section (BEFORE actions) */}
-            {hasItemInfo(actionsParentItem) && (() => {
+            {/* 1. Screenshot Preview or Compact Info Section (BEFORE actions) */}
+            {actionsParentItem?.imagePreview ? (
+              <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-rose-300">
+                    <span className="material-symbols-outlined text-sm text-rose-400">crop</span>
+                    <span>Náhled výstřižku</span>
+                  </div>
+                  {actionsParentItem.info?.['Rozměry'] && (
+                    <span className="text-[10px] text-rose-300/90 font-mono bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">
+                      {actionsParentItem.info['Rozměry']}
+                    </span>
+                  )}
+                </div>
+                <div className="w-full flex items-center justify-center p-2 bg-black/40 rounded-lg border border-white/5 overflow-hidden">
+                  <img
+                    src={actionsParentItem.imagePreview}
+                    alt={actionsParentItem.name}
+                    className="max-h-[190px] max-w-full object-contain rounded select-none shadow-md"
+                    style={{ objectFit: 'contain' }}
+                  />
+                </div>
+              </div>
+            ) : hasItemInfo(actionsParentItem) && (() => {
               const allInfoEntries = Object.entries(actionsParentItem.info!);
               const ITEMS_PER_PAGE = 8;
               const totalPages = Math.ceil(allInfoEntries.length / ITEMS_PER_PAGE);
@@ -1986,23 +2101,36 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                   const isSelected = idx === selectedActionIndex;
                   const isVscode = action.settings === 'vscode' || action.action === 'vscode';
                   const isAndroid = action.settings === 'android-studio' || action.action === 'android-studio';
+                  const isPreparation = action.action === 'edit-quickcap';
+                  const isPaint = action.action === 'open-paint';
+                  const isFolder = action.action === 'show-in-folder';
 
                   const itemSelectedClass = isSelected
                     ? isVscode
                       ? 'bg-cyan-800/40 border-cyan-500/50 text-white shadow-md'
                       : isAndroid
                       ? 'bg-pink-800/40 border-pink-500/50 text-white shadow-md'
+                      : isPreparation
+                      ? 'bg-amber-800/30 border-amber-500/40 text-white shadow-md'
                       : 'bg-purple-600/30 border-purple-500/40 text-white shadow-md'
                     : isVscode
                     ? 'hover:bg-cyan-950/30 text-gray-200 border-white/5 bg-black/20 hover:border-cyan-500/30'
                     : isAndroid
                     ? 'hover:bg-pink-950/30 text-gray-200 border-white/5 bg-black/20 hover:border-pink-500/30'
+                    : isPreparation
+                    ? 'hover:bg-amber-950/20 text-gray-300 border-white/5 bg-black/20 hover:border-amber-500/30'
                     : 'hover:bg-white/[0.05] text-gray-200 border-white/5 bg-black/20 hover:border-purple-500/30';
 
                   const iconContainerClass = isVscode
                     ? 'bg-cyan-900/40 border-cyan-500/50 text-cyan-300'
                     : isAndroid
                     ? 'bg-pink-900/40 border-pink-500/50 text-pink-300'
+                    : isPreparation
+                    ? 'bg-amber-900/30 border-amber-500/40 text-amber-300'
+                    : isPaint
+                    ? 'bg-rose-900/30 border-rose-500/40 text-rose-300'
+                    : isFolder
+                    ? 'bg-blue-900/30 border-blue-500/40 text-blue-300'
                     : 'bg-purple-600/20 border-purple-500/30 text-purple-300';
 
                   const dividerClass = isSelected
@@ -2010,6 +2138,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       ? 'bg-cyan-400/40'
                       : isAndroid
                       ? 'bg-pink-400/40'
+                      : isPreparation
+                      ? 'bg-amber-400/40'
                       : 'bg-white/20'
                     : 'bg-white/[0.08]';
 
@@ -2017,12 +2147,20 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                     ? 'bg-cyan-950/70 border-cyan-500/50 text-cyan-300'
                     : isAndroid
                     ? 'bg-pink-950/70 border-pink-500/50 text-pink-300'
+                    : isPreparation
+                    ? 'bg-amber-950/70 border-amber-500/40 text-amber-300'
+                    : isPaint
+                    ? 'bg-rose-950/70 border-rose-500/40 text-rose-300'
+                    : isFolder
+                    ? 'bg-blue-950/70 border-blue-500/40 text-blue-300'
                     : 'bg-white/5 border-white/10 text-gray-400';
 
                   const selectIndicatorClass = isVscode
                     ? 'text-cyan-300'
                     : isAndroid
                     ? 'text-pink-300'
+                    : isPreparation
+                    ? 'text-amber-300'
                     : 'text-purple-300';
 
                   return (
@@ -2049,7 +2187,17 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                             {action.name}
                           </span>
                           <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border font-medium uppercase ${badgeClass}`}>
-                            {isVscode ? 'VS Code' : isAndroid ? 'Android Studio' : action.action}
+                            {isVscode
+                              ? 'VS Code'
+                              : isAndroid
+                              ? 'Android Studio'
+                              : isPreparation
+                              ? 'V přípravě'
+                              : isPaint
+                              ? 'Malování'
+                              : isFolder
+                              ? 'Složka'
+                              : action.action}
                           </span>
                         </div>
                         <div className="text-xs mt-0.5 font-mono text-gray-400 truncate">
@@ -2059,8 +2207,14 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
                       {isSelected && (
                         <div className={`flex-shrink-0 text-xs flex items-center gap-1.5 opacity-90 ${selectIndicatorClass}`}>
-                          <span>Provést</span>
-                          <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none whitespace-nowrap">Enter</kbd>
+                          {isPreparation ? (
+                            <span className="text-gray-400 italic text-[11px]">Připravujeme...</span>
+                          ) : (
+                            <>
+                              <span>Provést</span>
+                              <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none whitespace-nowrap">Enter</kbd>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -2123,6 +2277,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                   item.settings === 'git' ||
                   item.settings === 'magicgate' ||
                   item.sourceId === 'snippet' ||
+                  item.sourceId === 'donkeytools' ||
                   item.priority === -1.5 ||
                   item.priority === -2 ||
                   item.priority === -1 ||
@@ -2264,6 +2419,23 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                         ) : item.sourceId === 'snippet' ? (
                           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 font-medium">
                             Snippet
+                          </span>
+                        ) : null}
+
+                        {item.sourceId === 'donkeytools' && item.shortcuts && item.shortcuts.length > 0 ? (
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {item.shortcuts.map((shortcut) => (
+                              <span
+                                key={shortcut}
+                                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/25 font-medium select-none"
+                              >
+                                {shortcut}
+                              </span>
+                            ))}
+                          </div>
+                        ) : item.sourceId === 'donkeytools' ? (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-medium">
+                            DonkeyTools
                           </span>
                         ) : null}
                         {item.priority === -1.5 && (

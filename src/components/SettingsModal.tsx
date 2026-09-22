@@ -5382,36 +5382,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     )}
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-1 shrink-0">
+                                <div className="flex items-center gap-1 shrink-0 self-center">
                                   <button
                                     type="button"
                                     onClick={() => handleCopyQuickCap(snap.path)}
-                                    className={`p-1.5 rounded-lg text-xs transition cursor-pointer ${
+                                    className={`w-8 h-8 rounded-lg transition cursor-pointer flex items-center justify-center shrink-0 ${
                                       isCopied
                                         ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                                         : 'text-gray-400 hover:text-white hover:bg-white/10'
                                     }`}
                                     title="Zkopírovat znovu do schránky"
                                   >
-                                    <span className="material-symbols-outlined text-base">
+                                    <span className="material-symbols-outlined !text-[18px] leading-none" style={{ fontSize: '18px' }}>
                                       {isCopied ? 'check' : 'content_copy'}
                                     </span>
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleShowQuickCapInFolder(snap.path)}
-                                    className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition cursor-pointer"
+                                    className="w-8 h-8 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition cursor-pointer flex items-center justify-center shrink-0"
                                     title="Zobrazit ve složce"
                                   >
-                                    <span className="material-symbols-outlined text-base">folder_open</span>
+                                    <span className="material-symbols-outlined !text-[18px] leading-none" style={{ fontSize: '18px' }}>folder_open</span>
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteQuickCap(snap.path)}
-                                    className="p-1.5 text-rose-400/70 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition cursor-pointer"
+                                    className="w-8 h-8 text-rose-400/70 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition cursor-pointer flex items-center justify-center shrink-0"
                                     title="Smazat výstřižek"
                                   >
-                                    <span className="material-symbols-outlined text-base">delete</span>
+                                    <span className="material-symbols-outlined !text-[18px] leading-none" style={{ fontSize: '18px' }}>delete</span>
                                   </button>
                                 </div>
                               </div>

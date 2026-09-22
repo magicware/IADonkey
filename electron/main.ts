@@ -668,6 +668,7 @@ function setupIpcHandlers() {
       }
 
       fs.writeFileSync(filePath, croppedImage.toPNG());
+      const dataUrl = croppedImage.toDataURL();
 
       diagnosticsService.logAction({
         type: 'action',
@@ -675,6 +676,20 @@ function setupIpcHandlers() {
         details: `Rozměry: ${cropArea.width}×${cropArea.height} px (fyzicky ${cropRect.width}×${cropRect.height} px), zkopírováno do schránky a uloženo do: ${filePath}`,
         status: 'success',
       });
+
+      if (windowManager) {
+        windowManager.showSpotlight();
+        const win = windowManager.getMainWindow();
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('quickcap-captured-global', {
+            filePath,
+            fileName,
+            dataUrl,
+            width: cropRect.width,
+            height: cropRect.height,
+          });
+        }
+      }
 
       return { success: true, filePath };
     } catch (err: any) {
@@ -1221,6 +1236,41 @@ function setupIpcHandlers() {
           details: location,
           status: 'success',
         });
+        windowManager.hideImmediately();
+        return;
+      }
+
+      if (action === 'open-paint') {
+        try {
+          const { spawn } = await import('node:child_process');
+          const child = spawn('mspaint', [trimmed], { detached: true, stdio: 'ignore' });
+          child.unref();
+          diagnosticsService.logAction({
+            type: 'action',
+            title: 'Otevření výstřižku v aplikaci Malování',
+            details: trimmed,
+            status: 'success',
+          });
+        } catch (paintErr: any) {
+          console.error('[Main] Failed to open in paint:', paintErr);
+          diagnosticsService.recordCrash('Chyba při otevírání v Malování', paintErr, { filePath: trimmed });
+        }
+        windowManager.hideImmediately();
+        return;
+      }
+
+      if (action === 'show-in-folder') {
+        try {
+          shell.showItemInFolder(trimmed);
+          diagnosticsService.logAction({
+            type: 'action',
+            title: 'Zobrazení souboru v Průzkumníku',
+            details: trimmed,
+            status: 'success',
+          });
+        } catch (folderErr: any) {
+          console.error('[Main] Failed to show item in folder:', folderErr);
+        }
         windowManager.hideImmediately();
         return;
       }
