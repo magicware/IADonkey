@@ -2229,8 +2229,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       key={`${action.name}-${idx}`}
                       data-selected={isSelected}
                       data-action-selected={isSelected}
-                      onClick={() => handleExecuteAction(actionsParentItem, action)}
-                      onMouseEnter={() => setSelectedActionIndex(idx)}
+                      onClick={() => {
+                        setSelectedActionIndex(idx);
+                        handleExecuteAction(actionsParentItem, action);
+                      }}
                       className={`flex items-center px-3 py-2 rounded-xl cursor-pointer transition-colors duration-150 gap-3 border ${itemSelectedClass}`}
                     >
                       <div className="flex items-center gap-3 shrink-0">
@@ -2356,12 +2358,14 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                   <div
                     key={item.id || `${item.name}-${idx}`}
                     data-selected={isSelected}
-                    onClick={(e) => handleItemClick(item, e)}
-                    onMouseEnter={() => setSelectedIndex(idx)}
+                    onClick={(e) => {
+                      setSelectedIndex(idx);
+                      handleItemClick(item, e);
+                    }}
                     className={`flex items-center px-3 py-2.5 rounded-xl cursor-pointer transition-colors duration-150 gap-3 ${
                       isSelected
                         ? 'bg-indigo-600/30 border border-indigo-500/40 text-white shadow-md'
-                        : 'hover:bg-white/[0.05] text-gray-200 border border-transparent'
+                        : 'hover:bg-white/[0.06] hover:border-white/10 text-gray-200 border border-transparent'
                     }`}
                   >
                     {/* Column 1: Icon or Image with subitems badge & subtle 1px divider */}
