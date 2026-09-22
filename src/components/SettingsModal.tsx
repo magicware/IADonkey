@@ -213,6 +213,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const contentRef = useRef<HTMLDivElement>(null);
   const importSnippetsFileRef = useRef<HTMLInputElement>(null);
   const [snippetFeedback, setSnippetFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isTestingNotification, setIsTestingNotification] = useState(false);
+  const [testNotificationFeedback, setTestNotificationFeedback] = useState<string | null>(null);
+
+  const handleTestNotification = async () => {
+    setIsTestingNotification(true);
+    setTestNotificationFeedback(null);
+    try {
+      if (window.electronAPI?.sendTestNotification) {
+        const ok = await window.electronAPI.sendTestNotification();
+        if (ok) {
+          setTestNotificationFeedback('Notifikace byla odeslána do Windows.');
+        } else {
+          setTestNotificationFeedback('Nepodařilo se zobrazit notifikaci.');
+        }
+      } else {
+        setTestNotificationFeedback('API notifikací není k dispozici.');
+      }
+    } catch (err: any) {
+      setTestNotificationFeedback(`Chyba: ${err?.message || String(err)}`);
+    } finally {
+      setIsTestingNotification(false);
+      setTimeout(() => {
+        setTestNotificationFeedback(null);
+      }, 4000);
+    }
+  };
 
   // Diagnostics & Logs state
   const [actionLogs, setActionLogs] = useState<ActionLogEntry[]>([]);
@@ -6009,6 +6035,220 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </select>
                   </div>
                 </div>
+              </div>
+
+              {/* Windows System Notifications Section */}
+              <div className="space-y-4 pt-4 border-t border-white/10">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h4 className="font-semibold text-sm text-white flex items-center gap-2">
+                      <span className="material-symbols-outlined text-lg text-indigo-400">notifications</span>
+                      Systémové notifikace Windows
+                    </h4>
+                    <p className="text-[13px] text-gray-400 mt-1 max-w-xl leading-relaxed">
+                      Zobrazování nativních toast notifikací v oznamovacím centru Windows při důležitých událostech (výstřižky, barvy, synchronizace a aktualizace).
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 mt-1">
+                    <input
+                      type="checkbox"
+                      checked={formData.notifications?.enabled !== false}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          notifications: {
+                            ...formData.notifications,
+                            enabled: e.target.checked,
+                          },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+                  </label>
+                </div>
+
+                {formData.notifications?.enabled !== false && (
+                  <div className="pl-2 sm:pl-4 space-y-3 pt-1 border-l-2 border-indigo-500/20">
+                    {/* Tichý režim */}
+                    <div className="flex items-center justify-between gap-4 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-base text-gray-400">volume_off</span>
+                        <div>
+                          <span className="text-xs font-medium text-gray-200 block">Tichý režim</span>
+                          <span className="text-[11px] text-gray-400">Nezahrnovat systémový zvuk Windows při zobrazení banneru</span>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(formData.notifications?.silent)}
+                          onChange={(e) => {
+                            const updated = {
+                              ...formData,
+                              notifications: {
+                                ...formData.notifications,
+                                enabled: formData.notifications?.enabled ?? true,
+                                silent: e.target.checked,
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-indigo-600" />
+                      </label>
+                    </div>
+
+                    {/* QuickCap */}
+                    <div className="flex items-center justify-between gap-4 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-base text-rose-400">crop</span>
+                        <div>
+                          <span className="text-xs font-medium text-gray-200 block">Výstřižky QuickCap</span>
+                          <span className="text-[11px] text-gray-400">Upozornění na uložení výstřižku (kliknutím otevřete ve složce)</span>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={formData.notifications?.quickCap !== false}
+                          onChange={(e) => {
+                            const updated = {
+                              ...formData,
+                              notifications: {
+                                ...formData.notifications,
+                                enabled: formData.notifications?.enabled ?? true,
+                                quickCap: e.target.checked,
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-indigo-600" />
+                      </label>
+                    </div>
+
+                    {/* ColorMaster */}
+                    <div className="flex items-center justify-between gap-4 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-base text-rose-400">colorize</span>
+                        <div>
+                          <span className="text-xs font-medium text-gray-200 block">Kapátko ColorMaster</span>
+                          <span className="text-[11px] text-gray-400">Upozornění s kódem nabrané barvy zkopírované do schránky</span>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={formData.notifications?.colorMaster !== false}
+                          onChange={(e) => {
+                            const updated = {
+                              ...formData,
+                              notifications: {
+                                ...formData.notifications,
+                                enabled: formData.notifications?.enabled ?? true,
+                                colorMaster: e.target.checked,
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-indigo-600" />
+                      </label>
+                    </div>
+
+                    {/* Synchronizace dat */}
+                    <div className="flex items-center justify-between gap-4 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-base text-emerald-400">sync</span>
+                        <div>
+                          <span className="text-xs font-medium text-gray-200 block">Dokončení synchronizace dat</span>
+                          <span className="text-[11px] text-gray-400">Upozornění na úspěšnou synchronizaci a počet načtených položek</span>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={formData.notifications?.syncComplete !== false}
+                          onChange={(e) => {
+                            const updated = {
+                              ...formData,
+                              notifications: {
+                                ...formData.notifications,
+                                enabled: formData.notifications?.enabled ?? true,
+                                syncComplete: e.target.checked,
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-indigo-600" />
+                      </label>
+                    </div>
+
+                    {/* Aktualizace aplikace */}
+                    <div className="flex items-center justify-between gap-4 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-base text-indigo-400">upgrade</span>
+                        <div>
+                          <span className="text-xs font-medium text-gray-200 block">Nové verze a aktualizace</span>
+                          <span className="text-[11px] text-gray-400">Upozornění na dostupnou novou verzi s možností kliknout pro instalaci</span>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={formData.notifications?.updates !== false}
+                          onChange={(e) => {
+                            const updated = {
+                              ...formData,
+                              notifications: {
+                                ...formData.notifications,
+                                enabled: formData.notifications?.enabled ?? true,
+                                updates: e.target.checked,
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-indigo-600" />
+                      </label>
+                    </div>
+
+                    {/* Test Button */}
+                    <div className="pt-2 flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleTestNotification}
+                        disabled={isTestingNotification}
+                        className="px-3.5 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-medium flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-base">
+                          {isTestingNotification ? 'hourglass_top' : 'notifications_active'}
+                        </span>
+                        <span>{isTestingNotification ? 'Odesílám...' : 'Vyzkoušet notifikaci'}</span>
+                      </button>
+                      {testNotificationFeedback && (
+                        <span className="text-xs text-emerald-400 font-medium animate-fade-in flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm">check</span>
+                          {testNotificationFeedback}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

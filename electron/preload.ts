@@ -193,6 +193,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportCrashReport: (fileName: string): Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }> =>
     ipcRenderer.invoke('export-crash-report', fileName),
 
+  // Systémové notifikace
+  sendTestNotification: (): Promise<boolean> => ipcRenderer.invoke('send-test-notification'),
+
   // QuickCap (dříve FastSnap) API
   startQuickCap: (): Promise<void> => ipcRenderer.invoke('quickcap-start'),
   finishQuickCap: (cropArea: { x: number; y: number; width: number; height: number; windowWidth?: number; windowHeight?: number }): Promise<{ success: boolean; filePath?: string; error?: string }> =>

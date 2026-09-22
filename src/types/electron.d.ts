@@ -140,6 +140,9 @@ declare global {
       logAction?: (entry: Omit<ActionLogEntry, 'id' | 'timestamp'> & { timestamp?: string }) => Promise<void>;
       exportCrashReport?: (fileName: string) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
 
+      // Systémové notifikace
+      sendTestNotification?: () => Promise<boolean>;
+
       // QuickCap (dříve FastSnap) API
       startQuickCap?: () => Promise<void>;
       finishQuickCap?: (cropArea: { x: number; y: number; width: number; height: number; windowWidth?: number; windowHeight?: number }) => Promise<{ success: boolean; filePath?: string; error?: string }>;

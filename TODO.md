@@ -20,10 +20,10 @@ Aktuální seznam otevřených úkolů a vylepšení k realizaci.
   - Plovoucí kompaktní okno s klávesovou navigací, vyhledáváním a vícenásobným výběrem pomocí Shift.
   - Zachování fokusu a automatické vložení (auto-paste): uložení aktivního okna, skrytí EasyClip, návrat fokusu a syntéza `Ctrl+V`.
 
-- [ ] **4. Analýza systémových notifikací**
-  - Prověřit možnosti a chování systémových notifikací v OS Windows (Electron Notification API / native toast notifikace).
-  - Navrhnout integraci do IADonkey (upozornění na dokončení synchronizace, pořízení výstřižku QuickCap, aktualizace, chyby).
-  - Zvážit možnosti uživatelského nastavení a chování při tichém režimu.
+- [x] **4. Systémové notifikace Windows**
+  - Implementace `NotificationService` využívající nativní Electron `Notification` API a registraci `app.setAppUserModelId`.
+  - Integrace událostí: dokončení ořezu QuickCap (s proklikem do složky), ColorMaster nabrání barvy, dokončení synchronizace dat a nalezení nové verze aplikace.
+  - Nastavení v záložce Obecné: globální přepínač, tichý režim bez zvuku Windows, individuální přepínače událostí a tlačítko pro otestování notifikace.
 
 - [x] **5. Vyřešit problém s backdropem u okna Release Notes**
   - Implementována Varianta 1: Odstraněn ostrý černý obdélníkový backdrop (`fixed inset-0 bg-black/80`), nahrazen transparentním kontejnerem a při zobrazení dialogu je skryt podkladový Spotlight. Okno plave čistě se zaoblenými rohy (`rounded-2xl`), vlastním stínem a podporou zavření klávesou `Escape`.

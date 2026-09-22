@@ -17,6 +17,7 @@ import { faviconService } from './faviconService';
 import { fetchInstanceSectionRepos, runMultiRepoClone, MagicGateSectionRepo } from './magicGateService';
 import { InstallerService } from './installerService';
 import { diagnosticsService } from './diagnosticsService';
+import { notificationService } from './notificationService';
 
 // Register file scheme as secure
 protocol.registerSchemesAsPrivileged([
@@ -276,6 +277,12 @@ async function pickScreenColorNative(instant = false): Promise<string | null> {
             title: `Nabrání barvy: ${pickedColor}`,
             details: `Zkopírováno do schránky jako ${formatted}`,
             status: 'success',
+          });
+
+          notificationService.show({
+            type: 'colorMaster',
+            title: 'ColorMaster – Barva zkopírována',
+            body: `Odstín ${formatted} byl zkopírován do schránky.`,
           });
 
           if (windowManager) {
@@ -677,6 +684,15 @@ function setupIpcHandlers() {
         status: 'success',
       });
 
+      notificationService.show({
+        type: 'quickCap',
+        title: 'QuickCap – Výstřižek uložen',
+        body: `Snímek ${fileName} byl zkopírován do schránky. Kliknutím otevřete ve složce.`,
+        onClick: () => {
+          shell.showItemInFolder(filePath);
+        },
+      });
+
       if (windowManager) {
         windowManager.showSpotlight();
         const win = windowManager.getMainWindow();
@@ -869,10 +885,24 @@ function setupIpcHandlers() {
       });
     }
 
+    // Update notifications service config
+    notificationService.updateConfig(newConfig);
+
     windowManager.getMainWindow()?.webContents.send('config-updated', newConfig);
     windowManager.getSettingsWindow()?.webContents.send('config-updated', newConfig);
 
     return true;
+  });
+
+  ipcMain.handle('send-test-notification', () => {
+    return notificationService.show({
+      type: 'test',
+      title: 'IADonkey – Testovací notifikace',
+      body: 'Systémové notifikace fungují správně! Budete dostávat upozornění o důležitých událostech.',
+      onClick: () => {
+        windowManager.showSpotlight();
+      },
+    });
   });
 
   ipcMain.handle('open-settings-window', () => {
@@ -1057,6 +1087,16 @@ function setupIpcHandlers() {
     windowManager.getSettingsWindow()?.webContents.send('config-updated', updatedConfig);
     windowManager.getMainWindow()?.webContents.send('data-updated', allItems);
     windowManager.getSettingsWindow()?.webContents.send('data-updated', allItems);
+
+    notificationService.show({
+      type: 'syncComplete',
+      title: 'IADonkey – Synchronizace dokončena',
+      body: `Úspěšně synchronizováno celkem ${allItems.length} položek.`,
+      onClick: () => {
+        windowManager.showSpotlight();
+      },
+    });
+
     return allItems;
   });
 
@@ -1801,6 +1841,15 @@ function startBackgroundTasks() {
     try {
       const updateInfo = await updateChecker.checkForUpdates(false);
       if (updateInfo.hasUpdate) {
+        notificationService.show({
+          type: 'update',
+          title: `IADonkey – Nová verze v${updateInfo.latestVersion}`,
+          body: `Byla nalezena nová aktualizace aplikace. Kliknutím zobrazíte podrobnosti.`,
+          onClick: () => {
+            windowManager.showSpotlight();
+          },
+        });
+
         const win = windowManager.getMainWindow();
         if (win && !win.isDestroyed()) {
           win.webContents.send('update-available', updateInfo);
@@ -1827,6 +1876,7 @@ app.whenReady().then(async () => {
   appScanner = new AppScanner();
 
   const initialConfig = store.getConfig();
+  notificationService.init(initialConfig);
   currentHotkey = initialConfig.hotkey || 'Ctrl+Alt+Space';
 
   windowManager = new WindowManager(

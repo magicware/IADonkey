@@ -156,6 +156,15 @@ export interface BannedItem {
   bannedAt: string;
 }
 
+export interface NotificationSettings {
+  enabled: boolean;
+  silent?: boolean;
+  quickCap?: boolean;
+  colorMaster?: boolean;
+  syncComplete?: boolean;
+  updates?: boolean;
+}
+
 export interface AppConfig {
   hotkey: string;
   sources: DataSource[];
@@ -166,6 +175,7 @@ export interface AppConfig {
   androidStudio?: AndroidStudioSettings;
   extensions?: ExtensionsConfig;
   donkeyTools?: DonkeyToolsSettings;
+  notifications?: NotificationSettings;
   banlist?: BannedItem[];
   updateUrl: string;
   lastDeclinedVersion: string | null;
