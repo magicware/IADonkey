@@ -735,7 +735,7 @@ export class WindowManager {
 
     this.splashWindow = new BrowserWindow({
       width: 360,
-      height: 520,
+      height: 450,
       frame: false,
       transparent: true,
       backgroundColor: '#00000000',
@@ -783,15 +783,15 @@ export class WindowManager {
     flex-direction: column;
     align-items: flex-start;
     justify-content: flex-start;
-    padding: 34px 30px 28px 30px;
+    padding: 28px 26px 22px 26px;
     text-align: left;
   }
   .icon {
-    width: 68px;
-    height: 68px;
+    width: 64px;
+    height: 64px;
     object-fit: contain;
     border-radius: 16px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   }
   .title {
@@ -811,13 +811,13 @@ export class WindowManager {
   }
   .spacer {
     flex: 1;
-    min-height: 24px;
+    min-height: 16px;
   }
   .description {
     font-size: 12px;
-    line-height: 1.6;
+    line-height: 1.55;
     color: #9ca3af;
-    margin-bottom: 24px;
+    margin-bottom: 18px;
   }
   .copyright {
     font-size: 11px;

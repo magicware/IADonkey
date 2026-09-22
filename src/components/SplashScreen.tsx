@@ -6,14 +6,14 @@ export const SplashScreen: React.FC = () => {
   return (
     <div className="w-screen h-screen bg-transparent flex items-center justify-center select-none overflow-hidden font-sans">
       <div
-        className="w-full h-full bg-[#141520] text-gray-200 rounded-2xl border border-white/10 flex flex-col items-start justify-start p-8 relative shadow-none outline-none"
+        className="w-full h-full bg-[#141520] text-gray-200 rounded-2xl border border-white/10 flex flex-col items-start justify-start p-7 relative shadow-none outline-none"
         style={{ WebkitAppRegion: 'drag' } as any}
       >
         {/* Large icon */}
         <img
           src={appLogo}
           alt="IADonkey"
-          className="w-[68px] h-[68px] object-contain rounded-2xl mb-5 shadow-xl shadow-black/40"
+          className="w-16 h-16 object-contain rounded-2xl mb-4 shadow-xl shadow-black/40"
         />
 
         {/* Title & Version */}
@@ -25,10 +25,10 @@ export const SplashScreen: React.FC = () => {
         </span>
 
         {/* Space */}
-        <div className="flex-1 min-h-[24px]" />
+        <div className="flex-1 min-h-[16px]" />
 
         {/* Brief description */}
-        <p className="text-xs text-gray-400 leading-relaxed mb-6">
+        <p className="text-xs text-gray-400 leading-relaxed mb-5">
           Rychlý a inteligentní spouštěč pro vaše každodenní úkoly a produktivitu. Sjednocuje vyhledávání, pracovní nástroje a automatizaci do jednoho přehledného prostředí.
         </p>
 
