@@ -1001,8 +1001,10 @@ function setupIpcHandlers() {
   });
 
   ipcMain.handle('close-and-reset-spotlight', () => {
-    windowManager.setResetSpotlightOnCloneClose(true);
-    windowManager.setResetSpotlightOnCmsDownloadClose(true);
+    windowManager.setSkipSpotlightRestoreOnCloneClose(true);
+    windowManager.setSkipSpotlightRestoreOnCmsDownloadClose(true);
+    windowManager.hideSpotlight();
+    windowManager.getMainWindow()?.webContents.send('reset-spotlight');
     windowManager.closeGitCloneWindow();
     windowManager.closeCmsDownloadWindow();
   });
