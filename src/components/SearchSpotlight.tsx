@@ -535,6 +535,13 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       }
     }
 
+    const isMagicGate =
+      item.settings === 'magicgate' ||
+      item.sourceId === 'magicgate' ||
+      item.sourceId === 'magicgate-xml' ||
+      baseActions.some((a) => a.action === 'mgclone' || a.action === 'mgclonerecursive') ||
+      Boolean(item.actions?.some((a) => a.action === 'mgclone' || a.action === 'mgclonerecursive'));
+
     const localPath = getLocalRepoPath(item);
     if (localPath) {
       const isAndroid = isAndroidProjectItem(item);
@@ -556,7 +563,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           const hasVscodeAction = baseActions.some((a) => a.action === 'vscode');
           if (!hasVscodeAction) {
             baseActions.unshift({
-              name: 'Otevřít ve VS Code',
+              name: isMagicGate ? 'Otevřít repozitáře ve VS Code' : 'Otevřít ve VS Code',
               action: 'vscode',
               location: localPath,
               icon: 'code',
@@ -570,7 +577,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           const hasVscodeAction = baseActions.some((a) => a.action === 'vscode');
           if (!hasVscodeAction) {
             baseActions.unshift({
-              name: 'Otevřít ve VS Code',
+              name: isMagicGate ? 'Otevřít repozitáře ve VS Code' : 'Otevřít ve VS Code',
               action: 'vscode',
               location: localPath,
               icon: 'code',
@@ -583,12 +590,6 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
     // Add CMSinFS download action for MagicGate instances if instanceSourceCodesPath is configured
     if (instanceSourceCodesPath && instanceSourceCodesPath.trim()) {
-      const isMagicGate =
-        item.settings === 'magicgate' ||
-        item.sourceId === 'magicgate' ||
-        item.sourceId === 'magicgate-xml' ||
-        baseActions.some((a) => a.action === 'mgclone' || a.action === 'mgclonerecursive');
-
       if (isMagicGate) {
         const adminUrl =
           item.info?.['Admin URL'] ||
