@@ -194,7 +194,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('export-crash-report', fileName),
 
   // Systémové notifikace
-  sendTestNotification: (): Promise<boolean> => ipcRenderer.invoke('send-test-notification'),
+  sendTestNotification: (variant?: 'success' | 'error'): Promise<boolean> => ipcRenderer.invoke('send-test-notification', variant),
 
   // QuickCap (dříve FastSnap) API
   startQuickCap: (): Promise<void> => ipcRenderer.invoke('quickcap-start'),

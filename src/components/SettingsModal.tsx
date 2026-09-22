@@ -213,27 +213,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const contentRef = useRef<HTMLDivElement>(null);
   const importSnippetsFileRef = useRef<HTMLInputElement>(null);
   const [snippetFeedback, setSnippetFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [isTestingNotification, setIsTestingNotification] = useState(false);
-  const [testNotificationFeedback, setTestNotificationFeedback] = useState<string | null>(null);
+  const [testingNotificationVariant, setTestingNotificationVariant] = useState<'success' | 'error' | null>(null);
+  const [testNotificationFeedback, setTestNotificationFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const handleTestNotification = async () => {
-    setIsTestingNotification(true);
+  const handleTestNotification = async (variant: 'success' | 'error' = 'success') => {
+    setTestingNotificationVariant(variant);
     setTestNotificationFeedback(null);
     try {
       if (window.electronAPI?.sendTestNotification) {
-        const ok = await window.electronAPI.sendTestNotification();
+        const ok = await window.electronAPI.sendTestNotification(variant);
         if (ok) {
-          setTestNotificationFeedback('Notifikace byla odeslána do Windows.');
+          setTestNotificationFeedback({
+            type: variant,
+            message: variant === 'error'
+              ? 'Chybová notifikace byla odeslána do Windows.'
+              : 'Úspěšná notifikace byla odeslána do Windows.',
+          });
         } else {
-          setTestNotificationFeedback('Nepodařilo se zobrazit notifikaci.');
+          setTestNotificationFeedback({
+            type: 'error',
+            message: 'Nepodařilo se zobrazit notifikaci.',
+          });
         }
       } else {
-        setTestNotificationFeedback('API notifikací není k dispozici.');
+        setTestNotificationFeedback({
+          type: 'error',
+          message: 'API notifikací není k dispozici.',
+        });
       }
     } catch (err: any) {
-      setTestNotificationFeedback(`Chyba: ${err?.message || String(err)}`);
+      setTestNotificationFeedback({
+        type: 'error',
+        message: `Chyba: ${err?.message || String(err)}`,
+      });
     } finally {
-      setIsTestingNotification(false);
+      setTestingNotificationVariant(null);
       setTimeout(() => {
         setTestNotificationFeedback(null);
       }, 4000);
@@ -6227,23 +6241,98 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </label>
                     </div>
 
-                    {/* Test Button */}
-                    <div className="pt-2 flex items-center gap-3">
+                    {/* Kopírování do schránky */}
+                    <div className="flex items-center justify-between gap-4 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-base text-cyan-400">content_copy</span>
+                        <div>
+                          <span className="text-xs font-medium text-gray-200 block">Kopírování do schránky</span>
+                          <span className="text-[11px] text-gray-400">Upozornění při zkopírování textu, hodnoty či cesty ze Spotlightu do schránky</span>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={formData.notifications?.clipboard !== false}
+                          onChange={(e) => {
+                            const updated = {
+                              ...formData,
+                              notifications: {
+                                ...formData.notifications,
+                                enabled: formData.notifications?.enabled ?? true,
+                                clipboard: e.target.checked,
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-indigo-600" />
+                      </label>
+                    </div>
+
+                    {/* Chyby aplikace a crashlogy */}
+                    <div className="flex items-center justify-between gap-4 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-base text-rose-400">error</span>
+                        <div>
+                          <span className="text-xs font-medium text-gray-200 block">Chyby aplikace a pády</span>
+                          <span className="text-[11px] text-gray-400">Upozornění při chybovém pádu nebo selhání akce (kliknutím otevřete crashlog)</span>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={formData.notifications?.errors !== false}
+                          onChange={(e) => {
+                            const updated = {
+                              ...formData,
+                              notifications: {
+                                ...formData.notifications,
+                                enabled: formData.notifications?.enabled ?? true,
+                                errors: e.target.checked,
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-indigo-600" />
+                      </label>
+                    </div>
+
+                    {/* Test Buttons */}
+                    <div className="pt-2 flex flex-wrap items-center gap-3">
                       <button
                         type="button"
-                        onClick={handleTestNotification}
-                        disabled={isTestingNotification}
+                        onClick={() => handleTestNotification('success')}
+                        disabled={testingNotificationVariant !== null}
                         className="px-3.5 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-medium flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
                       >
                         <span className="material-symbols-outlined text-base">
-                          {isTestingNotification ? 'hourglass_top' : 'notifications_active'}
+                          {testingNotificationVariant === 'success' ? 'hourglass_top' : 'notifications_active'}
                         </span>
-                        <span>{isTestingNotification ? 'Odesílám...' : 'Vyzkoušet notifikaci'}</span>
+                        <span>{testingNotificationVariant === 'success' ? 'Odesílám...' : 'Otestovat úspěšnou notifikaci'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleTestNotification('error')}
+                        disabled={testingNotificationVariant !== null}
+                        className="px-3.5 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-medium flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-base">
+                          {testingNotificationVariant === 'error' ? 'hourglass_top' : 'error'}
+                        </span>
+                        <span>{testingNotificationVariant === 'error' ? 'Odesílám...' : 'Otestovat neúspěšnou notifikaci'}</span>
                       </button>
                       {testNotificationFeedback && (
-                        <span className="text-xs text-emerald-400 font-medium animate-fade-in flex items-center gap-1">
-                          <span className="material-symbols-outlined text-sm">check</span>
-                          {testNotificationFeedback}
+                        <span className={`text-xs font-medium animate-fade-in flex items-center gap-1 ${testNotificationFeedback.type === 'error' ? 'text-rose-400' : 'text-emerald-400'}`}>
+                          <span className="material-symbols-outlined text-sm">
+                            {testNotificationFeedback.type === 'error' ? 'info' : 'check'}
+                          </span>
+                          {testNotificationFeedback.message}
                         </span>
                       )}
                     </div>

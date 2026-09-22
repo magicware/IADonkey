@@ -141,7 +141,7 @@ declare global {
       exportCrashReport?: (fileName: string) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
 
       // Systémové notifikace
-      sendTestNotification?: () => Promise<boolean>;
+      sendTestNotification?: (variant?: 'success' | 'error') => Promise<boolean>;
 
       // QuickCap (dříve FastSnap) API
       startQuickCap?: () => Promise<void>;

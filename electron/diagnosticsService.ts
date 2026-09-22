@@ -8,6 +8,7 @@ class DiagnosticsService {
   private actionLogs: ActionLogEntry[] = [];
   private maxActionLogs = 50;
   private idCounter = 0;
+  private onCrashCallback?: (action: string, error: any, filePath: string) => void;
 
   constructor() {
     this.crashLogDir = this.resolveCrashLogDir();
@@ -169,7 +170,19 @@ class DiagnosticsService {
       status: 'error',
     });
 
+    if (this.onCrashCallback) {
+      try {
+        this.onCrashCallback(action, error, filePath);
+      } catch (cbErr) {
+        console.error('[Diagnostics] Error in onCrashCallback:', cbErr);
+      }
+    }
+
     return filePath;
+  }
+
+  public setOnCrashCallback(cb: (action: string, error: any, filePath: string) => void): void {
+    this.onCrashCallback = cb;
   }
 
   /**

@@ -21,9 +21,9 @@ Aktuální seznam otevřených úkolů a vylepšení k realizaci.
   - Zachování fokusu a automatické vložení (auto-paste): uložení aktivního okna, skrytí EasyClip, návrat fokusu a syntéza `Ctrl+V`.
 
 - [x] **4. Systémové notifikace Windows**
-  - Implementace `NotificationService` využívající nativní Electron `Notification` API a registraci `app.setAppUserModelId`.
-  - Integrace událostí: dokončení ořezu QuickCap (s proklikem do složky), ColorMaster nabrání barvy, dokončení synchronizace dat a nalezení nové verze aplikace.
-  - Nastavení v záložce Obecné: globální přepínač, tichý režim bez zvuku Windows, individuální přepínače událostí a tlačítko pro otestování notifikace.
+  - Implementace `NotificationService` využívající nativní Electron `Notification` API a registraci `app.setAppUserModelId` s dynamickým provázáním na Start Menu zástupce.
+  - Integrace událostí: dokončení ořezu QuickCap (s proklikem do složky), ColorMaster nabrání barvy, kopírování do schránky (položky ve Spotlightu i galerie QuickCap), dokončení synchronizace dat, nová verze aplikace a zachycení pádu/crashlogu (s vyhrazenou chybovou ikonou a proklikem do složky crashlogu).
+  - Nastavení v záložce Obecné: globální přepínač, tichý režim bez zvuku Windows, individuální přepínače událostí (QuickCap, ColorMaster, schránka, synchronizace, aktualizace, chyby) a dvojice tlačítek pro otestování úspěšné i neúspěšné (chybové) notifikace.
 
 - [x] **5. Vyřešit problém s backdropem u okna Release Notes**
   - Implementována Varianta 1: Odstraněn ostrý černý obdélníkový backdrop (`fixed inset-0 bg-black/80`), nahrazen transparentním kontejnerem a při zobrazení dialogu je skryt podkladový Spotlight. Okno plave čistě se zaoblenými rohy (`rounded-2xl`), vlastním stínem a podporou zavření klávesou `Escape`.

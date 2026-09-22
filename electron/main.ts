@@ -787,11 +787,17 @@ function setupIpcHandlers() {
       }
       const img = nativeImage.createFromPath(filePath);
       await writeNativeImageToClipboard(img);
+      const baseName = path.basename(filePath);
       diagnosticsService.logAction({
         type: 'action',
         title: 'Výstřižek zkopírován do schránky',
-        details: path.basename(filePath),
+        details: baseName,
         status: 'success',
+      });
+      notificationService.show({
+        type: 'clipboard',
+        title: 'Zkopírováno do schránky',
+        body: `Snímek "${baseName}" byl úspěšně zkopírován do schránky.`,
       });
       return { success: true };
     } catch (err: any) {
@@ -899,7 +905,17 @@ function setupIpcHandlers() {
     return true;
   });
 
-  ipcMain.handle('send-test-notification', () => {
+  ipcMain.handle('send-test-notification', (_event, variant?: 'success' | 'error') => {
+    if (variant === 'error') {
+      return notificationService.show({
+        type: 'error',
+        title: 'Chyba aplikace (test)',
+        body: 'Toto je simulovaná chybová notifikace pro ověření funkčnosti.',
+        onClick: () => {
+          diagnosticsService.openCrashLogFolder();
+        },
+      });
+    }
     return notificationService.show({
       type: 'test',
       title: 'Testovací notifikace',
@@ -1280,6 +1296,12 @@ function setupIpcHandlers() {
           title: 'Zkopírováno do schránky',
           details: location,
           status: 'success',
+        });
+        const truncated = location.length > 80 ? `${location.slice(0, 80)}...` : location;
+        notificationService.show({
+          type: 'clipboard',
+          title: 'Zkopírováno do schránky',
+          body: `Text "${truncated}" byl úspěšně zkopírován do schránky.`,
         });
         windowManager.hideImmediately();
         return;
@@ -1882,6 +1904,17 @@ app.whenReady().then(async () => {
 
   const initialConfig = store.getConfig();
   notificationService.init(initialConfig);
+  diagnosticsService.setOnCrashCallback((action, error) => {
+    const errorMsg = error instanceof Error ? error.message : String(error?.message || error || 'Neznámá chyba');
+    notificationService.show({
+      type: 'error',
+      title: 'Chyba aplikace',
+      body: `Došlo k chybě při: ${action} (${errorMsg}). Záznam byl uložen do crashlogu.`,
+      onClick: () => {
+        diagnosticsService.openCrashLogFolder();
+      },
+    });
+  });
   currentHotkey = initialConfig.hotkey || 'Ctrl+Alt+Space';
 
   windowManager = new WindowManager(

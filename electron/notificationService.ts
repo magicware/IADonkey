@@ -7,7 +7,23 @@ import { diagnosticsService } from './diagnosticsService';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const getNotificationIcon = (): string | undefined => {
+const getNotificationIcon = (type?: NotificationType): string | undefined => {
+  if (type === 'error') {
+    const errorCandidates = [
+      path.join(__dirname, '../electron/assets/icon-error.png'),
+      path.join(__dirname, 'assets/icon-error.png'),
+      path.join(__dirname, '../build/icon-error.png'),
+      path.join(process.resourcesPath || '', 'app.asar/electron/assets/icon-error.png'),
+      path.join(process.resourcesPath || '', 'electron/assets/icon-error.png'),
+      path.join(process.cwd(), 'electron/assets/icon-error.png'),
+    ];
+    for (const c of errorCandidates) {
+      if (fs.existsSync(c)) {
+        return c;
+      }
+    }
+  }
+
   const candidates = [
     path.join(__dirname, '../electron/assets/icon.png'),
     path.join(__dirname, 'assets/icon.png'),
@@ -15,6 +31,7 @@ const getNotificationIcon = (): string | undefined => {
     path.join(__dirname, '../electron/assets/icon.ico'),
     path.join(process.resourcesPath || '', 'app.asar/electron/assets/icon.png'),
     path.join(process.resourcesPath || '', 'app.asar/dist/icon.png'),
+    path.join(process.cwd(), 'electron/assets/icon.png'),
   ];
   for (const c of candidates) {
     if (fs.existsSync(c)) {
@@ -42,7 +59,7 @@ const getNotificationIco = (): string | undefined => {
   return undefined;
 };
 
-export type NotificationType = 'quickCap' | 'colorMaster' | 'syncComplete' | 'update' | 'error' | 'test';
+export type NotificationType = 'quickCap' | 'colorMaster' | 'syncComplete' | 'update' | 'clipboard' | 'error' | 'test';
 
 export interface ShowNotificationOptions {
   type: NotificationType;
@@ -150,6 +167,8 @@ export class NotificationService {
       if (options.type === 'colorMaster' && notifConfig.colorMaster === false) return false;
       if (options.type === 'syncComplete' && notifConfig.syncComplete === false) return false;
       if (options.type === 'update' && notifConfig.updates === false) return false;
+      if (options.type === 'clipboard' && notifConfig.clipboard === false) return false;
+      if (options.type === 'error' && notifConfig.errors === false) return false;
     }
 
     // Tichý režim (z konfigurace nebo parametru)
@@ -161,7 +180,7 @@ export class NotificationService {
     this.cleanupDevShortcut();
 
     try {
-      const iconPath = options.icon || getNotificationIcon();
+      const iconPath = options.icon || getNotificationIcon(options.type);
       const notification = new Notification({
         title: options.title,
         body: options.body,

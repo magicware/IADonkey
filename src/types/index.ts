@@ -163,6 +163,8 @@ export interface NotificationSettings {
   colorMaster?: boolean;
   syncComplete?: boolean;
   updates?: boolean;
+  clipboard?: boolean;
+  errors?: boolean;
 }
 
 export interface AppConfig {
