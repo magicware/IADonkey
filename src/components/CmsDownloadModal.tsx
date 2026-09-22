@@ -147,9 +147,9 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <main className="w-full h-screen bg-[#141520] border border-white/10 flex flex-col justify-between text-gray-200 select-none overflow-hidden font-sans">
-      {/* Header */}
-      <div className="p-3.5 border-b border-white/10 bg-[#181926] flex items-center justify-between shrink-0">
+    <main className="w-full h-screen bg-[#181920] border border-white/10 flex flex-col justify-between text-gray-200 select-none overflow-hidden font-sans">
+      {/* Header - Native titlebar has close button, so no duplicate [X] here */}
+      <div className="p-4 border-b border-white/10 bg-[#1e1f29] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
             <span className="material-symbols-outlined text-xl">folder_zip</span>
@@ -161,24 +161,15 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
                 CMSinFS
               </span>
             </div>
-            <p className="text-xs text-gray-400 truncate max-w-[380px]">
+            <p className="text-xs text-gray-400 truncate max-w-[480px]">
               Instance: <span className="font-semibold text-gray-300">{instanceName || 'Neznámá instance'}</span>
             </p>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
-          title="Zavřít"
-        >
-          <span className="material-symbols-outlined text-lg">close</span>
-        </button>
       </div>
 
-      {/* Body Content - no window scrollbar, perfectly fitting */}
-      <div className="flex-1 p-4 flex flex-col justify-between gap-3 overflow-hidden min-h-0">
+      {/* Body Content - no page scrollbar, generous space for protocol */}
+      <div className="flex-1 p-4 flex flex-col gap-3 overflow-hidden min-h-0">
         {/* Target directory info card */}
         <div className="bg-black/30 border border-white/10 rounded-xl p-3 space-y-1 shrink-0">
           <div className="flex items-center justify-between text-xs text-gray-400 font-medium">
@@ -199,11 +190,14 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
 
         {/* Status / Progress view */}
         {(status === 'downloading' || status === 'purging' || status === 'extracting') && (
-          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-3 text-center shrink-0">
-            {/* Centered spinner with STATIC upright icon (only outer ring spins) */}
+          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 space-y-2.5 text-center shrink-0">
+            {/* SVG rotating ring spinner with STATIC upright icon inside */}
             <div className="relative w-11 h-11 flex items-center justify-center mx-auto">
-              <div className="absolute inset-0 rounded-full border-2 border-purple-500/20 border-t-purple-400 animate-spin" />
-              <span className="material-symbols-outlined text-xl text-purple-400">download</span>
+              <svg className="animate-spin w-11 h-11 text-purple-400 absolute inset-0" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" />
+                <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" />
+              </svg>
+              <span className="material-symbols-outlined text-lg text-purple-300 select-none">download</span>
             </div>
 
             <div>
@@ -232,7 +226,7 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
             )}
 
             {/* Steps indicator */}
-            <div className="grid grid-cols-3 gap-2 pt-0.5 text-[11px]">
+            <div className="grid grid-cols-3 gap-2 text-[11px]">
               <div className={`p-1.5 rounded-lg border text-center font-medium ${status === 'downloading' ? 'bg-purple-500/15 border-purple-500/40 text-purple-300' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'}`}>
                 1. Stažení ZIP
               </div>
@@ -276,12 +270,12 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
           </div>
         )}
 
-        {/* Console / Log box - takes remaining height, scrolls internally */}
+        {/* Console / Log box - takes full remaining height during download */}
         <div className="flex-1 flex flex-col min-h-0 space-y-1">
           <div className="text-[11px] font-medium text-gray-400">Protokol operace:</div>
           <div
             ref={logContainerRef}
-            className="flex-1 min-h-[60px] max-h-[85px] overflow-y-auto bg-black/40 border border-white/10 rounded-lg p-2 font-mono text-[11px] text-gray-300 space-y-0.5 leading-tight select-text"
+            className="flex-1 min-h-[110px] overflow-y-auto bg-black/40 border border-white/10 rounded-xl p-2.5 font-mono text-[11px] text-gray-300 space-y-0.5 leading-tight select-text"
           >
             {logs.map((log, idx) => (
               <div key={idx} className="whitespace-pre-wrap">{log}</div>
@@ -290,60 +284,67 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="p-3.5 border-t border-white/10 bg-[#181926] flex items-center justify-between shrink-0">
-        <div className="text-xs text-gray-400">
-          {status === 'success' && (
-            <span className="flex items-center gap-1.5 text-emerald-400">
-              <span className="material-symbols-outlined text-sm">check</span>
-              Připraveno k práci
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {status === 'error' && (
-            <button
-              type="button"
-              onClick={startDownload}
-              className="px-4 py-2 rounded-lg bg-purple-600/25 hover:bg-purple-600/35 text-purple-300 border border-purple-500/40 text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-sm">refresh</span>
-              Zkusit znovu
-            </button>
-          )}
-
-          {status === 'success' && (
-            <>
+      {/* Footer - exact button layout matching GitCloneModal */}
+      <div className="p-4 border-t border-white/10 bg-[#1e1f29] flex items-center justify-between gap-3 shrink-0">
+        {status === 'success' ? (
+          <>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleOpenInExplorer}
+                className="px-4 py-2 rounded-xl text-xs font-normal flex items-center gap-1.5 transition cursor-pointer border bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border-purple-500/40"
+              >
+                <span className="material-symbols-outlined text-base">folder</span>
+                <span>Otevřít složku v Průzkumníku</span>
+              </button>
               {vscodeEnabled && (
                 <button
                   type="button"
                   onClick={handleOpenInVscode}
-                  className="px-3.5 py-2 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-2 bg-cyan-700/30 hover:bg-cyan-700/50 text-cyan-300 border border-cyan-500/40 rounded-xl text-xs font-normal flex items-center gap-1.5 transition cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-sm">code</span>
-                  Otevřít ve VS Code
+                  <span className="material-symbols-outlined text-base">code</span>
+                  <span>Otevřít ve VS Code</span>
                 </button>
               )}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white rounded-xl text-xs font-normal transition cursor-pointer"
+            >
+              Zavřít
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl text-xs font-normal transition cursor-pointer"
+            >
+              {status === 'error' ? 'Zavřít' : 'Zrušit'}
+            </button>
+
+            {status === 'error' ? (
               <button
                 type="button"
-                onClick={handleOpenInExplorer}
-                className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-md shadow-purple-900/30"
+                onClick={startDownload}
+                className="px-5 py-2 rounded-xl text-xs font-normal flex items-center gap-2 transition cursor-pointer bg-purple-600 hover:bg-purple-500 text-white"
               >
-                <span className="material-symbols-outlined text-sm">folder_open</span>
-                Otevřít složku
+                <span className="material-symbols-outlined text-sm">refresh</span>
+                <span>Zkusit znovu</span>
               </button>
-            </>
-          )}
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium transition cursor-pointer"
-          >
-            {status === 'success' ? 'Hotovo' : 'Zavřít'}
-          </button>
-        </div>
+            ) : (
+              <div className="flex items-center gap-2 text-xs text-purple-300 font-mono">
+                <span className="material-symbols-outlined text-sm animate-spin text-purple-400">
+                  progress_activity
+                </span>
+                <span>Stahuji CMSinFS...</span>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </main>
   );

@@ -467,10 +467,10 @@ export class WindowManager {
       : path.join(__dirname, 'preload.js');
 
     this.cmsDownloadWindow = new BrowserWindow({
-      width: 580,
-      height: 540,
-      minWidth: 500,
-      minHeight: 480,
+      width: 640,
+      height: 580,
+      minWidth: 540,
+      minHeight: 500,
       title: `IADonkey – Stažení CMSinFS zdrojáků (${params.instanceName})`,
       icon: getAppIcon(),
       autoHideMenuBar: true,
@@ -500,6 +500,10 @@ export class WindowManager {
 
     this.cmsDownloadWindow.on('closed', () => {
       this.cmsDownloadWindow = null;
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.showSpotlight();
+        this.mainWindow.webContents.send('focus-input');
+      }
     });
 
     return this.cmsDownloadWindow;
