@@ -776,7 +776,7 @@ export class WindowManager {
     height: 100%;
     background-color: #141520;
     border-radius: 16px;
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     outline: none;
     box-shadow: none;
     display: flex;
