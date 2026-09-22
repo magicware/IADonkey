@@ -4,6 +4,22 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.20] - 22. 9. 2026
+### Nativní systémové notifikace Windows, Photoshop-style SplashScreen a rychlé akce nástrojů
+- **Nativní systémové notifikace Windows**: Integrace notifikací Windows s dynamickou registrací AppUserModelId. Aplikace zobrazuje systémové bannery pro klíčové události:
+  - *QuickCap*: Upozornění na uložení výstřižku s možností přímého otevření ve složce kliknutím na banner.
+  - *ColorMaster*: Upozornění s kódem nabrané barvy zkopírované do schránky.
+  - *Schránka*: Notifikace při zkopírování položky ze Spotlightu nebo z historie výstřižků.
+  - *Synchronizace*: Upozornění na úspěšnou synchronizaci dat a počet načtených položek.
+  - *Aktualizace*: Informace o dostupnosti nové verze programu.
+  - *Chyby a pády*: Speciální chybová notifikace s vyhrazenou ikonou a možností otevření složky chybových protokolů.
+- **Nastavení notifikací**: V záložce Nastavení -> Obecné lze notifikace globálně vypnout, aktivovat tichý režim (bez systémového zvuku Windows), individuálně přepínat jednotlivé typy událostí a otestovat chování tlačítky pro úspěšnou i chybovou notifikaci.
+- **Akce „Zavřít“ na první pozici**: Po dokončení výstřižku (QuickCap) i nabrání barvy (ColorMaster) je na 1. pozici v nabídce akcí ve Spotlightu zařazena akce „Zavřít“, která je ihned vybraná a umožňuje okamžité skrytí i reset vyhledávače stiskem klávesy Enter.
+- **Izolace kapátka v Nastavení**: Při výběru primární barvy nebo barvy akcí v Nastavení kapátko nekopíruje barvu do schránky, nezobrazuje toast notifikaci ani neotevírá nabídku akcí ve Spotlightu – hodnota se pouze nastaví a okno si udrží fokus.
+- **Plovoucí dialog novinek (Release Notes)**: Odstraněn ostrý černý obdélníkový backdrop. Okno novinek má zaoblené rohy (16px), vlastní stín, podkladový vyhledávač je skryt a dialog lze pohodlně zavřít klávesou Escape.
+- **Nový vertikální SplashScreen (Photoshop-style layout)**: Úvodní obrazovka aplikace přepracována do kompaktního vertikálního formátu (350 × 400 px) se zarovnáním vlevo, velkou ikonou (58 px), výrazným bílým názvem, barevnou verzí, obecným popisem a spodním copyrightem `© 2026 Petr Coolhanek`. Rámeček i zaoblení jsou sladěny se stylem Spotlightu.
+- **Sjednocení barev ikon a vyladění Nápovědy**: Všechny ikony notifikací v Nastavení mají primární barvu motivu (s výjimkou chyb) a text chybových protokolů v Nápovědě byl zobecněn.
+
 ## [1.1.19] - 19. 9. 2026
 ### Subrozšíření QuickCap pro výstřižky obrazovky, správce výstřižků a sjednocený design nástrojů
 - **Subrozšíření QuickCap (výstřižky obrazovky)**: Nový vestavěný nástroj v rámci rozšíření DonkeyTools pro bleskové pořízení výstřižku libovolné části obrazovky.

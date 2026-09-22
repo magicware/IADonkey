@@ -5,12 +5,26 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.19';
+export const CURRENT_APP_VERSION = '1.1.20';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.20',
+    date: '22. 9. 2026',
+    title: 'Nativní systémové notifikace Windows, Photoshop-style SplashScreen a rychlé akce nástrojů',
+    highlights: [
+      'Nativní systémové notifikace Windows: Plná integrace notifikací Windows s dynamickou registrací AppUserModelId pro QuickCap, ColorMaster, schránku, synchronizaci, aktualizace a zachycené chyby aplikace.',
+      'Nastavení notifikací v Nastavení: Globální vypínač, tichý režim bez zvuku Windows, přepínače jednotlivých událostí a dvojice tlačítek pro otestování úspěšné i chybové notifikace.',
+      'Akce „Zavřít“ na první pozici: Po dokončení výstřižku (QuickCap) i nabrání barvy (ColorMaster) je na 1. pozici ve Spotlightu zařazena akce Zavřít s okamžitým výběrem pro rychlé zavření stiskem Enter.',
+      'Izolace kapátka v Nastavení: Výběr primární/akční barvy v Nastavení nekopíruje barvu do schránky, nevyvolává toast ani neotevírá Spotlight – barva se pouze aplikuje a fokus zůstává v Nastavení.',
+      'Plovoucí dialog novinek (Release Notes): Odstraněn ostrý černý podklad, dialog plave čistě se zaoblenými rohy (16px), podkladový vyhledávač je skryt a okno lze zavřít klávesou Escape.',
+      'Nový vertikální SplashScreen (Photoshop-style layout): Kompaktní vertikální formát (350 × 400 px) se zarovnáním vlevo, velkou ikonou (58 px), výrazným názvem, obecným popisem a spodním copyrightem © 2026 Petr Coolhanek.',
+      'Sjednocení barev ikon a vyladění Nápovědy: Ikony notifikací v Nastavení přebírají primární barvu motivu a text chybových protokolů v Nápovědě byl zobecněn.',
+    ],
+  },
   {
     version: '1.1.19',
     date: '19. 9. 2026',
