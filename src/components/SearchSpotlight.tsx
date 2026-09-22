@@ -1982,23 +1982,23 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           >
             {/* 1. Screenshot Preview or Compact Info Section (BEFORE actions) */}
             {actionsParentItem?.imagePreview ? (
-              <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
+              <div className="p-2.5 rounded-xl bg-white/[0.02] border border-purple-500/20 space-y-2">
                 <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-rose-300">
-                    <span className="material-symbols-outlined text-sm text-rose-400">crop</span>
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-purple-300">
+                    <span className="material-symbols-outlined text-sm text-purple-400">crop</span>
                     <span>Náhled výstřižku</span>
                   </div>
                   {actionsParentItem.info?.['Rozměry'] && (
-                    <span className="text-[10px] text-rose-300/90 font-mono bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">
+                    <span className="text-[10px] text-purple-300/90 font-mono bg-purple-950/40 px-1.5 py-0.5 rounded border border-purple-500/20">
                       {actionsParentItem.info['Rozměry']}
                     </span>
                   )}
                 </div>
-                <div className="w-full flex items-center justify-center p-2 bg-black/40 rounded-lg border border-white/5 overflow-hidden">
+                <div className="w-full flex items-center justify-center p-2 bg-black/40 rounded-lg border border-purple-500/15 overflow-hidden">
                   <img
                     src={actionsParentItem.imagePreview}
                     alt={actionsParentItem.name}
-                    className="max-h-[190px] max-w-full object-contain rounded select-none shadow-md"
+                    className="max-h-[190px] max-w-full object-contain rounded select-none shadow-md border border-white/10"
                     style={{ objectFit: 'contain' }}
                   />
                 </div>
@@ -2110,27 +2110,17 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       ? 'bg-cyan-800/40 border-cyan-500/50 text-white shadow-md'
                       : isAndroid
                       ? 'bg-pink-800/40 border-pink-500/50 text-white shadow-md'
-                      : isPreparation
-                      ? 'bg-amber-800/30 border-amber-500/40 text-white shadow-md'
                       : 'bg-purple-600/30 border-purple-500/40 text-white shadow-md'
                     : isVscode
                     ? 'hover:bg-cyan-950/30 text-gray-200 border-white/5 bg-black/20 hover:border-cyan-500/30'
                     : isAndroid
                     ? 'hover:bg-pink-950/30 text-gray-200 border-white/5 bg-black/20 hover:border-pink-500/30'
-                    : isPreparation
-                    ? 'hover:bg-amber-950/20 text-gray-300 border-white/5 bg-black/20 hover:border-amber-500/30'
                     : 'hover:bg-white/[0.05] text-gray-200 border-white/5 bg-black/20 hover:border-purple-500/30';
 
                   const iconContainerClass = isVscode
                     ? 'bg-cyan-900/40 border-cyan-500/50 text-cyan-300'
                     : isAndroid
                     ? 'bg-pink-900/40 border-pink-500/50 text-pink-300'
-                    : isPreparation
-                    ? 'bg-amber-900/30 border-amber-500/40 text-amber-300'
-                    : isPaint
-                    ? 'bg-rose-900/30 border-rose-500/40 text-rose-300'
-                    : isFolder
-                    ? 'bg-blue-900/30 border-blue-500/40 text-blue-300'
                     : 'bg-purple-600/20 border-purple-500/30 text-purple-300';
 
                   const dividerClass = isSelected
@@ -2138,8 +2128,6 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       ? 'bg-cyan-400/40'
                       : isAndroid
                       ? 'bg-pink-400/40'
-                      : isPreparation
-                      ? 'bg-amber-400/40'
                       : 'bg-white/20'
                     : 'bg-white/[0.08]';
 
@@ -2147,20 +2135,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                     ? 'bg-cyan-950/70 border-cyan-500/50 text-cyan-300'
                     : isAndroid
                     ? 'bg-pink-950/70 border-pink-500/50 text-pink-300'
-                    : isPreparation
-                    ? 'bg-amber-950/70 border-amber-500/40 text-amber-300'
-                    : isPaint
-                    ? 'bg-rose-950/70 border-rose-500/40 text-rose-300'
-                    : isFolder
-                    ? 'bg-blue-950/70 border-blue-500/40 text-blue-300'
-                    : 'bg-white/5 border-white/10 text-gray-400';
+                    : 'bg-purple-950/70 border-purple-500/40 text-purple-300';
 
                   const selectIndicatorClass = isVscode
                     ? 'text-cyan-300'
                     : isAndroid
                     ? 'text-pink-300'
-                    : isPreparation
-                    ? 'text-amber-300'
                     : 'text-purple-300';
 
                   return (
