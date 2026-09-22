@@ -19,6 +19,8 @@ import { InstallerService } from './installerService';
 import { diagnosticsService } from './diagnosticsService';
 import { notificationService } from './notificationService';
 
+app.name = 'IADonkey';
+
 // Register file scheme as secure
 protocol.registerSchemesAsPrivileged([
   {

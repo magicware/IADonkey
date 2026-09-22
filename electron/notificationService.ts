@@ -1,4 +1,4 @@
-import { Notification, app } from 'electron';
+import { Notification, app, shell } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -15,6 +15,24 @@ const getNotificationIcon = (): string | undefined => {
     path.join(__dirname, '../electron/assets/icon.ico'),
     path.join(process.resourcesPath || '', 'app.asar/electron/assets/icon.png'),
     path.join(process.resourcesPath || '', 'app.asar/dist/icon.png'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) {
+      return c;
+    }
+  }
+  return undefined;
+};
+
+const getNotificationIco = (): string | undefined => {
+  const candidates = [
+    path.join(__dirname, '../electron/assets/icon.ico'),
+    path.join(__dirname, 'assets/icon.ico'),
+    path.join(__dirname, '../build/icon.ico'),
+    path.join(process.resourcesPath || '', 'app.asar/electron/assets/icon.ico'),
+    path.join(process.resourcesPath || '', 'electron/assets/icon.ico'),
+    path.join(process.resourcesPath || '', 'assets/icon.ico'),
+    path.join(process.cwd(), 'electron/assets/icon.ico'),
   ];
   for (const c of candidates) {
     if (fs.existsSync(c)) {
@@ -41,10 +59,40 @@ export class NotificationService {
   public init(config: any): void {
     this.config = config;
     if (process.platform === 'win32') {
+      const appId = 'com.iadonkey.launcher';
       try {
-        app.setAppUserModelId(app.isPackaged ? 'com.iadonkey.launcher' : process.execPath);
+        app.setAppUserModelId(appId);
       } catch (err) {
         console.error('[NotificationService] Failed to set AppUserModelId:', err);
+      }
+
+      // Windows Toast header attribution:
+      // Windows 10 a Windows 11 zobrazují v záhlaví toast notifikace (u křížku pro zavření) název
+      // a ikonu zástupce v nabídce Start, jehož System.AppUserModel.ID odpovídá nastavenému AUMID.
+      try {
+        const startMenuDir = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs');
+        const shortcutPath = path.join(startMenuDir, 'IADonkey.lnk');
+        const icoPath = getNotificationIco();
+        const installedExe = path.join(process.env.LOCALAPPDATA || '', 'Programs', 'IADonkey', 'IADonkey.exe');
+        const targetExe = app.isPackaged
+          ? process.execPath
+          : (fs.existsSync(installedExe) ? installedExe : process.execPath);
+
+        const shortcutOptions: Electron.ShortcutDetails = {
+          target: targetExe,
+          description: 'IADonkey Launcher',
+          appUserModelId: appId,
+          icon: icoPath,
+          iconIndex: 0,
+        };
+
+        if (fs.existsSync(startMenuDir)) {
+          const operation = fs.existsSync(shortcutPath) ? 'replace' : 'create';
+          shell.writeShortcutLink(shortcutPath, operation, shortcutOptions);
+          console.log('[NotificationService] Registered Start Menu shortcut with AUMID:', appId, 'at:', shortcutPath);
+        }
+      } catch (err) {
+        console.warn('[NotificationService] Failed to register/update Start Menu shortcut for AUMID:', err);
       }
     }
   }
