@@ -6,26 +6,35 @@ export const SplashScreen: React.FC = () => {
   return (
     <div className="w-screen h-screen bg-transparent flex items-center justify-center select-none overflow-hidden font-sans">
       <div
-        className="w-full h-full bg-[#141520] text-gray-200 rounded-2xl border border-white/10 flex flex-col items-center justify-center gap-3 relative shadow-none outline-none"
+        className="w-full h-full bg-[#141520] text-gray-200 rounded-2xl border border-white/10 flex flex-col items-start justify-start p-8 relative shadow-none outline-none"
         style={{ WebkitAppRegion: 'drag' } as any}
       >
-        {/* Photoshop-style 48px app icon */}
-        <div className="relative flex items-center justify-center">
-          <img
-            src={appLogo}
-            alt="IADonkey"
-            className="w-12 h-12 object-contain rounded-xl"
-          />
-        </div>
+        {/* Large icon */}
+        <img
+          src={appLogo}
+          alt="IADonkey"
+          className="w-[68px] h-[68px] object-contain rounded-2xl mb-5 shadow-xl shadow-black/40"
+        />
 
-        {/* Photoshop-style Title & Version */}
-        <div className="flex flex-col items-center gap-1 text-center">
-          <span className="font-bold text-lg text-white tracking-wide leading-tight">
-            IADonkey
-          </span>
-          <span className="text-xs font-semibold text-indigo-400 font-mono tracking-wider">
-            v{CURRENT_APP_VERSION}
-          </span>
+        {/* Title & Version */}
+        <span className="font-bold text-[26px] text-white tracking-tight leading-tight mb-1">
+          IADonkey
+        </span>
+        <span className="text-[13px] font-semibold text-indigo-400 font-mono tracking-wider">
+          v{CURRENT_APP_VERSION}
+        </span>
+
+        {/* Space */}
+        <div className="flex-1 min-h-[24px]" />
+
+        {/* Brief description */}
+        <p className="text-xs text-gray-400 leading-relaxed mb-6">
+          Rychlý a inteligentní spouštěč pro vaše každodenní úkoly a produktivitu. Sjednocuje vyhledávání, pracovní nástroje a automatizaci do jednoho přehledného prostředí.
+        </p>
+
+        {/* Bottom copyright */}
+        <div className="text-[11px] text-gray-500">
+          © 2026 Petr Coolhanek
         </div>
       </div>
     </div>

@@ -734,8 +734,8 @@ export class WindowManager {
     }
 
     this.splashWindow = new BrowserWindow({
-      width: 480,
-      height: 290,
+      width: 360,
+      height: 520,
       frame: false,
       transparent: true,
       backgroundColor: '#00000000',
@@ -781,22 +781,26 @@ export class WindowManager {
     box-shadow: none;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 34px 30px 28px 30px;
+    text-align: left;
   }
   .icon {
-    width: 54px;
-    height: 54px;
+    width: 68px;
+    height: 68px;
     object-fit: contain;
-    border-radius: 14px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   }
   .title {
-    font-size: 21px;
+    font-size: 26px;
     font-weight: 700;
     color: #ffffff;
-    letter-spacing: 0.5px;
-    line-height: 1.1;
+    letter-spacing: 0.3px;
+    line-height: 1.15;
+    margin-bottom: 4px;
   }
   .version {
     font-size: 13px;
@@ -805,6 +809,21 @@ export class WindowManager {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     letter-spacing: 0.6px;
   }
+  .spacer {
+    flex: 1;
+    min-height: 24px;
+  }
+  .description {
+    font-size: 12px;
+    line-height: 1.6;
+    color: #9ca3af;
+    margin-bottom: 24px;
+  }
+  .copyright {
+    font-size: 11px;
+    color: #6b7280;
+    letter-spacing: 0.2px;
+  }
 </style>
 </head>
 <body>
@@ -812,6 +831,11 @@ export class WindowManager {
     ${iconDataUrl ? `<img class="icon" src="${iconDataUrl}" alt="IADonkey" />` : ''}
     <div class="title">IADonkey</div>
     <div class="version">v${version}</div>
+    <div class="spacer"></div>
+    <div class="description">
+      Rychlý a inteligentní spouštěč pro vaše každodenní úkoly a produktivitu. Sjednocuje vyhledávání, pracovní nástroje a automatizaci do jednoho přehledného prostředí.
+    </div>
+    <div class="copyright">© 2026 Petr Coolhanek</div>
   </div>
 </body>
 </html>`;
