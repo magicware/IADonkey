@@ -56,6 +56,19 @@ export interface ShowNotificationOptions {
 export class NotificationService {
   private config: any = null;
 
+  private cleanupDevShortcut(): void {
+    if (app.isPackaged) return;
+    try {
+      const startMenuDir = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs');
+      const electronShortcut = path.join(startMenuDir, 'Electron.lnk');
+      if (fs.existsSync(electronShortcut)) {
+        fs.unlinkSync(electronShortcut);
+      }
+    } catch {
+      // Ignorujeme případnou chybu při mazání
+    }
+  }
+
   public init(config: any): void {
     this.config = config;
     if (process.platform === 'win32') {
@@ -73,16 +86,21 @@ export class NotificationService {
       try {
         const startMenuDir = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs');
         const shortcutPath = path.join(startMenuDir, 'IADonkey.lnk');
-        const electronShortcut = path.join(startMenuDir, 'Electron.lnk');
         const icoPath = getNotificationIco();
 
-        // Pokud ve Start Menu existuje zástupce 'Electron.lnk' z vývojového prostředí, odstraníme ho,
-        // aby Windows nepřiřazoval hlavičku notifikace generickému zástupci Electron.
-        if (fs.existsSync(electronShortcut)) {
+        this.cleanupDevShortcut();
+
+        // Ve vývojovém režimu Chromium při odeslání každé notifikace automaticky znovu vytvoří 'Electron.lnk'.
+        // Hlídač složky ho okamžitě maže, aby Windows pro běžící proces viděl výhradně zástupce IADonkey.lnk.
+        if (!app.isPackaged && fs.existsSync(startMenuDir)) {
           try {
-            fs.unlinkSync(electronShortcut);
+            fs.watch(startMenuDir, (_eventType, filename) => {
+              if (filename && filename.toLowerCase() === 'electron.lnk') {
+                this.cleanupDevShortcut();
+              }
+            });
           } catch {
-            // Ignorujeme případnou chybu při mazání
+            // silent
           }
         }
 
@@ -139,6 +157,9 @@ export class NotificationService {
       ? options.silent
       : (notifConfig?.silent ?? false);
 
+    // V dev módu před zobrazením odstraníme případný generický zástupce Electron.lnk
+    this.cleanupDevShortcut();
+
     try {
       const iconPath = options.icon || getNotificationIcon();
       const notification = new Notification({
@@ -146,8 +167,6 @@ export class NotificationService {
         body: options.body,
         icon: iconPath,
         silent: isSilent,
-        groupId: 'iadonkey',
-        groupTitle: 'IADonkey',
       });
 
       if (options.onClick) {
@@ -161,6 +180,10 @@ export class NotificationService {
       }
 
       notification.show();
+
+      // Chromium ve vývojovém režimu vytváří zástupce asynchronně po zobrazení toastu
+      setTimeout(() => this.cleanupDevShortcut(), 100);
+      setTimeout(() => this.cleanupDevShortcut(), 500);
 
       diagnosticsService.logAction({
         type: 'action',
