@@ -15,6 +15,14 @@ export const QuickCapSnipper: React.FC = () => {
   const [isFinished, setIsFinished] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const resetState = () => {
+    setInitData(null);
+    setIsFinished(false);
+    setIsDragging(false);
+    setStartPos(null);
+    setCurrentPos(null);
+  };
+
   useEffect(() => {
     // Okamžité vyžádání dat při prvním mountu komponenty (řeší možný race condition)
     const fetchInit = window.electronAPI?.getQuickCapInitData || window.electronAPI?.getFastSnapInitData;
@@ -32,6 +40,7 @@ export const QuickCapSnipper: React.FC = () => {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        resetState();
         if (window.electronAPI?.cancelQuickCap) {
           window.electronAPI.cancelQuickCap();
         } else if (window.electronAPI?.cancelFastSnap) {
@@ -58,11 +67,7 @@ export const QuickCapSnipper: React.FC = () => {
     const listenCleanup = window.electronAPI?.onQuickCapCleanup || window.electronAPI?.onFastSnapCleanup;
     if (listenCleanup) {
       unsubscribeCleanup = listenCleanup(() => {
-        setInitData(null);
-        setIsFinished(false);
-        setIsDragging(false);
-        setStartPos(null);
-        setCurrentPos(null);
+        resetState();
       });
     }
 
@@ -101,18 +106,22 @@ export const QuickCapSnipper: React.FC = () => {
       return;
     }
 
-    setIsFinished(true);
+    const payload = {
+      x: Math.round(x),
+      y: Math.round(y),
+      width: Math.round(width),
+      height: Math.round(height),
+      windowWidth: window.innerWidth,
+      windowHeight: window.innerHeight,
+    };
+
+    // Okamžitý kompletní reset stavu výstřižku (výběr, náhled, souřadnice),
+    // aby v paměti a komponentě nezůstal předchozí stav a nedocházelo k probliknutí
+    resetState();
 
     const finishFn = window.electronAPI?.finishQuickCap || window.electronAPI?.finishFastSnap;
     if (finishFn) {
-      await finishFn({
-        x: Math.round(x),
-        y: Math.round(y),
-        width: Math.round(width),
-        height: Math.round(height),
-        windowWidth: window.innerWidth,
-        windowHeight: window.innerHeight,
-      });
+      await finishFn(payload);
     }
   };
 
@@ -136,6 +145,7 @@ export const QuickCapSnipper: React.FC = () => {
       onMouseUp={handleMouseUp}
       onContextMenu={(e) => {
         e.preventDefault();
+        resetState();
         if (window.electronAPI?.cancelQuickCap) {
           window.electronAPI.cancelQuickCap();
         } else {

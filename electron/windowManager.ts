@@ -520,16 +520,17 @@ export class WindowManager {
     const applyFullScreenAndShow = (win: BrowserWindow) => {
       win.setBounds(displayBounds);
       win.setAlwaysOnTop(true, 'screen-saver');
-      win.show();
-      win.focus();
       const initPayload = {
         screenshotUrl,
         width: displayBounds.width,
         height: displayBounds.height,
         scaleFactor,
       };
+      // Poslat data před zobrazením okna pro plynulé navázání
       win.webContents.send('quickcap-init-data', initPayload);
       win.webContents.send('fastsnap-init-data', initPayload);
+      win.show();
+      win.focus();
     };
 
     if (this.snipperWindow && !this.snipperWindow.isDestroyed()) {
@@ -564,6 +565,7 @@ export class WindowManager {
         sandbox: false,
         contextIsolation: true,
         nodeIntegration: false,
+        backgroundThrottling: false,
       },
     });
 
