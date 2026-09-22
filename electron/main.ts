@@ -14,7 +14,7 @@ import { AppConfig, LauncherItem, ActionLogEntry } from '../src/types';
 import { getMagicGateAutoLoginUrl } from './magicGate';
 import { testGitHubConnection } from './githubService';
 import { faviconService } from './faviconService';
-import { fetchInstanceSectionRepos, runMultiRepoClone, MagicGateSectionRepo } from './magicGateService';
+import { fetchInstanceSectionRepos, runMultiRepoClone, downloadInstanceCmsContent, MagicGateSectionRepo } from './magicGateService';
 import { InstallerService } from './installerService';
 import { diagnosticsService } from './diagnosticsService';
 import { notificationService } from './notificationService';
@@ -985,6 +985,83 @@ function setupIpcHandlers() {
         }
       },
     });
+  });
+
+  ipcMain.handle('magicgate-download-cms-content', async (_event, params: {
+    adminUrl: string;
+    instanceName?: string;
+    targetDir?: string;
+  }) => {
+    const config = store.getConfig();
+    const targetDir = params.targetDir || config.magicgate?.instanceSourceCodesPath;
+    const username = config.magicgate?.username;
+    const password = config.magicgate?.password;
+
+    if (!targetDir || !targetDir.trim()) {
+      const errMsg = 'Není nastavena cílová složka. Zkontrolujte v Nastavení -> Rozšíření -> MagicGate položku "Cesta ke zdrojovým kódům instance".';
+      notificationService.show({
+        type: 'error',
+        title: 'Chyba stahování CMSinFS zdrojáků',
+        body: errMsg,
+      });
+      diagnosticsService.logAction({
+        type: 'action',
+        title: `Stažení CMSinFS zdrojáků (${params.instanceName || 'instance'}) selhalo`,
+        details: errMsg,
+        status: 'error',
+      });
+      return { success: false, error: errMsg };
+    }
+
+    notificationService.show({
+      type: 'syncComplete',
+      title: 'Stahování CMSinFS zdrojáků...',
+      body: `Stahuji webové zdrojové kódy pro ${params.instanceName || 'instanci'}...`,
+    });
+
+    const result = await downloadInstanceCmsContent({
+      adminUrl: params.adminUrl,
+      targetDir,
+      userName: username,
+      password,
+      instanceName: params.instanceName,
+    });
+
+    if (result.success && result.targetPath) {
+      diagnosticsService.logAction({
+        type: 'action',
+        title: `Staženy CMSinFS zdrojáky: ${params.instanceName || 'instance'}`,
+        details: `Cíl: ${result.targetPath} (${result.fileCount ?? 0} souborů)`,
+        status: 'info',
+      });
+
+      notificationService.show({
+        type: 'syncComplete',
+        title: 'CMSinFS zdrojáky staženy',
+        body: `Zdrojové kódy pro ${params.instanceName || 'instanci'} byly úspěšně staženy do:\n${result.targetPath}`,
+        onClick: () => {
+          shell.openPath(result.targetPath!);
+        },
+      });
+
+      await shell.openPath(result.targetPath);
+    } else {
+      const errMsg = result.error || 'Neznámá chyba při stahování CMSinFS zdrojáků.';
+      diagnosticsService.logAction({
+        type: 'action',
+        title: `Chyba stahování CMSinFS zdrojáků: ${params.instanceName || 'instance'}`,
+        details: errMsg,
+        status: 'error',
+      });
+
+      notificationService.show({
+        type: 'error',
+        title: 'Chyba stahování CMSinFS zdrojáků',
+        body: errMsg,
+      });
+    }
+
+    return result;
   });
 
   ipcMain.handle('pause-global-hotkey', () => {

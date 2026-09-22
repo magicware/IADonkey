@@ -49,6 +49,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('magicgate-get-repos', { adminUrl }),
   runMultiRepoClone: (params: { repos: any[]; targetDir: string; recursive?: boolean; rawJson?: string }): Promise<{ success: boolean; targetPath: string; error?: string; alreadyExists?: boolean }> =>
     ipcRenderer.invoke('magicgate-clone-start', params),
+  downloadInstanceCmsContent: (params: { instanceName?: string; adminUrl: string; targetDir?: string }): Promise<{ success: boolean; targetPath?: string; error?: string; fileCount?: number }> =>
+    ipcRenderer.invoke('magicgate-download-cms-content', params),
   onMagicGateCloneProgress: (callback: (data: { current: number; total: number; repoName: string; log: string }) => void) => {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on('magicgate-clone-progress', handler);

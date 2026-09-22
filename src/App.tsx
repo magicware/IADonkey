@@ -501,6 +501,7 @@ export const App: React.FC = () => {
           searchGoogle={config.searchGoogle !== false}
           defaultSearchEngine={config.defaultSearchEngine}
           defaultCloneDir={config?.github?.defaultCloneDir}
+          instanceSourceCodesPath={config?.magicgate?.instanceSourceCodesPath}
           vscodeEnabled={config.extensions?.vscode ?? false}
           androidStudioEnabled={config.extensions?.androidStudio ?? false}
           donkeyToolsEnabled={config.extensions?.donkeyTools ?? false}

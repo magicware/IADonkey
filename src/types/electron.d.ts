@@ -82,6 +82,16 @@ declare global {
         error?: string;
         alreadyExists?: boolean;
       }>;
+      downloadInstanceCmsContent: (params: {
+        instanceName?: string;
+        adminUrl: string;
+        targetDir?: string;
+      }) => Promise<{
+        success: boolean;
+        targetPath?: string;
+        error?: string;
+        fileCount?: number;
+      }>;
       onMagicGateCloneProgress: (callback: (data: { current: number; total: number; repoName: string; log: string }) => void) => () => void;
       onGitCloneParams: (callback: (params: {
         repoName: string;

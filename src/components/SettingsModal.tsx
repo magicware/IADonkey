@@ -4249,6 +4249,79 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </span>
                 </div>
               </div>
+
+              {/* Cesta ke zdrojovým kódům instance (CMSinFS) */}
+              <div className="space-y-3 bg-white/[0.02] p-4 rounded-xl border border-white/5">
+                <div>
+                  <h4 className="font-semibold text-sm text-white flex items-center gap-2 mb-1">
+                    <span className="material-symbols-outlined text-lg text-amber-400">folder_zip</span>
+                    Cesta ke zdrojovým kódům instance
+                  </h4>
+                  <p className="text-[13px] text-gray-400 mb-3 leading-relaxed">
+                    Cílová složka na vašem počítači pro stažení a rozbalení zdrojových kódů webu (CMSinFS) z vybrané instance IS Tour pro programátory. Pokud není složka vybrána, možnost stažení zdrojáků se v akcích instance nenabízí.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-[13px] font-medium text-gray-300 mb-1.5">Cílová složka pro zdrojové kódy (CMSinFS)</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={formData.magicgate?.instanceSourceCodesPath || ''}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          magicgate: { ...formData.magicgate, instanceSourceCodesPath: e.target.value },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      className="h-[38px] flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-500 outline-none font-mono"
+                      placeholder="např. C:\inetpub\wwwroot\MW-M2G-02\FileSystem\CmsContent"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (window.electronAPI?.selectDirectory) {
+                          const selected = await window.electronAPI.selectDirectory(formData.magicgate?.instanceSourceCodesPath);
+                          if (selected) {
+                            const updated = {
+                              ...formData,
+                              magicgate: { ...formData.magicgate, instanceSourceCodesPath: selected },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }
+                        }
+                      }}
+                      className="h-[38px] px-3.5 border border-amber-500/40 hover:border-amber-400 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-white rounded-lg text-[13px] font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                    >
+                      <span className="material-symbols-outlined text-base">folder_open</span>
+                      Procházet...
+                    </button>
+                    {formData.magicgate?.instanceSourceCodesPath && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = {
+                            ...formData,
+                            magicgate: { ...formData.magicgate, instanceSourceCodesPath: '' },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                        className="w-[38px] h-[38px] flex items-center justify-center text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg transition cursor-pointer shrink-0"
+                        title="Vymazat cestu"
+                      >
+                        <span className="material-symbols-outlined text-[18px] leading-none">delete</span>
+                      </button>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-400 mt-1.5 block">
+                    Při spuštění akce na instanci se obsah této cílové složky nejprve kompletně vyčistí a poté se do ní rozbalí aktuální zdrojové kódy z instance.
+                  </span>
+                </div>
+              </div>
             </div>
           )}
 

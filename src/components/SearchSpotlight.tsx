@@ -26,6 +26,7 @@ interface SearchSpotlightProps {
   searchGoogle?: boolean;
   defaultSearchEngine?: string;
   defaultCloneDir?: string;
+  instanceSourceCodesPath?: string;
   vscodeEnabled?: boolean;
   androidStudioEnabled?: boolean;
   donkeyToolsEnabled?: boolean;
@@ -49,6 +50,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   searchGoogle = true,
   defaultSearchEngine = 'google',
   defaultCloneDir,
+  instanceSourceCodesPath,
   vscodeEnabled = false,
   androidStudioEnabled = false,
   donkeyToolsEnabled = false,
@@ -561,6 +563,39 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
               icon: 'code',
               settings: 'vscode',
             });
+          }
+        }
+      }
+    }
+
+    // Add CMSinFS download action for MagicGate instances if instanceSourceCodesPath is configured
+    if (instanceSourceCodesPath && instanceSourceCodesPath.trim()) {
+      const isMagicGate =
+        item.settings === 'magicgate' ||
+        item.sourceId === 'magicgate' ||
+        item.sourceId === 'magicgate-xml' ||
+        baseActions.some((a) => a.action === 'mgclone' || a.action === 'mgclonerecursive');
+
+      if (isMagicGate) {
+        const adminUrl =
+          item.info?.['Admin URL'] ||
+          baseActions.find((a) => a.action === 'mgclone' || a.action === 'mgclonerecursive')?.location ||
+          (item.location && item.location.includes('/Administration') ? item.location : undefined) ||
+          item.options?.find((opt) => opt.name?.trim().toUpperCase() === 'A' || opt.name?.toLowerCase().includes('administrace'))?.location;
+
+        if (adminUrl) {
+          const downloadAction: LauncherAction = {
+            name: 'Stáhnout CMSinFS zdrojáky (pro PRG)',
+            action: 'mgdownloadcontent',
+            location: adminUrl,
+            settings: 'magicgate',
+            icon: 'folder_zip',
+          };
+          const mgCloneIdx = baseActions.findIndex((a) => a.action === 'mgclone');
+          if (mgCloneIdx >= 0) {
+            baseActions.splice(mgCloneIdx + 1, 0, downloadAction);
+          } else {
+            baseActions.push(downloadAction);
           }
         }
       }
@@ -1284,6 +1319,22 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         isInstanceMode: true,
         initialRecursive: actionType === 'mgclonerecursive',
       });
+      setTimeout(() => {
+        window.electronAPI?.hideWindow?.();
+      }, 60);
+      return;
+    }
+
+    if (actionType === 'mgdownloadcontent') {
+      exitActions();
+      const adminUrl = effectiveLocation;
+      if (adminUrl) {
+        window.electronAPI?.downloadInstanceCmsContent?.({
+          instanceName: parent.name,
+          adminUrl,
+          targetDir: instanceSourceCodesPath,
+        });
+      }
       setTimeout(() => {
         window.electronAPI?.hideWindow?.();
       }, 60);
@@ -2204,11 +2255,15 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                               ? 'Složka'
                               : isClose
                               ? 'Zavřít'
+                              : action.action === 'mgdownloadcontent'
+                              ? 'CMSinFS'
                               : action.action}
                           </span>
                         </div>
                         <div className="text-xs mt-0.5 font-mono text-gray-400 truncate">
-                          {action.location || actionsParentItem.location || ''}
+                          {action.action === 'mgdownloadcontent' && instanceSourceCodesPath
+                            ? `Cíl: ${instanceSourceCodesPath}`
+                            : (action.location || actionsParentItem.location || '')}
                         </div>
                       </div>
 

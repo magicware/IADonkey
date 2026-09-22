@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import AdmZip from 'adm-zip';
 
 export interface MagicGateSectionRepo {
   sectionId: number;
@@ -288,4 +289,133 @@ export async function runMultiRepoClone(params: {
     targetPath: cleanTarget,
     alreadyExists: skippedCount > 0,
   };
+}
+
+/**
+ * Downloads and extracts CMSinFS web content ZIP from an instance's Administration endpoint.
+ * URL: {adminUrl}/CmsFsContentHandler.ashx
+ * Headers:
+ *  X-UserName: <username>
+ *  X-Password: <password>
+ *  X-Method: GetContent
+ */
+export async function downloadInstanceCmsContent(params: {
+  adminUrl: string;
+  targetDir: string;
+  userName?: string;
+  password?: string;
+  instanceName?: string;
+}): Promise<{ success: boolean; targetPath?: string; error?: string; fileCount?: number }> {
+  const { adminUrl, targetDir, userName, password, instanceName } = params;
+
+  if (!adminUrl || !adminUrl.trim()) {
+    return { success: false, error: 'Instance nemá zadanou URL adresu administrace.' };
+  }
+
+  if (!targetDir || !targetDir.trim()) {
+    return {
+      success: false,
+      error: 'Není nastavena cílová složka. Zkontrolujte v Nastavení -> Rozšíření -> MagicGate položku "Cesta ke zdrojovým kódům instance".',
+    };
+  }
+
+  const cleanTarget = path.resolve(targetDir.trim());
+  const cleanBase = adminUrl.trim().replace(/\/+$/, '');
+  const endpoint = `${cleanBase}/CmsFsContentHandler.ashx`;
+
+  const headers: Record<string, string> = {
+    'X-Method': 'GetContent',
+  };
+
+  if (userName) {
+    headers['X-UserName'] = userName.trim();
+  }
+  if (password) {
+    headers['X-Password'] = password;
+  }
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        return {
+          success: false,
+          error: `Ověření MagicGate selhalo (HTTP ${res.status}). Zkontrolujte uživatelské jméno a heslo v Nastavení -> Rozšíření -> MagicGate.`,
+        };
+      }
+      return {
+        success: false,
+        error: `Server vrátil chybu HTTP ${res.status}: ${res.statusText}`,
+      };
+    }
+
+    const arrayBuffer = await res.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // ZIP magic bytes check: PK.. (0x50, 0x4B)
+    if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+      const rawText = buffer.toString('utf-8').trim();
+      return {
+        success: false,
+        error: rawText ? `Server vrátil chybu: ${rawText.slice(0, 250)}` : 'Server nevrátil platný ZIP archiv.',
+      };
+    }
+
+    // Prepare target directory: if exists, purge contents; if not, create
+    try {
+      if (!fs.existsSync(cleanTarget)) {
+        fs.mkdirSync(cleanTarget, { recursive: true });
+      } else {
+        const entries = fs.readdirSync(cleanTarget);
+        for (const entry of entries) {
+          const entryPath = path.join(cleanTarget, entry);
+          fs.rmSync(entryPath, { recursive: true, force: true });
+        }
+      }
+    } catch (fsErr: any) {
+      return {
+        success: false,
+        error: `Nelze připravit cílovou složku "${cleanTarget}": ${fsErr?.message}`,
+      };
+    }
+
+    // Extract ZIP safely
+    let zip: AdmZip;
+    try {
+      zip = new AdmZip(buffer);
+    } catch (zipErr: any) {
+      return {
+        success: false,
+        error: `Nepodařilo se otevřít stažený ZIP archiv: ${zipErr?.message}`,
+      };
+    }
+
+    const zipEntries = zip.getEntries();
+    for (const entry of zipEntries) {
+      const normalized = path.normalize(entry.entryName);
+      if (normalized.startsWith('..') || path.isAbsolute(normalized)) {
+        return {
+          success: false,
+          error: `Detekována nepovolená cesta v archivu: ${entry.entryName}`,
+        };
+      }
+    }
+
+    zip.extractAllTo(cleanTarget, true);
+
+    return {
+      success: true,
+      targetPath: cleanTarget,
+      fileCount: zipEntries.length,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message || 'Chyba při stahování zdrojových kódů webu z instance.',
+    };
+  }
 }

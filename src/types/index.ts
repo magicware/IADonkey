@@ -83,6 +83,7 @@ export interface MagicGateSettings {
   username: string;
   password: string;
   xmlPath?: string;
+  instanceSourceCodesPath?: string;
 }
 
 export interface MlogSettings {
