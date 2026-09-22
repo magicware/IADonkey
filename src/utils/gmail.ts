@@ -25,6 +25,7 @@ export function detectEmail(query: string): LauncherItem | null {
 
   return {
     id: `gmail-${trimmed.toLowerCase()}`,
+    sourceId: 'gmail',
     name: `Napsat e-mail: ${trimmed}`,
     location: gmailUrl,
     action: 'open',

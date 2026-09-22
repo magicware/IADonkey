@@ -2525,7 +2525,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                             DonkeyTools
                           </span>
                         ) : null}
-                        {item.priority === -1.5 && (
+                        {(item.sourceId === 'gmail' || item.id?.startsWith('gmail-')) && (
                           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold">
                             Gmail
                           </span>
