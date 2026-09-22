@@ -902,7 +902,7 @@ function setupIpcHandlers() {
   ipcMain.handle('send-test-notification', () => {
     return notificationService.show({
       type: 'test',
-      title: 'IADonkey – Testovací notifikace',
+      title: 'Testovací notifikace',
       body: 'Systémové notifikace fungují správně! Budete dostávat upozornění o důležitých událostech.',
       onClick: () => {
         windowManager.showSpotlight();
@@ -1095,7 +1095,7 @@ function setupIpcHandlers() {
 
     notificationService.show({
       type: 'syncComplete',
-      title: 'IADonkey – Synchronizace dokončena',
+      title: 'Synchronizace dokončena',
       body: `Úspěšně synchronizováno celkem ${allItems.length} položek.`,
       onClick: () => {
         windowManager.showSpotlight();
@@ -1848,7 +1848,7 @@ function startBackgroundTasks() {
       if (updateInfo.hasUpdate) {
         notificationService.show({
           type: 'update',
-          title: `IADonkey – Nová verze v${updateInfo.latestVersion}`,
+          title: `Nová verze v${updateInfo.latestVersion}`,
           body: `Byla nalezena nová aktualizace aplikace. Kliknutím zobrazíte podrobnosti.`,
           onClick: () => {
             windowManager.showSpotlight();
