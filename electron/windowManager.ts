@@ -468,9 +468,9 @@ export class WindowManager {
 
     this.cmsDownloadWindow = new BrowserWindow({
       width: 640,
-      height: 580,
+      height: 620,
       minWidth: 540,
-      minHeight: 500,
+      minHeight: 520,
       title: `IADonkey – Stažení CMSinFS zdrojáků (${params.instanceName})`,
       icon: getAppIcon(),
       autoHideMenuBar: true,

@@ -168,8 +168,8 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
         </div>
       </div>
 
-      {/* Body Content - no page scrollbar, generous space for protocol */}
-      <div className="flex-1 p-4 flex flex-col gap-3 overflow-hidden min-h-0">
+      {/* Body Content - no page scrollbar, generous space for protocol with safe zone */}
+      <div className="flex-1 px-5 pt-4 pb-5 flex flex-col gap-3 min-h-0 overflow-hidden">
         {/* Target directory info card */}
         <div className="bg-black/30 border border-white/10 rounded-xl p-3 space-y-1 shrink-0">
           <div className="flex items-center justify-between text-xs text-gray-400 font-medium">
@@ -192,10 +192,21 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
         {(status === 'downloading' || status === 'purging' || status === 'extracting') && (
           <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 space-y-2.5 text-center shrink-0">
             {/* SVG rotating ring spinner with STATIC upright icon inside */}
-            <div className="relative w-11 h-11 flex items-center justify-center mx-auto">
-              <svg className="animate-spin w-11 h-11 text-purple-400 absolute inset-0" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" />
-                <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" />
+            <div className="relative w-11 h-11 rounded-full bg-purple-500/15 flex items-center justify-center mx-auto">
+              <svg className="animate-spin w-11 h-11 text-purple-400 absolute inset-0" viewBox="0 0 44 44" fill="none">
+                {/* 1px subtle track copying the container border */}
+                <circle cx="22" cy="22" r="21" stroke="currentColor" strokeWidth="1" className="opacity-25" />
+                {/* 1.25px spinning active arc */}
+                <circle
+                  cx="22"
+                  cy="22"
+                  r="21"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                  strokeDasharray="36 96"
+                  strokeLinecap="round"
+                  className="opacity-95"
+                />
               </svg>
               <span className="material-symbols-outlined text-lg text-purple-300 select-none">download</span>
             </div>
@@ -258,7 +269,7 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
         {/* Error View */}
         {status === 'error' && (
           <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-3.5 text-center space-y-2 shrink-0">
-            <div className="w-10 h-10 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center mx-auto">
+            <div className="w-11 h-11 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center mx-auto">
               <span className="material-symbols-outlined text-2xl">error</span>
             </div>
             <div>
@@ -270,12 +281,12 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
           </div>
         )}
 
-        {/* Console / Log box - takes full remaining height during download */}
-        <div className="flex-1 flex flex-col min-h-0 space-y-1">
+        {/* Console / Log box - takes full remaining height with bottom safe zone */}
+        <div className="flex-1 flex flex-col min-h-0 space-y-1.5 pb-1">
           <div className="text-[11px] font-medium text-gray-400">Protokol operace:</div>
           <div
             ref={logContainerRef}
-            className="flex-1 min-h-[110px] overflow-y-auto bg-black/40 border border-white/10 rounded-xl p-2.5 font-mono text-[11px] text-gray-300 space-y-0.5 leading-tight select-text"
+            className="flex-1 min-h-[85px] overflow-y-auto bg-black/40 border border-white/10 rounded-xl p-3 font-mono text-[11px] text-gray-300 space-y-0.5 leading-tight select-text"
           >
             {logs.map((log, idx) => (
               <div key={idx} className="whitespace-pre-wrap">{log}</div>
