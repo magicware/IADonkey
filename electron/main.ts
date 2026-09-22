@@ -20,6 +20,9 @@ import { diagnosticsService } from './diagnosticsService';
 import { notificationService } from './notificationService';
 
 app.name = 'IADonkey';
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.iadonkey.launcher');
+}
 
 // Register file scheme as secure
 protocol.registerSchemesAsPrivileged([

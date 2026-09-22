@@ -68,18 +68,26 @@ export class NotificationService {
 
       // Windows Toast header attribution:
       // Windows 10 a Windows 11 zobrazují v záhlaví toast notifikace (u křížku pro zavření) název
-      // a ikonu zástupce v nabídce Start, jehož System.AppUserModel.ID odpovídá nastavenému AUMID.
+      // a ikonu zástupce v nabídce Start, jehož System.AppUserModel.ID odpovídá nastavenému AUMID
+      // a jehož target odpovídá běžícímu spustitelnému souboru (process.execPath).
       try {
         const startMenuDir = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs');
         const shortcutPath = path.join(startMenuDir, 'IADonkey.lnk');
+        const electronShortcut = path.join(startMenuDir, 'Electron.lnk');
         const icoPath = getNotificationIco();
-        const installedExe = path.join(process.env.LOCALAPPDATA || '', 'Programs', 'IADonkey', 'IADonkey.exe');
-        const targetExe = app.isPackaged
-          ? process.execPath
-          : (fs.existsSync(installedExe) ? installedExe : process.execPath);
+
+        // Pokud ve Start Menu existuje zástupce 'Electron.lnk' z vývojového prostředí, odstraníme ho,
+        // aby Windows nepřiřazoval hlavičku notifikace generickému zástupci Electron.
+        if (fs.existsSync(electronShortcut)) {
+          try {
+            fs.unlinkSync(electronShortcut);
+          } catch {
+            // Ignorujeme případnou chybu při mazání
+          }
+        }
 
         const shortcutOptions: Electron.ShortcutDetails = {
-          target: targetExe,
+          target: process.execPath,
           description: 'IADonkey Launcher',
           appUserModelId: appId,
           icon: icoPath,
@@ -89,7 +97,7 @@ export class NotificationService {
         if (fs.existsSync(startMenuDir)) {
           const operation = fs.existsSync(shortcutPath) ? 'replace' : 'create';
           shell.writeShortcutLink(shortcutPath, operation, shortcutOptions);
-          console.log('[NotificationService] Registered Start Menu shortcut with AUMID:', appId, 'at:', shortcutPath);
+          console.log('[NotificationService] Registered Start Menu shortcut with AUMID:', appId, 'target:', process.execPath);
         }
       } catch (err) {
         console.warn('[NotificationService] Failed to register/update Start Menu shortcut for AUMID:', err);
@@ -138,6 +146,8 @@ export class NotificationService {
         body: options.body,
         icon: iconPath,
         silent: isSilent,
+        groupId: 'iadonkey',
+        groupTitle: 'IADonkey',
       });
 
       if (options.onClick) {
