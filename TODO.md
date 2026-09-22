@@ -24,4 +24,4 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci a dokon
   - *Poznámka (Varianta 2 k předělání v případě nespokojenosti)*: Pokud by plovoucí zobrazení v rámci Spotlightu (740×540 px) nestačilo nebo nevyhovovalo, vytvořit pro Release Notes samostatné dedikované Electron okno (např. 720×560 px) s vlastním záhlavím a rámečkem nezávislým na launcheru.
 
 - [x] **4. Redesign SplashScreenu (Photoshop-style layout na výšku)**
-  - Úprava okna na kompaktnější vertikální formát (360×450 px), zarovnání vlevo, zvětšená ikona (64 px), velký bílý název IADonkey, barevná verze v mono písmu, obecný 2-větný popis a spodní copyright `© 2026 Petr Coolhanek`. Rámeček a zaoblení sladěno se Spotlightem (`border-white/10`, `rounded-2xl`).
+  - Úprava okna na kompaktní formát (350×400 px), zarovnání vlevo, ikona (58 px), bílý název IADonkey, barevná verze v mono písmu, obecný popis a spodní copyright `© 2026 Petr Coolhanek`. Rámeček a zaoblení sladěno se Spotlightem (`border-white/10`, `rounded-2xl`).

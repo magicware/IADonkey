@@ -734,8 +734,8 @@ export class WindowManager {
     }
 
     this.splashWindow = new BrowserWindow({
-      width: 360,
-      height: 450,
+      width: 350,
+      height: 400,
       frame: false,
       transparent: true,
       backgroundColor: '#00000000',
@@ -783,27 +783,27 @@ export class WindowManager {
     flex-direction: column;
     align-items: flex-start;
     justify-content: flex-start;
-    padding: 28px 26px 22px 26px;
+    padding: 24px 24px 20px 24px;
     text-align: left;
   }
   .icon {
-    width: 64px;
-    height: 64px;
+    width: 58px;
+    height: 58px;
     object-fit: contain;
-    border-radius: 16px;
-    margin-bottom: 16px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    border-radius: 14px;
+    margin-bottom: 14px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
   }
   .title {
-    font-size: 26px;
+    font-size: 24px;
     font-weight: 700;
     color: #ffffff;
     letter-spacing: 0.3px;
     line-height: 1.15;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
   }
   .version {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     color: #818cf8;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -811,13 +811,13 @@ export class WindowManager {
   }
   .spacer {
     flex: 1;
-    min-height: 16px;
+    min-height: 12px;
   }
   .description {
-    font-size: 12px;
-    line-height: 1.55;
+    font-size: 11.5px;
+    line-height: 1.5;
     color: #9ca3af;
-    margin-bottom: 18px;
+    margin-bottom: 16px;
   }
   .copyright {
     font-size: 11px;
