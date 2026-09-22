@@ -5282,7 +5282,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         Jak ColorMaster používat ve vyhledávači
                       </span>
                       <ul className="list-disc list-inside space-y-0.5 text-gray-400 pl-1">
-                        <li>Zadejte <code className="bg-white/10 px-1 rounded text-white font-mono">/kapatko</code> pro spuštění kapátka přímo z launcheru.</li>
+                        <li>Zadejte <code className="bg-white/10 px-1 rounded text-white font-mono">/color</code>, použijte klávesovou zkratku nebo ve Spotlightu klikněte na ikonku nástrojů.</li>
                         <li>Zadejte kód barvy (např. <code className="bg-white/10 px-1 rounded text-white font-mono">#ff8800</code>, <code className="bg-white/10 px-1 rounded text-white font-mono">rgb(255, 128, 0)</code> nebo <code className="bg-white/10 px-1 rounded text-white font-mono">hsl(32, 100%, 50%)</code>) – vyhledávač okamžitě zobrazí živý barevný vzorník a převody formátů.</li>
                         <li>Stiskem <kbd className="bg-white/10 px-1 rounded font-mono text-[10px]">Shift+Enter</kbd> na barvě otevřete akce: kopírování jednotlivých formátů nebo přímé nastavení barvy jako motivu IADonkey!</li>
                       </ul>
@@ -5541,8 +5541,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         Jak QuickCap používat
                       </span>
                       <ul className="list-disc list-inside space-y-0.5 text-gray-400 pl-1">
-                        <li>Zadejte <code className="bg-white/10 px-1 rounded text-white font-mono">/quickcap</code>, <code className="bg-white/10 px-1 rounded text-white font-mono">/cap</code> nebo <code className="bg-white/10 px-1 rounded text-white font-mono">/vystrizek</code> pro spuštění z launcheru.</li>
-                        <li>Nebo použijte nakonfigurovanou globální klávesovou zkratku odkudkoliv z Windows.</li>
+                        <li>Zadejte <code className="bg-white/10 px-1 rounded text-white font-mono">/cap</code>, použijte klávesovou zkratku nebo ve Spotlightu klikněte na ikonku nástrojů.</li>
                         <li>Táhněte myší pro výběr oblasti. Uvolněním tlačítka myši se snímek ihned zkopíruje do schránky a uloží na disk.</li>
                         <li>Stiskem <kbd className="bg-white/10 px-1 rounded font-mono text-[10px]">Esc</kbd> pořízení výstřižku zrušíte bez uložení.</li>
                       </ul>
