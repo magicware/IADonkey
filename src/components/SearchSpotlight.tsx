@@ -406,12 +406,25 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       inputRef.current?.blur();
     });
 
+    const cleanupResetAndFocus = window.electronAPI?.onResetAndFocusSpotlight?.(() => {
+      setQuery('');
+      setSelectedIndex(0);
+      setParentItem(null);
+      setActionsParentItem(null);
+      savedParentItemRef.current = null;
+      restoringIndexRef.current = null;
+      setIsRevealed(true);
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+
     return () => {
       window.removeEventListener('focus', handleFocus);
       cleanupShown?.();
       cleanupFocusInput?.();
       cleanupHide?.();
       cleanupReset?.();
+      cleanupResetAndFocus?.();
     };
   }, [defaultCloneDir]);
 

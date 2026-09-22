@@ -55,6 +55,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('open-cms-download-window', params),
   closeCmsDownloadWindow: (restoreSpotlight: boolean = false): Promise<void> =>
     ipcRenderer.invoke('close-cms-download-window', restoreSpotlight),
+  closeAndResetSpotlight: (): Promise<void> => ipcRenderer.invoke('close-and-reset-spotlight'),
   onMagicGateCloneProgress: (callback: (data: { current: number; total: number; repoName: string; log: string }) => void) => {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on('magicgate-clone-progress', handler);
@@ -142,6 +143,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = () => callback();
     ipcRenderer.on('reset-spotlight', handler);
     return () => ipcRenderer.removeListener('reset-spotlight', handler);
+  },
+
+  onResetAndFocusSpotlight: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('reset-and-focus-spotlight', handler);
+    return () => ipcRenderer.removeListener('reset-and-focus-spotlight', handler);
   },
 
   onTriggerEyedropper: (callback: () => void) => {

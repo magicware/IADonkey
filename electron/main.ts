@@ -1000,6 +1000,13 @@ function setupIpcHandlers() {
     windowManager.closeCmsDownloadWindow();
   });
 
+  ipcMain.handle('close-and-reset-spotlight', () => {
+    windowManager.setResetSpotlightOnCloneClose(true);
+    windowManager.setResetSpotlightOnCmsDownloadClose(true);
+    windowManager.closeGitCloneWindow();
+    windowManager.closeCmsDownloadWindow();
+  });
+
   ipcMain.handle('magicgate-download-cms-content', async (event, params: {
     adminUrl: string;
     instanceName?: string;

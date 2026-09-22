@@ -131,6 +131,14 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [status, onClose]);
 
+  const handleFooterClose = async () => {
+    if (window.electronAPI?.closeAndResetSpotlight) {
+      await window.electronAPI.closeAndResetSpotlight();
+    } else {
+      onClose();
+    }
+  };
+
   const handleOpenInExplorer = () => {
     if (targetDir && window.electronAPI?.openPath) {
       window.electronAPI.openPath(targetDir);
@@ -327,7 +335,7 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleFooterClose}
               className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white rounded-xl text-xs font-normal transition cursor-pointer"
             >
               Zavřít
@@ -337,7 +345,7 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
           <>
             <button
               type="button"
-              onClick={onClose}
+              onClick={status === 'error' ? handleFooterClose : onClose}
               className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl text-xs font-normal transition cursor-pointer"
             >
               {status === 'error' ? 'Zavřít' : 'Zrušit'}

@@ -300,6 +300,14 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
     }
   };
 
+  const handleFooterClose = async () => {
+    if (window.electronAPI?.closeAndResetSpotlight) {
+      await window.electronAPI.closeAndResetSpotlight();
+    } else {
+      onClose();
+    }
+  };
+
   const handleOpenSpecificInVscode = async (path: string) => {
     if (path && window.electronAPI?.openInVscode) {
       await window.electronAPI?.resetAndHideSpotlight?.();
@@ -692,7 +700,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleFooterClose}
               className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white rounded-xl text-xs font-normal transition cursor-pointer"
             >
               Zavřít

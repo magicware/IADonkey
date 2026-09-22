@@ -54,6 +54,8 @@ export class WindowManager {
   private lastShowTime = 0;
   private shouldRestoreSpotlightOnCloneClose = true;
   private shouldRestoreSpotlightOnCmsDownloadClose = true;
+  private shouldResetSpotlightOnCloneClose = false;
+  private shouldResetSpotlightOnCmsDownloadClose = false;
 
   public setSkipSpotlightRestoreOnCloneClose(skip: boolean): void {
     this.shouldRestoreSpotlightOnCloneClose = !skip;
@@ -61,6 +63,14 @@ export class WindowManager {
 
   public setSkipSpotlightRestoreOnCmsDownloadClose(skip: boolean): void {
     this.shouldRestoreSpotlightOnCmsDownloadClose = !skip;
+  }
+
+  public setResetSpotlightOnCloneClose(reset: boolean): void {
+    this.shouldResetSpotlightOnCloneClose = reset;
+  }
+
+  public setResetSpotlightOnCmsDownloadClose(reset: boolean): void {
+    this.shouldResetSpotlightOnCmsDownloadClose = reset;
   }
 
   constructor(
@@ -397,6 +407,9 @@ export class WindowManager {
       },
     });
 
+    this.shouldRestoreSpotlightOnCloneClose = true;
+    this.shouldResetSpotlightOnCloneClose = false;
+
     if (process.env.VITE_DEV_SERVER_URL) {
       this.gitCloneWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#git-clone?${query}`);
     } else {
@@ -416,10 +429,16 @@ export class WindowManager {
       if (this.shouldRestoreSpotlightOnCloneClose) {
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
           this.showSpotlight();
-          this.mainWindow.webContents.send('focus-input');
+          if (this.shouldResetSpotlightOnCloneClose) {
+            this.mainWindow.webContents.send('reset-and-focus-spotlight');
+            this.shouldResetSpotlightOnCloneClose = false;
+          } else {
+            this.mainWindow.webContents.send('focus-input');
+          }
         }
       } else {
         this.shouldRestoreSpotlightOnCloneClose = true;
+        this.shouldResetSpotlightOnCloneClose = false;
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
           this.hideSpotlight();
           this.mainWindow.webContents.send('reset-spotlight');
@@ -428,6 +447,12 @@ export class WindowManager {
     });
 
     return this.gitCloneWindow;
+  }
+
+  public closeGitCloneWindow(): void {
+    if (this.gitCloneWindow && !this.gitCloneWindow.isDestroyed()) {
+      this.gitCloneWindow.close();
+    }
   }
 
   public getCmsDownloadWindow(): BrowserWindow | null {
@@ -490,6 +515,7 @@ export class WindowManager {
     });
 
     this.shouldRestoreSpotlightOnCmsDownloadClose = true;
+    this.shouldResetSpotlightOnCmsDownloadClose = false;
 
     if (process.env.VITE_DEV_SERVER_URL) {
       this.cmsDownloadWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#cms-download?${query}`);
@@ -510,10 +536,16 @@ export class WindowManager {
       if (this.shouldRestoreSpotlightOnCmsDownloadClose) {
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
           this.showSpotlight();
-          this.mainWindow.webContents.send('focus-input');
+          if (this.shouldResetSpotlightOnCmsDownloadClose) {
+            this.mainWindow.webContents.send('reset-and-focus-spotlight');
+            this.shouldResetSpotlightOnCmsDownloadClose = false;
+          } else {
+            this.mainWindow.webContents.send('focus-input');
+          }
         }
       } else {
         this.shouldRestoreSpotlightOnCmsDownloadClose = true;
+        this.shouldResetSpotlightOnCmsDownloadClose = false;
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
           this.hideSpotlight();
           this.mainWindow.webContents.send('reset-spotlight');

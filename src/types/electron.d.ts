@@ -98,6 +98,7 @@ declare global {
         targetDir: string;
       }) => Promise<void>;
       closeCmsDownloadWindow?: (restoreSpotlight?: boolean) => Promise<void>;
+      closeAndResetSpotlight?: () => Promise<void>;
       onCmsDownloadProgress: (callback: (data: {
         step: string;
         percent?: number;
@@ -132,6 +133,7 @@ declare global {
       onSearchEngineFaviconsUpdated: (callback: (favicons: Record<string, string>) => void) => () => void;
       onFocusInput: (callback: () => void) => () => void;
       onResetSpotlight: (callback: () => void) => () => void;
+      onResetAndFocusSpotlight?: (callback: () => void) => () => void;
       onTriggerEyedropper?: (callback: () => void) => () => void;
       pickScreenColor?: (options?: { noClipboard?: boolean; noSpotlight?: boolean }) => Promise<string | null>;
       onColorPickedGlobal?: (callback: (data: { color: string; formatted: string }) => void) => () => void;
