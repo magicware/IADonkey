@@ -235,6 +235,12 @@ export function createColorLauncherItem(
 
   const actions: LauncherAction[] = [
     {
+      name: 'Zavřít',
+      action: 'close',
+      location: 'Zavřít a resetovat vyhledávač',
+      icon: 'close',
+    },
+    {
       name: 'Zkopírovat HEX',
       action: 'copy',
       location: color.hex,

@@ -204,6 +204,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           },
           actions: [
             {
+              name: 'Zavřít',
+              action: 'close',
+              location: 'Zavřít a resetovat vyhledávač',
+              icon: 'close',
+            },
+            {
               name: 'Upravit (v přípravě)',
               action: 'edit-quickcap',
               location: data.filePath,
@@ -231,7 +237,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         };
         setQuery('');
         setActionsParentItem(item);
-        setSelectedActionIndex(1); // Select 'Otevřít' by default since 'Upravit' is in preparation
+        setSelectedActionIndex(0);
         setIsRevealed(true);
         inputRef.current?.focus();
       });
@@ -1249,6 +1255,14 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       status: 'info',
     });
 
+    if (actionType === 'close') {
+      exitActions();
+      setQuery('');
+      setSelectedIndex(0);
+      handleClose();
+      return;
+    }
+
     if (actionType === 'clone' || actionType === 'clonerecursive') {
       exitActions();
       window.electronAPI?.openGitCloneWindow?.({
@@ -2104,23 +2118,30 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                   const isPreparation = action.action === 'edit-quickcap';
                   const isPaint = action.action === 'open-paint';
                   const isFolder = action.action === 'show-in-folder';
+                  const isClose = action.action === 'close';
 
                   const itemSelectedClass = isSelected
                     ? isVscode
                       ? 'bg-cyan-800/40 border-cyan-500/50 text-white shadow-md'
                       : isAndroid
                       ? 'bg-pink-800/40 border-pink-500/50 text-white shadow-md'
+                      : isClose
+                      ? 'bg-white/[0.08] border-white/20 text-white shadow-md'
                       : 'bg-purple-600/30 border-purple-500/40 text-white shadow-md'
                     : isVscode
                     ? 'hover:bg-cyan-950/30 text-gray-200 border-white/5 bg-black/20 hover:border-cyan-500/30'
                     : isAndroid
                     ? 'hover:bg-pink-950/30 text-gray-200 border-white/5 bg-black/20 hover:border-pink-500/30'
+                    : isClose
+                    ? 'hover:bg-white/[0.05] text-gray-200 border-white/5 bg-black/20 hover:border-white/20'
                     : 'hover:bg-white/[0.05] text-gray-200 border-white/5 bg-black/20 hover:border-purple-500/30';
 
                   const iconContainerClass = isVscode
                     ? 'bg-cyan-900/40 border-cyan-500/50 text-cyan-300'
                     : isAndroid
                     ? 'bg-pink-900/40 border-pink-500/50 text-pink-300'
+                    : isClose
+                    ? 'bg-white/10 border-white/20 text-gray-300'
                     : 'bg-purple-600/20 border-purple-500/30 text-purple-300';
 
                   const dividerClass = isSelected
@@ -2135,12 +2156,16 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                     ? 'bg-cyan-950/70 border-cyan-500/50 text-cyan-300'
                     : isAndroid
                     ? 'bg-pink-950/70 border-pink-500/50 text-pink-300'
+                    : isClose
+                    ? 'bg-white/10 border-white/20 text-gray-300'
                     : 'bg-purple-950/70 border-purple-500/40 text-purple-300';
 
                   const selectIndicatorClass = isVscode
                     ? 'text-cyan-300'
                     : isAndroid
                     ? 'text-pink-300'
+                    : isClose
+                    ? 'text-gray-300'
                     : 'text-purple-300';
 
                   return (
@@ -2155,7 +2180,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       <div className="flex items-center gap-3 shrink-0">
                         <div className={`w-8 h-8 rounded-full border flex items-center justify-center ${iconContainerClass}`}>
                           <span className="material-symbols-outlined text-lg">
-                            {action.icon || (action.action === 'clone' ? 'download' : action.action === 'clonerecursive' ? 'folder_zip' : action.action === 'mgclone' || action.action === 'mgclonerecursive' ? 'cloud_download' : action.action === 'copy' ? 'content_copy' : 'open_in_new')}
+                            {action.icon || (action.action === 'close' ? 'close' : action.action === 'clone' ? 'download' : action.action === 'clonerecursive' ? 'folder_zip' : action.action === 'mgclone' || action.action === 'mgclonerecursive' ? 'cloud_download' : action.action === 'copy' ? 'content_copy' : 'open_in_new')}
                           </span>
                         </div>
                         <div className={`h-5 w-[1px] shrink-0 self-center transition-colors ${dividerClass}`} />
@@ -2177,6 +2202,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                               ? 'Malování'
                               : isFolder
                               ? 'Složka'
+                              : isClose
+                              ? 'Zavřít'
                               : action.action}
                           </span>
                         </div>

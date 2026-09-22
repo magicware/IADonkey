@@ -734,8 +734,8 @@ export class WindowManager {
     }
 
     this.splashWindow = new BrowserWindow({
-      width: 380,
-      height: 230,
+      width: 480,
+      height: 290,
       frame: false,
       transparent: true,
       backgroundColor: '#00000000',
@@ -775,7 +775,7 @@ export class WindowManager {
     width: 100%;
     height: 100%;
     background-color: #141520;
-    border-radius: 28px;
+    border-radius: 16px;
     border: none;
     outline: none;
     box-shadow: none;
