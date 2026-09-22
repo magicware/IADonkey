@@ -492,34 +492,36 @@ export const App: React.FC = () => {
       className="w-full h-screen p-2 flex flex-col justify-start select-none bg-transparent"
     >
       {/* Search Bar & Autocomplete list */}
-      <SearchSpotlight
-        items={visibleItems}
-        mlogBaseUrl={config?.extensions?.mlog ? config?.mlog?.baseUrl : undefined}
-        mlogTaskPrefix={config?.mlog?.taskPrefix}
-        mlogRequestPrefix={config?.mlog?.requestPrefix}
-        searchGoogle={config.searchGoogle !== false}
-        defaultSearchEngine={config.defaultSearchEngine}
-        defaultCloneDir={config?.github?.defaultCloneDir}
-        vscodeEnabled={config.extensions?.vscode ?? false}
-        androidStudioEnabled={config.extensions?.androidStudio ?? false}
-        donkeyToolsEnabled={config.extensions?.donkeyTools ?? false}
-        colorMasterConfig={config.donkeyTools?.colorMaster}
-        quickCapConfig={config.donkeyTools?.quickCap || config.donkeyTools?.fastSnap}
-        fastSnapConfig={config.donkeyTools?.quickCap || config.donkeyTools?.fastSnap}
-        onSaveConfig={handleSaveConfig}
-        onOpenSettings={() => {
-          if (window.electronAPI?.openSettingsWindow) {
-            window.electronAPI.openSettingsWindow();
-          } else {
-            setShowSettings(true);
-          }
-        }}
-        onRefreshData={handleRefreshData}
-        isSyncing={isSyncing}
-        syncProgress={syncProgress}
-        lastSyncTime={config.lastSyncTime}
-        snippets={config.snippets}
-      />
+      {!showWhatsNew && !showChangelog && !updateInfo && !showSettings && (
+        <SearchSpotlight
+          items={visibleItems}
+          mlogBaseUrl={config?.extensions?.mlog ? config?.mlog?.baseUrl : undefined}
+          mlogTaskPrefix={config?.mlog?.taskPrefix}
+          mlogRequestPrefix={config?.mlog?.requestPrefix}
+          searchGoogle={config.searchGoogle !== false}
+          defaultSearchEngine={config.defaultSearchEngine}
+          defaultCloneDir={config?.github?.defaultCloneDir}
+          vscodeEnabled={config.extensions?.vscode ?? false}
+          androidStudioEnabled={config.extensions?.androidStudio ?? false}
+          donkeyToolsEnabled={config.extensions?.donkeyTools ?? false}
+          colorMasterConfig={config.donkeyTools?.colorMaster}
+          quickCapConfig={config.donkeyTools?.quickCap || config.donkeyTools?.fastSnap}
+          fastSnapConfig={config.donkeyTools?.quickCap || config.donkeyTools?.fastSnap}
+          onSaveConfig={handleSaveConfig}
+          onOpenSettings={() => {
+            if (window.electronAPI?.openSettingsWindow) {
+              window.electronAPI.openSettingsWindow();
+            } else {
+              setShowSettings(true);
+            }
+          }}
+          onRefreshData={handleRefreshData}
+          isSyncing={isSyncing}
+          syncProgress={syncProgress}
+          lastSyncTime={config.lastSyncTime}
+          snippets={config.snippets}
+        />
+      )}
 
       {/* Fallback modal if not in dedicated window */}
       {showSettings && (
@@ -560,7 +562,10 @@ export const App: React.FC = () => {
 
       {/* Complete Changelog Modal */}
       {showChangelog && (
-        <ChangelogModal onClose={() => setShowChangelog(false)} />
+        <ChangelogModal
+          onClose={() => setShowChangelog(false)}
+          isSpotlightView={true}
+        />
       )}
     </main>
   );

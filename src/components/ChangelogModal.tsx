@@ -1,14 +1,25 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { CHANGELOG_HISTORY, UPCOMING_CHANGELOG, CURRENT_APP_VERSION } from '../changelog';
 
 interface ChangelogModalProps {
   onClose: () => void;
+  isSpotlightView?: boolean;
 }
 
-export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose }) => {
+export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose, isSpotlightView = false }) => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-[#1e1e28] border border-indigo-500/40 rounded-2xl w-full max-w-2xl max-h-[85vh] p-6 shadow-2xl flex flex-col gap-4 text-gray-200 animate-in fade-in zoom-in-95 duration-150 select-none">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-2 ${isSpotlightView ? 'bg-transparent' : 'bg-black/70 backdrop-blur-sm'}`}>
+      <div className="bg-[#1c1d24] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[510px] p-6 shadow-2xl flex flex-col gap-4 text-gray-200 animate-in fade-in zoom-in-95 duration-150 select-none">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/10 pb-3">
           <div className="flex items-center gap-3">

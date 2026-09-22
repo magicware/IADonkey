@@ -17,12 +17,25 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!window.electronAPI?.onUpdateDownloadProgress) return;
-    const unsubscribe = window.electronAPI.onUpdateDownloadProgress((p: DownloadProgress) => {
-      setProgress(p);
-    });
-    return () => unsubscribe();
-  }, []);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onDecline();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    let unsubscribe: (() => void) | undefined;
+    if (window.electronAPI?.onUpdateDownloadProgress) {
+      unsubscribe = window.electronAPI.onUpdateDownloadProgress((p: DownloadProgress) => {
+        setProgress(p);
+      });
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (unsubscribe) unsubscribe();
+    };
+  }, [onDecline]);
 
   const handleStartDownload = async () => {
     if (!updateInfo.downloadUrl) {
@@ -63,8 +76,8 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-[#1e1e28] border border-indigo-500/40 rounded-2xl w-full max-w-md p-6 shadow-2xl flex flex-col gap-4 text-gray-200 animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 bg-transparent flex items-center justify-center p-2">
+      <div className="bg-[#1c1d24] border border-white/10 rounded-2xl w-full max-w-lg p-6 shadow-2xl flex flex-col gap-4 text-gray-200 animate-in fade-in zoom-in-95 duration-150 select-none">
         
         {/* Header section based on state */}
         {downloadState === 'completed' ? (

@@ -25,6 +25,6 @@ Aktuální seznam otevřených úkolů a vylepšení k realizaci.
   - Navrhnout integraci do IADonkey (upozornění na dokončení synchronizace, pořízení výstřižku QuickCap, aktualizace, chyby).
   - Zvážit možnosti uživatelského nastavení a chování při tichém režimu.
 
-- [ ] **5. Vyřešit problém s backdropem u okna Release Notes**
-  - Opravit černé pozadí pod oknem Release Notes, které je uřízlé / neodpovídá zaoblení okna či hranicím obsahu.
-  - Prověřit nastavení Electron okna (backgroundColor, transparent), stíny a backdrop v CSS.
+- [x] **5. Vyřešit problém s backdropem u okna Release Notes**
+  - Implementována Varianta 1: Odstraněn ostrý černý obdélníkový backdrop (`fixed inset-0 bg-black/80`), nahrazen transparentním kontejnerem a při zobrazení dialogu je skryt podkladový Spotlight. Okno plave čistě se zaoblenými rohy (`rounded-2xl`), vlastním stínem a podporou zavření klávesou `Escape`.
+  - *Poznámka (Varianta 2 k předělání v případě nespokojenosti)*: Pokud by plovoucí zobrazení v rámci Spotlightu (740×540 px) nestačilo nebo nevyhovovalo, vytvořit pro Release Notes samostatné dedikované Electron okno (např. 720×560 px) s vlastním záhlavím a rámečkem nezávislým na launcheru.
