@@ -96,7 +96,7 @@ const ColorPickerSection: React.FC<ColorPickerSectionProps> = ({
             type="button"
             onClick={async () => {
               try {
-                const picked = await pickScreenColor();
+                const picked = await pickScreenColor({ noClipboard: true, noSpotlight: true });
                 if (picked) {
                   onColorChange(picked);
                 }
@@ -6089,7 +6089,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {/* Tichý režim */}
                     <div className="flex items-center justify-between gap-4 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
                       <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined text-base text-gray-400">volume_off</span>
+                        <span className="material-symbols-outlined text-base text-indigo-400">volume_off</span>
                         <div>
                           <span className="text-xs font-medium text-gray-200 block">Tichý režim</span>
                           <span className="text-[11px] text-gray-400">Nezahrnovat systémový zvuk Windows při zobrazení banneru</span>
@@ -6120,7 +6120,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {/* QuickCap */}
                     <div className="flex items-center justify-between gap-4 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
                       <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined text-base text-rose-400">crop</span>
+                        <span className="material-symbols-outlined text-base text-indigo-400">crop</span>
                         <div>
                           <span className="text-xs font-medium text-gray-200 block">Výstřižky QuickCap</span>
                           <span className="text-[11px] text-gray-400">Upozornění na uložení výstřižku (kliknutím otevřete ve složce)</span>
@@ -6151,7 +6151,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {/* ColorMaster */}
                     <div className="flex items-center justify-between gap-4 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
                       <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined text-base text-rose-400">colorize</span>
+                        <span className="material-symbols-outlined text-base text-indigo-400">colorize</span>
                         <div>
                           <span className="text-xs font-medium text-gray-200 block">Kapátko ColorMaster</span>
                           <span className="text-[11px] text-gray-400">Upozornění s kódem nabrané barvy zkopírované do schránky</span>
@@ -6182,7 +6182,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {/* Synchronizace dat */}
                     <div className="flex items-center justify-between gap-4 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
                       <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined text-base text-emerald-400">sync</span>
+                        <span className="material-symbols-outlined text-base text-indigo-400">sync</span>
                         <div>
                           <span className="text-xs font-medium text-gray-200 block">Dokončení synchronizace dat</span>
                           <span className="text-[11px] text-gray-400">Upozornění na úspěšnou synchronizaci a počet načtených položek</span>
@@ -6244,7 +6244,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {/* Kopírování do schránky */}
                     <div className="flex items-center justify-between gap-4 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
                       <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined text-base text-cyan-400">content_copy</span>
+                        <span className="material-symbols-outlined text-base text-indigo-400">content_copy</span>
                         <div>
                           <span className="text-xs font-medium text-gray-200 block">Kopírování do schránky</span>
                           <span className="text-[11px] text-gray-400">Upozornění při zkopírování textu, hodnoty či cesty ze Spotlightu do schránky</span>
@@ -6874,7 +6874,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span className="material-symbols-outlined text-xl text-emerald-400 shrink-0">check_circle</span>
                     <div>
                       <span className="font-semibold text-emerald-200">Žádné zaznamenané chyby ani pády</span>
-                      <p className="text-xs text-emerald-400/80 mt-0.5">Všechny operace, spouštěče i kapátko běží bez zachycených výjimek.</p>
+                      <p className="text-xs text-emerald-400/80 mt-0.5">Všechny operace a procesy aplikace běží v pořádku bez zachycených výjimek.</p>
                     </div>
                   </div>
                 ) : (

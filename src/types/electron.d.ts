@@ -105,7 +105,7 @@ declare global {
       onFocusInput: (callback: () => void) => () => void;
       onResetSpotlight: (callback: () => void) => () => void;
       onTriggerEyedropper?: (callback: () => void) => () => void;
-      pickScreenColor?: () => Promise<string | null>;
+      pickScreenColor?: (options?: { noClipboard?: boolean; noSpotlight?: boolean }) => Promise<string | null>;
       onColorPickedGlobal?: (callback: (data: { color: string; formatted: string }) => void) => () => void;
       openTuneColorWindow?: (params: { initialColor: string }) => Promise<void>;
       saveTuneColor?: (color: string) => Promise<void>;

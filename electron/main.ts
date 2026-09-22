@@ -177,13 +177,16 @@ function getColorPickerExePath(): string {
   return candidates[0];
 }
 
-async function pickScreenColorNative(instant = false): Promise<string | null> {
+async function pickScreenColorNative(
+  instant = false,
+  options?: { noClipboard?: boolean; noSpotlight?: boolean }
+): Promise<string | null> {
   const exePath = getColorPickerExePath();
 
   diagnosticsService.logAction({
     type: 'color-picker',
     title: 'Spuštění kapátka (ColorMaster)',
-    details: `Cesta k exe: ${exePath}, režim: ${instant ? 'Okamžitý' : 'Lupa pod kurzorem'}`,
+    details: `Cesta k exe: ${exePath}, režim: ${instant ? 'Okamžitý' : 'Lupa pod kurzorem'}${options?.noClipboard ? ' (bez schránky)' : ''}`,
     status: 'info',
   });
 
@@ -198,7 +201,7 @@ async function pickScreenColorNative(instant = false): Promise<string | null> {
 
   // If Spotlight window is visible, hide it with animation so user can pick what is under it
   const mainWin = windowManager ? windowManager.getMainWindow() : null;
-  const wasMainVisible = mainWin && !mainWin.isDestroyed() && mainWin.isVisible();
+  const wasMainVisible = !options?.noSpotlight && mainWin && !mainWin.isDestroyed() && mainWin.isVisible();
   if (wasMainVisible && windowManager) {
     windowManager.hideSpotlight();
     await new Promise((r) => setTimeout(r, 100));
@@ -274,27 +277,41 @@ async function pickScreenColorNative(instant = false): Promise<string | null> {
             }
             formatted = `hsl(${Math.round(h * 360)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`;
           }
-          clipboard.writeText(formatted);
-          console.log(`[Main] Picked color ${formatted} copied to clipboard`);
+          if (!options?.noClipboard) {
+            clipboard.writeText(formatted);
+            console.log(`[Main] Picked color ${formatted} copied to clipboard`);
 
-          diagnosticsService.logAction({
-            type: 'color-picker',
-            title: `Nabrání barvy: ${pickedColor}`,
-            details: `Zkopírováno do schránky jako ${formatted}`,
-            status: 'success',
-          });
+            diagnosticsService.logAction({
+              type: 'color-picker',
+              title: `Nabrání barvy: ${pickedColor}`,
+              details: `Zkopírováno do schránky jako ${formatted}`,
+              status: 'success',
+            });
 
-          notificationService.show({
-            type: 'colorMaster',
-            title: 'ColorMaster – Barva zkopírována',
-            body: `Odstín ${formatted} byl zkopírován do schránky.`,
-          });
+            notificationService.show({
+              type: 'colorMaster',
+              title: 'ColorMaster – Barva zkopírována',
+              body: `Odstín ${formatted} byl zkopírován do schránky.`,
+            });
+          } else {
+            diagnosticsService.logAction({
+              type: 'color-picker',
+              title: `Výběr barvy v nastavení: ${pickedColor}`,
+              details: `Odstín ${formatted} aplikován bez kopírování do schránky`,
+              status: 'info',
+            });
+          }
 
-          if (windowManager) {
+          if (!options?.noSpotlight && windowManager) {
             windowManager.showSpotlight();
             const win = windowManager.getMainWindow();
             if (win && !win.isDestroyed()) {
               win.webContents.send('color-picked-global', { color: pickedColor, formatted });
+            }
+          } else {
+            const settingsWin = windowManager ? windowManager.getSettingsWindow() : null;
+            if (settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible()) {
+              settingsWin.focus();
             }
           }
         } else {
@@ -549,9 +566,9 @@ const startFastSnapProcess = startQuickCapProcess;
 
 
 function setupIpcHandlers() {
-  ipcMain.handle('pick-screen-color', async () => {
+  ipcMain.handle('pick-screen-color', async (_event, options?: { noClipboard?: boolean; noSpotlight?: boolean }) => {
     try {
-      return await pickScreenColorNative();
+      return await pickScreenColorNative(false, options);
     } catch (err) {
       console.error('[Main] Error handling pick-screen-color IPC:', err);
       return null;

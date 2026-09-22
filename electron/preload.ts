@@ -134,7 +134,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('trigger-eyedropper', handler);
   },
 
-  pickScreenColor: (): Promise<string | null> => ipcRenderer.invoke('pick-screen-color'),
+  pickScreenColor: (options?: { noClipboard?: boolean; noSpotlight?: boolean }): Promise<string | null> =>
+    ipcRenderer.invoke('pick-screen-color', options),
 
   onColorPickedGlobal: (callback: (data: { color: string; formatted: string }) => void) => {
     const handler = (_event: any, data: { color: string; formatted: string }) => callback(data);

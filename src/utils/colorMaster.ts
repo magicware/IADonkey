@@ -365,10 +365,10 @@ export function getDonkeyToolsCommands(
 /**
  * Invokes Chromium native EyeDropper API across the Windows desktop
  */
-export async function pickScreenColor(): Promise<string | null> {
+export async function pickScreenColor(options?: { noClipboard?: boolean; noSpotlight?: boolean }): Promise<string | null> {
   if (typeof window !== 'undefined' && window.electronAPI?.pickScreenColor) {
     try {
-      const res = await window.electronAPI.pickScreenColor();
+      const res = await window.electronAPI.pickScreenColor(options);
       return res && res.trim() ? res.trim().toUpperCase() : null;
     } catch (err) {
       console.error('electronAPI.pickScreenColor failed:', err);
