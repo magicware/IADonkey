@@ -17,7 +17,7 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 - **Akce „Zavřít“ na první pozici**: Po dokončení výstřižku (QuickCap) i nabrání barvy (ColorMaster) je na 1. pozici v nabídce akcí ve Spotlightu zařazena akce „Zavřít“, která je ihned vybraná a umožňuje okamžité skrytí i reset vyhledávače stiskem klávesy Enter.
 - **Izolace kapátka v Nastavení**: Při výběru primární barvy nebo barvy akcí v Nastavení kapátko nekopíruje barvu do schránky, nezobrazuje toast notifikaci ani neotevírá nabídku akcí ve Spotlightu – hodnota se pouze nastaví a okno si udrží fokus.
 - **Plovoucí dialog novinek (Release Notes)**: Odstraněn ostrý černý obdélníkový backdrop. Okno novinek má zaoblené rohy (16px), vlastní stín, podkladový vyhledávač je skryt a dialog lze pohodlně zavřít klávesou Escape.
-- **Nový vertikální SplashScreen (Photoshop-style layout)**: Úvodní obrazovka aplikace přepracována do kompaktního vertikálního formátu (350 × 400 px) se zarovnáním vlevo, velkou ikonou (58 px), výrazným bílým názvem, barevnou verzí, obecným popisem a spodním copyrightem `© 2026 Petr Coolhanek`. Rámeček i zaoblení jsou sladěny se stylem Spotlightu.
+- **Nový vertikální SplashScreen (Photoshop-style layout)**: Úvodní obrazovka aplikace přepracována do formátu (400 × 400 px) se zarovnáním vlevo, velkorysejším odsazením, velkou ikonou (58 px), výrazným bílým názvem, barevnou verzí, obecným popisem a spodním copyrightem `© 2026 Petr Coolhanek`. Rámeček i zaoblení jsou sladěny se stylem Spotlightu.
 - **Sjednocení barev ikon a vyladění Nápovědy**: Všechny ikony notifikací v Nastavení mají primární barvu motivu (s výjimkou chyb) a text chybových protokolů v Nápovědě byl zobecněn.
 
 ## [1.1.19] - 19. 9. 2026
