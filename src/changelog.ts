@@ -5,12 +5,27 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.20';
+export const CURRENT_APP_VERSION = '1.1.21';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.21',
+    date: '22. 9. 2026',
+    title: 'Stažení CMSinFS zdrojáků, dedikované okno stahování a vyladění akcí Spotlightu',
+    highlights: [
+      'Stažení zdrojových kódů CMSinFS (pro PRG): Nová akce ve Spotlightu u instancí MagicGate s možností nastavení vlastní cílové složky pro stažení obsahu instance.',
+      'Dedikované okno stahování CMSinFS: Samostatné modální okno s živým protokolem operací, indikátorem průběhu stahování ZIP archivu, rotujícím spinnerem a tlačítky pro přímé otevření ve VS Code nebo v Průzkumníku Windows.',
+      'Vyladění chování stahovacích oken: Po dokončení stahování (GitHub, MagicGate, CMSinFS) klávesa Enter simuluje tlačítko Zavřít; tlačítko Zavřít v patičce okno zavře a resetuje Spotlight bez jeho nežádoucího otevření; tlačítko Otevřít v Průzkumníku nezavírá okno.',
+      'Oddělení hoveru myši od klávesového výběru: Přejíždění myší nad výsledky vyhledávání ve Spotlightu již neposouvá scroll okna ani nepřebíjí aktivní výběr klávesnicí.',
+      'Přesné označení akce VS Code u MagicGate: U instancí MagicGate se akce jmenuje „Otevřít repozitáře ve VS Code“, zatímco u běžných repozitářů GitHubu zůstává „Otevřít ve VS Code“.',
+      'Vyladění akcí ColorMaster a QuickCap: Z nabídky akcí barvy odstraněna nadbytečná akce Zavřít (zavírá se přes Esc) a opravena kolize s cizím štítkem Gmail; u QuickCapu má první akce výstižný popis „Již zkopírováno ve schránce“ a je zvýrazněna červenou stavovou barvou.',
+      'Vyvážené rozměry SplashScreenu: Šířka úvodního okna zmenšena o 20 px na 380 px a vnitřní odsazení o 10 px pro čistší proporce.',
+      'Zjednodušená nápověda DonkeyTools: Doporučené příkazy pro ColorMaster a QuickCap zjednodušeny na /color a /cap s instrukcemi pro zkratku a tlačítko nástrojů.',
+    ],
+  },
   {
     version: '1.1.20',
     date: '22. 9. 2026',

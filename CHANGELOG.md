@@ -4,6 +4,22 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.21] - 22. 9. 2026
+### Stažení CMSinFS zdrojáků, dedikované okno stahování a vyladění akcí Spotlightu
+- **Stažení zdrojových kódů CMSinFS (pro PRG)**: Pro instance MagicGate přibylo v Nastavení pole pro určení cílové kořenové složky zdrojových kódů. Ve Spotlightu se u instancí MagicGate nabízí nová akce „Stáhnout CMSinFS zdrojáky (pro PRG)“, která stáhne kompletní obsah z `CmsFsContentHandler.ashx` a bezpečně jej rozbalí do podsložky s názvem instance.
+- **Dedikované okno stahování CMSinFS**: Pro stahování zdrojových kódů bylo vytvořeno samostatné modální okno (`CmsDownloadModal`) s živým protokolem kroků, rotujícím spinnerem v barvě akcí a tlačítky v zápatí: „Otevřít ve VS Code“, „Otevřít v průzkumníku“ a „Zavřít“.
+- **Vyladění chování stahovacích oken**:
+  - Ve všech třech stahovacích oknech (GitHub repozitář, MagicGate instance, CMSinFS zdrojáky) stisk klávesy `Enter` po úspěšném dokončení operace automaticky simuluje kliknutí na tlačítko „Zavřít“.
+  - Tlačítko „Zavřít“ v patičce zavře okno a resetuje Spotlight bez jeho nežádoucího obnovení na obrazovce (vyvolání Spotlightu je vyhrazeno pro klávesu Escape nebo křížek v záhlaví).
+  - Tlačítko „Otevřít složku v průzkumníku“ otevírá cílovou složku a ponechává modální okno otevřené.
+- **Oddělení hoveru myši od klávesového výběru ve Spotlightu**: Přejíždění myší nad seznamem položek ve Spotlightu již neposouvá automaticky scroll okna a nekoliduje s navigací šipkami. Vizuální hover stav funguje zcela samostatně.
+- **Přesné označení akce VS Code u MagicGate**: V akcích položek se pro instance MagicGate akce přejmenovala na „Otevřít repozitáře ve VS Code“, čímž se jasně odlišuje od zdrojových kódů CMSinFS. U běžných repozitářů GitHubu zůstává původní „Otevřít ve VS Code“.
+- **Vyladění akcí ColorMaster a QuickCap**:
+  - V akcích ColorMasteru byla zrušena nadbytečná akce „Zavřít“ (vyhledávač se pohodlně zavírá stiskem klávesy Esc) a opravena nesprávná indikace štítku `Gmail`.
+  - V akcích QuickCapu má první položka („Zavřít“) výstižný popis „Již zkopírováno ve schránce“ a je zvýrazněna systémovou červenou barvou (`rose-500` / `#f43f5e`).
+- **Optimalizace rozměrů SplashScreenu**: Šířka úvodního okna aplikace byla zmenšena o 20 px (na 380 px) a vnitřní odsazení o 10 px pro čistší a vyváženější proporce.
+- **Zjednodušená nápověda DonkeyTools**: V nápovědě nastavení ColorMasteru i QuickCapu jsou zjednodušeny doporučené příkazy na `/color` a `/cap` spolu s informací o použití klávesové zkratky nebo kliknutí na ikonku nástrojů.
+
 ## [1.1.20] - 22. 9. 2026
 ### Nativní systémové notifikace Windows, Photoshop-style SplashScreen a rychlé akce nástrojů
 - **Nativní systémové notifikace Windows**: Integrace notifikací Windows s dynamickou registrací AppUserModelId. Aplikace zobrazuje systémové bannery pro klíčové události:
