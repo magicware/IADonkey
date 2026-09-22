@@ -141,10 +141,9 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
     }
   };
 
-  const handleOpenInExplorer = async () => {
+  const handleOpenInExplorer = () => {
     if (targetDir && window.electronAPI?.openPath) {
-      await window.electronAPI.openPath(targetDir);
-      await handleFooterClose();
+      window.electronAPI.openPath(targetDir);
     }
   };
 
