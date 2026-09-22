@@ -118,19 +118,6 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
     }
   }, [isOpen, adminUrl, targetDir]);
 
-  // Keyboard shortcut: Escape to close
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      } else if (e.key === 'Enter' && status === 'success') {
-        handleOpenInExplorer();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [status, onClose]);
-
   const handleFooterClose = async () => {
     if (window.electronAPI?.closeAndResetSpotlight) {
       await window.electronAPI.closeAndResetSpotlight();
@@ -138,6 +125,20 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
       onClose();
     }
   };
+
+  // Keyboard shortcut: Escape to close, Enter on success to close and reset spotlight
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'Enter' && status === 'success') {
+        e.preventDefault();
+        handleFooterClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [status, onClose]);
 
   const handleOpenInExplorer = () => {
     if (targetDir && window.electronAPI?.openPath) {

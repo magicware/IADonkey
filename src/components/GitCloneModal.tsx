@@ -160,15 +160,28 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
     }
   }, [cloneLogs]);
 
+  const handleFooterClose = async () => {
+    if (window.electronAPI?.closeAndResetSpotlight) {
+      await window.electronAPI.closeAndResetSpotlight();
+    } else {
+      onClose();
+    }
+  };
+
   // Handle Escape and Enter keys
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen && status !== 'cloning') {
         onClose();
       } else if (e.key === 'Enter' && isOpen) {
+        if (status === 'success') {
+          e.preventDefault();
+          handleFooterClose();
+          return;
+        }
+
         const isBlocked =
           status === 'cloning' ||
-          status === 'success' ||
           !targetDir.trim() ||
           (isInstanceMode && (isLoadingRepos || validInstanceRepos.length === 0));
 
@@ -296,14 +309,6 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
     if (pathToOpen && window.electronAPI?.openInVscode) {
       await window.electronAPI?.resetAndHideSpotlight?.();
       await window.electronAPI.openInVscode(pathToOpen);
-      onClose();
-    }
-  };
-
-  const handleFooterClose = async () => {
-    if (window.electronAPI?.closeAndResetSpotlight) {
-      await window.electronAPI.closeAndResetSpotlight();
-    } else {
       onClose();
     }
   };
