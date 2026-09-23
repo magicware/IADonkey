@@ -71,5 +71,5 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
 
-- [x] **Vývojářský režim (isDevelop) s odemykáním 10× kliknutím, přesun protokolu prováděných akcí (Action Log) a ladicí nástroje**
+*(Žádné dokončené úkoly nečekají na kontrolu – všechny byly ověřeny a smazány)*
 
