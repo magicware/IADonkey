@@ -12,6 +12,7 @@ import { UninstallerModal } from './components/UninstallerModal';
 import { SplashScreen } from './components/SplashScreen';
 import { TuneColorModal } from './components/TuneColorModal';
 import { QuickCapSnipper } from './components/QuickCapSnipper';
+import { ScreenRulerOverlay } from './components/ScreenRulerOverlay';
 import { CURRENT_APP_VERSION, getLatestRelease } from './changelog';
 import { applyPrimaryColor, applyActionsColor } from './utils/theme';
 
@@ -41,6 +42,12 @@ const DEFAULT_CONFIG: AppConfig = {
     quickCap: {
       enabled: false,
       hotkey: '',
+    },
+    screenRuler: {
+      enabled: false,
+      hotkey: '',
+      color: '#f43f5e',
+      defaultUnit: 'px',
     },
   },
   updateUrl: 'https://raw.githubusercontent.com/magicware/IADonkey/main/version.json',
@@ -89,6 +96,15 @@ export const App: React.FC = () => {
       window.location.hash.startsWith('#fastsnap') ||
       window.location.search.includes('window=quickcap') ||
       window.location.search.includes('window=fastsnap')
+    );
+  });
+
+  const [isScreenRulerView] = useState(() => {
+    return (
+      window.location.hash.startsWith('#ruler') ||
+      window.location.hash.startsWith('#screenruler') ||
+      window.location.search.includes('window=ruler') ||
+      window.location.search.includes('window=screenruler')
     );
   });
 
@@ -525,6 +541,11 @@ export const App: React.FC = () => {
     return <QuickCapSnipper />;
   }
 
+  // ScreenRuler Screen Overlay mode
+  if (isScreenRulerView) {
+    return <ScreenRulerOverlay />;
+  }
+
   // Filter items by enabled extensions
   const visibleItems = useMemo(() => {
     return items.filter((item) => {
@@ -565,6 +586,7 @@ export const App: React.FC = () => {
           colorMasterConfig={config.donkeyTools?.colorMaster}
           quickCapConfig={config.donkeyTools?.quickCap || config.donkeyTools?.fastSnap}
           fastSnapConfig={config.donkeyTools?.quickCap || config.donkeyTools?.fastSnap}
+          screenRulerConfig={config?.donkeyTools?.screenRuler}
           onSaveConfig={handleSaveConfig}
           onOpenSettings={() => {
             if (window.electronAPI?.openSettingsWindow) {

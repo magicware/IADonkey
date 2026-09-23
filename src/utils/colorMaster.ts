@@ -302,7 +302,7 @@ export function createColorLauncherItem(
  */
 export function getDonkeyToolsCommands(
   query: string,
-  options?: { colorMasterEnabled?: boolean; quickCapEnabled?: boolean; fastSnapEnabled?: boolean }
+  options?: { colorMasterEnabled?: boolean; quickCapEnabled?: boolean; fastSnapEnabled?: boolean; screenRulerEnabled?: boolean }
 ): LauncherItem[] {
   const trimmed = query.trim().toLowerCase();
   if (!trimmed.startsWith('/')) return [];
@@ -312,6 +312,7 @@ export function getDonkeyToolsCommands(
 
   const isColorMasterActive = options ? options.colorMasterEnabled === true : true;
   const isQuickCapActive = options ? (options.quickCapEnabled ?? options.fastSnapEnabled ?? true) : true;
+  const isScreenRulerActive = options ? options.screenRulerEnabled === true : true;
 
   // ColorMaster (kapátko / eyedropper / picker / barva)
   if (isColorMasterActive) {
@@ -353,6 +354,30 @@ export function getDonkeyToolsCommands(
         action: 'quickcap',
         icon: 'crop',
         priority: -1.4,
+        sourceId: 'donkeytools',
+        shortcuts,
+      });
+    }
+  }
+
+  // ScreenRuler (/ruler, /pravitko, /meritko, /scale)
+  if (isScreenRulerActive) {
+    const shortcuts = ['/ruler', '/pravitko', '/meritko', '/scale'];
+    const isRulerMatch =
+      command === '' ||
+      'screenruler'.includes(command) ||
+      'ruler'.includes(command) ||
+      shortcuts.some((s) => s.replace(/^\//, '').includes(command)) ||
+      'meritko a pravitko'.includes(command);
+
+    if (isRulerMatch) {
+      list.push({
+        id: 'donkeytools-screenruler',
+        name: 'ScreenRuler',
+        location: 'Měřítko a pravítko obrazovky (px, %, dp)',
+        action: 'screenruler',
+        icon: 'straighten',
+        priority: -1.3,
         sourceId: 'donkeytools',
         shortcuts,
       });

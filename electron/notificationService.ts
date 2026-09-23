@@ -59,7 +59,7 @@ const getNotificationIco = (): string | undefined => {
   return undefined;
 };
 
-export type NotificationType = 'quickCap' | 'colorMaster' | 'syncComplete' | 'update' | 'clipboard' | 'error' | 'test';
+export type NotificationType = 'quickCap' | 'colorMaster' | 'screenRuler' | 'syncComplete' | 'update' | 'clipboard' | 'error' | 'test';
 
 export interface ShowNotificationOptions {
   type: NotificationType;
@@ -165,6 +165,7 @@ export class NotificationService {
     if (notifConfig && options.type !== 'test') {
       if (options.type === 'quickCap' && notifConfig.quickCap === false) return false;
       if (options.type === 'colorMaster' && notifConfig.colorMaster === false) return false;
+      if (options.type === 'screenRuler' && notifConfig.screenRuler === false) return false;
       if (options.type === 'syncComplete' && notifConfig.syncComplete === false) return false;
       if (options.type === 'update' && notifConfig.updates === false) return false;
       if (options.type === 'clipboard' && notifConfig.clipboard === false) return false;

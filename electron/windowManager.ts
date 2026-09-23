@@ -44,6 +44,7 @@ export class WindowManager {
   private cmsDownloadWindow: BrowserWindow | null = null;
   private tuneColorWindow: BrowserWindow | null = null;
   private snipperWindow: BrowserWindow | null = null;
+  private rulerWindow: BrowserWindow | null = null;
   private splashWindow: BrowserWindow | null = null;
   private lastSplashStatus: { percent: number; text: string } = {
     percent: 10,
@@ -78,7 +79,8 @@ export class WindowManager {
     private onSettingsRequest: () => void,
     private getConfig?: () => any,
     private onQuickCapRequest?: () => void,
-    private onColorPickerRequest?: () => void
+    private onColorPickerRequest?: () => void,
+    private onScreenRulerRequest?: () => void
   ) {}
 
   public createMainWindow(): BrowserWindow {
@@ -726,6 +728,98 @@ export class WindowManager {
     return this.snipperWindow;
   }
 
+  public setOnScreenRulerRequest(cb: () => void): void {
+    this.onScreenRulerRequest = cb;
+  }
+
+  public getRulerWindow(): BrowserWindow | null {
+    return this.rulerWindow;
+  }
+
+  public closeScreenRulerWindow(): void {
+    if (this.rulerWindow && !this.rulerWindow.isDestroyed()) {
+      this.rulerWindow.webContents.send('screenruler-cleanup');
+      this.rulerWindow.hide();
+    }
+  }
+
+  public openScreenRulerWindow(
+    displayBounds: { x: number; y: number; width: number; height: number },
+    options?: { color?: string; defaultUnit?: string }
+  ): BrowserWindow {
+    const applyFullScreenAndShow = (win: BrowserWindow) => {
+      win.setBounds(displayBounds);
+      win.setAlwaysOnTop(true, 'screen-saver');
+      const initPayload = {
+        width: displayBounds.width,
+        height: displayBounds.height,
+        color: options?.color || '#f43f5e',
+        defaultUnit: options?.defaultUnit || 'px',
+      };
+      win.webContents.send('screenruler-init', initPayload);
+      win.show();
+      win.focus();
+    };
+
+    if (this.rulerWindow && !this.rulerWindow.isDestroyed()) {
+      applyFullScreenAndShow(this.rulerWindow);
+      return this.rulerWindow;
+    }
+
+    const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
+      ? path.join(__dirname, 'preload.cjs')
+      : fs.existsSync(path.join(__dirname, 'preload.mjs'))
+      ? path.join(__dirname, 'preload.mjs')
+      : path.join(__dirname, 'preload.js');
+
+    this.rulerWindow = new BrowserWindow({
+      x: displayBounds.x,
+      y: displayBounds.y,
+      width: displayBounds.width,
+      height: displayBounds.height,
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      resizable: false,
+      movable: false,
+      show: false,
+      fullscreen: true,
+      hasShadow: false,
+      enableLargerThanScreen: true,
+      webPreferences: {
+        preload: preloadPath,
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+        backgroundThrottling: false,
+      },
+    });
+
+    this.rulerWindow.setAlwaysOnTop(true, 'screen-saver');
+
+    if (process.env.VITE_DEV_SERVER_URL) {
+      this.rulerWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#ruler`);
+    } else {
+      this.rulerWindow.loadFile(path.join(__dirname, '../dist/index.html'), {
+        hash: 'ruler',
+      });
+    }
+
+    this.rulerWindow.once('ready-to-show', () => {
+      if (this.rulerWindow && !this.rulerWindow.isDestroyed()) {
+        applyFullScreenAndShow(this.rulerWindow);
+      }
+    });
+
+    this.rulerWindow.on('closed', () => {
+      this.rulerWindow = null;
+    });
+
+    return this.rulerWindow;
+  }
+
   public createInstallerWindow(): BrowserWindow {
     const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
       ? path.join(__dirname, 'preload.cjs')
@@ -822,11 +916,43 @@ export class WindowManager {
       .resize({ width: 18, height: 18 });
 
     this.tray = new Tray(iconImage);
-    this.tray.setToolTip(`IADonkey Launcher (${hotkeyLabel})`);
+    this.updateTrayContextMenu(hotkeyLabel);
 
-    const contextMenu = Menu.buildFromTemplate([
+    this.tray.on('click', () => this.showSpotlight());
+    this.tray.on('double-click', () => this.showSpotlight());
+  }
+
+  private currentTrayHotkeyLabel = 'Ctrl+Alt+Space';
+
+  public updateTrayContextMenu(hotkeyLabel?: string): void {
+    if (hotkeyLabel) {
+      this.currentTrayHotkeyLabel = hotkeyLabel;
+    }
+    const label = this.currentTrayHotkeyLabel;
+
+    if (!this.tray || this.tray.isDestroyed()) {
+      return;
+    }
+
+    this.tray.setToolTip(`IADonkey Launcher (${label})`);
+
+    const config = this.getConfig ? this.getConfig() : null;
+    const isDonkeyToolsEnabled = Boolean(config?.extensions?.donkeyTools);
+
+    const isQuickCapEnabled = Boolean(
+      isDonkeyToolsEnabled &&
+        (config?.donkeyTools?.quickCap?.enabled === true || config?.donkeyTools?.fastSnap?.enabled === true)
+    );
+    const isColorMasterEnabled = Boolean(
+      isDonkeyToolsEnabled && config?.donkeyTools?.colorMaster?.enabled === true
+    );
+    const isScreenRulerEnabled = Boolean(
+      isDonkeyToolsEnabled && config?.donkeyTools?.screenRuler?.enabled === true
+    );
+
+    const template: Electron.MenuItemConstructorOptions[] = [
       {
-        label: `Hledat (${hotkeyLabel})`,
+        label: `Hledat (${label})`,
         click: () => this.showSpotlight(),
       },
       {
@@ -839,19 +965,48 @@ export class WindowManager {
         label: 'Synchronizovat data',
         click: () => this.onSyncRequest(),
       },
-      { type: 'separator' },
-      {
-        label: 'QuickCap – Výstřižek obrazovky',
-        click: () => {
-          this.onQuickCapRequest?.();
-        },
-      },
-      {
-        label: 'ColorMaster – Kapátko (nabrat barvu)',
-        click: () => {
-          this.onColorPickerRequest?.();
-        },
-      },
+    ];
+
+    const hasAnyTool = isQuickCapEnabled || isColorMasterEnabled || isScreenRulerEnabled;
+
+    if (hasAnyTool) {
+      template.push({ type: 'separator' });
+
+      if (isQuickCapEnabled) {
+        const qcHotkey = config?.donkeyTools?.quickCap?.hotkey || config?.donkeyTools?.fastSnap?.hotkey;
+        const qcLabel = qcHotkey ? `QuickCap – Výstřižek obrazovky (${qcHotkey})` : 'QuickCap – Výstřižek obrazovky';
+        template.push({
+          label: qcLabel,
+          click: () => {
+            this.onQuickCapRequest?.();
+          },
+        });
+      }
+
+      if (isColorMasterEnabled) {
+        const cmHotkey = config?.donkeyTools?.colorMaster?.hotkey;
+        const cmLabel = cmHotkey ? `ColorMaster – Kapátko (${cmHotkey})` : 'ColorMaster – Kapátko (nabrat barvu)';
+        template.push({
+          label: cmLabel,
+          click: () => {
+            this.onColorPickerRequest?.();
+          },
+        });
+      }
+
+      if (isScreenRulerEnabled) {
+        const srHotkey = config?.donkeyTools?.screenRuler?.hotkey;
+        const srLabel = srHotkey ? `ScreenRuler – Měřítko a pravítko (${srHotkey})` : 'ScreenRuler – Měřítko a pravítko';
+        template.push({
+          label: srLabel,
+          click: () => {
+            this.onScreenRulerRequest?.();
+          },
+        });
+      }
+    }
+
+    template.push(
       { type: 'separator' },
       {
         label: 'Ukončit IADonkey',
@@ -859,16 +1014,16 @@ export class WindowManager {
           this.isQuitting = true;
           app.quit();
         },
-      },
-    ]);
+      }
+    );
 
+    const contextMenu = Menu.buildFromTemplate(template);
     this.tray.setContextMenu(contextMenu);
-    this.tray.on('click', () => this.showSpotlight());
-    this.tray.on('double-click', () => this.showSpotlight());
   }
 
   public updateTrayTooltip(hotkeyLabel: string): void {
-    this.tray?.setToolTip(`IADonkey Launcher (${hotkeyLabel})`);
+    this.currentTrayHotkeyLabel = hotkeyLabel;
+    this.updateTrayContextMenu(hotkeyLabel);
   }
 
   public setQuitting(val: boolean): void {
@@ -1075,6 +1230,12 @@ export class WindowManager {
       if (this.tuneColorWindow && !this.tuneColorWindow.isDestroyed()) {
         this.tuneColorWindow.destroy();
         this.tuneColorWindow = null;
+      }
+    } catch {}
+    try {
+      if (this.rulerWindow && !this.rulerWindow.isDestroyed()) {
+        this.rulerWindow.destroy();
+        this.rulerWindow = null;
       }
     } catch {}
     try {

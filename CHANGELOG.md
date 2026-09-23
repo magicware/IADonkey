@@ -4,6 +4,17 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.23] - 24. 9. 2026
+### ScreenRuler pravítko, nativní Windows notifikace a vizuální sjednocení DonkeyTools se Spotlightem
+- **ScreenRuler (Měřítko a pravítko obrazovky) v DonkeyTools**: Nové rozšíření pro přesné měření na obrazovce v obdélníkovém režimu (šířka, výška, poměr stran, plocha px²) a celoobrazovkovém režimu kříže (vzdálenosti ke 4 okrajům monitoru). Podpora jednotek px, % i dp, klávesové zkratky a rychlé vyvolání příkazy `/ruler`, `/pravitko`, `/meritko`, `/scale`.
+- **Nativní Windows notifikace při kopírování rozměrů**: Při zkopírování rozměrů do schránky se namísto interního toastu na obrazovce spolehlivě zobrazí systémová notifikace Windows a akce je zalogována do Protokolu akcí (Action Log).
+- **Stabilní zobrazení čísel v Ruler baru bez poskakování**: Kontejnery čísel mají pevnou šířku pro 4místná čísla (`tabular-nums`), takže lišta při změně hodnot zůstává naprosto stabilní.
+- **Sjednocení výšek ovládacích prvků v Ruler baru**: Všechny komponenty, přepínače a tlačítka nástrojové lišty ScreenRuleru mají striktně sjednocenou výšku `h-8` (32 px) a dokonale sedí na jedné lince.
+- **Vizuální sjednocení ScreenRuleru se Spotlightem**: Grafitový skleněný podklad `bg-[#1c1d24]/90` s `backdrop-blur-2xl`, zaoblení `rounded-2xl` s `border border-white/10`, vnitřní karty `rounded-xl` a klávesové badgy ve stylu Spotlight `<kbd>`.
+- **Vizuální sjednocení QuickCap (Crop bar)**: Horní nápověda přepracována do zaoblené `rounded-2xl` karty s grafitovým sklem a Spotlight `<kbd>Esc</kbd>` badgem, štítek rozměrů výstřižku v moderním `rounded-xl` skleněném provedení.
+- **Vizuální sjednocení Kapátka (ColorMaster)**: Nativní Windows okno lupy má fyzicky zaoblené rohy (`rounded-2xl` / 20 px rádius), grafitové pozadí `#1c1d24`, zaoblenou vnitřní mřížku pixelů, Rose zaměřovač a Spotlight kbd badgy pro `[Klik]` a `[Esc]`.
+- **Dynamické Tray menu a striktní Rose identita (`#f43f5e`)**: Nástroje DonkeyTools se v Tray menu zobrazují pouze tehdy, když jsou povolené a aktivní, a celá sada DonkeyTools striktně ctí Rose barvu.
+
 ## [1.1.22] - 23. 9. 2026
 ### Vývojářský režim, nová záložka Systém, přesun chybových protokolů a tray zkratky nástrojů
 - **Vývojářský a diagnostický režim (isDevelop)**: Nový skrytý režim odemykaný easter eggem – 10násobným kliknutím na číslo verze v záložce Systém. Zobrazuje počítadlo zbývajících kliknutí od 5. kliknutí, po aktivaci odemkne novou záložku „Vývojář“ v bočním menu a při opakovaném kliknutí upozorní, že režim je již aktivní.

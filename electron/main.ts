@@ -12,7 +12,7 @@ import { WindowManager } from './windowManager';
 import { AppScanner } from './appScanner';
 import { AppConfig, LauncherItem, ActionLogEntry } from '../src/types';
 import { getMagicGateAutoLoginUrl } from './magicGate';
-import { testGitHubConnection } from './githubService';
+import { testGitHubConnection, startGitHubDeviceFlow, pollGitHubDeviceToken, getActiveGitHubToken } from './githubService';
 import { faviconService } from './faviconService';
 import { fetchInstanceSectionRepos, runMultiRepoClone, downloadInstanceCmsContent, normalizeInstanceCmsPath, MagicGateSectionRepo } from './magicGateService';
 import { InstallerService } from './installerService';
@@ -445,6 +445,48 @@ function registerFastSnapHotkey(hotkey?: string) {
   registerQuickCapHotkey(hotkey);
 }
 
+let currentScreenRulerHotkey = '';
+function registerScreenRulerHotkey(hotkey?: string) {
+  try {
+    if (currentScreenRulerHotkey) {
+      globalShortcut.unregister(currentScreenRulerHotkey);
+      currentScreenRulerHotkey = '';
+    }
+    const config = store ? store.getConfig() : null;
+    const rulerCfg = config?.donkeyTools?.screenRuler;
+    const isEnabled = Boolean(config?.extensions?.donkeyTools && rulerCfg?.enabled === true);
+    const targetHotkey = hotkey || rulerCfg?.hotkey;
+    if (!isEnabled || !targetHotkey || !targetHotkey.trim()) {
+      return;
+    }
+    const cleanHotkey = targetHotkey.trim();
+    const registered = globalShortcut.register(cleanHotkey, async () => {
+      try {
+        console.log('[Main] ScreenRuler hotkey triggered');
+        diagnosticsService.logAction({
+          type: 'shortcut',
+          title: `Zkratka ScreenRuler: ${cleanHotkey}`,
+          details: 'Spuštění měřítka a pravítka přes klávesovou zkratku',
+          status: 'info',
+        });
+        await startScreenRulerProcess();
+      } catch (err) {
+        console.error('[Main] Error in ScreenRuler hotkey callback:', err);
+        diagnosticsService.recordCrash('Volání ScreenRuler z klávesové zkratky', err, { hotkey: cleanHotkey });
+      }
+    });
+    if (!registered) {
+      console.warn(`[Main] Failed to register ScreenRuler shortcut: ${cleanHotkey}`);
+    } else {
+      currentScreenRulerHotkey = cleanHotkey;
+      console.log(`[Main] Successfully registered ScreenRuler shortcut: ${cleanHotkey}`);
+    }
+  } catch (err) {
+    console.error(`[Main] Error registering ScreenRuler shortcut ${hotkey}:`, err);
+    diagnosticsService.recordCrash('Registrace zkratky ScreenRuler', err, { hotkey });
+  }
+}
+
 let currentCapturedScreenImage: Electron.NativeImage | null = null;
 let currentCapturedBounds: { x: number; y: number; width: number; height: number; scaleFactor: number } | null = null;
 let currentQuickCapInitData: { screenshotUrl: string; width: number; height: number; scaleFactor: number } | null = null;
@@ -563,6 +605,56 @@ async function startQuickCapProcess(): Promise<void> {
   }
 }
 const startFastSnapProcess = startQuickCapProcess;
+
+let currentScreenRulerInitData: { width: number; height: number; color: string; defaultUnit: string } | null = null;
+
+async function startScreenRulerProcess(): Promise<void> {
+  try {
+    diagnosticsService.logAction({
+      type: 'action',
+      title: 'Spuštění ScreenRuler (Měřítko a pravítko)',
+      details: 'Otevření transparentního overlay okna pro měření',
+      status: 'info',
+    });
+
+    if (windowManager) {
+      windowManager.setSkipSpotlightRestoreOnCloneClose(true);
+      windowManager.hideImmediately();
+      windowManager.getMainWindow()?.webContents.send('reset-spotlight');
+    }
+    const settingsWin = windowManager ? windowManager.getSettingsWindow() : null;
+    if (settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible()) {
+      settingsWin.hide();
+    }
+
+    const cursorPoint = screen.getCursorScreenPoint();
+    const targetDisplay = screen.getDisplayNearestPoint(cursorPoint) || screen.getPrimaryDisplay();
+    const { bounds } = targetDisplay;
+
+    const config = store ? store.getConfig() : null;
+    const rulerCfg = config?.donkeyTools?.screenRuler;
+    const color = rulerCfg?.color || '#f43f5e';
+    const defaultUnit = rulerCfg?.defaultUnit || 'px';
+
+    currentScreenRulerInitData = {
+      width: bounds.width,
+      height: bounds.height,
+      color,
+      defaultUnit,
+    };
+
+    windowManager.openScreenRulerWindow(bounds, { color, defaultUnit });
+  } catch (err: any) {
+    console.error('[Main] startScreenRulerProcess error:', err);
+    diagnosticsService.recordCrash('Spuštění ScreenRuler', err);
+    diagnosticsService.logAction({
+      type: 'error',
+      title: 'Chyba při spuštění ScreenRuler',
+      details: err?.message || String(err),
+      status: 'error',
+    });
+  }
+}
 
 
 function setupIpcHandlers() {
@@ -889,6 +981,35 @@ function setupIpcHandlers() {
   ipcMain.handle('quickcap-choose-folder', handleQuickCapChooseFolder);
   ipcMain.handle('fastsnap-choose-folder', handleQuickCapChooseFolder);
 
+  // ScreenRuler IPC Handlers
+  ipcMain.handle('screenruler-start', async () => {
+    await startScreenRulerProcess();
+  });
+
+  ipcMain.handle('screenruler-get-init-data', () => {
+    return currentScreenRulerInitData;
+  });
+
+  ipcMain.handle('screenruler-close', () => {
+    windowManager.closeScreenRulerWindow();
+    currentScreenRulerInitData = null;
+  });
+
+  ipcMain.handle('screenruler-copy', (_event, text: string) => {
+    clipboard.writeText(text);
+    diagnosticsService.logAction({
+      type: 'action',
+      title: 'ScreenRuler – Rozměry zkopírovány',
+      details: text,
+      status: 'success',
+    });
+    notificationService.show({
+      type: 'screenRuler',
+      title: 'ScreenRuler – Zkopírováno do schránky',
+      body: `Rozměry "${text}" byly zkopírovány do schránky.`,
+    });
+  });
+
   ipcMain.handle('get-config', () => {
     return store.getConfig();
   });
@@ -905,6 +1026,10 @@ function setupIpcHandlers() {
     // If ColorMaster hotkey or DonkeyTools settings changed, re-register
     registerColorMasterHotkey(newConfig.donkeyTools?.colorMaster?.hotkey);
     registerQuickCapHotkey(newConfig.donkeyTools?.quickCap?.hotkey || newConfig.donkeyTools?.fastSnap?.hotkey);
+    registerScreenRulerHotkey(newConfig.donkeyTools?.screenRuler?.hotkey);
+
+    // Update tray context menu to reflect enabled/disabled DonkeyTools
+    windowManager?.updateTrayContextMenu(currentHotkey);
 
     // If searchInstalledApps setting changed, refresh items in UI
     if (newConfig.searchInstalledApps !== oldConfig.searchInstalledApps) {
@@ -917,10 +1042,13 @@ function setupIpcHandlers() {
     const magicgateChanged =
       newConfig.magicgate?.xmlPath !== oldConfig.magicgate?.xmlPath ||
       newConfig.extensions?.magicgate !== oldConfig.extensions?.magicgate;
+    const oldGhToken = getActiveGitHubToken(oldConfig.github);
+    const newGhToken = getActiveGitHubToken(newConfig.github);
     const githubChanged =
       newConfig.extensions?.github !== oldConfig.extensions?.github ||
+      newConfig.github?.authMode !== oldConfig.github?.authMode ||
+      newGhToken !== oldGhToken ||
       newConfig.github?.username !== oldConfig.github?.username ||
-      newConfig.github?.token !== oldConfig.github?.token ||
       newConfig.github?.org !== oldConfig.github?.org ||
       newConfig.github?.apiUrl !== oldConfig.github?.apiUrl;
 
@@ -1111,6 +1239,7 @@ function setupIpcHandlers() {
     }
     registerColorMasterHotkey(cfg.donkeyTools?.colorMaster?.hotkey);
     registerQuickCapHotkey(cfg.donkeyTools?.quickCap?.hotkey || cfg.donkeyTools?.fastSnap?.hotkey);
+    registerScreenRulerHotkey(cfg.donkeyTools?.screenRuler?.hotkey);
   });
 
   ipcMain.handle('get-items', () => {
@@ -1516,6 +1645,14 @@ function setupIpcHandlers() {
 
   ipcMain.handle('test-github-connection', async (_event, settings) => {
     return await testGitHubConnection(settings);
+  });
+
+  ipcMain.handle('github-oauth-start-device-flow', async (_event, params: { clientId: string; apiUrl?: string }) => {
+    return await startGitHubDeviceFlow(params);
+  });
+
+  ipcMain.handle('github-oauth-poll-token', async (_event, params: { clientId: string; deviceCode: string; apiUrl?: string }) => {
+    return await pollGitHubDeviceToken(params);
   });
 
   ipcMain.handle('open-external', async (_event, url: string) => {
@@ -2075,6 +2212,12 @@ app.whenReady().then(async () => {
       pickScreenColorNative().catch((err) => {
         console.error('[Main] Tray ColorPicker error:', err);
       });
+    },
+    // onScreenRulerRequest from Tray
+    () => {
+      startScreenRulerProcess().catch((err) => {
+        console.error('[Main] Tray ScreenRuler error:', err);
+      });
     }
   );
 
@@ -2106,6 +2249,7 @@ app.whenReady().then(async () => {
   registerGlobalHotkey(currentHotkey);
   registerColorMasterHotkey(initialConfig.donkeyTools?.colorMaster?.hotkey);
   registerQuickCapHotkey(initialConfig.donkeyTools?.quickCap?.hotkey || initialConfig.donkeyTools?.fastSnap?.hotkey);
+  registerScreenRulerHotkey(initialConfig.donkeyTools?.screenRuler?.hotkey);
 
   const launchDeferredTasks = () => {
     startBackgroundTasks();

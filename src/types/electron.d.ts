@@ -43,6 +43,21 @@ declare global {
         repoCount?: number;
         error?: string;
       }>;
+      startGitHubDeviceFlow: (params: { clientId: string; apiUrl?: string }) => Promise<{
+        success: boolean;
+        deviceCode?: string;
+        userCode?: string;
+        verificationUri?: string;
+        interval?: number;
+        expiresIn?: number;
+        error?: string;
+      }>;
+      pollGitHubDeviceToken: (params: { clientId: string; deviceCode: string; apiUrl?: string }) => Promise<{
+        status: 'success' | 'pending' | 'slow_down' | 'expired' | 'denied' | 'error';
+        accessToken?: string;
+        user?: { login: string; name?: string; avatar_url?: string };
+        error?: string;
+      }>;
       selectDirectory: (defaultPath?: string) => Promise<string | null>;
       runGitClone: (params: { repoUrl: string; targetDir: string; recursive?: boolean }) => Promise<{
         success: boolean;
@@ -188,6 +203,14 @@ declare global {
       onQuickCapInitData?: (callback: (data: { screenshotUrl: string; width: number; height: number; scaleFactor: number }) => void) => () => void;
       onQuickCapCleanup?: (callback: () => void) => () => void;
       onQuickCapCaptured?: (callback: (data: { filePath: string; fileName: string; dataUrl: string; width: number; height: number }) => void) => () => void;
+
+      // ScreenRuler API
+      startScreenRuler?: () => Promise<void>;
+      closeScreenRuler?: () => Promise<void>;
+      copyScreenRulerDimensions?: (dimensions: string) => Promise<void>;
+      getScreenRulerInitData?: () => Promise<{ width: number; height: number; color: string; defaultUnit: string } | null>;
+      onScreenRulerInit?: (callback: (data: { width: number; height: number; color: string; defaultUnit: string }) => void) => () => void;
+      onScreenRulerCleanup?: (callback: () => void) => () => void;
 
       // Zpětná kompatibilita pro FastSnap
       startFastSnap?: () => Promise<void>;

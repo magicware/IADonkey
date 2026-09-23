@@ -127,10 +127,19 @@ export interface QuickCapRecentItem {
 
 export type FastSnapRecentItem = QuickCapRecentItem;
 
+export interface ScreenRulerSettings {
+  enabled: boolean;
+  hotkey?: string;
+  defaultUnit?: 'px' | '%' | 'dp';
+  color?: string;
+  overlayColor?: string;
+}
+
 export interface DonkeyToolsSettings {
   colorMaster?: ColorMasterSettings;
   quickCap?: QuickCapSettings;
   fastSnap?: QuickCapSettings;
+  screenRuler?: ScreenRulerSettings;
 }
 
 export interface VscodeSettings {
@@ -141,9 +150,21 @@ export interface AndroidStudioSettings {
   path?: string;
 }
 
+export type GitHubAuthMode = 'pat' | 'oauth';
+
+export interface GitHubOAuthUser {
+  login: string;
+  name?: string;
+  avatar_url?: string;
+}
+
 export interface GithubSettings {
+  authMode?: GitHubAuthMode;
   username?: string;
   token: string;
+  clientId?: string;
+  oauthToken?: string;
+  oauthUser?: GitHubOAuthUser;
   org?: string;
   apiUrl?: string;
   defaultCloneDir?: string;

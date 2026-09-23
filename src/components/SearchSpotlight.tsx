@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LauncherItem, LauncherAction, SyncProgress, SnippetsConfig, ColorMasterSettings, QuickCapSettings, FastSnapSettings, AppConfig } from '../types';
+import { LauncherItem, LauncherAction, SyncProgress, SnippetsConfig, ColorMasterSettings, QuickCapSettings, FastSnapSettings, ScreenRulerSettings, AppConfig } from '../types';
 import { MaterialIcon } from './MaterialIcon';
 import { evaluateExpression } from '../utils/calculator';
 import { detectUrl } from '../utils/urlHelper';
@@ -33,6 +33,7 @@ interface SearchSpotlightProps {
   colorMasterConfig?: ColorMasterSettings;
   quickCapConfig?: QuickCapSettings;
   fastSnapConfig?: FastSnapSettings;
+  screenRulerConfig?: ScreenRulerSettings;
   onSaveConfig?: (newConfig: AppConfig) => Promise<void>;
   onOpenSettings: () => void;
   onRefreshData: () => void;
@@ -57,6 +58,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   colorMasterConfig,
   quickCapConfig,
   fastSnapConfig,
+  screenRulerConfig,
   onSaveConfig,
   onOpenSettings,
   onRefreshData,
@@ -91,7 +93,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
   const isColorMasterActive = Boolean(donkeyToolsEnabled && colorMasterConfig?.enabled === true);
   const isQuickCapActive = Boolean(donkeyToolsEnabled && (quickCapConfig?.enabled === true || fastSnapConfig?.enabled === true));
-  const showDonkeyToolsIcon = Boolean(donkeyToolsEnabled && (isColorMasterActive || isQuickCapActive));
+  const isScreenRulerActive = Boolean(donkeyToolsEnabled && screenRulerConfig?.enabled === true);
+  const showDonkeyToolsIcon = Boolean(donkeyToolsEnabled && (isColorMasterActive || isQuickCapActive || isScreenRulerActive));
 
   // Click outside to close DonkeyTools quick tools menu
   useEffect(() => {
@@ -141,6 +144,26 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       }
     } catch (err) {
       console.error('QuickCap start error:', err);
+    }
+  };
+
+  const handleStartScreenRuler = async () => {
+    try {
+      window.electronAPI?.logAction?.({
+        type: 'action',
+        title: 'Spuštění ScreenRuler z DonkeyTools',
+        details: 'Výběr nástroje pravítka v nabídce rychlých nástrojů',
+        status: 'info',
+      });
+      setIsDonkeyToolsOpen(false);
+      setIsRevealed(false);
+      await new Promise((r) => setTimeout(r, 110));
+      await window.electronAPI?.resetAndHideSpotlight?.();
+      if (window.electronAPI?.startScreenRuler) {
+        await window.electronAPI.startScreenRuler();
+      }
+    } catch (err) {
+      console.error('ScreenRuler start error:', err);
     }
   };
 
@@ -728,6 +751,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         colorMasterEnabled: isColorMasterActive,
         quickCapEnabled: isQuickCapActive,
         fastSnapEnabled: isQuickCapActive,
+        screenRulerEnabled: isScreenRulerActive,
       });
       if (dtCommands.length > 0) {
         return dtCommands;
@@ -1196,6 +1220,17 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       const startFn = window.electronAPI?.startQuickCap || window.electronAPI?.startFastSnap;
       if (startFn) {
         await startFn();
+      }
+      return;
+    }
+
+    if (item.action === 'screenruler') {
+      setIsDonkeyToolsOpen(false);
+      setIsRevealed(false);
+      await new Promise((r) => setTimeout(r, 110));
+      await window.electronAPI?.resetAndHideSpotlight?.();
+      if (window.electronAPI?.startScreenRuler) {
+        await window.electronAPI.startScreenRuler();
       }
       return;
     }
@@ -1906,6 +1941,23 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                   >
                     <span className="material-symbols-outlined text-[20px] leading-none select-none">
                       crop
+                    </span>
+                  </button>
+                )}
+
+                {/* ScreenRuler Subextension - Ruler & Scale tool */}
+                {isScreenRulerActive && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDonkeyToolsOpen(false);
+                      handleStartScreenRuler();
+                    }}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all shadow-xl bg-[#1c1d28] hover:bg-rose-500/25 border border-white/15 hover:border-rose-400/50 text-gray-300 hover:text-rose-200 hover:scale-105 active:scale-95"
+                    title="ScreenRuler – Měřítko a pravítko obrazovky"
+                  >
+                    <span className="material-symbols-outlined text-[20px] leading-none select-none">
+                      straighten
                     </span>
                   </button>
                 )}

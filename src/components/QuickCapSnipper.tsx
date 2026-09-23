@@ -172,12 +172,18 @@ export const QuickCapSnipper: React.FC = () => {
         <div className="absolute inset-0 bg-black/45 pointer-events-none transition-opacity duration-150" />
       )}
 
-      {/* 3. Nápověda nahoře uprostřed (pokud se netáhne) */}
+      {/* 3. Nápověda nahoře uprostřed (pokud se netáhne) – Spotlight Visual Style */}
       {!isDragging && (!selectionBox || selectionBox.w <= 0 || selectionBox.h <= 0) && (
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 pointer-events-none flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/90 text-slate-100 text-sm font-medium shadow-2xl border border-white/15 backdrop-blur-md animate-fade-in">
-          <span className="material-symbols-rounded text-rose-400 text-lg">crop</span>
-          <span>Táhněte myší pro výběr výstřižku</span>
-          <span className="text-slate-400 text-xs px-1.5 py-0.5 rounded bg-white/10 border border-white/10">Esc pro zrušení</span>
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 pointer-events-none flex items-center gap-2.5 px-3.5 h-10 rounded-2xl bg-[#1c1d24]/90 text-gray-100 text-xs font-medium shadow-2xl border border-white/10 backdrop-blur-2xl animate-fade-in select-none">
+          <div className="w-6 h-6 rounded-lg bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+            <span className="material-symbols-outlined text-[16px] leading-none">crop</span>
+          </div>
+          <span className="text-white font-medium tracking-wide">Táhněte myší pro výběr výstřižku</span>
+          <div className="h-4 w-px bg-white/15 mx-0.5" />
+          <div className="flex items-center gap-1.5 text-gray-400 font-mono text-[11px]">
+            <kbd className="h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none flex items-center justify-center">Esc</kbd>
+            <span>pro zrušení</span>
+          </div>
         </div>
       )}
 
@@ -194,18 +200,22 @@ export const QuickCapSnipper: React.FC = () => {
           }}
         >
           {/* Rohové úchyty */}
-          <div className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-white border border-rose-600 rounded-sm" />
-          <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-white border border-rose-600 rounded-sm" />
-          <div className="absolute -bottom-1 -left-1 w-2.5 h-2.5 bg-white border border-rose-600 rounded-sm" />
-          <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-white border border-rose-600 rounded-sm" />
+          <div className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-white border border-rose-500 rounded-sm shadow-sm" />
+          <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-white border border-rose-500 rounded-sm shadow-sm" />
+          <div className="absolute -bottom-1 -left-1 w-2.5 h-2.5 bg-white border border-rose-500 rounded-sm shadow-sm" />
+          <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-white border border-rose-500 rounded-sm shadow-sm" />
 
-          {/* Badge s rozměry */}
+          {/* Badge s rozměry (Spotlight Visual Style) */}
           <div
-            className={`absolute left-1/2 -translate-x-1/2 px-2.5 py-1 rounded bg-rose-600 text-white font-mono text-xs font-semibold shadow-lg backdrop-blur-sm pointer-events-none flex items-center gap-1.5 whitespace-nowrap ${
-              selectionBox.y > 35 ? '-top-8' : 'bottom-2'
+            className={`absolute left-1/2 -translate-x-1/2 px-3 py-1 rounded-xl bg-[#1c1d24]/95 border border-white/10 text-white font-mono text-xs shadow-2xl backdrop-blur-xl pointer-events-none flex items-center gap-1.5 whitespace-nowrap tabular-nums ${
+              selectionBox.y > 40 ? '-top-9' : 'bottom-3'
             }`}
           >
-            <span>{Math.round(selectionBox.w)} × {Math.round(selectionBox.h)} px</span>
+            <div className="w-2 h-2 rounded-full bg-rose-500 shadow-sm shrink-0" />
+            <span className="font-semibold text-white">{Math.round(selectionBox.w)}</span>
+            <span className="text-gray-500 font-normal">×</span>
+            <span className="font-semibold text-white">{Math.round(selectionBox.h)}</span>
+            <span className="text-[10px] text-gray-400 uppercase font-sans ml-0.5">px</span>
           </div>
         </div>
       )}

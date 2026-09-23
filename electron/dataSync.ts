@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import type { DataSource, FileSource, ApiSource, StaticSource, LauncherItem, SourceFieldMapping, BannedItem } from '../src/types';
 import { AppStore } from './store';
 import { loadMagicGateXml } from './magicGateXml';
-import { fetchGitHubRepos } from './githubService';
+import { fetchGitHubRepos, getActiveGitHubToken } from './githubService';
 import { faviconService } from './faviconService';
 
 function isItemBanned(item: LauncherItem, banlist?: BannedItem[]): boolean {
@@ -48,7 +48,8 @@ export class DataSyncManager {
         }
       }
 
-      if (config.extensions?.github !== false && config.github?.token?.trim()) {
+      const activeGhToken = getActiveGitHubToken(config.github);
+      if (config.extensions?.github !== false && activeGhToken) {
         try {
           const ghItems = await fetchGitHubRepos(config.github);
           allItems.push(...ghItems);
@@ -134,7 +135,8 @@ export class DataSyncManager {
     }
 
     // Load GitHub repositories if configured and enabled
-    if (config.extensions?.github !== false && config.github?.token?.trim()) {
+    const activeGhTokenEnd = getActiveGitHubToken(config.github);
+    if (config.extensions?.github !== false && activeGhTokenEnd) {
       try {
         const ghItems = await fetchGitHubRepos(config.github);
         allItems.push(...ghItems);

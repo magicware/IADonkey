@@ -192,6 +192,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     error?: string;
   } | null>(null);
   const [showGitHubToken, setShowGitHubToken] = useState(false);
+  const [isConnectingOAuth, setIsConnectingOAuth] = useState(false);
+  const [deviceFlowData, setDeviceFlowData] = useState<{
+    userCode: string;
+    verificationUri: string;
+    deviceCode: string;
+    interval: number;
+    expiresAt: number;
+  } | null>(null);
+  const [deviceFlowError, setDeviceFlowError] = useState<string | null>(null);
+  const [userCodeCopied, setUserCodeCopied] = useState(false);
+  const oauthPollingRef = useRef<NodeJS.Timeout | null>(null);
   const pressedKeysRef = useRef<Set<string>>(new Set());
   const maxComboRef = useRef<string[]>([]);
   const originalHotkeyRef = useRef<string>(config.hotkey || 'Ctrl+Alt+Space');
@@ -209,6 +220,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [recentQuickCaps, setRecentQuickCaps] = useState<import('../types').QuickCapRecentItem[]>([]);
   const [isLoadingQuickCaps, setIsLoadingQuickCaps] = useState(false);
   const [copiedQuickCapPath, setCopiedQuickCapPath] = useState<string | null>(null);
+
+  // ScreenRuler state & refs
+  const [isRecordingScreenRulerHotkey, setIsRecordingScreenRulerHotkey] = useState(false);
+  const [screenRulerRecordedModifiers, setScreenRulerRecordedModifiers] = useState<string[]>([]);
+  const [screenRulerHotkeyError, setScreenRulerHotkeyError] = useState<string | null>(null);
+  const screenRulerPressedKeysRef = useRef<Set<string>>(new Set());
+  const screenRulerMaxComboRef = useRef<string[]>([]);
+  const screenRulerOriginalHotkeyRef = useRef<string>(config.donkeyTools?.screenRuler?.hotkey || '');
 
   const contentRef = useRef<HTMLDivElement>(null);
   const importSnippetsFileRef = useRef<HTMLInputElement>(null);
@@ -490,17 +509,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     return count;
   }, [formData.extensions]);
 
-  const handleTestGitHub = async () => {
-    if (!formData.github?.token?.trim()) return;
+  const stopOAuthPolling = () => {
+    if (oauthPollingRef.current) {
+      clearTimeout(oauthPollingRef.current);
+      oauthPollingRef.current = null;
+    }
+  };
+
+  const activeGitHubToken = useMemo(() => {
+    if (formData.github?.authMode === 'oauth') {
+      return formData.github?.oauthToken?.trim() || '';
+    }
+    return formData.github?.token?.trim() || '';
+  }, [formData.github?.authMode, formData.github?.token, formData.github?.oauthToken]);
+
+  const handleTestGitHub = async (customSettings?: Partial<import('../types').GithubSettings>) => {
+    const currentGithub = { ...formData.github, ...customSettings };
+    const isOAuth = currentGithub.authMode === 'oauth';
+    const activeToken = isOAuth ? currentGithub.oauthToken?.trim() : currentGithub.token?.trim();
+    if (!activeToken) return;
+
     setIsTestingGitHub(true);
     setGitHubTestResult(null);
     try {
       if (window.electronAPI?.testGitHubConnection) {
         const res = await window.electronAPI.testGitHubConnection({
-          username: formData.github.username,
-          token: formData.github.token,
-          org: formData.github.org,
-          apiUrl: formData.github.apiUrl,
+          authMode: currentGithub.authMode || 'pat',
+          username: currentGithub.username,
+          token: currentGithub.token || '',
+          clientId: currentGithub.clientId,
+          oauthToken: currentGithub.oauthToken,
+          oauthUser: currentGithub.oauthUser,
+          org: currentGithub.org,
+          apiUrl: currentGithub.apiUrl,
         });
         setGitHubTestResult(res);
       } else {
@@ -511,6 +552,145 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     } finally {
       setIsTestingGitHub(false);
     }
+  };
+
+  const handleStartGitHubOAuth = async () => {
+    const clientId = formData.github?.clientId?.trim() || 'Ov23liKwJB5JD7CEPsO3';
+    setDeviceFlowError(null);
+    setIsConnectingOAuth(true);
+    stopOAuthPolling();
+
+    try {
+      if (!window.electronAPI?.startGitHubDeviceFlow) {
+        setDeviceFlowError('OAuth Device Flow není v této verzi dostupný.');
+        setIsConnectingOAuth(false);
+        return;
+      }
+
+      const res = await window.electronAPI.startGitHubDeviceFlow({
+        clientId,
+        apiUrl: formData.github?.apiUrl,
+      });
+
+      if (!res.success || !res.deviceCode || !res.userCode) {
+        setDeviceFlowError(res.error || 'Inicializace přihlášení selhala.');
+        setIsConnectingOAuth(false);
+        return;
+      }
+
+      const expiresAt = Date.now() + (res.expiresIn || 900) * 1000;
+      const intervalSec = res.interval || 5;
+
+      setDeviceFlowData({
+        userCode: res.userCode,
+        verificationUri: res.verificationUri || 'https://github.com/login/device',
+        deviceCode: res.deviceCode,
+        interval: intervalSec,
+        expiresAt,
+      });
+
+      // Automatically copy user code to clipboard
+      try {
+        await navigator.clipboard.writeText(res.userCode);
+        setUserCodeCopied(true);
+        setTimeout(() => setUserCodeCopied(false), 4000);
+      } catch {}
+
+      // Open browser with verification url
+      if (window.electronAPI?.openExternal) {
+        window.electronAPI.openExternal(res.verificationUri || 'https://github.com/login/device');
+      }
+
+      // Start polling
+      const poll = async () => {
+        if (Date.now() > expiresAt) {
+          setDeviceFlowError('Platnost ověřovacího kódu vypršela. Zkuste to prosím znovu.');
+          setDeviceFlowData(null);
+          setIsConnectingOAuth(false);
+          return;
+        }
+
+        try {
+          const pollRes = await window.electronAPI.pollGitHubDeviceToken({
+            clientId,
+            deviceCode: res.deviceCode!,
+            apiUrl: formData.github?.apiUrl,
+          });
+
+          if (pollRes.status === 'success' && pollRes.accessToken) {
+            const updatedGithub: import('../types').GithubSettings = {
+              ...formData.github,
+              authMode: 'oauth',
+              token: formData.github?.token || '',
+              clientId,
+              oauthToken: pollRes.accessToken,
+              oauthUser: pollRes.user,
+            };
+            const updatedConfig = {
+              ...formData,
+              github: updatedGithub,
+            };
+            setFormData(updatedConfig);
+            handleSave(updatedConfig);
+
+            setDeviceFlowData(null);
+            setIsConnectingOAuth(false);
+            setDeviceFlowError(null);
+
+            // Run connection test with newly acquired token
+            handleTestGitHub(updatedGithub);
+            return;
+          }
+
+          if (pollRes.status === 'pending') {
+            oauthPollingRef.current = setTimeout(poll, intervalSec * 1000);
+          } else if (pollRes.status === 'slow_down') {
+            oauthPollingRef.current = setTimeout(poll, (intervalSec + 5) * 1000);
+          } else {
+            setDeviceFlowError(pollRes.error || 'Autorizace byla zamítnuta nebo vypršela.');
+            setDeviceFlowData(null);
+            setIsConnectingOAuth(false);
+          }
+        } catch (err: any) {
+          setDeviceFlowError(err?.message || 'Chyba při komunikaci se serverem.');
+          setDeviceFlowData(null);
+          setIsConnectingOAuth(false);
+        }
+      };
+
+      oauthPollingRef.current = setTimeout(poll, intervalSec * 1000);
+    } catch (err: any) {
+      setDeviceFlowError(err?.message || 'Chyba při spuštění přihlášení.');
+      setIsConnectingOAuth(false);
+    }
+  };
+
+  const handleCancelGitHubOAuth = () => {
+    stopOAuthPolling();
+    setDeviceFlowData(null);
+    setIsConnectingOAuth(false);
+    setDeviceFlowError(null);
+  };
+
+  const handleDisconnectGitHubOAuth = () => {
+    stopOAuthPolling();
+    setDeviceFlowData(null);
+    setIsConnectingOAuth(false);
+    setGitHubTestResult(null);
+
+    const updatedGithub: import('../types').GithubSettings = {
+      ...formData.github,
+      authMode: 'oauth',
+      token: formData.github?.token || '',
+      oauthToken: '',
+      oauthUser: undefined,
+    };
+    const updatedConfig = {
+      ...formData,
+      github: updatedGithub,
+    };
+    setFormData(updatedConfig);
+    handleSave(updatedConfig);
   };
 
   const [isDownloadingIcons, setIsDownloadingIcons] = useState(false);
@@ -1307,6 +1487,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         return;
       }
 
+      // Check collision with QuickCap hotkey
+      const qcHotkey = formData.donkeyTools?.quickCap?.hotkey || formData.donkeyTools?.fastSnap?.hotkey;
+      if (qcHotkey && finalHotkey.toLowerCase() === qcHotkey.toLowerCase()) {
+        const fallback = originalHotkeyRef.current || 'Ctrl+Alt+Space';
+        setFormData((prev) => ({ ...prev, hotkey: fallback }));
+        setHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou pro výstřižek QuickCap.`);
+        setIsRecordingHotkey(false);
+        pressedKeysRef.current.clear();
+        maxComboRef.current = [];
+        setRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      // Check collision with ScreenRuler hotkey
+      const srHotkey = formData.donkeyTools?.screenRuler?.hotkey;
+      if (srHotkey && finalHotkey.toLowerCase() === srHotkey.toLowerCase()) {
+        const fallback = originalHotkeyRef.current || 'Ctrl+Alt+Space';
+        setFormData((prev) => ({ ...prev, hotkey: fallback }));
+        setHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou pro měřítko ScreenRuler.`);
+        setIsRecordingHotkey(false);
+        pressedKeysRef.current.clear();
+        maxComboRef.current = [];
+        setRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
       setHotkeyError(null);
       const updated = { ...formData, hotkey: finalHotkey };
       setFormData(updated);
@@ -1502,6 +1712,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         };
         setFormData(updated);
         setColorMasterHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje s globální zkratkou pro vyvolání launcheru.`);
+        setIsRecordingColorMasterHotkey(false);
+        colorMasterPressedKeysRef.current.clear();
+        colorMasterMaxComboRef.current = [];
+        setColorMasterRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      // Check collision with ScreenRuler hotkey
+      const screenRulerHotkey = formData.donkeyTools?.screenRuler?.hotkey || '';
+      if (screenRulerHotkey && finalHotkey.toLowerCase() === screenRulerHotkey.toLowerCase()) {
+        const fallback = colorMasterOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            colorMaster: {
+              enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
+              hotkey: fallback,
+              defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
+            },
+          },
+        };
+        setFormData(updated);
+        setColorMasterHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou pro měřítko ScreenRuler.`);
         setIsRecordingColorMasterHotkey(false);
         colorMasterPressedKeysRef.current.clear();
         colorMasterMaxComboRef.current = [];
@@ -1810,6 +2046,292 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       quickCapPressedKeysRef.current.clear();
       quickCapMaxComboRef.current = [];
       setQuickCapRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+  };
+
+  const handleScreenRulerHotkeyFocus = () => {
+    setIsRecordingScreenRulerHotkey(true);
+    setScreenRulerHotkeyError(null);
+    screenRulerOriginalHotkeyRef.current = formData.donkeyTools?.screenRuler?.hotkey || '';
+    screenRulerPressedKeysRef.current.clear();
+    screenRulerMaxComboRef.current = [];
+    setScreenRulerRecordedModifiers([]);
+    window.electronAPI?.pauseGlobalHotkey?.();
+  };
+
+  const handleScreenRulerHotkeyBlur = () => {
+    setIsRecordingScreenRulerHotkey(false);
+    screenRulerPressedKeysRef.current.clear();
+    screenRulerMaxComboRef.current = [];
+    setScreenRulerRecordedModifiers([]);
+    window.electronAPI?.resumeGlobalHotkey?.();
+  };
+
+  const handleScreenRulerHotkeyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Escape cancels recording and restores original hotkey
+    if (e.key === 'Escape') {
+      const fallback = screenRulerOriginalHotkeyRef.current || '';
+      const isEnabled = formData.donkeyTools?.screenRuler?.enabled ?? false;
+      const color = formData.donkeyTools?.screenRuler?.color || '#6366f1';
+      const defaultUnit = formData.donkeyTools?.screenRuler?.defaultUnit || 'px';
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          screenRuler: {
+            enabled: isEnabled,
+            hotkey: fallback,
+            color,
+            defaultUnit,
+          },
+        },
+      };
+      setFormData(updated);
+      setScreenRulerHotkeyError(null);
+      setIsRecordingScreenRulerHotkey(false);
+      screenRulerPressedKeysRef.current.clear();
+      screenRulerMaxComboRef.current = [];
+      setScreenRulerRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+
+    // Backspace when nothing held resets / clears the hotkey
+    if (e.key === 'Backspace' && screenRulerPressedKeysRef.current.size === 0) {
+      const isEnabled = formData.donkeyTools?.screenRuler?.enabled ?? false;
+      const color = formData.donkeyTools?.screenRuler?.color || '#6366f1';
+      const defaultUnit = formData.donkeyTools?.screenRuler?.defaultUnit || 'px';
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          screenRuler: {
+            enabled: isEnabled,
+            hotkey: '',
+            color,
+            defaultUnit,
+          },
+        },
+      };
+      setFormData(updated);
+      handleSave(updated);
+      setScreenRulerHotkeyError(null);
+      setIsRecordingScreenRulerHotkey(false);
+      screenRulerPressedKeysRef.current.clear();
+      screenRulerMaxComboRef.current = [];
+      setScreenRulerRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+
+    // Normalize key
+    let keyName = e.key;
+    if (keyName === 'Control') keyName = 'Ctrl';
+    else if (keyName === 'Alt') keyName = 'Alt';
+    else if (keyName === 'Shift') keyName = 'Shift';
+    else if (keyName === 'Meta') keyName = 'Super';
+    else if (keyName === ' ') keyName = 'Space';
+    else if (keyName === 'ArrowUp') keyName = 'Up';
+    else if (keyName === 'ArrowDown') keyName = 'Down';
+    else if (keyName === 'ArrowLeft') keyName = 'Left';
+    else if (keyName === 'ArrowRight') keyName = 'Right';
+    else if (/^[a-z]$/i.test(keyName)) keyName = keyName.toUpperCase();
+
+    screenRulerPressedKeysRef.current.add(keyName);
+
+    // Sort order: Modifiers first, then normal keys
+    const order = ['Ctrl', 'Alt', 'Shift', 'Super'];
+    const currentKeys = Array.from(screenRulerPressedKeysRef.current);
+    currentKeys.sort((a, b) => {
+      const idxA = order.indexOf(a);
+      const idxB = order.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    if (currentKeys.length > screenRulerMaxComboRef.current.length) {
+      screenRulerMaxComboRef.current = [...currentKeys];
+    }
+
+    setScreenRulerRecordedModifiers(currentKeys);
+    setScreenRulerHotkeyError(null);
+  };
+
+  const handleScreenRulerHotkeyKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const combo = screenRulerMaxComboRef.current;
+    const isEnabled = formData.donkeyTools?.screenRuler?.enabled ?? false;
+    const color = formData.donkeyTools?.screenRuler?.color || '#6366f1';
+    const defaultUnit = formData.donkeyTools?.screenRuler?.defaultUnit || 'px';
+
+    // If only 1 key was pressed and released: reset to previous hotkey + display red error
+    if (combo.length === 1) {
+      const fallback = screenRulerOriginalHotkeyRef.current || '';
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          screenRuler: {
+            enabled: isEnabled,
+            hotkey: fallback,
+            color,
+            defaultUnit,
+          },
+        },
+      };
+      setFormData(updated);
+      setScreenRulerHotkeyError('Je potřeba minimálně dvojkombinace kláves');
+      setIsRecordingScreenRulerHotkey(false);
+      screenRulerPressedKeysRef.current.clear();
+      screenRulerMaxComboRef.current = [];
+      setScreenRulerRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+
+    // If at least 2 keys were pressed: check reserved hotkey collision
+    if (combo.length >= 2) {
+      const finalHotkey = combo.join('+');
+      const conflictReason = getReservedHotkeyCollision(combo);
+
+      if (conflictReason) {
+        const fallback = screenRulerOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            screenRuler: {
+              enabled: isEnabled,
+              hotkey: fallback,
+              color,
+              defaultUnit,
+            },
+          },
+        };
+        setFormData(updated);
+        setScreenRulerHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – ${conflictReason}. Byla zachována původní zkratka.`);
+        setIsRecordingScreenRulerHotkey(false);
+        screenRulerPressedKeysRef.current.clear();
+        screenRulerMaxComboRef.current = [];
+        setScreenRulerRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      // Check collision with main launcher hotkey
+      const launcherHotkey = formData.hotkey || 'Ctrl+Alt+Space';
+      if (finalHotkey.toLowerCase() === launcherHotkey.toLowerCase()) {
+        const fallback = screenRulerOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            screenRuler: {
+              enabled: isEnabled,
+              hotkey: fallback,
+              color,
+              defaultUnit,
+            },
+          },
+        };
+        setFormData(updated);
+        setScreenRulerHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou vyhledávacího okna. Byla zachována původní zkratka.`);
+        setIsRecordingScreenRulerHotkey(false);
+        screenRulerPressedKeysRef.current.clear();
+        screenRulerMaxComboRef.current = [];
+        setScreenRulerRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      // Check collision with ColorMaster hotkey
+      const colorMasterHotkey = formData.donkeyTools?.colorMaster?.hotkey || '';
+      if (colorMasterHotkey && finalHotkey.toLowerCase() === colorMasterHotkey.toLowerCase()) {
+        const fallback = screenRulerOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            screenRuler: {
+              enabled: isEnabled,
+              hotkey: fallback,
+              color,
+              defaultUnit,
+            },
+          },
+        };
+        setFormData(updated);
+        setScreenRulerHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou ColorMaster kapátka. Byla zachována původní zkratka.`);
+        setIsRecordingScreenRulerHotkey(false);
+        screenRulerPressedKeysRef.current.clear();
+        screenRulerMaxComboRef.current = [];
+        setScreenRulerRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      // Check collision with QuickCap hotkey
+      const quickCapHotkey = formData.donkeyTools?.quickCap?.hotkey || formData.donkeyTools?.fastSnap?.hotkey || '';
+      if (quickCapHotkey && finalHotkey.toLowerCase() === quickCapHotkey.toLowerCase()) {
+        const fallback = screenRulerOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            screenRuler: {
+              enabled: isEnabled,
+              hotkey: fallback,
+              color,
+              defaultUnit,
+            },
+          },
+        };
+        setFormData(updated);
+        setScreenRulerHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou QuickCap výstřižku. Byla zachována původní zkratka.`);
+        setIsRecordingScreenRulerHotkey(false);
+        screenRulerPressedKeysRef.current.clear();
+        screenRulerMaxComboRef.current = [];
+        setScreenRulerRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      setScreenRulerHotkeyError(null);
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          screenRuler: {
+            enabled: isEnabled,
+            hotkey: finalHotkey,
+            color,
+            defaultUnit,
+          },
+        },
+      };
+      setFormData(updated);
+      handleSave(updated);
+      setIsRecordingScreenRulerHotkey(false);
+      screenRulerPressedKeysRef.current.clear();
+      screenRulerMaxComboRef.current = [];
+      setScreenRulerRecordedModifiers([]);
       (e.target as HTMLInputElement).blur();
       window.electronAPI?.resumeGlobalHotkey?.();
       return;
@@ -4597,74 +5119,95 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <span className="material-symbols-outlined text-lg text-emerald-400">
                     folder_code
                   </span>
-                  Přihlašovací údaje k profilu GitHub
+                  Přihlašovací údaje a přístup k GitHubu
                 </h3>
                 <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
-                  Zadejte Personal Access Token (PAT). Launcher automaticky načte vaše osobní i firemní repozitáře, umožní v nich bleskově vyhledávat a kopírovat příkazy pro klonování.
+                  Zvolte způsob autorizace – Personal Access Token (PAT) nebo přihlášení přes GitHub OAuth 2.0 (Device Flow). Launcher automaticky načte vaše osobní i firemní repozitáře a umožní v nich vyhledávat a klonovat.
                 </p>
               </div>
 
-              {/* Box 1: Credentials */}
-              <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-4">
-                <div>
-                  <h4 className="font-semibold text-sm text-white flex items-center gap-2 mb-1">
-                    <span className="material-symbols-outlined text-lg text-emerald-400">
-                      key
-                    </span>
-                    Přihlašovací údaje (PAT)
-                  </h4>
-                  <p className="text-[13px] text-gray-400 leading-relaxed">
-                    Zadejte vaše uživatelské jméno a Personal Access Token pro přístup k vašim repozitářům.
-                  </p>
-                </div>
+              {/* Segmented Auth Mode Switch */}
+              <div className="flex items-center gap-2 p-1 bg-black/40 border border-white/10 rounded-xl w-fit">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updated = {
+                      ...formData,
+                      github: {
+                        ...formData.github,
+                        authMode: 'pat' as const,
+                        token: formData.github?.token || '',
+                      },
+                    };
+                    setFormData(updated);
+                    handleSave(updated);
+                    setGitHubTestResult(null);
+                  }}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                    (formData.github?.authMode || 'pat') === 'pat'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-base">key</span>
+                  Osobní token (PAT)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updated = {
+                      ...formData,
+                      github: {
+                        ...formData.github,
+                        authMode: 'oauth' as const,
+                        token: formData.github?.token || '',
+                      },
+                    };
+                    setFormData(updated);
+                    handleSave(updated);
+                    setGitHubTestResult(null);
+                  }}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                    formData.github?.authMode === 'oauth'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-base">passkey</span>
+                  GitHub OAuth 2.0
+                </button>
+              </div>
 
-                {/* Username field */}
-                <div>
-                  <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
-                    Uživatelské jméno (Username) <span className="text-gray-500 font-normal text-xs">(osobní profil)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.github?.username || ''}
-                    onChange={(e) => {
-                      const updated = {
-                        ...formData,
-                        github: {
-                          ...formData.github,
-                          username: e.target.value,
-                          token: formData.github?.token || '',
-                          org: formData.github?.org || '',
-                          apiUrl: formData.github?.apiUrl || 'https://api.github.com',
-                          defaultCloneDir: formData.github?.defaultCloneDir || '',
-                        },
-                      };
-                      setFormData(updated);
-                      handleSave(updated);
-                    }}
-                    placeholder="např. petrkulhanek"
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none font-mono"
-                  />
-                  <p className="text-xs text-gray-400 mt-1.5">
-                    Vaše osobní uživatelské jméno na GitHubu.
-                  </p>
-                </div>
+              {/* Box 1A: Personal Access Token (PAT) */}
+              {(formData.github?.authMode || 'pat') === 'pat' && (
+                <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-4 animate-fade-in">
+                  <div>
+                    <h4 className="font-semibold text-sm text-white flex items-center gap-2 mb-1">
+                      <span className="material-symbols-outlined text-lg text-emerald-400">
+                        key
+                      </span>
+                      Přihlašovací údaje (PAT)
+                    </h4>
+                    <p className="text-[13px] text-gray-400 leading-relaxed">
+                      Zadejte vaše uživatelské jméno a Personal Access Token pro přístup k vašim repozitářům.
+                    </p>
+                  </div>
 
-                {/* Token field */}
-                <div>
-                  <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
-                    Personal Access Token (PAT) <span className="text-rose-400">*</span>
-                  </label>
-                  <div className="relative flex items-center">
+                  {/* Username field */}
+                  <div>
+                    <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+                      Uživatelské jméno (Username) <span className="text-gray-500 font-normal text-xs">(osobní profil)</span>
+                    </label>
                     <input
-                      type={showGitHubToken ? 'text' : 'password'}
-                      value={formData.github?.token || ''}
+                      type="text"
+                      value={formData.github?.username || ''}
                       onChange={(e) => {
                         const updated = {
                           ...formData,
                           github: {
                             ...formData.github,
-                            username: formData.github?.username || '',
-                            token: e.target.value,
+                            username: e.target.value,
+                            token: formData.github?.token || '',
                             org: formData.github?.org || '',
                             apiUrl: formData.github?.apiUrl || 'https://api.github.com',
                             defaultCloneDir: formData.github?.defaultCloneDir || '',
@@ -4673,34 +5216,213 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         setFormData(updated);
                         handleSave(updated);
                       }}
-                      placeholder="ghp_... nebo github_pat_..."
-                      className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 pr-10 text-sm text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none font-mono"
+                      placeholder="např. petrkulhanek"
+                      className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none font-mono"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowGitHubToken(!showGitHubToken)}
-                      className="absolute right-3 text-gray-400 hover:text-gray-200 transition cursor-pointer"
-                      title={showGitHubToken ? 'Skrýt token' : 'Zobrazit token'}
-                    >
-                      <span className="material-symbols-outlined text-lg">
-                        {showGitHubToken ? 'visibility_off' : 'visibility'}
-                      </span>
-                    </button>
+                    <p className="text-xs text-gray-400 mt-1.5">
+                      Vaše osobní uživatelské jméno na GitHubu.
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
-                    Token můžete vygenerovat v{' '}
-                    <button
-                      type="button"
-                      onClick={() => window.electronAPI?.openExternal?.('https://github.com/settings/tokens')}
-                      className="text-emerald-400 hover:underline cursor-pointer inline-flex items-center gap-0.5"
-                    >
-                      GitHub Settings &rarr; Personal access tokens
-                      <span className="material-symbols-outlined text-[11px]">open_in_new</span>
-                    </button>
-                    . Pro soukromé repozitáře zaškrtněte rozsah <code className="bg-white/10 px-1 rounded font-mono text-emerald-300">repo</code> a pro organizace <code className="bg-white/10 px-1 rounded font-mono text-emerald-300">read:org</code>.
-                  </p>
+
+                  {/* Token field */}
+                  <div>
+                    <label className="block text-[13px] font-medium text-gray-300 mb-1.5">
+                      Personal Access Token (PAT) <span className="text-rose-400">*</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type={showGitHubToken ? 'text' : 'password'}
+                        value={formData.github?.token || ''}
+                        onChange={(e) => {
+                          const updated = {
+                            ...formData,
+                            github: {
+                              ...formData.github,
+                              username: formData.github?.username || '',
+                              token: e.target.value,
+                              org: formData.github?.org || '',
+                              apiUrl: formData.github?.apiUrl || 'https://api.github.com',
+                              defaultCloneDir: formData.github?.defaultCloneDir || '',
+                            },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                        placeholder="ghp_... nebo github_pat_..."
+                        className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 pr-10 text-sm text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowGitHubToken(!showGitHubToken)}
+                        className="absolute right-3 text-gray-400 hover:text-gray-200 transition cursor-pointer"
+                        title={showGitHubToken ? 'Skrýt token' : 'Zobrazit token'}
+                      >
+                        <span className="material-symbols-outlined text-lg">
+                          {showGitHubToken ? 'visibility_off' : 'visibility'}
+                        </span>
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
+                      Token můžete vygenerovat v{' '}
+                      <button
+                        type="button"
+                        onClick={() => window.electronAPI?.openExternal?.('https://github.com/settings/tokens')}
+                        className="text-emerald-400 hover:underline cursor-pointer inline-flex items-center gap-0.5"
+                      >
+                        GitHub Settings &rarr; Personal access tokens
+                        <span className="material-symbols-outlined text-[11px]">open_in_new</span>
+                      </button>
+                      . Pro soukromé repozitáře zaškrtněte rozsah <code className="bg-white/10 px-1 rounded font-mono text-emerald-300">repo</code> a pro organizace <code className="bg-white/10 px-1 rounded font-mono text-emerald-300">read:org</code>.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Box 1B: GitHub OAuth 2.0 (Device Flow) */}
+              {formData.github?.authMode === 'oauth' && (
+                <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-4 animate-fade-in">
+                  <div>
+                    <h4 className="font-semibold text-sm text-white flex items-center gap-2 mb-1">
+                      <span className="material-symbols-outlined text-lg text-emerald-400">
+                        passkey
+                      </span>
+                      GitHub OAuth 2.0 (Device Flow)
+                    </h4>
+                    <p className="text-[13px] text-gray-400 leading-relaxed">
+                      Přihlášení bez nutnosti ručního generování PAT tokenu. Využívá standardní autorizační tok zařízení RFC 8628.
+                    </p>
+                  </div>
+
+                  {formData.github?.oauthToken ? (
+                    /* Connected state */
+                    <div className="p-4 bg-emerald-500/10 border border-emerald-500/25 rounded-xl flex items-center justify-between gap-4 animate-fade-in">
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        {formData.github?.oauthUser?.avatar_url ? (
+                          <img
+                            src={formData.github.oauthUser.avatar_url}
+                            alt={formData.github.oauthUser.login}
+                            className="w-11 h-11 rounded-full border border-emerald-500/40 shrink-0"
+                          />
+                        ) : (
+                          <span className="material-symbols-outlined text-3xl text-emerald-400 shrink-0">verified_user</span>
+                        )}
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[13px] font-semibold text-emerald-200">
+                              Propojeno s GitHubem
+                            </span>
+                            <span className="bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-mono px-1.5 py-0.5 rounded leading-none">
+                              Aktivní OAuth
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-300 flex items-center gap-1.5 flex-wrap">
+                            <span>Přihlášený profil:</span>
+                            <span className="font-mono text-emerald-300 font-medium">
+                              @{formData.github?.oauthUser?.login || formData.github?.username || 'github-user'}
+                            </span>
+                            {formData.github?.oauthUser?.name && (
+                              <span className="text-gray-400">({formData.github.oauthUser.name})</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleDisconnectGitHubOAuth}
+                        className="px-3 py-1.5 text-xs text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg transition cursor-pointer flex items-center gap-1.5 shrink-0"
+                        title="Odpojit účet GitHub"
+                      >
+                        <span className="material-symbols-outlined text-sm">logout</span>
+                        Odpojit účet
+                      </button>
+                    </div>
+                  ) : (
+                    /* Not connected state - Clean 1-click experience */
+                    <div className="space-y-4">
+                      {/* Device Flow active card */}
+                      {deviceFlowData ? (
+                        <div className="p-4 bg-emerald-950/30 border border-emerald-500/30 rounded-xl space-y-3.5 animate-fade-in">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                              Autorizace zařízení na GitHubu
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleCancelGitHubOAuth}
+                              className="text-xs text-gray-400 hover:text-white transition cursor-pointer"
+                            >
+                              Zrušit
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-300 leading-relaxed">
+                            Váš jednorázový kód byl automaticky zkopírován do schránky. Vložte jej na otevřené stránce GitHubu pro autorizaci:
+                          </p>
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <div className="px-4 py-2.5 bg-black/60 border border-emerald-500/50 rounded-xl font-mono text-2xl font-bold tracking-widest text-emerald-300 select-all">
+                              {deviceFlowData.userCode}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await navigator.clipboard.writeText(deviceFlowData.userCode);
+                                setUserCodeCopied(true);
+                                setTimeout(() => setUserCodeCopied(false), 3000);
+                              }}
+                              className="px-3.5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-200 flex items-center gap-1.5 transition cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-sm">
+                                {userCodeCopied ? 'check' : 'content_copy'}
+                              </span>
+                              {userCodeCopied ? 'Zkopírováno!' : 'Kopírovat kód'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => window.electronAPI?.openExternal?.(deviceFlowData.verificationUri)}
+                              className="px-4 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 rounded-lg text-xs font-medium text-emerald-300 flex items-center gap-1.5 transition cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-sm">open_in_new</span>
+                              Otevřít ověření v prohlížeči
+                            </button>
+                          </div>
+                          <div className="text-[11px] text-gray-400 flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-xs text-emerald-400">info</span>
+                            <span>Aplikace automaticky naslouchá potvrzení a ihned po schválení na GitHubu se propojí.</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-white/[0.01] border border-white/5 rounded-xl space-y-3">
+                          <p className="text-[13px] text-gray-300 leading-relaxed">
+                            Kliknutím na tlačítko níže zahájíte přihlášení. V prohlížeči se otevře stránka GitHubu, kde potvrdíte přístup pro aplikaci <strong className="text-white font-semibold">IADonkey</strong>.
+                          </p>
+                          <div>
+                            <button
+                              type="button"
+                              disabled={isConnectingOAuth}
+                              onClick={handleStartGitHubOAuth}
+                              className={`px-5 py-2.5 rounded-xl text-xs font-medium border flex items-center gap-2 transition cursor-pointer ${
+                                isConnectingOAuth
+                                  ? 'bg-white/5 border-white/5 text-gray-500 cursor-not-allowed'
+                                  : 'bg-emerald-600/25 text-emerald-300 border-emerald-500/50 hover:bg-emerald-600/35 shadow-sm'
+                              }`}
+                            >
+                              <span className="material-symbols-outlined text-base">login</span>
+                              Přihlásit se přes GitHub
+                            </button>
+                            {deviceFlowError && (
+                              <p className="text-xs text-rose-400 mt-2 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm">error</span>
+                                {deviceFlowError}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Box 2: Organization */}
               <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-3">
@@ -4944,13 +5666,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 ) : (
                   <div className="rounded-xl border border-dashed border-white/15 bg-white/[0.01] p-3.5 flex items-center justify-between gap-3 text-xs text-gray-400 select-none flex-wrap">
-                    <span>Ověřte platnost zadaného PAT tokenu a dostupnost GitHub API</span>
+                    <span>
+                      {formData.github?.authMode === 'oauth'
+                        ? 'Ověřte funkčnost OAuth autorizace a přístup k GitHub API'
+                        : 'Ověřte platnost zadaného PAT tokenu a dostupnost GitHub API'}
+                    </span>
                     <button
                       type="button"
-                      disabled={!formData.github?.token?.trim() || isTestingGitHub}
-                      onClick={handleTestGitHub}
+                      disabled={!activeGitHubToken || isTestingGitHub}
+                      onClick={() => handleTestGitHub()}
                       className={`px-4 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 transition cursor-pointer shrink-0 ${
-                        !formData.github?.token?.trim() || isTestingGitHub
+                        !activeGitHubToken || isTestingGitHub
                           ? 'bg-white/5 border-white/5 text-gray-500 cursor-not-allowed'
                           : 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600/30'
                       }`}
@@ -4973,10 +5699,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {gitHubTestResult && (
                   <button
                     type="button"
-                    disabled={!formData.github?.token?.trim() || isTestingGitHub}
-                    onClick={handleTestGitHub}
+                    disabled={!activeGitHubToken || isTestingGitHub}
+                    onClick={() => handleTestGitHub()}
                     className={`px-4 py-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 transition cursor-pointer w-fit ${
-                      !formData.github?.token?.trim() || isTestingGitHub
+                      !activeGitHubToken || isTestingGitHub
                         ? 'bg-white/5 border-white/5 text-gray-500 cursor-not-allowed'
                         : 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600/30'
                     }`}
@@ -5677,6 +6403,254 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <li>Táhněte myší pro výběr oblasti. Uvolněním tlačítka myši se snímek ihned zkopíruje do schránky a uloží na disk.</li>
                         <li>Stiskem <kbd className="bg-white/10 px-1 rounded font-mono text-[10px]">Esc</kbd> pořízení výstřižku zrušíte bez uložení.</li>
                       </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* SECTION 3: ScreenRuler */}
+              <div className="p-5 bg-white/[0.03] border border-white/10 rounded-2xl space-y-4 transition hover:border-white/20">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0 text-rose-400">
+                      <span className="material-symbols-outlined text-2xl">straighten</span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-white tracking-wide">ScreenRuler</h4>
+                        <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded font-medium">
+                          Měřítko a pravítko
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                        Přesné měření rozměrů, vzdáleností a pixelů na živé obrazovce pomocí obdélníkového výběru nebo celoobrazovkového kříže s kótami k okrajům. Podporuje jednotky px, % i dp s rychlým kopírováním do schránky.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={formData.donkeyTools?.screenRuler?.enabled ?? false}
+                        onChange={(e) => {
+                          const updated = {
+                            ...formData,
+                            donkeyTools: {
+                              ...formData.donkeyTools,
+                              screenRuler: {
+                                enabled: e.target.checked,
+                                hotkey: formData.donkeyTools?.screenRuler?.hotkey || '',
+                                color: formData.donkeyTools?.screenRuler?.color || '#f43f5e',
+                                defaultUnit: formData.donkeyTools?.screenRuler?.defaultUnit || 'px',
+                              },
+                            },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                      />
+                      <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-600" />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Sub-settings when ScreenRuler is enabled */}
+                {(formData.donkeyTools?.screenRuler?.enabled ?? false) && (
+                  <div className="pt-4 border-t border-white/5 space-y-4">
+                    {/* Hotkey configuration & Test launch */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-gray-300">
+                        Globální klávesová zkratka pro ScreenRuler (volitelné)
+                      </label>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              readOnly
+                              value={
+                                isRecordingScreenRulerHotkey
+                                  ? (screenRulerRecordedModifiers.length > 0
+                                      ? screenRulerRecordedModifiers.join(' + ')
+                                      : 'Stiskněte klávesy...')
+                                  : formData.donkeyTools?.screenRuler?.hotkey || ''
+                              }
+                              onFocus={handleScreenRulerHotkeyFocus}
+                              onBlur={handleScreenRulerHotkeyBlur}
+                              onKeyDown={handleScreenRulerHotkeyKeyDown}
+                              onKeyUp={handleScreenRulerHotkeyKeyUp}
+                              className={`w-64 border rounded-xl px-3 py-2.5 text-sm font-mono cursor-pointer transition outline-none select-none text-center font-semibold ${
+                                screenRulerHotkeyError
+                                  ? 'bg-rose-950/30 border-rose-500 text-rose-300 ring-2 ring-rose-500/30'
+                                  : isRecordingScreenRulerHotkey
+                                  ? 'bg-rose-950/60 border-rose-400 ring-2 ring-rose-500/50 text-rose-200'
+                                  : 'bg-black/30 border-white/10 text-white hover:border-white/20'
+                              }`}
+                              placeholder="Klikněte pro nastavení zkratky"
+                            />
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                if (window.electronAPI?.startScreenRuler) {
+                                  await window.electronAPI.startScreenRuler();
+                                }
+                              } catch (err) {
+                                console.error('ScreenRuler test run error:', err);
+                              }
+                            }}
+                            className="px-4 py-2.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 hover:text-rose-200 border border-rose-500/30 hover:border-rose-500/50 rounded-xl text-xs font-medium transition cursor-pointer flex items-center gap-2 active:scale-95 shadow-sm"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">straighten</span>
+                            <span>Spustit ScreenRuler</span>
+                          </button>
+                        </div>
+
+                        {screenRulerHotkeyError && (
+                          <div className="text-xs text-rose-400 flex items-center gap-1.5 animate-fade-in font-medium">
+                            <span className="material-symbols-outlined text-sm">error</span>
+                            <span>{screenRulerHotkeyError}</span>
+                          </div>
+                        )}
+
+                        <p className="text-[11px] text-gray-500">
+                          Klikněte do pole a stiskněte požadovanou kombinaci kláves (např. <kbd className="bg-white/10 px-1 rounded text-gray-300 font-mono">Ctrl+Alt+R</kbd>). Klávesou <kbd className="bg-white/10 px-1 rounded text-gray-300 font-mono">Backspace</kbd> zkratku smažete, <kbd className="bg-white/10 px-1 rounded text-gray-300 font-mono">Esc</kbd> zruší změnu.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Unit & Accent Color options */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/5">
+                      {/* Default Unit */}
+                      <div className="space-y-2">
+                        <label className="block text-xs font-semibold text-gray-300">
+                          Výchozí jednotka měření
+                        </label>
+                        <div className="flex items-center gap-2">
+                          {(['px', '%', 'dp'] as const).map((unitOpt) => {
+                            const isSelected = (formData.donkeyTools?.screenRuler?.defaultUnit || 'px') === unitOpt;
+                            return (
+                              <button
+                                key={unitOpt}
+                                type="button"
+                                onClick={() => {
+                                  const updated = {
+                                    ...formData,
+                                    donkeyTools: {
+                                      ...formData.donkeyTools,
+                                      screenRuler: {
+                                        enabled: formData.donkeyTools?.screenRuler?.enabled ?? true,
+                                        hotkey: formData.donkeyTools?.screenRuler?.hotkey || '',
+                                        color: formData.donkeyTools?.screenRuler?.color || '#f43f5e',
+                                        defaultUnit: unitOpt,
+                                      },
+                                    },
+                                  };
+                                  setFormData(updated);
+                                  handleSave(updated);
+                                }}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition cursor-pointer border ${
+                                  isSelected
+                                    ? 'bg-rose-600 text-white border-rose-500 shadow-sm'
+                                    : 'bg-black/30 text-gray-400 border-white/10 hover:border-white/20 hover:text-white'
+                                }`}
+                              >
+                                {unitOpt}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="text-[11px] text-gray-500">
+                          Během měření lze jednotku okamžitě přepínat klávesou <kbd className="bg-white/10 px-1 rounded text-gray-300 font-mono">U</kbd>.
+                        </p>
+                      </div>
+
+                      {/* Accent Color */}
+                      <div className="space-y-2">
+                        <label className="block text-xs font-semibold text-gray-300">
+                          Barva vodítek a měřítka
+                        </label>
+                        <div className="flex items-center gap-2">
+                          {[
+                            { name: 'Rose (DonkeyTools)', color: '#f43f5e' },
+                            { name: 'Růžová', color: '#ec4899' },
+                            { name: 'Indigo', color: '#6366f1' },
+                            { name: 'Smaragdová', color: '#10b981' },
+                            { name: 'Jantarová', color: '#f59e0b' },
+                            { name: 'Modrá', color: '#3b82f6' },
+                          ].map((c) => {
+                            const isSelected = (formData.donkeyTools?.screenRuler?.color || '#f43f5e').toLowerCase() === c.color.toLowerCase();
+                            return (
+                              <button
+                                key={c.color}
+                                type="button"
+                                onClick={() => {
+                                  const updated = {
+                                    ...formData,
+                                    donkeyTools: {
+                                      ...formData.donkeyTools,
+                                      screenRuler: {
+                                        enabled: formData.donkeyTools?.screenRuler?.enabled ?? true,
+                                        hotkey: formData.donkeyTools?.screenRuler?.hotkey || '',
+                                        color: c.color,
+                                        defaultUnit: formData.donkeyTools?.screenRuler?.defaultUnit || 'px',
+                                      },
+                                    },
+                                  };
+                                  setFormData(updated);
+                                  handleSave(updated);
+                                }}
+                                className={`w-7 h-7 rounded-lg transition cursor-pointer relative flex items-center justify-center ${
+                                  isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-[#13141c] scale-110' : 'hover:scale-105'
+                                }`}
+                                style={{ backgroundColor: c.color }}
+                                title={c.name}
+                              >
+                                {isSelected && (
+                                  <span className="material-symbols-outlined text-white text-sm">check</span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Usage shortcuts banner */}
+                    <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5 text-[11px] text-gray-400">
+                      <span className="font-semibold text-rose-300 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-sm">keyboard</span>
+                        Ovládací zkratky v overlay měřítka
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-gray-300 pt-1">
+                        <div className="flex items-center gap-2">
+                          <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono text-[10px]">Esc</kbd>
+                          <span className="text-gray-400">Zavřít pravítko</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono text-[10px]">Mezerník</kbd>
+                          <span className="text-gray-400">Zmrazit / odemknout výběr</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono text-[10px]">C</kbd>
+                          <span className="text-gray-400">Zkopírovat rozměry do schránky</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono text-[10px]">M</kbd>
+                          <span className="text-gray-400">Přepnout režim (Výběr ↔ Kříž)</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono text-[10px]">U</kbd>
+                          <span className="text-gray-400">Změnit jednotky (px ↔ % ↔ dp)</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono text-[10px]">Šipky (Shift)</kbd>
+                          <span className="text-gray-400">Posunout výběr o 1 px (10 px)</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -6915,6 +7889,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </div>
                       <kbd className="px-2.5 py-1 bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded-lg font-mono font-semibold shadow-sm">
                         {formData.donkeyTools?.quickCap?.hotkey || formData.donkeyTools?.fastSnap?.hotkey}
+                      </kbd>
+                    </div>
+                  )}
+
+                  {formData.extensions?.donkeyTools && formData.donkeyTools?.screenRuler?.enabled === true && !!formData.donkeyTools?.screenRuler?.hotkey?.trim() && (
+                    <div className="py-3 flex items-center justify-between">
+                      <div>
+                        <span className="font-medium text-white">Měřítko a pravítko (ScreenRuler)</span>
+                        <p className="text-gray-400 text-xs mt-0.5">Spustí celoobrazovkové průhledné pravítko pro přesné odměřování rozměrů a pixelů.</p>
+                      </div>
+                      <kbd className="px-2.5 py-1 bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded-lg font-mono font-semibold shadow-sm">
+                        {formData.donkeyTools.screenRuler.hotkey}
                       </kbd>
                     </div>
                   )}

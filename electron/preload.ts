@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   resumeGlobalHotkey: (): Promise<void> => ipcRenderer.invoke('resume-global-hotkey'),
   fetchFaviconForUrl: (url: string): Promise<string | null> => ipcRenderer.invoke('fetch-favicon-for-url', url),
   testGitHubConnection: (settings: any): Promise<any> => ipcRenderer.invoke('test-github-connection', settings),
+  startGitHubDeviceFlow: (params: any): Promise<any> => ipcRenderer.invoke('github-oauth-start-device-flow', params),
+  pollGitHubDeviceToken: (params: any): Promise<any> => ipcRenderer.invoke('github-oauth-poll-token', params),
   selectDirectory: (defaultPath?: string): Promise<string | null> => ipcRenderer.invoke('select-directory', defaultPath),
   runGitClone: (params: { repoUrl: string; targetDir: string; recursive?: boolean }): Promise<{ success: boolean; targetPath: string; output?: string; error?: string; alreadyExists?: boolean }> =>
     ipcRenderer.invoke('run-git-clone', params),
@@ -261,6 +263,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('quickcap-captured-global', handler);
     return () => {
       ipcRenderer.removeListener('quickcap-captured-global', handler);
+    };
+  },
+
+  // ScreenRuler API
+  startScreenRuler: (): Promise<void> => ipcRenderer.invoke('screenruler-start'),
+  closeScreenRuler: (): Promise<void> => ipcRenderer.invoke('screenruler-close'),
+  copyScreenRulerDimensions: (dimensions: string): Promise<void> =>
+    ipcRenderer.invoke('screenruler-copy', dimensions),
+  getScreenRulerInitData: (): Promise<{ width: number; height: number; color: string; defaultUnit: string } | null> =>
+    ipcRenderer.invoke('screenruler-get-init-data'),
+  onScreenRulerInit: (callback: (data: { width: number; height: number; color: string; defaultUnit: string }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('screenruler-init', handler);
+    return () => {
+      ipcRenderer.removeListener('screenruler-init', handler);
+    };
+  },
+  onScreenRulerCleanup: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('screenruler-cleanup', handler);
+    return () => {
+      ipcRenderer.removeListener('screenruler-cleanup', handler);
     };
   },
 

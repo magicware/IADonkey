@@ -28,10 +28,14 @@ const DEFAULT_CONFIG: AppConfig = {
     requestPrefix: 'R',
   },
   github: {
+    authMode: 'pat',
     username: '',
     token: '',
+    clientId: 'Ov23liKwJB5JD7CEPsO3',
+    oauthToken: '',
     org: '',
     apiUrl: 'https://api.github.com',
+    defaultCloneDir: '',
   },
   vscode: {
     path: '',
@@ -39,12 +43,32 @@ const DEFAULT_CONFIG: AppConfig = {
   androidStudio: {
     path: '',
   },
+  donkeyTools: {
+    colorMaster: {
+      enabled: false,
+      hotkey: '',
+      defaultFormat: 'hex',
+    },
+    quickCap: {
+      enabled: false,
+      hotkey: '',
+      saveDirectory: '',
+    },
+    screenRuler: {
+      enabled: false,
+      hotkey: '',
+      defaultUnit: 'px',
+      color: '#f43f5e',
+      overlayColor: '#f43f5e',
+    },
+  },
   extensions: {
     magicgate: false,
     mlog: false,
     github: false,
     vscode: false,
     androidStudio: false,
+    donkeyTools: false,
   },
   updateUrl: 'https://raw.githubusercontent.com/magicware/IADonkey/main/version.json',
   lastDeclinedVersion: null,
