@@ -1,6 +1,6 @@
 {
   "name": "iadonkey",
-  "version": "1.1.21",
+  "version": "1.1.22",
   "description": "IADonkey Launcher",
   "author": "MagicWare",
   "main": "dist-electron/main.js",

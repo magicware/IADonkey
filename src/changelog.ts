@@ -5,12 +5,30 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.21';
+export const CURRENT_APP_VERSION = '1.1.22';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.22',
+    date: '23. 9. 2026',
+    title: 'Vývojářský režim, nová záložka Systém, přesun chybových protokolů a tray zkratky nástrojů',
+    highlights: [
+      'Vývojářský a diagnostický režim (isDevelop): Nový skrytý režim odemykaný easter eggem – 10násobným kliknutím na číslo verze v záložce Systém. Zobrazuje počítadlo zbývajících kliknutí, po aktivaci odemkne novou záložku „Vývojář“ v bočním menu a při opakovaném kliknutí upozorní, že režim je již aktivní.',
+      'Nová záložka Vývojář v Nastavení: Obsahuje hlavní přepínač pro okamžitou deaktivaci a skrytí režimu, přímé tlačítko pro otevření Chrome DevTools vývojářské konzole, generátor testovacího crashlogu pro ověření diagnostiky a kompletní auditní Protokol prováděných akcí (Action Log).',
+      'Trvalý běh nahrávání akcí na pozadí: Služba zaznamenávání akcí běží nepřetržitě na pozadí nezávisle na vývojářském režimu, což zaručuje kompletní časovou osu událostí při každém exportu crashlogu.',
+      'Přejmenování záložky Aktualizace na „Systém“: Záložka byla přejmenována na „Systém“ s ikonou systému a přesunem kompletní diagnostiky a správy chybových protokolů (Crashlogs) ze záložky Nápověda.',
+      'Duální indikátor na záložce Systém: Tlačítko záložky Systém disponuje dvěma souběžnými indikátory – štítkem nové verze v uživatelsky zvolené primární barvě motivu aplikace a červeným číselným štítkem počtu zachycených chybových protokolů.',
+      'Větší výška okna Nastavení (+100 px): Výchozí výška okna Nastavení byla navýšena ze 720 px na 820 px pro komfortnější procházení dlouhých seznamů a konfigurací.',
+      'Rychlé vyvolání QuickCap a Kapátka z Tray ikony: Kontextová nabídka ikony v oznamovací oblasti Windows byla rozšířena o přímé akce pro spuštění výstřižku obrazovky a kapátka barev ColorMaster.',
+      'Oprava synchronizační notifikace z Traye: Po kliknutí na „Synchronizovat data nyní“ v tray menu se po úspěšném dokončení spolehlivě zobrazí systémová notifikace Windows s počtem načtených záznamů.',
+      'Dynamický čip DonkeyTools v záložce Rozšíření: V přehledu rozšíření se pro DonkeyTools zobrazuje zelený stavový štítek s počtem aktivních nástrojů, nebo výrazný červený štítek „Nenakonfigurováno“ v případě nulové konfigurace.',
+      'Optimalizace stahování a odstraňování duplicit: Odstraněn duplicitní ukazatel průběhu synchronizace v záložce Zdroje dat a stisk klávesy Enter po dokončení stahování (Git, MagicGate, CMSinFS) otevře cílovou složku v Průzkumníku, zavře dialog a resetuje vyhledávač.',
+      'Kompaktnější výška SplashScreenu: Výška úvodní obrazovky byla zmenšena o cca 50 px (na 350 px) pro optimální vycentrování na všech typech displejů.',
+    ],
+  },
   {
     version: '1.1.21',
     date: '22. 9. 2026',
