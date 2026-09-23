@@ -1,33 +1,86 @@
 # IADonkey – TODO List
 
-Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci a dokončené čekající na revizi.
+Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podrobnými technickými analýzami a dokončené čekající na revizi.
 
 ---
 
 ## 📋 Otevřené úkoly (k realizaci)
 
-- [ ] **1. Analýza měřítka a integrace do spotlightu a nastavení**
-  - Prověřit možnosti pravítka / měření vzdáleností a rozměrů na obrazovce (pixel ruler / screen scale) s možností vyvolání z launcheru a nastavení parametrů.
+- [ ] **1. Měřítko a pravítko obrazovky (Screen Ruler / Scale) v DonkeyTools**
+  - **Popis**: Přidání nového systémového nástroje pro měření vzdáleností a rozměrů na obrazovce (pixel ruler / screen scale) pro vývojáře a grafiky.
+  - **Architektura & Electron**:
+    - Využití dedikovaného transparentního fullscreen okna (`hash: 'ruler'` v `windowManager.ts`) s vlastnostmi `transparent: true`, `frame: false`, `alwaysOnTop: true`, `skipTaskbar: true`.
+    - Dva základní měřicí režimy:
+      1. *Obdélníkový výběr (Bounding Box)*: Tažení myší zobrazující šířku, výšku v px, poměr stran a plochu.
+      2. *Vzdálenost a kříž (Crosshair & Edge Distance)*: Měření vzdálenosti od kurzoru k hranám oken nebo zadanému bodu.
+    - Klávesové zkratky v režimu měření: `Esc` (zavřít/zrušit), `Mezerník` (zamknout/odemknout naměřenou oblast), `C` (kopírovat rozměry např. `480 × 320 px` do schránky), šipky (jemný posun o 1 px, `Shift+šipky` o 10 px).
+  - **Integrace do Spotlightu & Tray**:
+    - Nový příkaz ve Spotlightu: `/ruler`, `/pravitko`, `/meritko`, `/scale`.
+    - Karta akce v DonkeyTools sekci Spotlightu i v kontextové nabídce systémové lišty (Tray icon).
+  - **Konfigurace & Nastavení**:
+    - Rozšíření `DonkeyToolsSettings` o `screenRuler?: { enabled: boolean; hotkey?: string; defaultUnit?: 'px' | '%' | 'dp'; overlayColor?: string }`.
+    - Sekce pro záznam globální klávesové zkratky a nastavení barvy v záložce DonkeyTools v `SettingsModal.tsx`.
 
 - [ ] **2. Integrace multi-schránky na styl Ditto (EasyClip)**
-  - Vytvoření subrozšíření EasyClip v rámci DonkeyTools.
-  - Sledování schránky, historie 100 záznamů, deduplikace a posun na vrchol.
-  - Plovoucí kompaktní okno s klávesovou navigací, vyhledáváním a vícenásobným výběrem pomocí Shift.
-  - Zachování fokusu a automatické vložení (auto-paste): uložení aktivního okna, skrytí EasyClip, návrat fokusu a syntéza `Ctrl+V`.
+  - **Popis**: Pokročilý správce historie schránky jako subrozšíření DonkeyTools s rychlým vkládáním a historií.
+  - **Architektura & Procesy**:
+    - Služba na pozadí (`electron/clipboardService.ts`): Periodické sledování změn systémové schránky (`clipboard.readText()`, `readImage()`), deduplikace záznamů, posun existujícího záznamu na vrchol.
+    - Úložiště: Ukládání až 100 posledních položek v `userData/easyclip.json` s možností mazání a expirace.
+    - Plovoucí kompaktní okno (`hash: 'easyclip'`): Velikost ~380×480 px, frameless, otevření u kurzoru nebo v centru obrazovky.
+  - **Interakce & Klávesnice**:
+    - Okamžité filtrování fulltextem, procházení šipkami nahoru/dolů.
+    - Podpora vícenásobného výběru pomocí `Shift + šipky` / kliknutí: vložení více položek spojených oddělovačem (nový řádek / mezera).
+    - `Enter`: vložení vybrané položky, `Shift+Enter`: vložení jako čistý neformátovaný text, `Del`: smazání ze schránky, `Esc`: skrytí okna.
+  - **Mechanismus automatického vložení (Auto-Paste)**:
+    - Před otevřením EasyClip uložit HWND/identifikátor aktivního okna.
+    - Po stisku `Enter`: zkopírovat zvolený text do schránky, skrýt EasyClip, obnovit fokus do původního okna a syntetizovat stisk `Ctrl+V` (prostřednictvím nativního volání / Windows API).
 
-- [ ] **3. Analýza GitHub přepínače mezi OAuth a Personal Credentials**
-  - Navrhnout a implementovat přepínač mezi přihlášením přes GitHub OAuth a osobním tokenem/údaji.
-  - Stav přepínače perzistovat v konfiguraci a podle něj dynamicky řídit způsob autentizace a volání GitHub API.
+- [ ] **3. GitHub: Přepínač mezi Personal Credentials (PAT) a OAuth 2.0**
+  - **Popis**: Umožnit uživateli volbu způsobu autorizace k GitHub API – buď manuálním tokenem (PAT), nebo komfortním přihlášením jedním kliknutím přes OAuth Device Flow.
+  - **Datový model**:
+    - Rozšíření `GithubSettings` o `authMode: 'pat' | 'oauth'`, `oauthToken?: string`, `oauthUser?: { login: string; name?: string; avatar_url?: string }`.
+    - Stav `authMode` je trvale perzistován v `config.json`.
+  - **Autorizační tok (GitHub Device Authorization Flow - RFC 8628)**:
+    - Bez nutnosti vystavovat Client Secret na klientovi:
+      1. Vyžádání kódu zařízení (`POST https://github.com/login/device/code` s `client_id` a scope `repo, read:org, user`).
+      2. Zobrazení ověřovacího kódu (`user_code`) s tlačítkem „Kopírovat a otevřít GitHub“.
+      3. Polling na pozadí na endpointu `https://github.com/login/oauth/access_token`.
+      4. Po schválení uložení tokenu, načtení uživatelského profilu a zobrazení avatara a jména v nastavení.
+  - **Uživatelské rozhraní v Nastavení (`SettingsModal.tsx`)**:
+    - Segmentový přepínač: *„Osobní přístupový token (PAT)“* vs. *„Přihlášení přes GitHub (OAuth)“*.
+    - Režim PAT: pole pro vložení tokenu, odkaz na generování na GitHubu, testovací tlačítko.
+    - Režim OAuth: tlačítko *„Připojit účet GitHub“* / *„Odpojit účet“*, stavový čip s avatarem přihlášeného vývojáře.
+  - **Sjednocená synchronizace**:
+    - `githubService.ts` i `dataSync.ts` načítají aktivní token transparentně podle `authMode`.
 
-- [ ] **4. Analýza MagicGate: přepínač mezi XML souborem a API GET**
-  - Navrhnout přepínač mezi načítáním ze souboru XML a online API GET požadavkem s autentizací (pravděpodobně MagicGate credentials).
-  - Připravit následné dynamické mapování příchozích dat s fixním nastavením ikon MagicGate (jakmile bude API k dispozici).
+- [ ] **4. MagicGate: Přepínač mezi lokálním XML souborem a vzdáleným API GET**
+  - **Popis**: Přepínač způsobu získávání instancí MagicGate – buď z lokálního deploy XML souboru, nebo dynamickým stažením přes REST API s autentizací.
+  - **Datový model & Konfigurace**:
+    - Rozšíření `MagicGateSettings` o `sourceMode: 'xml' | 'api'`, `apiUrl?: string`, `apiUsername?: string`, `apiPassword?: string`, `apiAuthType?: 'basic' | 'bearer' | 'credentials'`.
+    - Výchozí hodnota `sourceMode: 'xml'` pro 100% zpětnou kompatibilitu.
+  - **Implementace API GET & Mapování**:
+    - Podpora přihlášení buď sdílenými přihlašovacími údaji MagicGate (IS Tour credentials), nebo dedikovaným API klíčem.
+    - Endpoint vrací strukturu serverů a instancí; mapovač data převede na standardní `LauncherItem[]` s `sourceId: 'magicgate-api'`.
+    - Fixní sada Material ikon pro aplikace: Administrace (`admin_panel_settings`), Web (`language`), API (`api`), BackOffice/SIS (`desktop_windows`), Klient (`apartment`).
+  - **Uživatelské rozhraní v Nastavení (`SettingsModal.tsx`)**:
+    - Přepínač režimu: *„Lokální soubor XML“* vs. *„Vzdálené API GET“*.
+    - V režimu XML: výběr cesty k souboru na disku s validací existence.
+    - V režimu API: URL endpointu, volba typu autentizace, tlačítko *„Otestovat připojení k API“*.
 
-- [ ] **5. Analýza vývojářského režimu (isDevelop) s odemykáním 10× kliknutím**
-  - Zavést parametr `isDevelop` do lokálního úložiště (ve výchozím stavu `false`).
-  - Při 10násobném kliknutí na číslo verze v záložce Aktualizace přepnout na `true`.
-  - Po aktivaci zobrazit novou záložku pod Nápovědou určenou pro ladicí nástroje (debug).
-  - V této záložce nabídnout možnost vypnutí `isDevelop` (`false`), čímž se záložka opět skryje (opětovné odemknutí opět přes 10× klik na verzi).
+- [ ] **5. Vývojářský režim (isDevelop) s odemykáním 10× kliknutím**
+  - **Popis**: Skrytý vývojářský a diagnostický panel odemykaný easter eggem (10násobné kliknutí na verzi aplikace).
+  - **Chování a odemykací logika**:
+    - V záložce **Systém** v `SettingsModal.tsx` je číslo verze (`v{CURRENT_APP_VERSION}`) opatřeno čítačem kliknutí.
+    - Pokud uživatel klikne 10× během krátkého intervalu (< 1,5 s mezi kliky), parametr `isDevelop` v `localStorage` se přepne na `true`.
+    - Zobrazí se potvrzovací notifikace / toast: *„Vývojářský režim byl aktivován“*.
+  - **Nová záložka „Vývojář“**:
+    - V levém navigačním panelu se pod záložkou Nápověda objeví nová záložka *„Vývojář / Debug“* s ikonou `bug_report` v jantarové barvě.
+    - Obsahuje hlavní vypínač: přepnutím na `false` se vývojářský režim okamžitě deaktivuje, záložka se skryje a uživatel je přesměrován zpět na záložku Systém.
+  - **Obsah a diagnostické funkce záložky Vývojář**:
+    - Tlačítko pro okamžité otevření DevTools (konzole) hlavního okna i Spotlightu.
+    - Generátor testovacího pádu / výjimky pro ověření funkčnosti tvorby crashlogů.
+    - Prohlížeč surových JSON souborů mezipaměti (`config.json`, `items.json`, `sources.json`).
+    - Nástroj pro vyčištění lokálního úložiště a simulaci prvního spuštění.
 
 ---
 
