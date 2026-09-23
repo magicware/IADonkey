@@ -162,7 +162,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   updateStatusMessage,
   updateInfo,
 }) => {
-  const [activeTab, setActiveTab] = useState<'sources' | 'extensions' | 'magicgate' | 'mlog' | 'github' | 'vscode' | 'android-studio' | 'donkey-tools' | 'snippets' | 'general' | 'updates' | 'help'>('sources');
+  const [activeTab, setActiveTab] = useState<'sources' | 'extensions' | 'magicgate' | 'mlog' | 'github' | 'vscode' | 'android-studio' | 'donkey-tools' | 'snippets' | 'general' | 'system' | 'updates' | 'help'>('sources');
   const [formData, setFormData] = useState<AppConfig>(config);
   const [editingSource, setEditingSource] = useState<DataSource | null>(null);
   const [isAddingSource, setIsAddingSource] = useState<'file' | 'api' | 'static' | null>(null);
@@ -3125,25 +3125,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <span>Obecné</span>
           </button>
 
-          {/* Updates tab */}
+          {/* System tab */}
           <button
             type="button"
-            onClick={() => setActiveTab('updates')}
+            onClick={() => setActiveTab('system')}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer ${
-              activeTab === 'updates'
+              activeTab === 'system' || activeTab === 'updates'
                 ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <span className="material-symbols-outlined text-xl text-indigo-400">system_update</span>
-              <span>Aktualizace</span>
+              <span className="material-symbols-outlined text-xl text-indigo-400">dns</span>
+              <span>Systém</span>
             </div>
-            {updateInfo?.hasUpdate ? (
-              <span className="w-5 h-5 rounded-full bg-rose-500 text-white text-[11px] font-bold flex items-center justify-center shadow-md shadow-rose-500/30 shrink-0">
-                1
-              </span>
-            ) : null}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {updateInfo?.hasUpdate ? (
+                <span
+                  title="K dispozici je nová verze aplikace"
+                  className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center shadow-md shadow-indigo-600/30 shrink-0"
+                  style={{ backgroundColor: formData.primaryColor || undefined }}
+                >
+                  1
+                </span>
+              ) : null}
+              {crashLogs.length > 0 ? (
+                <span
+                  title={`${crashLogs.length} ${crashLogs.length === 1 ? 'chyba v protokolu' : crashLogs.length < 5 ? 'chyby v protokolu' : 'chyb v protokolu'}`}
+                  className="text-[11px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono font-bold"
+                >
+                  {crashLogs.length}
+                </span>
+              ) : null}
+            </div>
           </button>
 
           {/* Help tab */}
@@ -3160,11 +3174,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <span className="material-symbols-outlined text-xl text-indigo-400">help</span>
               <span>Nápověda</span>
             </div>
-            {crashLogs.length > 0 ? (
-              <span className="text-[11px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono font-bold">
-                {crashLogs.length}
-              </span>
-            ) : null}
           </button>
         </nav>
 
@@ -3186,7 +3195,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeTab === 'donkey-tools' && 'DonkeyTools – Systémové nástroje a utility'}
               {activeTab === 'snippets' && 'Uživatelské snippety'}
               {activeTab === 'general' && 'Obecné nastavení aplikace'}
-              {activeTab === 'updates' && 'Aktualizace aplikace'}
+              {(activeTab === 'system' || activeTab === 'updates') && 'Systém a aktualizace aplikace'}
               {activeTab === 'help' && 'Nápověda a klávesové zkratky'}
             </h2>
             <p className="text-[13px] text-gray-400 mt-1">
@@ -3200,7 +3209,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeTab === 'donkey-tools' && 'Správa vestavěných utilit, modulu ColorMaster a klávesových zkratek'}
               {activeTab === 'snippets' && 'Předem definované textové zkratky a osobní údaje pro rychlé vložení'}
               {activeTab === 'general' && 'Globální klávesová zkratka, barva motivu a vyhledávání programů'}
-              {activeTab === 'updates' && 'Kontrola nových verzí a historie změn IADonkey'}
+              {(activeTab === 'system' || activeTab === 'updates') && 'Správa verzí, aktualizace IADonkey a diagnostika chybových protokolů'}
               {activeTab === 'help' && 'Přehled všech klávesových zkratek a chytrých funkcí'}
             </p>
           </div>
@@ -6391,19 +6400,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
-          {/* TAB: Dedicated Updates */}
-          {activeTab === 'updates' && (
+          {/* TAB: Dedicated System & Updates */}
+          {(activeTab === 'system' || activeTab === 'updates') && (
             <div className="space-y-6 animate-fade-in">
               <div>
                 <h3 className="font-semibold text-white text-base flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg text-indigo-400">system_update</span>
-                  Aktualizace aplikace & Verze
+                  <span className="material-symbols-outlined text-lg text-indigo-400">dns</span>
+                  Systém a aktualizace aplikace
                 </h3>
                 <p className="text-[13px] text-gray-400 mt-1">
-                  IADonkey automaticky kontroluje nové verze každých 24 hodin na pozadí. Zde můžete provést ruční kontrolu.
+                  IADonkey automaticky kontroluje nové verze každých 24 hodin na pozadí. Zde můžete provést ruční kontrolu a spravovat chybové protokoly.
                 </p>
               </div>
 
+              {/* Section 1: Updates & Version */}
               <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
                   <div>
@@ -6441,6 +6451,155 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className="text-[13px] text-gray-400 flex items-center gap-2">
                     <span className="material-symbols-outlined text-sm text-gray-500">check_circle</span>
                     <span>Aplikace je připravena k vyhledávání novějších verzí na GitHubu.</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Section 2: Crashlogs & Error Diagnostics */}
+              <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-semibold text-rose-300 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-base text-rose-400">bug_report</span>
+                      Chybové protokoly a diagnostika (Crashlogs)
+                    </h4>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Automaticky ukládané protokoly chyb ze složky <code className="bg-white/10 px-1.5 py-0.5 rounded text-gray-300 font-mono text-[11px]">crashlog/</code> pro rychlou diagnostiku.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleOpenCrashLogFolder}
+                      className="h-8 px-3 bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer border border-white/10 shrink-0"
+                      title="Otevře složku s crashlogy v Průzkumníku Windows"
+                    >
+                      <span className="material-symbols-outlined text-base text-indigo-400">folder_open</span>
+                      <span>Otevřít složku</span>
+                    </button>
+                    {crashLogs.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearCrashLogs}
+                        className="h-8 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer border border-rose-500/20 shrink-0"
+                        title="Vymaže všechny soubory crashlogů"
+                      >
+                        <span className="material-symbols-outlined text-base text-rose-500">delete_sweep</span>
+                        <span>Vymazat</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {crashLogs.length === 0 ? (
+                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3 text-[13px] text-emerald-300">
+                    <span className="material-symbols-outlined text-xl text-emerald-400 shrink-0">check_circle</span>
+                    <div>
+                      <span className="font-semibold text-emerald-200">Žádné zaznamenané chyby ani pády</span>
+                      <p className="text-xs text-emerald-400/80 mt-0.5">Všechny operace a procesy aplikace běží v pořádku bez zachycených výjimek.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {(showAllCrashLogs ? crashLogs : crashLogs.slice(0, 5)).map((log) => {
+                      const isExpanded = selectedCrashLog?.id === log.id;
+                      const isCopied = diagnosticsCopiedId === log.id;
+                      const isExported = diagnosticsExportedId === log.id;
+                      const isExporting = isExportingCrashId === log.id;
+                      return (
+                        <div
+                          key={log.id}
+                          className="bg-white/[0.02] border border-rose-500/20 rounded-xl overflow-hidden text-[13px] transition hover:border-rose-500/40"
+                        >
+                          <div className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-rose-500/5">
+                            <div className="flex items-start gap-2.5 min-w-0">
+                              <span className="material-symbols-outlined text-lg text-rose-400 shrink-0 mt-0.5">error</span>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-semibold text-white truncate">{log.action}</span>
+                                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                                    {log.timestamp}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-rose-200/80 mt-1 truncate max-w-xl font-mono">
+                                  {log.errorSnippet}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                              <button
+                                type="button"
+                                onClick={() => handleCopyCrashLog(log)}
+                                className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-lg text-xs font-medium transition flex items-center gap-1 cursor-pointer border border-white/10"
+                                title="Zkopíruje celý protokol včetně časové osy do schránky"
+                              >
+                                <span className="material-symbols-outlined text-sm">
+                                  {isCopied ? 'check' : 'content_copy'}
+                                </span>
+                                <span>{isCopied ? 'Zkopírováno' : 'Kopírovat'}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleExportCrashLog(log)}
+                                disabled={isExporting}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1 cursor-pointer border ${
+                                  isExported
+                                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                    : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border-white/10'
+                                }`}
+                                title="Exportuje protokol chyby včetně časové osy akcí do souboru (.txt / .log)"
+                              >
+                                <span className={`material-symbols-outlined text-sm ${isExported ? 'text-emerald-400' : isExporting ? 'animate-spin text-indigo-400' : 'text-indigo-400'}`}>
+                                  {isExported ? 'check_circle' : isExporting ? 'sync' : 'download'}
+                                </span>
+                                <span>{isExported ? 'Exportováno' : isExporting ? 'Ukládám...' : 'Exportovat'}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCrashLog(isExpanded ? null : log)}
+                                className="px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer border border-rose-500/30"
+                              >
+                                <span>{isExpanded ? 'Skrýt detail' : 'Detail'}</span>
+                                <span className="material-symbols-outlined text-sm">
+                                  {isExpanded ? 'expand_less' : 'expand_more'}
+                                </span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {isExpanded && (
+                            <div className="p-3.5 bg-black/40 border-t border-white/5 space-y-2">
+                              <div className="flex items-center justify-between text-xs text-gray-400">
+                                <span className="font-mono text-[11px] text-gray-400">{log.fileName}</span>
+                                <span className="text-[11px] text-gray-500">{log.filePath}</span>
+                              </div>
+                              <pre className="p-3 bg-[#0d0e14] border border-white/5 rounded-lg text-[11.5px] font-mono text-gray-300 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-64 select-text">
+                                {log.fullContent}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {crashLogs.length > 5 && (
+                      <div className="pt-1 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => setShowAllCrashLogs(!showAllCrashLogs)}
+                          className="text-xs text-rose-400 hover:text-rose-300 font-medium flex items-center gap-1.5 py-1.5 px-3.5 rounded-xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.06] transition cursor-pointer"
+                        >
+                          <span>
+                            {showAllCrashLogs
+                              ? 'Zobrazit méně (posledních 5)'
+                              : `Ukázat vše (zobrazit všech ${crashLogs.length} protokolů)`}
+                          </span>
+                          <span className="material-symbols-outlined text-base">
+                            {showAllCrashLogs ? 'expand_less' : 'expand_more'}
+                          </span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -6874,155 +7033,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           </span>
                           <span className="material-symbols-outlined text-base">
                             {showAllActionLogs ? 'expand_less' : 'expand_more'}
-                          </span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Section 4: Crashlogs & Error Diagnostics */}
-              <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h4 className="text-sm font-semibold text-rose-300 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-base text-rose-400">bug_report</span>
-                      Chybové protokoly a diagnostika (Crashlogs)
-                    </h4>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      Automaticky ukládané protokoly chyb ze složky <code className="bg-white/10 px-1.5 py-0.5 rounded text-gray-300 font-mono text-[11px]">crashlog/</code> pro rychlou diagnostiku.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={handleOpenCrashLogFolder}
-                      className="h-8 px-3 bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer border border-white/10 shrink-0"
-                      title="Otevře složku s crashlogy v Průzkumníku Windows"
-                    >
-                      <span className="material-symbols-outlined text-base text-indigo-400">folder_open</span>
-                      <span>Otevřít složku</span>
-                    </button>
-                    {crashLogs.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={handleClearCrashLogs}
-                        className="h-8 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer border border-rose-500/20 shrink-0"
-                        title="Vymaže všechny soubory crashlogů"
-                      >
-                        <span className="material-symbols-outlined text-base text-rose-500">delete_sweep</span>
-                        <span>Vymazat</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {crashLogs.length === 0 ? (
-                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3 text-[13px] text-emerald-300">
-                    <span className="material-symbols-outlined text-xl text-emerald-400 shrink-0">check_circle</span>
-                    <div>
-                      <span className="font-semibold text-emerald-200">Žádné zaznamenané chyby ani pády</span>
-                      <p className="text-xs text-emerald-400/80 mt-0.5">Všechny operace a procesy aplikace běží v pořádku bez zachycených výjimek.</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2.5">
-                    {(showAllCrashLogs ? crashLogs : crashLogs.slice(0, 5)).map((log) => {
-                      const isExpanded = selectedCrashLog?.id === log.id;
-                      const isCopied = diagnosticsCopiedId === log.id;
-                      const isExported = diagnosticsExportedId === log.id;
-                      const isExporting = isExportingCrashId === log.id;
-                      return (
-                        <div
-                          key={log.id}
-                          className="bg-white/[0.02] border border-rose-500/20 rounded-xl overflow-hidden text-[13px] transition hover:border-rose-500/40"
-                        >
-                          <div className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-rose-500/5">
-                            <div className="flex items-start gap-2.5 min-w-0">
-                              <span className="material-symbols-outlined text-lg text-rose-400 shrink-0 mt-0.5">error</span>
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-semibold text-white truncate">{log.action}</span>
-                                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                                    {log.timestamp}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-rose-200/80 mt-1 truncate max-w-xl font-mono">
-                                  {log.errorSnippet}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                              <button
-                                type="button"
-                                onClick={() => handleCopyCrashLog(log)}
-                                className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-lg text-xs font-medium transition flex items-center gap-1 cursor-pointer border border-white/10"
-                                title="Zkopíruje celý protokol včetně časové osy do schránky"
-                              >
-                                <span className="material-symbols-outlined text-sm">
-                                  {isCopied ? 'check' : 'content_copy'}
-                                </span>
-                                <span>{isCopied ? 'Zkopírováno' : 'Kopírovat'}</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleExportCrashLog(log)}
-                                disabled={isExporting}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1 cursor-pointer border ${
-                                  isExported
-                                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                                    : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border-white/10'
-                                }`}
-                                title="Exportuje protokol chyby včetně časové osy akcí do souboru (.txt / .log)"
-                              >
-                                <span className={`material-symbols-outlined text-sm ${isExported ? 'text-emerald-400' : isExporting ? 'animate-spin text-indigo-400' : 'text-indigo-400'}`}>
-                                  {isExported ? 'check_circle' : isExporting ? 'sync' : 'download'}
-                                </span>
-                                <span>{isExported ? 'Exportováno' : isExporting ? 'Ukládám...' : 'Exportovat'}</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setSelectedCrashLog(isExpanded ? null : log)}
-                                className="px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer border border-rose-500/30"
-                              >
-                                <span>{isExpanded ? 'Skrýt detail' : 'Detail'}</span>
-                                <span className="material-symbols-outlined text-sm">
-                                  {isExpanded ? 'expand_less' : 'expand_more'}
-                                </span>
-                              </button>
-                            </div>
-                          </div>
-
-                          {isExpanded && (
-                            <div className="p-3.5 bg-black/40 border-t border-white/5 space-y-2">
-                              <div className="flex items-center justify-between text-xs text-gray-400">
-                                <span className="font-mono text-[11px] text-gray-400">{log.fileName}</span>
-                                <span className="text-[11px] text-gray-500">{log.filePath}</span>
-                              </div>
-                              <pre className="p-3 bg-[#0d0e14] border border-white/5 rounded-lg text-[11.5px] font-mono text-gray-300 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-64 select-text">
-                                {log.fullContent}
-                              </pre>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {crashLogs.length > 5 && (
-                      <div className="pt-1 flex justify-center">
-                        <button
-                          type="button"
-                          onClick={() => setShowAllCrashLogs(!showAllCrashLogs)}
-                          className="text-xs text-rose-400 hover:text-rose-300 font-medium flex items-center gap-1.5 py-1.5 px-3.5 rounded-xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.06] transition cursor-pointer"
-                        >
-                          <span>
-                            {showAllCrashLogs
-                              ? 'Zobrazit méně (posledních 5)'
-                              : `Ukázat vše (zobrazit všech ${crashLogs.length} protokolů)`}
-                          </span>
-                          <span className="material-symbols-outlined text-base">
-                            {showAllCrashLogs ? 'expand_less' : 'expand_more'}
                           </span>
                         </button>
                       </div>

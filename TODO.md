@@ -29,15 +29,11 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci a dokon
   - Po aktivaci zobrazit novou záložku pod Nápovědou určenou pro ladicí nástroje (debug).
   - V této záložce nabídnout možnost vypnutí `isDevelop` (`false`), čímž se záložka opět skryje (opětovné odemknutí opět přes 10× klik na verzi).
 
-- [ ] **6. Přejmenování záložky Aktualizace na „Systém“ a přesun chybových protokolů**
-  - Přejmenovat záložku „Aktualizace“ v Nastavení na „Systém“.
-  - Přesunout sekci Chybové protokoly ze záložky Nápověda na konec záložky Systém.
-  - Vyřešit a navrhnout chování dvou souběžných indikátorů na jedné záložce: „Chyba“ vs. „Nová verze“.
-
 ---
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
 
+- [x] **Přejmenování záložky Aktualizace na „Systém“, přesun chybových protokolů a duální indikátor (primární barva pro update, červená pro chyby)**
 - [x] **Zmenšení výšky SplashScreenu přibližně o 50 px**
 - [x] **Oprava zobrazení synchronizační notifikace z Tray ikony**
 - [x] **Rozšíření kontextového menu ikony v oznamovací oblasti (Tray icon) o QuickCap a Kapátko**
