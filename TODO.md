@@ -33,11 +33,4 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci a dokon
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
 
-- [x] **Přejmenování záložky Aktualizace na „Systém“, přesun chybových protokolů a duální indikátor (primární barva pro update, červená pro chyby)**
-- [x] **Zmenšení výšky SplashScreenu přibližně o 50 px**
-- [x] **Oprava zobrazení synchronizační notifikace z Tray ikony**
-- [x] **Rozšíření kontextového menu ikony v oznamovací oblasti (Tray icon) o QuickCap a Kapátko**
-- [x] **Stavový indikátor DonkeyTools v záložce Rozšíření (zelená při ≥ 1, červené Nenakonfigurováno při 0)**
-- [x] **Oprava zdvojené synchronizace dat v záložce Zdroje dat (odstraněn duplicitní progress)**
-- [x] **Číselný indikátor chybových protokolů na záložce Nápověda (červený badge s počtem chyb)**
-- [x] **Chování stisku Enter po dokončení stahování (otevřít v průzkumníku + zavřít a resetovat spotlight)**
+*(Žádné dokončené úkoly nečekají na kontrolu – všechny byly ověřeny a smazány)*
