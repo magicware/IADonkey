@@ -224,9 +224,9 @@ export class WindowManager {
 
     this.settingsWindow = new BrowserWindow({
       width: 960,
-      height: 720,
+      height: 820,
       minWidth: 800,
-      minHeight: 560,
+      minHeight: 660,
       title: 'IADonkey – Nastavení',
       icon: getAppIcon(),
       autoHideMenuBar: true,

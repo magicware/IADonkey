@@ -270,6 +270,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [simulatedCrashSuccess, setSimulatedCrashSuccess] = useState<string | null>(null);
 
   const handleVersionClick = () => {
+    if (isDevelop) {
+      versionClickCountRef.current += 1;
+      const currentClicks = versionClickCountRef.current;
+
+      if (versionClickTimerRef.current) {
+        clearTimeout(versionClickTimerRef.current);
+      }
+      versionClickTimerRef.current = setTimeout(() => {
+        versionClickCountRef.current = 0;
+      }, 1500);
+
+      if (currentClicks >= 2) {
+        versionClickCountRef.current = 0;
+        setDevelopUnlockMessage('Již jste vývojář. Vývojové prostředí vypnete v záložce Vývojář.');
+        setTimeout(() => {
+          setDevelopUnlockMessage(null);
+        }, 5000);
+      }
+      return;
+    }
+
     versionClickCountRef.current += 1;
     const currentClicks = versionClickCountRef.current;
 
@@ -284,28 +305,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (currentClicks >= 10) {
       versionClickCountRef.current = 0;
       setVersionClickHint(null);
-      const nextState = !isDevelop;
-      setIsDevelop(nextState);
+      setIsDevelop(true);
       try {
-        localStorage.setItem('iadonkey_develop_mode', nextState ? 'true' : 'false');
+        localStorage.setItem('iadonkey_develop_mode', 'true');
       } catch {}
       setDevelopUnlockMessage(
-        nextState
-          ? 'Vývojářský režim byl úspěšně aktivován! V bočním menu se zobrazila nová záložka Vývojář.'
-          : 'Vývojářský režim byl deaktivován.'
+        'Vývojářský režim byl úspěšně aktivován! V bočním menu se zobrazila nová záložka Vývojář.'
       );
       setTimeout(() => {
         setDevelopUnlockMessage(null);
       }, 5000);
 
-      if (nextState) {
-        window.electronAPI?.logAction?.({
-          type: 'action',
-          title: 'Vývojářský režim aktivován',
-          details: 'Aktivace proběhla 10× kliknutím na verzi aplikace',
-          status: 'success',
-        });
-      }
+      window.electronAPI?.logAction?.({
+        type: 'action',
+        title: 'Vývojářský režim aktivován',
+        details: 'Aktivace proběhla 10× kliknutím na verzi aplikace',
+        status: 'success',
+      });
     } else if (currentClicks >= 5) {
       const remaining = 10 - currentClicks;
       setVersionClickHint(`Ještě ${remaining} ${remaining === 1 ? 'kliknutí' : remaining < 5 ? 'kliknutí' : 'kliknutí'} pro odemknutí vývojářského režimu...`);
@@ -6551,26 +6567,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div
                       onClick={handleVersionClick}
                       className="text-lg font-mono font-bold text-white tracking-wide cursor-pointer select-none active:scale-95 transition-transform inline-flex items-center gap-2 group"
-                      title={isDevelop ? 'Vývojářský režim je aktivní (kliknutím lze přepínat)' : 'Verze aplikace'}
+                      title={isDevelop ? 'Vývojářský režim je aktivní' : 'Verze aplikace'}
                     >
                       <span className="group-hover:text-indigo-300 transition-colors">v{CURRENT_APP_VERSION}</span>
                       {isDevelop && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider font-bold">
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase tracking-wider inline-flex items-center justify-center leading-none h-4.5 align-middle shadow-xs">
                           DEV
                         </span>
                       )}
                     </div>
-                    {versionClickHint && (
-                      <p className="text-[11.5px] text-amber-300 mt-1 animate-pulse font-medium">
-                        {versionClickHint}
-                      </p>
-                    )}
-                    {developUnlockMessage && (
-                      <p className="text-[11.5px] text-emerald-400 mt-1 animate-fade-in font-medium flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">check_circle</span>
-                        <span>{developUnlockMessage}</span>
-                      </p>
-                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -6591,6 +6596,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {/* Developer Mode Easter Egg Feedback Messages under divider */}
+                {versionClickHint && (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300 flex items-center gap-2 animate-pulse font-medium">
+                    <span className="material-symbols-outlined text-base text-amber-400 shrink-0">touch_app</span>
+                    <span>{versionClickHint}</span>
+                  </div>
+                )}
+                {developUnlockMessage && (
+                  <div className={`p-3 rounded-xl text-xs flex items-center gap-2 animate-fade-in font-medium ${
+                    developUnlockMessage.includes('Již jste')
+                      ? 'bg-amber-500/10 border border-amber-500/20 text-amber-300'
+                      : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300'
+                  }`}>
+                    <span className={`material-symbols-outlined text-base shrink-0 ${
+                      developUnlockMessage.includes('Již jste') ? 'text-amber-400' : 'text-emerald-400'
+                    }`}>
+                      {developUnlockMessage.includes('Již jste') ? 'info' : 'verified'}
+                    </span>
+                    <span>{developUnlockMessage}</span>
+                  </div>
+                )}
 
                 {updateStatusMessage ? (
                   <div className="p-3.5 bg-indigo-950/30 border border-indigo-500/30 rounded-xl flex items-center gap-2.5 text-[13px] text-indigo-300">
