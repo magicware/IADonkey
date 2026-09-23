@@ -2029,13 +2029,34 @@ app.whenReady().then(async () => {
       windowManager.getSettingsWindow()?.webContents.send('config-updated', updatedConfig);
       windowManager.getMainWindow()?.webContents.send('data-updated', allItems);
       windowManager.getSettingsWindow()?.webContents.send('data-updated', allItems);
+
+      notificationService.show({
+        type: 'syncComplete',
+        title: 'Synchronizace dokončena',
+        body: `Úspěšně synchronizováno celkem ${allItems.length} položek.`,
+        onClick: () => {
+          windowManager.showSpotlight();
+        },
+      });
     },
     // onSettingsRequest from Tray
     () => {
       windowManager.getMainWindow()?.webContents.send('open-settings');
     },
     // getConfig callback
-    () => store.getConfig()
+    () => store.getConfig(),
+    // onQuickCapRequest from Tray
+    () => {
+      startQuickCapProcess().catch((err) => {
+        console.error('[Main] Tray QuickCap error:', err);
+      });
+    },
+    // onColorPickerRequest from Tray
+    () => {
+      pickScreenColorNative().catch((err) => {
+        console.error('[Main] Tray ColorPicker error:', err);
+      });
+    }
   );
 
   setupIpcHandlers();

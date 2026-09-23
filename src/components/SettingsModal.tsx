@@ -3150,14 +3150,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('help')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer ${
               activeTab === 'help'
                 ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
             }`}
           >
-            <span className="material-symbols-outlined text-xl text-indigo-400">help</span>
-            <span>Nápověda</span>
+            <div className="flex items-center gap-2.5">
+              <span className="material-symbols-outlined text-xl text-indigo-400">help</span>
+              <span>Nápověda</span>
+            </div>
+            {crashLogs.length > 0 ? (
+              <span className="text-[11px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono font-bold">
+                {crashLogs.length}
+              </span>
+            ) : null}
           </button>
         </nav>
 
@@ -3363,36 +3370,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </div>
               </div>
-
-              {/* Real-time sync progress bar */}
-              {syncProgress && (
-                <div className="p-3.5 bg-indigo-950/40 border border-indigo-500/30 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between text-[13px]">
-                    <span className="text-indigo-200 font-medium flex items-center gap-2">
-                      <span className={`material-symbols-outlined text-base ${syncProgress.isComplete ? 'text-emerald-400' : 'text-indigo-400 animate-spin'}`}>
-                        {syncProgress.isComplete ? 'check_circle' : 'sync'}
-                      </span>
-                      {syncProgress.isComplete ? (
-                        <span className="text-emerald-300 font-semibold">Synchronizace dokončena</span>
-                      ) : (
-                        <>
-                          <span>Synchronizuji ({syncProgress.current}/{syncProgress.total}):</span>
-                          <strong className="text-white truncate max-w-xs">{syncProgress.sourceName || 'Příprava...'}</strong>
-                        </>
-                      )}
-                    </span>
-                    <span className="font-mono font-bold text-indigo-400 text-sm">
-                      {syncProgress.percentage}%
-                    </span>
-                  </div>
-                  <div className="w-full h-2 bg-black/40 rounded-full overflow-hidden border border-white/10 p-0.5">
-                    <div
-                      className="h-full bg-gradient-to-r from-indigo-500 to-indigo-400 rounded-full transition-all duration-300 ease-out shadow-sm"
-                      style={{ width: `${Math.min(100, Math.max(0, syncProgress.percentage))}%` }}
-                    />
-                  </div>
-                </div>
-              )}
 
               {/* Inline Add Source Form */}
               {isAddingSource && (
@@ -4051,14 +4028,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               ].filter(Boolean).length;
                               if (activeCount > 0) {
                                 return (
-                                  <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded font-medium">
-                                    {activeCount} {activeCount === 1 ? 'nástroj aktivní' : 'nástroje aktivní'}
+                                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-medium">
+                                    {activeCount} {activeCount === 1 ? 'nástroj aktivní' : activeCount >= 2 && activeCount <= 4 ? 'nástroje aktivní' : 'nástrojů aktivních'}
                                   </span>
                                 );
                               }
                               return (
-                                <span className="text-[10px] bg-white/5 text-gray-400 border border-white/10 px-1.5 py-0.5 rounded font-medium">
-                                  Nástroje vypnuty
+                                <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded font-medium">
+                                  Nenakonfigurováno
                                 </span>
                               );
                             })()

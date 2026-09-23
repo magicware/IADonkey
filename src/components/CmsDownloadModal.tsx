@@ -126,25 +126,26 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
     }
   };
 
-  // Keyboard shortcut: Escape to close, Enter on success to close and reset spotlight
+  const handleOpenInExplorer = () => {
+    if (targetDir && window.electronAPI?.openPath) {
+      window.electronAPI.openPath(targetDir);
+    }
+  };
+
+  // Keyboard shortcut: Escape to close, Enter on success to open in Explorer, close and reset spotlight
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
       } else if (e.key === 'Enter' && status === 'success') {
         e.preventDefault();
+        handleOpenInExplorer();
         handleFooterClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [status, onClose]);
-
-  const handleOpenInExplorer = () => {
-    if (targetDir && window.electronAPI?.openPath) {
-      window.electronAPI.openPath(targetDir);
-    }
-  };
+  }, [status, onClose, targetDir]);
 
   const handleOpenInVscode = async () => {
     if (targetDir && window.electronAPI?.openInVscode) {

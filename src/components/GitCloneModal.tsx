@@ -160,6 +160,13 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
     }
   }, [cloneLogs]);
 
+  const handleOpenInExplorer = () => {
+    const pathToOpen = clonedPath || targetDir;
+    if (pathToOpen && window.electronAPI?.openPath) {
+      window.electronAPI.openPath(pathToOpen);
+    }
+  };
+
   const handleFooterClose = async () => {
     if (window.electronAPI?.closeAndResetSpotlight) {
       await window.electronAPI.closeAndResetSpotlight();
@@ -176,6 +183,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
       } else if (e.key === 'Enter' && isOpen) {
         if (status === 'success') {
           e.preventDefault();
+          handleOpenInExplorer();
           handleFooterClose();
           return;
         }
@@ -294,13 +302,6 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
     } catch (err: any) {
       setStatus('error');
       setErrorMessage(err?.message || 'Chyba při komunikaci s procesem klonování.');
-    }
-  };
-
-  const handleOpenInExplorer = () => {
-    const pathToOpen = clonedPath || targetDir;
-    if (pathToOpen && window.electronAPI?.openPath) {
-      window.electronAPI.openPath(pathToOpen);
     }
   };
 

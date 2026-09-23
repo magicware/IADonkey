@@ -76,7 +76,9 @@ export class WindowManager {
   constructor(
     private onSyncRequest: () => void,
     private onSettingsRequest: () => void,
-    private getConfig?: () => any
+    private getConfig?: () => any,
+    private onQuickCapRequest?: () => void,
+    private onColorPickerRequest?: () => void
   ) {}
 
   public createMainWindow(): BrowserWindow {
@@ -839,6 +841,19 @@ export class WindowManager {
       },
       { type: 'separator' },
       {
+        label: 'QuickCap – Výstřižek obrazovky',
+        click: () => {
+          this.onQuickCapRequest?.();
+        },
+      },
+      {
+        label: 'ColorMaster – Kapátko (nabrat barvu)',
+        click: () => {
+          this.onColorPickerRequest?.();
+        },
+      },
+      { type: 'separator' },
+      {
         label: 'Ukončit IADonkey',
         click: () => {
           this.isQuitting = true;
@@ -867,7 +882,7 @@ export class WindowManager {
 
     this.splashWindow = new BrowserWindow({
       width: 380,
-      height: 400,
+      height: 350,
       frame: false,
       transparent: true,
       backgroundColor: '#00000000',
@@ -915,7 +930,7 @@ export class WindowManager {
     flex-direction: column;
     align-items: flex-start;
     justify-content: flex-start;
-    padding: 39px 39px 35px 39px;
+    padding: 30px 35px 26px 35px;
     text-align: left;
   }
   .icon {
