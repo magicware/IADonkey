@@ -67,23 +67,9 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
     - V režimu XML: výběr cesty k souboru na disku s validací existence.
     - V režimu API: URL endpointu, volba typu autentizace, tlačítko *„Otestovat připojení k API“*.
 
-- [ ] **5. Vývojářský režim (isDevelop) s odemykáním 10× kliknutím**
-  - **Popis**: Skrytý vývojářský a diagnostický panel odemykaný easter eggem (10násobné kliknutí na verzi aplikace).
-  - **Chování a odemykací logika**:
-    - V záložce **Systém** v `SettingsModal.tsx` je číslo verze (`v{CURRENT_APP_VERSION}`) opatřeno čítačem kliknutí.
-    - Pokud uživatel klikne 10× během krátkého intervalu (< 1,5 s mezi kliky), parametr `isDevelop` v `localStorage` se přepne na `true`.
-    - Zobrazí se potvrzovací notifikace / toast: *„Vývojářský režim byl aktivován“*.
-  - **Nová záložka „Vývojář“**:
-    - V levém navigačním panelu se pod záložkou Nápověda objeví nová záložka *„Vývojář / Debug“* s ikonou `bug_report` v jantarové barvě.
-    - Obsahuje hlavní vypínač: přepnutím na `false` se vývojářský režim okamžitě deaktivuje, záložka se skryje a uživatel je přesměrován zpět na záložku Systém.
-  - **Obsah a diagnostické funkce záložky Vývojář**:
-    - Tlačítko pro okamžité otevření DevTools (konzole) hlavního okna i Spotlightu.
-    - Generátor testovacího pádu / výjimky pro ověření funkčnosti tvorby crashlogů.
-    - Prohlížeč surových JSON souborů mezipaměti (`config.json`, `items.json`, `sources.json`).
-    - Nástroj pro vyčištění lokálního úložiště a simulaci prvního spuštění.
-
 ---
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
 
-*(Žádné dokončené úkoly nečekají na kontrolu – všechny byly ověřeny a smazány)*
+- [x] **Vývojářský režim (isDevelop) s odemykáním 10× kliknutím, přesun protokolu prováděných akcí (Action Log) a ladicí nástroje**
+

@@ -169,6 +169,8 @@ declare global {
       clearCrashLogs?: () => Promise<void>;
       logAction?: (entry: Omit<ActionLogEntry, 'id' | 'timestamp'> & { timestamp?: string }) => Promise<void>;
       exportCrashReport?: (fileName: string) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
+      simulateTestCrash?: () => Promise<string>;
+      openDevTools?: () => Promise<void>;
 
       // Systémové notifikace
       sendTestNotification?: (variant?: 'success' | 'error') => Promise<boolean>;

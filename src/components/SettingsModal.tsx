@@ -162,7 +162,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   updateStatusMessage,
   updateInfo,
 }) => {
-  const [activeTab, setActiveTab] = useState<'sources' | 'extensions' | 'magicgate' | 'mlog' | 'github' | 'vscode' | 'android-studio' | 'donkey-tools' | 'snippets' | 'general' | 'system' | 'updates' | 'help'>('sources');
+  const [activeTab, setActiveTab] = useState<'sources' | 'extensions' | 'magicgate' | 'mlog' | 'github' | 'vscode' | 'android-studio' | 'donkey-tools' | 'snippets' | 'general' | 'system' | 'updates' | 'help' | 'develop'>('sources');
   const [formData, setFormData] = useState<AppConfig>(config);
   const [editingSource, setEditingSource] = useState<DataSource | null>(null);
   const [isAddingSource, setIsAddingSource] = useState<'file' | 'api' | 'static' | null>(null);
@@ -254,6 +254,109 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
+  // Developer mode state & easter egg click counter
+  const [isDevelop, setIsDevelop] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('iadonkey_develop_mode') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const versionClickCountRef = useRef(0);
+  const versionClickTimerRef = useRef<any>(null);
+  const [developUnlockMessage, setDevelopUnlockMessage] = useState<string | null>(null);
+  const [versionClickHint, setVersionClickHint] = useState<string | null>(null);
+  const [isSimulatingCrash, setIsSimulatingCrash] = useState(false);
+  const [simulatedCrashSuccess, setSimulatedCrashSuccess] = useState<string | null>(null);
+
+  const handleVersionClick = () => {
+    versionClickCountRef.current += 1;
+    const currentClicks = versionClickCountRef.current;
+
+    if (versionClickTimerRef.current) {
+      clearTimeout(versionClickTimerRef.current);
+    }
+    versionClickTimerRef.current = setTimeout(() => {
+      versionClickCountRef.current = 0;
+      setVersionClickHint(null);
+    }, 1500);
+
+    if (currentClicks >= 10) {
+      versionClickCountRef.current = 0;
+      setVersionClickHint(null);
+      const nextState = !isDevelop;
+      setIsDevelop(nextState);
+      try {
+        localStorage.setItem('iadonkey_develop_mode', nextState ? 'true' : 'false');
+      } catch {}
+      setDevelopUnlockMessage(
+        nextState
+          ? 'Vývojářský režim byl úspěšně aktivován! V bočním menu se zobrazila nová záložka Vývojář.'
+          : 'Vývojářský režim byl deaktivován.'
+      );
+      setTimeout(() => {
+        setDevelopUnlockMessage(null);
+      }, 5000);
+
+      if (nextState) {
+        window.electronAPI?.logAction?.({
+          type: 'action',
+          title: 'Vývojářský režim aktivován',
+          details: 'Aktivace proběhla 10× kliknutím na verzi aplikace',
+          status: 'success',
+        });
+      }
+    } else if (currentClicks >= 5) {
+      const remaining = 10 - currentClicks;
+      setVersionClickHint(`Ještě ${remaining} ${remaining === 1 ? 'kliknutí' : remaining < 5 ? 'kliknutí' : 'kliknutí'} pro odemknutí vývojářského režimu...`);
+    }
+  };
+
+  const handleDisableDevelopMode = () => {
+    setIsDevelop(false);
+    try {
+      localStorage.setItem('iadonkey_develop_mode', 'false');
+    } catch {}
+    setActiveTab('system');
+    setDevelopUnlockMessage('Vývojářský režim byl deaktivován a skryt.');
+    setTimeout(() => {
+      setDevelopUnlockMessage(null);
+    }, 4000);
+    window.electronAPI?.logAction?.({
+      type: 'action',
+      title: 'Vývojářský režim deaktivován',
+      details: 'Vypnuto uživatelem v nastavení',
+      status: 'info',
+    });
+  };
+
+  const handleOpenDevTools = () => {
+    try {
+      window.electronAPI?.openDevTools?.();
+    } catch (err) {
+      console.error('[Settings] Failed to toggle DevTools:', err);
+    }
+  };
+
+  const handleSimulateCrash = async () => {
+    setIsSimulatingCrash(true);
+    setSimulatedCrashSuccess(null);
+    try {
+      if (window.electronAPI?.simulateTestCrash) {
+        const filePath = await window.electronAPI.simulateTestCrash();
+        setSimulatedCrashSuccess(`Testovací crashlog byl vygenerován: ${filePath || 'crashlog'}`);
+        await loadDiagnostics();
+      }
+    } catch (err: any) {
+      console.error('[Settings] Failed to simulate crash:', err);
+    } finally {
+      setIsSimulatingCrash(false);
+      setTimeout(() => {
+        setSimulatedCrashSuccess(null);
+      }, 6000);
+    }
+  };
+
   // Diagnostics & Logs state
   const [actionLogs, setActionLogs] = useState<ActionLogEntry[]>([]);
   const [crashLogs, setCrashLogs] = useState<CrashLogEntry[]>([]);
@@ -284,7 +387,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   useEffect(() => {
-    if (activeTab === 'help') {
+    loadDiagnostics();
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'help' || activeTab === 'system' || activeTab === 'updates' || activeTab === 'develop') {
       loadDiagnostics();
     }
   }, [activeTab]);
@@ -3175,6 +3282,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <span>Nápověda</span>
             </div>
           </button>
+
+          {/* Developer tab (only visible when isDevelop is true) */}
+          {isDevelop && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('develop')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer ${
+                activeTab === 'develop'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 shadow-sm'
+                  : 'text-amber-400/80 hover:text-amber-200 hover:bg-amber-500/10 border border-amber-500/20'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-xl text-amber-400">bug_report</span>
+                <span>Vývojář</span>
+              </div>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider font-bold">
+                DEV
+              </span>
+            </button>
+          )}
         </nav>
 
       </aside>
@@ -3197,6 +3325,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeTab === 'general' && 'Obecné nastavení aplikace'}
               {(activeTab === 'system' || activeTab === 'updates') && 'Systém a aktualizace aplikace'}
               {activeTab === 'help' && 'Nápověda a klávesové zkratky'}
+              {activeTab === 'develop' && 'Vývojářské nástroje a diagnostika'}
             </h2>
             <p className="text-[13px] text-gray-400 mt-1">
               {activeTab === 'sources' && 'Správa lokálních JSON souborů a vzdálených API endpointů'}
@@ -3211,6 +3340,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeTab === 'general' && 'Globální klávesová zkratka, barva motivu a vyhledávání programů'}
               {(activeTab === 'system' || activeTab === 'updates') && 'Správa verzí, aktualizace IADonkey a diagnostika chybových protokolů'}
               {activeTab === 'help' && 'Přehled všech klávesových zkratek a chytrých funkcí'}
+              {activeTab === 'develop' && 'Ladicí nástroje, systémová konzole a auditní protokol prováděných akcí'}
             </p>
           </div>
           {saveSuccess && (
@@ -6418,9 +6548,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
                   <div>
                     <span className="text-[13px] text-gray-400 block mb-1">Nainstalovaná verze</span>
-                    <div className="text-lg font-mono font-bold text-white tracking-wide">
-                      v{CURRENT_APP_VERSION}
+                    <div
+                      onClick={handleVersionClick}
+                      className="text-lg font-mono font-bold text-white tracking-wide cursor-pointer select-none active:scale-95 transition-transform inline-flex items-center gap-2 group"
+                      title={isDevelop ? 'Vývojářský režim je aktivní (kliknutím lze přepínat)' : 'Verze aplikace'}
+                    >
+                      <span className="group-hover:text-indigo-300 transition-colors">v{CURRENT_APP_VERSION}</span>
+                      {isDevelop && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider font-bold">
+                          DEV
+                        </span>
+                      )}
                     </div>
+                    {versionClickHint && (
+                      <p className="text-[11.5px] text-amber-300 mt-1 animate-pulse font-medium">
+                        {versionClickHint}
+                      </p>
+                    )}
+                    {developUnlockMessage && (
+                      <p className="text-[11.5px] text-emerald-400 mt-1 animate-fade-in font-medium flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm">check_circle</span>
+                        <span>{developUnlockMessage}</span>
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -6919,8 +7069,100 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </div>
               </div>
+            </div>
+          )}
 
-              {/* Section 3: Action Log */}
+          {/* TAB: Developer Mode */}
+          {activeTab === 'develop' && isDevelop && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Header card with status & disable button */}
+              <div className="p-5 bg-gradient-to-r from-amber-500/10 via-amber-600/5 to-transparent border border-amber-500/20 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                    <span className="material-symbols-outlined text-2xl">bug_report</span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-bold text-white">Vývojářský a diagnostický režim</h4>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold uppercase">
+                        Aktivní
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
+                      Zpřístupňuje systémovou konzoli DevTools, generování testovacích crashlogů a kompletní auditní protokol prováděných akcí.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDisableDevelopMode}
+                  className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/30 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shrink-0 self-start sm:self-center cursor-pointer shadow-sm"
+                  title="Vypne vývojářský režim a skryje tuto záložku z menu"
+                >
+                  <span className="material-symbols-outlined text-base">visibility_off</span>
+                  <span>Deaktivovat a skrýt</span>
+                </button>
+              </div>
+
+              {/* Developer tools action card */}
+              <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-amber-300 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base text-amber-400">terminal</span>
+                    Ladicí a servisní nástroje
+                  </h4>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Přímý přístup k systémovým nástrojům Electronu a ověření funkčnosti diagnostických subsystémů.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleOpenDevTools}
+                    className="px-3.5 py-2 bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer border border-white/10"
+                    title="Otevře nebo zavře Chrome DevTools vývojářskou konzoli"
+                  >
+                    <span className="material-symbols-outlined text-base text-cyan-400">developer_mode</span>
+                    <span>Otevřít Chrome DevTools</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSimulateCrash}
+                    disabled={isSimulatingCrash}
+                    className="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer border border-rose-500/20 disabled:opacity-50"
+                    title="Vyvolá simulovanou výjimku pro ověření vytvoření souboru v crashlog/"
+                  >
+                    <span className={`material-symbols-outlined text-base ${isSimulatingCrash ? 'animate-spin text-rose-400' : 'text-rose-400'}`}>
+                      {isSimulatingCrash ? 'sync' : 'report_problem'}
+                    </span>
+                    <span>{isSimulatingCrash ? 'Generuji...' : 'Vygenerovat testovací crashlog'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={loadDiagnostics}
+                    disabled={isLoadingDiagnostics}
+                    className="px-3.5 py-2 bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer border border-white/10 disabled:opacity-50"
+                    title="Znovu načte záznamy z diagnostické služby na pozadí"
+                  >
+                    <span className={`material-symbols-outlined text-base ${isLoadingDiagnostics ? 'animate-spin text-indigo-400' : 'text-indigo-400'}`}>
+                      refresh
+                    </span>
+                    <span>Znovu načíst diagnostiku</span>
+                  </button>
+                </div>
+
+                {simulatedCrashSuccess && (
+                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-300 flex items-center gap-2 animate-fade-in font-mono">
+                    <span className="material-symbols-outlined text-sm text-rose-400 shrink-0">check_circle</span>
+                    <span className="truncate">{simulatedCrashSuccess}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Log Section */}
               <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
@@ -6929,7 +7171,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       Protokol prováděných akcí (Action Log)
                     </h4>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      Průběžný auditní záznam posledních 50 spuštěných položek, nabídek, klávesových zkratek a systémových operací.
+                      Průběžný auditní záznam posledních 50 spuštěných položek, nabídek, klávesových zkratek a systémových operací zaznamenávaný na pozadí pro crashlogy.
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

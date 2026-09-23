@@ -604,6 +604,25 @@ function setupIpcHandlers() {
     return await diagnosticsService.exportCrashReport(fileName);
   });
 
+  ipcMain.handle('simulate-test-crash', () => {
+    return diagnosticsService.recordCrash(
+      'Simulovaný pád z vývojářského režimu (Test exception)',
+      new Error('Testovací chyba vyvolaná vývojářem pro ověření generování a struktury crashlogu.'),
+      { trigger: 'developer_tab_manual_test', environment: process.env.NODE_ENV || 'production' }
+    );
+  });
+
+  ipcMain.handle('open-dev-tools', () => {
+    const win = windowManager.getMainWindow();
+    if (win) {
+      if (win.webContents.isDevToolsOpened()) {
+        win.webContents.closeDevTools();
+      } else {
+        win.webContents.openDevTools({ mode: 'detach' });
+      }
+    }
+  });
+
   ipcMain.handle('open-tune-color-window', (_event, params: { initialColor: string }) => {
     windowManager.openTuneColorWindow(params);
   });
