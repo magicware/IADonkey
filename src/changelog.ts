@@ -5,12 +5,22 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.24';
+export const CURRENT_APP_VERSION = '1.1.25';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.25',
+    date: '24. 9. 2026',
+    title: 'Sjednocení záhlaví záložek v Nastavení a odstranění duplicitních nadpisů',
+    highlights: [
+      'Sjednocení záhlaví záložek v Nastavení: Titulky v záhlaví pravého panelu (h2) byly globálně sjednoceny tak, aby přesně odpovídaly názvům v levém navigačním menu (DonkeyTools, Zdroje dat, Rozšíření, MagicGate, Taskmanager, GitHub, VS Code, Android Studio, Snippety, Obecné, Systém, Nápověda, Vývojář).',
+      'Odstranění duplicit v záložce DonkeyTools: Záhlaví zjednodušeno na „DonkeyTools“ a úvodní nadpis v obsahu upraven na „Systémové nástroje a utility“ bez opakování názvu nástroje.',
+      'Přehlednější nadpisy editorů a IDE: Úvodní nadpis obsahu záložky VS Code změněn na „Propojení s editorem kódu“ a Android Studio na „Propojení s vývojovým prostředím“ pro zamezení duplicity s názvem záložky.',
+    ],
+  },
   {
     version: '1.1.24',
     date: '24. 9. 2026',

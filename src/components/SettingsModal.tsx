@@ -3851,19 +3851,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <header className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02] shrink-0">
           <div>
             <h2 className="text-base font-bold text-white tracking-wide">
-              {activeTab === 'sources' && 'Zdroje dat a mezipaměť'}
-              {activeTab === 'extensions' && 'Doplňková rozšíření a integrace'}
-              {activeTab === 'magicgate' && 'MagicGate přihlašovací údaje'}
-              {activeTab === 'mlog' && 'MLog Helpdesk'}
-              {activeTab === 'github' && 'GitHub repozitáře'}
-              {activeTab === 'vscode' && 'Visual Studio Code (VS Code)'}
+              {activeTab === 'sources' && 'Zdroje dat'}
+              {activeTab === 'extensions' && 'Rozšíření'}
+              {activeTab === 'magicgate' && 'MagicGate'}
+              {activeTab === 'mlog' && 'Taskmanager'}
+              {activeTab === 'github' && 'GitHub'}
+              {activeTab === 'vscode' && 'VS Code'}
               {activeTab === 'android-studio' && 'Android Studio'}
-              {activeTab === 'donkey-tools' && 'DonkeyTools – Systémové nástroje a utility'}
-              {activeTab === 'snippets' && 'Uživatelské snippety'}
-              {activeTab === 'general' && 'Obecné nastavení aplikace'}
-              {(activeTab === 'system' || activeTab === 'updates') && 'Systém a aktualizace aplikace'}
-              {activeTab === 'help' && 'Nápověda a klávesové zkratky'}
-              {activeTab === 'develop' && 'Vývojářské nástroje a diagnostika'}
+              {activeTab === 'donkey-tools' && 'DonkeyTools'}
+              {activeTab === 'snippets' && 'Snippety'}
+              {activeTab === 'general' && 'Obecné'}
+              {(activeTab === 'system' || activeTab === 'updates') && 'Systém'}
+              {activeTab === 'help' && 'Nápověda'}
+              {activeTab === 'develop' && 'Vývojář'}
             </h2>
             <p className="text-[13px] text-gray-400 mt-1">
               {activeTab === 'sources' && 'Správa lokálních JSON souborů a vzdálených API endpointů'}
@@ -5730,7 +5730,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-cyan-400">code</span>
-                  Visual Studio Code (VS Code)
+                  Propojení s editorem kódu
                 </h3>
                 <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
                   Konfigurace editoru Visual Studio Code pro rychlé otevírání naklonovaných repozitářů a projektových složek přímo z akcí vyhledávače nebo z modálního okna klonování.
@@ -5839,7 +5839,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-pink-400">android</span>
-                  Android Studio
+                  Propojení s vývojovým prostředím
                 </h3>
                 <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
                   Konfigurace vývojového prostředí Android Studio pro rychlé otevírání mobilních a Kotlin/Java projektů přímo z akcí vyhledávače nebo z modálního okna klonování.
@@ -5948,7 +5948,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div>
                 <h3 className="font-semibold text-white text-base flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-rose-400">construction</span>
-                  DonkeyTools – Systémové nástroje a utility
+                  Systémové nástroje a utility
                 </h3>
                 <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
                   Konfigurace vestavěných produktivních nástrojů pro práci s barvami, měřením a systémovými akcemi. Všechny nástroje lze rychle vyvolat ve vyhledávači pomocí prefixu <code className="bg-white/10 px-1.5 py-0.5 rounded text-rose-300 font-mono">/</code> (např. <code className="bg-white/10 px-1 rounded font-mono">/kapatko</code>).

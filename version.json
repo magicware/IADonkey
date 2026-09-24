@@ -1,6 +1,6 @@
 {
-  "version": "1.1.24",
-  "releaseNotes": "• Vydána nová verze 1.1.24 aplikace IADonkey.\n• ScreenRuler: První stisk Esc při aktivním výběru zruší pouze výběr; spolehlivé zobrazování nativních Windows notifikací po kopírování rozměrů.\n• ScreenRuler: Ikona crop_free v přepínači režimů, pevné grafitové pozadí bez průhledu a odstranění ikony klávesnice u zkratek.\n• QuickCap: Přidáno tlačítko „Vyfotit celou obrazovku“ s klávesovou zkratkou P; stisk Esc během tažení myší zruší rozpracovaný výběr.\n• QuickCap & ScreenRuler: Plynulé přepínání bez problikávání či černých záblesků díky přednačtení snímků a čistému zavírání.\n• ColorMaster: Dokonale ostrý vnější rámeček lupy v GDI bez oříznutí a sjednocení velikosti písmen u popisků zkratek.\n• Nastavení: Zobecnění popisku notifikace schránky pro všechny nástroje.",
-  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.24/IADonkey-Setup-1.1.24.exe",
-  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.24/IADonkey-1.1.24.zip"
+  "version": "1.1.25",
+  "releaseNotes": "• Vydána nová verze 1.1.25 aplikace IADonkey.\n• Nastavení: Titulky v záhlaví pravého panelu (h2) globálně sjednoceny dle názvů v levém navigačním menu.\n• DonkeyTools: Záhlaví zjednodušeno na „DonkeyTools“ a nadpis obsahu upraven na „Systémové nástroje a utility“.\n• Editory kódu a IDE: Odstranění duplicitních nadpisů u záložek VS Code („Propojení s editorem kódu“) a Android Studio („Propojení s vývojovým prostředím“).",
+  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.25/IADonkey-Setup-1.1.25.exe",
+  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.25/IADonkey-1.1.25.zip"
 }

@@ -4,6 +4,12 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.25] - 24. 9. 2026
+### Sjednocení záhlaví záložek v Nastavení a odstranění duplicitních nadpisů
+- **Sjednocení záhlaví záložek v Nastavení**: Titulky v záhlaví pravého panelu (`<h2>`) byly globálně sjednoceny tak, aby přesně odpovídaly názvům v levém navigačním menu (*DonkeyTools*, *Zdroje dat*, *Rozšíření*, *MagicGate*, *Taskmanager*, *GitHub*, *VS Code*, *Android Studio*, *Snippety*, *Obecné*, *Systém*, *Nápověda*, *Vývojář*).
+- **Odstranění duplicit v záložce DonkeyTools**: Záhlaví zjednodušeno na „DonkeyTools“ a úvodní nadpis v obsahu upraven na „Systémové nástroje a utility“ bez opakování názvu nástroje.
+- **Přehlednější nadpisy editorů a IDE**: Úvodní nadpis obsahu záložky VS Code změněn na „Propojení s editorem kódu“ a Android Studio na „Propojení s vývojovým prostředím“ pro zamezení duplicity s názvem záložky.
+
 ## [1.1.24] - 24. 9. 2026
 ### ScreenRuler zrušení výběru a spolehlivé notifikace schránky, QuickCap zkratka P a vyladění kapátka
 - **ScreenRuler – Zrušení výběru přes ESC**: První stisk klávesy Esc při aktivním obdélníkovém výběru zruší pouze rozpracovaný výběr bez uzavření pravítka, další stisk Esc pravítko zavře.
