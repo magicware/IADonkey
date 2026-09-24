@@ -12,7 +12,7 @@ declare global {
       selectJsonFile: (defaultPath?: string) => Promise<string | null>;
       selectXmlFile: (defaultPath?: string) => Promise<string | null>;
       inspectSource: (source: DataSource) => Promise<{ keys: string[]; sample: Record<string, any> | null }>;
-      executeAction: (data: { action: string; location: string; settings?: string | null }) => Promise<void>;
+      executeAction: (data: { action: string; location: string; settings?: string | null; autoPaste?: boolean; sourceId?: string }) => Promise<void>;
       openExternal: (url: string) => Promise<void>;
       openPath: (path: string) => Promise<void>;
       hideWindow: () => void;
@@ -211,6 +211,17 @@ declare global {
       getScreenRulerInitData?: () => Promise<{ width: number; height: number; color: string; defaultUnit: string } | null>;
       onScreenRulerInit?: (callback: (data: { width: number; height: number; color: string; defaultUnit: string }) => void) => () => void;
       onScreenRulerCleanup?: (callback: () => void) => () => void;
+
+      // EasyClip API
+      getEasyClipItems?: () => Promise<import('./index').EasyClipItem[]>;
+      copyEasyClipItem?: (id: string) => Promise<boolean>;
+      copyMultipleEasyClipItems?: (ids: string[]) => Promise<boolean>;
+      deleteEasyClipItem?: (id: string) => Promise<boolean>;
+      deleteMultipleEasyClipItems?: (ids: string[]) => Promise<boolean>;
+      clearEasyClipHistory?: () => Promise<boolean>;
+      openEasyClip?: () => Promise<void>;
+      onEasyClipItemsUpdated?: (callback: (items: import('./index').EasyClipItem[]) => void) => () => void;
+      onOpenSpotlightMode?: (callback: (data: { mode: string; options?: any }) => void) => () => void;
 
       // Zpětná kompatibilita pro FastSnap
       startFastSnap?: () => Promise<void>;

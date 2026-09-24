@@ -135,11 +135,33 @@ export interface ScreenRulerSettings {
   overlayColor?: string;
 }
 
+export interface EasyClipSettings {
+  enabled: boolean;
+  hotkey?: string;
+  maxItems?: number;
+}
+
+export interface EasyClipItem {
+  id: string;
+  type: 'text' | 'image';
+  text?: string;
+  dataUrl?: string;
+  filePath?: string;
+  width?: number;
+  height?: number;
+  sizeBytes?: number;
+  previewText?: string;
+  lineCount?: number;
+  charCount?: number;
+  timestamp: number;
+}
+
 export interface DonkeyToolsSettings {
   colorMaster?: ColorMasterSettings;
   quickCap?: QuickCapSettings;
   fastSnap?: QuickCapSettings;
   screenRuler?: ScreenRulerSettings;
+  easyClip?: EasyClipSettings;
 }
 
 export interface VscodeSettings {

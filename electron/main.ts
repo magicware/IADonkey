@@ -18,6 +18,8 @@ import { fetchInstanceSectionRepos, runMultiRepoClone, downloadInstanceCmsConten
 import { InstallerService } from './installerService';
 import { diagnosticsService } from './diagnosticsService';
 import { notificationService } from './notificationService';
+import { easyClipService } from './easyClipService';
+import { pasteService } from './pasteService';
 
 app.name = 'IADonkey';
 if (process.platform === 'win32') {
@@ -484,6 +486,47 @@ function registerScreenRulerHotkey(hotkey?: string) {
   } catch (err) {
     console.error(`[Main] Error registering ScreenRuler shortcut ${hotkey}:`, err);
     diagnosticsService.recordCrash('Registrace zkratky ScreenRuler', err, { hotkey });
+  }
+}
+
+let currentEasyClipHotkey = '';
+function registerEasyClipHotkey(hotkey?: string) {
+  try {
+    if (currentEasyClipHotkey) {
+      globalShortcut.unregister(currentEasyClipHotkey);
+      currentEasyClipHotkey = '';
+    }
+    const config = store ? store.getConfig() : null;
+    const isEnabled = Boolean(config?.extensions?.donkeyTools && config?.donkeyTools?.easyClip?.enabled === true);
+    const targetHotkey = hotkey || config?.donkeyTools?.easyClip?.hotkey;
+    if (!isEnabled || !targetHotkey || !targetHotkey.trim()) {
+      return;
+    }
+    const cleanHotkey = targetHotkey.trim();
+    const registered = globalShortcut.register(cleanHotkey, async () => {
+      try {
+        console.log('[Main] EasyClip hotkey triggered');
+        diagnosticsService.logAction({
+          type: 'shortcut',
+          title: `Zkratka EasyClip: ${cleanHotkey}`,
+          details: 'Spuštění historie schránky přes klávesovou zkratku',
+          status: 'info',
+        });
+        windowManager.showSpotlightWithMode('easyclip');
+      } catch (err) {
+        console.error('[Main] Error in EasyClip hotkey callback:', err);
+        diagnosticsService.recordCrash('Volání EasyClip z klávesové zkratky', err, { hotkey: cleanHotkey });
+      }
+    });
+    if (!registered) {
+      console.warn(`[Main] Failed to register EasyClip shortcut: ${cleanHotkey}`);
+    } else {
+      currentEasyClipHotkey = cleanHotkey;
+      console.log(`[Main] Successfully registered EasyClip shortcut: ${cleanHotkey}`);
+    }
+  } catch (err) {
+    console.error(`[Main] Error registering EasyClip shortcut ${hotkey}:`, err);
+    diagnosticsService.recordCrash('Registrace zkratky EasyClip', err, { hotkey });
   }
 }
 
@@ -1015,6 +1058,48 @@ function setupIpcHandlers() {
     });
   });
 
+  // EasyClip IPC Handlers
+  ipcMain.handle('easyclip-get-items', () => {
+    return easyClipService.getItems();
+  });
+
+  ipcMain.handle('easyclip-copy-item', async (_event, id: string) => {
+    const success = await easyClipService.copyItem(id);
+    if (success) {
+      windowManager.hideImmediately();
+      const hwnd = windowManager.getMainWindowHandle();
+      pasteService.simulatePaste(80, hwnd);
+    }
+    return success;
+  });
+
+  ipcMain.handle('easyclip-copy-multiple', async (_event, ids: string[]) => {
+    const success = await easyClipService.copyMultipleItems(ids);
+    if (success) {
+      windowManager.hideImmediately();
+      const hwnd = windowManager.getMainWindowHandle();
+      pasteService.simulatePaste(80, hwnd);
+    }
+    return success;
+  });
+
+  ipcMain.handle('easyclip-delete-item', (_event, id: string) => {
+    return easyClipService.deleteItem(id);
+  });
+
+  ipcMain.handle('easyclip-delete-multiple', (_event, ids: string[]) => {
+    return easyClipService.deleteMultipleItems(ids);
+  });
+
+  ipcMain.handle('easyclip-clear-history', () => {
+    easyClipService.clearHistory();
+    return true;
+  });
+
+  ipcMain.handle('easyclip-open', () => {
+    windowManager.showSpotlightWithMode('easyclip');
+  });
+
   ipcMain.handle('get-config', () => {
     return store.getConfig();
   });
@@ -1032,6 +1117,8 @@ function setupIpcHandlers() {
     registerColorMasterHotkey(newConfig.donkeyTools?.colorMaster?.hotkey);
     registerQuickCapHotkey(newConfig.donkeyTools?.quickCap?.hotkey || newConfig.donkeyTools?.fastSnap?.hotkey);
     registerScreenRulerHotkey(newConfig.donkeyTools?.screenRuler?.hotkey);
+    registerEasyClipHotkey(newConfig.donkeyTools?.easyClip?.hotkey);
+    easyClipService.updateConfig(newConfig);
 
     // Update tray context menu to reflect enabled/disabled DonkeyTools
     windowManager?.updateTrayContextMenu(currentHotkey);
@@ -1233,6 +1320,14 @@ function setupIpcHandlers() {
       globalShortcut.unregister(currentQuickCapHotkey);
       console.log(`[Main] QuickCap hotkey paused for input recording: ${currentQuickCapHotkey}`);
     }
+    if (currentScreenRulerHotkey) {
+      globalShortcut.unregister(currentScreenRulerHotkey);
+      console.log(`[Main] ScreenRuler hotkey paused for input recording: ${currentScreenRulerHotkey}`);
+    }
+    if (currentEasyClipHotkey) {
+      globalShortcut.unregister(currentEasyClipHotkey);
+      console.log(`[Main] EasyClip hotkey paused for input recording: ${currentEasyClipHotkey}`);
+    }
   });
 
   ipcMain.handle('resume-global-hotkey', () => {
@@ -1245,6 +1340,7 @@ function setupIpcHandlers() {
     registerColorMasterHotkey(cfg.donkeyTools?.colorMaster?.hotkey);
     registerQuickCapHotkey(cfg.donkeyTools?.quickCap?.hotkey || cfg.donkeyTools?.fastSnap?.hotkey);
     registerScreenRulerHotkey(cfg.donkeyTools?.screenRuler?.hotkey);
+    registerEasyClipHotkey(cfg.donkeyTools?.easyClip?.hotkey);
   });
 
   ipcMain.handle('get-items', () => {
@@ -1525,8 +1621,8 @@ function setupIpcHandlers() {
     });
   });
 
-  ipcMain.handle('execute-action', async (_event, data: { action: string; location: string; settings?: string | null }) => {
-    const { action, location, settings } = data;
+  ipcMain.handle('execute-action', async (_event, data: { action: string; location: string; settings?: string | null; autoPaste?: boolean; sourceId?: string }) => {
+    const { action, location, settings, autoPaste, sourceId } = data;
     if (!location) return;
 
     diagnosticsService.logAction({
@@ -1555,6 +1651,10 @@ function setupIpcHandlers() {
           body: `Text "${truncated}" byl úspěšně zkopírován do schránky.`,
         });
         windowManager.hideImmediately();
+        if (autoPaste || sourceId === 'snippet' || action === 'paste') {
+          const hwnd = windowManager.getMainWindowHandle();
+          pasteService.simulatePaste(80, hwnd);
+        }
         return;
       }
 
@@ -2223,6 +2323,10 @@ app.whenReady().then(async () => {
       startScreenRulerProcess().catch((err) => {
         console.error('[Main] Tray ScreenRuler error:', err);
       });
+    },
+    // onEasyClipRequest from Tray
+    () => {
+      windowManager.showSpotlightWithMode('easyclip');
     }
   );
 
@@ -2255,6 +2359,13 @@ app.whenReady().then(async () => {
   registerColorMasterHotkey(initialConfig.donkeyTools?.colorMaster?.hotkey);
   registerQuickCapHotkey(initialConfig.donkeyTools?.quickCap?.hotkey || initialConfig.donkeyTools?.fastSnap?.hotkey);
   registerScreenRulerHotkey(initialConfig.donkeyTools?.screenRuler?.hotkey);
+  registerEasyClipHotkey(initialConfig.donkeyTools?.easyClip?.hotkey);
+
+  easyClipService.init(initialConfig, notificationService);
+  easyClipService.setOnItemsUpdated((items) => {
+    windowManager?.getMainWindow()?.webContents.send('easyclip-items-updated', items);
+    windowManager?.getSettingsWindow()?.webContents.send('easyclip-items-updated', items);
+  });
 
   const launchDeferredTasks = () => {
     startBackgroundTasks();

@@ -4,6 +4,14 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [1.1.26] - 24. 9. 2026
+### EasyClip historie schránky, automatické vložení (auto-paste) do aplikací a okamžitý reset Spotlightu
+- **EasyClip – Pokročilá historie schránky v DonkeyTools**: Nové systémové rozšíření pro sledování a správu historie schránky (text i obrázky) s možností rychlého vyvolání globální zkratkou i příkazy `/easyclip`, `/clip`, `/schranka`, `/clipboard`.
+- **Hromadný výběr a mazání ve schránce**: Podpora výběru rozsahu položek přes Shift + šipky / Shift + klik myší. Smazání označených položek klávesou Delete a zkopírování více položek odspodu nahoru s oddělením novým řádkem.
+- **Automatické vložení (Auto-paste) pro EasyClip a Snippety**: Po výběru položky ze schránky nebo snippetu se Spotlight okamžitě skryje a text se automaticky vloží přímo do původně aktivní aplikace (Notepad, VS Code, Word, prohlížeč atd.).
+- **Spolehlivé navrácení zaměření (focusu)**: Robustní aktivace cílového okna a simulace vložení pomocí C# pomocníka s ošetřením DWM TopMost vrstev, bez nežádoucí aktivace menu baru a s automatickým uvolněním visících kláves.
+- **Okamžitý reset stavu bez problikávání**: Synchronní reset stavu Spotlightu ještě před skrytím okna zabraňuje problikávání předchozího obsahu při opětovném otevření.
+
 ## [1.1.25] - 24. 9. 2026
 ### Sjednocení záhlaví záložek v Nastavení a odstranění duplicitních nadpisů
 - **Sjednocení záhlaví záložek v Nastavení**: Titulky v záhlaví pravého panelu (`<h2>`) byly globálně sjednoceny tak, aby přesně odpovídaly názvům v levém navigačním menu (*DonkeyTools*, *Zdroje dat*, *Rozšíření*, *MagicGate*, *Taskmanager*, *GitHub*, *VS Code*, *Android Studio*, *Snippety*, *Obecné*, *Systém*, *Nápověda*, *Vývojář*).

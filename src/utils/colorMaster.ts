@@ -302,7 +302,7 @@ export function createColorLauncherItem(
  */
 export function getDonkeyToolsCommands(
   query: string,
-  options?: { colorMasterEnabled?: boolean; quickCapEnabled?: boolean; fastSnapEnabled?: boolean; screenRulerEnabled?: boolean }
+  options?: { colorMasterEnabled?: boolean; quickCapEnabled?: boolean; fastSnapEnabled?: boolean; screenRulerEnabled?: boolean; easyClipEnabled?: boolean }
 ): LauncherItem[] {
   const trimmed = query.trim().toLowerCase();
   if (!trimmed.startsWith('/')) return [];
@@ -313,6 +313,7 @@ export function getDonkeyToolsCommands(
   const isColorMasterActive = options ? options.colorMasterEnabled === true : true;
   const isQuickCapActive = options ? (options.quickCapEnabled ?? options.fastSnapEnabled ?? true) : true;
   const isScreenRulerActive = options ? options.screenRulerEnabled === true : true;
+  const isEasyClipActive = options ? options.easyClipEnabled === true : true;
 
   // ColorMaster (kapátko / eyedropper / picker / barva)
   if (isColorMasterActive) {
@@ -378,6 +379,31 @@ export function getDonkeyToolsCommands(
         action: 'screenruler',
         icon: 'straighten',
         priority: -1.3,
+        sourceId: 'donkeytools',
+        shortcuts,
+      });
+    }
+  }
+
+  // EasyClip (/easyclip, /clip, /schranka, /clipboard)
+  if (isEasyClipActive) {
+    const shortcuts = ['/easyclip', '/clip', '/schranka', '/clipboard'];
+    const isEasyClipMatch =
+      command === '' ||
+      'easyclip'.includes(command) ||
+      'clip'.includes(command) ||
+      shortcuts.some((s) => s.replace(/^\//, '').includes(command)) ||
+      'historie schranky'.includes(command) ||
+      'schranka'.includes(command);
+
+    if (isEasyClipMatch) {
+      list.push({
+        id: 'donkeytools-easyclip',
+        name: 'EasyClip',
+        location: 'Historie schránky s podporou textu i obrázků',
+        action: 'easyclip',
+        icon: 'content_paste',
+        priority: -1.2,
         sourceId: 'donkeytools',
         shortcuts,
       });

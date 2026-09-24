@@ -80,7 +80,8 @@ export class WindowManager {
     private getConfig?: () => any,
     private onQuickCapRequest?: () => void,
     private onColorPickerRequest?: () => void,
-    private onScreenRulerRequest?: () => void
+    private onScreenRulerRequest?: () => void,
+    private onEasyClipRequest?: () => void
   ) {}
 
   public createMainWindow(): BrowserWindow {
@@ -185,17 +186,45 @@ export class WindowManager {
     this.mainWindow.webContents.send('window-shown');
   }
 
+  public showSpotlightWithMode(mode: string, options?: any): void {
+    this.showSpotlight();
+    this.mainWindow?.webContents.send('open-spotlight-mode', { mode, options });
+  }
+
   public hideSpotlight(): void {
     if (!this.mainWindow || !this.mainWindow.isVisible()) return;
     this.mainWindow.webContents.send('window-hide-request');
+    this.mainWindow.webContents.send('reset-spotlight');
     setTimeout(() => {
-      this.mainWindow?.hide();
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        try {
+          this.mainWindow.setAlwaysOnTop(false);
+          this.mainWindow.blur();
+        } catch {}
+        this.mainWindow.hide();
+      }
     }, 90);
   }
 
   public hideImmediately(): void {
-    this.mainWindow?.webContents.send('window-hide-request');
-    this.mainWindow?.hide();
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) return;
+    this.mainWindow.webContents.send('window-hide-request');
+    this.mainWindow.webContents.send('reset-spotlight');
+    try {
+      this.mainWindow.setAlwaysOnTop(false);
+      this.mainWindow.blur();
+    } catch {}
+    this.mainWindow.hide();
+  }
+
+  public getMainWindowHandle(): number {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) return 0;
+    try {
+      const handleBuffer = this.mainWindow.getNativeWindowHandle();
+      return process.arch === 'x64' ? Number(handleBuffer.readBigInt64LE(0)) : handleBuffer.readInt32LE(0);
+    } catch {
+      return 0;
+    }
   }
 
   public getLastShowTime(): number {
@@ -954,6 +983,9 @@ export class WindowManager {
     const isScreenRulerEnabled = Boolean(
       isDonkeyToolsEnabled && config?.donkeyTools?.screenRuler?.enabled === true
     );
+    const isEasyClipEnabled = Boolean(
+      isDonkeyToolsEnabled && config?.donkeyTools?.easyClip?.enabled === true
+    );
 
     const template: Electron.MenuItemConstructorOptions[] = [
       {
@@ -972,7 +1004,7 @@ export class WindowManager {
       },
     ];
 
-    const hasAnyTool = isQuickCapEnabled || isColorMasterEnabled || isScreenRulerEnabled;
+    const hasAnyTool = isQuickCapEnabled || isColorMasterEnabled || isScreenRulerEnabled || isEasyClipEnabled;
 
     if (hasAnyTool) {
       template.push({ type: 'separator' });
@@ -1006,6 +1038,17 @@ export class WindowManager {
           label: srLabel,
           click: () => {
             this.onScreenRulerRequest?.();
+          },
+        });
+      }
+
+      if (isEasyClipEnabled) {
+        const ecHotkey = config?.donkeyTools?.easyClip?.hotkey;
+        const ecLabel = ecHotkey ? `EasyClip – Historie schránky (${ecHotkey})` : 'EasyClip – Historie schránky';
+        template.push({
+          label: ecLabel,
+          click: () => {
+            this.onEasyClipRequest?.();
           },
         });
       }

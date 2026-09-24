@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { AppConfig, LauncherItem, UpdateInfo, ActionLogEntry, CrashLogEntry } from '../src/types';
+import { AppConfig, LauncherItem, UpdateInfo, ActionLogEntry, CrashLogEntry, EasyClipItem } from '../src/types';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   downloadMaterialIcons: (): Promise<any> => ipcRenderer.invoke('download-material-icons'),
@@ -12,7 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectXmlFile: (defaultPath?: string): Promise<string | null> => ipcRenderer.invoke('select-xml-file', defaultPath),
   inspectSource: (source: any): Promise<{ keys: string[]; sample: any }> =>
     ipcRenderer.invoke('inspect-source', source),
-  executeAction: (data: { action: string; location: string; settings?: string | null }): Promise<void> =>
+  executeAction: (data: { action: string; location: string; settings?: string | null; autoPaste?: boolean; sourceId?: string }): Promise<void> =>
     ipcRenderer.invoke('execute-action', data),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('open-external', url),
   openPath: (path: string): Promise<void> => ipcRenderer.invoke('open-path', path),
@@ -321,5 +321,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.removeListener('quickcap-cleanup', handler);
       ipcRenderer.removeListener('fastsnap-cleanup', handler);
     };
+  },
+
+  // EasyClip API
+  getEasyClipItems: (): Promise<EasyClipItem[]> => ipcRenderer.invoke('easyclip-get-items'),
+  copyEasyClipItem: (id: string): Promise<boolean> => ipcRenderer.invoke('easyclip-copy-item', id),
+  copyMultipleEasyClipItems: (ids: string[]): Promise<boolean> => ipcRenderer.invoke('easyclip-copy-multiple', ids),
+  deleteEasyClipItem: (id: string): Promise<boolean> => ipcRenderer.invoke('easyclip-delete-item', id),
+  deleteMultipleEasyClipItems: (ids: string[]): Promise<boolean> => ipcRenderer.invoke('easyclip-delete-multiple', ids),
+  clearEasyClipHistory: (): Promise<boolean> => ipcRenderer.invoke('easyclip-clear-history'),
+  openEasyClip: (): Promise<void> => ipcRenderer.invoke('easyclip-open'),
+  onEasyClipItemsUpdated: (callback: (items: EasyClipItem[]) => void) => {
+    const handler = (_event: any, items: EasyClipItem[]) => callback(items);
+    ipcRenderer.on('easyclip-items-updated', handler);
+    return () => ipcRenderer.removeListener('easyclip-items-updated', handler);
+  },
+  onOpenSpotlightMode: (callback: (data: { mode: string; options?: any }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('open-spotlight-mode', handler);
+    return () => ipcRenderer.removeListener('open-spotlight-mode', handler);
   },
 });

@@ -61,6 +61,11 @@ const DEFAULT_CONFIG: AppConfig = {
       color: '#f43f5e',
       overlayColor: '#f43f5e',
     },
+    easyClip: {
+      enabled: false,
+      hotkey: '',
+      maxItems: 50,
+    },
   },
   extensions: {
     magicgate: false,
@@ -100,6 +105,17 @@ export class AppStore {
         const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
         cfg = { ...DEFAULT_CONFIG, ...parsed };
+
+        if (parsed.donkeyTools) {
+          cfg.donkeyTools = {
+            ...DEFAULT_CONFIG.donkeyTools,
+            ...parsed.donkeyTools,
+            colorMaster: { ...DEFAULT_CONFIG.donkeyTools?.colorMaster, ...parsed.donkeyTools?.colorMaster },
+            quickCap: { ...DEFAULT_CONFIG.donkeyTools?.quickCap, ...parsed.donkeyTools?.quickCap },
+            screenRuler: { ...DEFAULT_CONFIG.donkeyTools?.screenRuler, ...parsed.donkeyTools?.screenRuler },
+            easyClip: { ...DEFAULT_CONFIG.donkeyTools?.easyClip, ...parsed.donkeyTools?.easyClip },
+          };
+        }
       }
 
       // Backward compatibility / migration for default search engine

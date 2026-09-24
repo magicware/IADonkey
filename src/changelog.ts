@@ -5,12 +5,24 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.25';
+export const CURRENT_APP_VERSION = '1.1.26';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.26',
+    date: '24. 9. 2026',
+    title: 'EasyClip historie schránky, automatické vložení (auto-paste) do aplikací a okamžitý reset Spotlightu',
+    highlights: [
+      'EasyClip – Pokročilá historie schránky v DonkeyTools: Nové systémové rozšíření pro sledování a správu historie schránky (text i obrázky) s možností rychlého vyvolání globální zkratkou i příkazy /easyclip, /clip, /schranka, /clipboard.',
+      'Hromadný výběr a mazání ve schránce: Podpora výběru rozsahu položek přes Shift + šipky / Shift + klik myší. Smazání označených položek klávesou Delete a zkopírování více položek odspodu nahoru s oddělením novým řádkem.',
+      'Automatické vložení (Auto-paste) pro EasyClip a Snippety: Po výběru položky ze schránky nebo snippetu se Spotlight okamžitě skryje a text se automaticky vloží přímo do původně aktivní aplikace (Notepad, VS Code, Word, prohlížeč atd.).',
+      'Spolehlivé navrácení zaměření (focusu): Robustní aktivace cílového okna a simulace vložení pomocí C# pomocníka s ošetřením DWM TopMost vrstev, bez nežádoucí aktivace menu baru a s automatickým uvolněním visících kláves.',
+      'Okamžitý reset stavu bez problikávání: Synchronní reset stavu Spotlightu ještě před skrytím okna zabraňuje problikávání předchozího obsahu při opětovném otevření.',
+    ],
+  },
   {
     version: '1.1.25',
     date: '24. 9. 2026',

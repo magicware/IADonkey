@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LauncherItem, LauncherAction, SyncProgress, SnippetsConfig, ColorMasterSettings, QuickCapSettings, FastSnapSettings, ScreenRulerSettings, AppConfig } from '../types';
+import { LauncherItem, LauncherAction, SyncProgress, SnippetsConfig, ColorMasterSettings, QuickCapSettings, FastSnapSettings, ScreenRulerSettings, EasyClipSettings, EasyClipItem, AppConfig } from '../types';
 import { MaterialIcon } from './MaterialIcon';
 import { evaluateExpression } from '../utils/calculator';
 import { detectUrl } from '../utils/urlHelper';
@@ -34,6 +34,7 @@ interface SearchSpotlightProps {
   quickCapConfig?: QuickCapSettings;
   fastSnapConfig?: FastSnapSettings;
   screenRulerConfig?: ScreenRulerSettings;
+  easyClipConfig?: EasyClipSettings;
   onSaveConfig?: (newConfig: AppConfig) => Promise<void>;
   onOpenSettings: () => void;
   onRefreshData: () => void;
@@ -59,6 +60,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   quickCapConfig,
   fastSnapConfig,
   screenRulerConfig,
+  easyClipConfig,
   onSaveConfig,
   onOpenSettings,
   onRefreshData,
@@ -91,10 +93,17 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   const [isDonkeyToolsOpen, setIsDonkeyToolsOpen] = useState(false);
   const donkeyToolsRef = useRef<HTMLDivElement>(null);
 
+  const [isEasyClipMode, setIsEasyClipMode] = useState(false);
+  const [easyClipItems, setEasyClipItems] = useState<EasyClipItem[]>([]);
+  const [easyClipSelectedIndex, setEasyClipSelectedIndex] = useState<number>(0);
+  const [selectedEasyClipIds, setSelectedEasyClipIds] = useState<Set<string>>(new Set());
+  const easyClipAnchorRef = useRef<number>(0);
+
   const isColorMasterActive = Boolean(donkeyToolsEnabled && colorMasterConfig?.enabled === true);
   const isQuickCapActive = Boolean(donkeyToolsEnabled && (quickCapConfig?.enabled === true || fastSnapConfig?.enabled === true));
   const isScreenRulerActive = Boolean(donkeyToolsEnabled && screenRulerConfig?.enabled === true);
-  const showDonkeyToolsIcon = Boolean(donkeyToolsEnabled && (isColorMasterActive || isQuickCapActive || isScreenRulerActive));
+  const isEasyClipActive = Boolean(donkeyToolsEnabled && easyClipConfig?.enabled === true);
+  const showDonkeyToolsIcon = Boolean(donkeyToolsEnabled && (isColorMasterActive || isQuickCapActive || isScreenRulerActive || isEasyClipActive));
 
   // Click outside to close DonkeyTools quick tools menu
   useEffect(() => {
@@ -107,6 +116,14 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     window.addEventListener('mousedown', handleClickOutside);
     return () => window.removeEventListener('mousedown', handleClickOutside);
   }, [isDonkeyToolsOpen]);
+
+  const handleRefocusInput = () => {
+    requestAnimationFrame(() => {
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        inputRef.current.focus({ preventScroll: true });
+      }
+    });
+  };
 
   const handlePickColor = async () => {
     try {
@@ -165,6 +182,226 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     } catch (err) {
       console.error('ScreenRuler start error:', err);
     }
+  };
+
+  const resetSpotlightState = () => {
+    setIsRevealed(false);
+    setIsDonkeyToolsOpen(false);
+    setParentItem(null);
+    setActionsParentItem(null);
+    setIsEasyClipMode(false);
+    setQuery('');
+    setSelectedIndex(0);
+    setEasyClipSelectedIndex(0);
+    setSelectedEasyClipIds(new Set());
+    savedParentItemRef.current = null;
+    restoringIndexRef.current = null;
+  };
+
+  const enterEasyClip = async () => {
+    setIsDonkeyToolsOpen(false);
+    setActionsParentItem(null);
+    setParentItem(null);
+    if (window.electronAPI?.getEasyClipItems) {
+      try {
+        const items = await window.electronAPI.getEasyClipItems();
+        if (Array.isArray(items)) {
+          setEasyClipItems(items);
+        }
+      } catch (err) {
+        console.error('Failed to load EasyClip items:', err);
+      }
+    }
+    setQuery('');
+    setEasyClipSelectedIndex(0);
+    easyClipAnchorRef.current = 0;
+    setSelectedEasyClipIds(new Set());
+    setIsEasyClipMode(true);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  };
+
+  const exitEasyClip = () => {
+    resetSpotlightState();
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  };
+
+  const handleCopyEasyClipItem = async (item: EasyClipItem) => {
+    if (!item) return;
+    resetSpotlightState();
+    if (window.electronAPI?.copyEasyClipItem) {
+      await window.electronAPI.copyEasyClipItem(item.id);
+    } else {
+      if (item.type === 'text' && item.text) {
+        await navigator.clipboard.writeText(item.text);
+      }
+      handleClose();
+    }
+  };
+
+  const handleCopyMultipleEasyClipItems = async () => {
+    const idsInOrder = filteredEasyClipItems
+      .filter((it) => selectedEasyClipIds.has(it.id))
+      .map((it) => it.id);
+
+    if (idsInOrder.length === 0) return;
+
+    resetSpotlightState();
+
+    if (window.electronAPI?.copyMultipleEasyClipItems) {
+      await window.electronAPI.copyMultipleEasyClipItems(idsInOrder);
+    } else {
+      const selected = filteredEasyClipItems.filter((it) => selectedEasyClipIds.has(it.id));
+      const reversed = [...selected].reverse();
+      const combined = reversed
+        .map((it) => (it.type === 'text' ? it.text?.trimEnd() || '' : ''))
+        .filter((t) => t.length > 0)
+        .join('\n');
+      if (combined) {
+        await navigator.clipboard.writeText(combined);
+      }
+      handleClose();
+    }
+  };
+
+  const handleDeleteSelectedEasyClipItems = async () => {
+    const idsToDelete = Array.from(selectedEasyClipIds);
+    if (idsToDelete.length === 0) return;
+
+    if (window.electronAPI?.deleteMultipleEasyClipItems) {
+      await window.electronAPI.deleteMultipleEasyClipItems(idsToDelete);
+    }
+    setEasyClipItems((prev) => prev.filter((it) => !selectedEasyClipIds.has(it.id)));
+    setSelectedEasyClipIds(new Set());
+    setEasyClipSelectedIndex((prev) =>
+      Math.max(0, Math.min(prev, filteredEasyClipItems.length - idsToDelete.length - 1))
+    );
+  };
+
+  const handleEasyClipItemClick = (item: EasyClipItem, idx: number, e: React.MouseEvent) => {
+    if (e.shiftKey) {
+      e.preventDefault();
+      setEasyClipSelectedIndex(idx);
+      const start = Math.min(easyClipAnchorRef.current, idx);
+      const end = Math.max(easyClipAnchorRef.current, idx);
+      const newSet = new Set<string>();
+      for (let i = start; i <= end; i++) {
+        if (filteredEasyClipItems[i]) {
+          newSet.add(filteredEasyClipItems[i].id);
+        }
+      }
+      setSelectedEasyClipIds(newSet);
+      handleRefocusInput();
+      return;
+    }
+
+    if (selectedEasyClipIds.size > 1) {
+      setSelectedEasyClipIds(new Set());
+      setEasyClipSelectedIndex(idx);
+      easyClipAnchorRef.current = idx;
+      handleRefocusInput();
+      return;
+    }
+
+    handleCopyEasyClipItem(item);
+  };
+
+  const handleDeleteEasyClipItem = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (window.electronAPI?.deleteEasyClipItem) {
+      await window.electronAPI.deleteEasyClipItem(id);
+    }
+    setEasyClipItems((prev) => prev.filter((it) => it.id !== id));
+    if (selectedEasyClipIds.has(id)) {
+      setSelectedEasyClipIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+    handleRefocusInput();
+  };
+
+  const handleClearEasyClip = async () => {
+    if (window.electronAPI?.clearEasyClipHistory) {
+      await window.electronAPI.clearEasyClipHistory();
+    }
+    setEasyClipItems([]);
+    setSelectedEasyClipIds(new Set());
+    handleRefocusInput();
+  };
+
+  useEffect(() => {
+    if (window.electronAPI?.getEasyClipItems) {
+      window.electronAPI.getEasyClipItems().then((items) => {
+        if (Array.isArray(items)) {
+          setEasyClipItems(items);
+        }
+      }).catch(() => {});
+    }
+
+    const unsubUpdated = window.electronAPI?.onEasyClipItemsUpdated?.((items) => {
+      if (Array.isArray(items)) {
+        setEasyClipItems(items);
+      }
+    });
+
+    const unsubMode = window.electronAPI?.onOpenSpotlightMode?.((data) => {
+      if (data?.mode === 'easyclip') {
+        enterEasyClip();
+      }
+    });
+
+    return () => {
+      unsubUpdated?.();
+      unsubMode?.();
+    };
+  }, []);
+
+  const filteredEasyClipItems = useMemo(() => {
+    if (!isEasyClipMode) return [];
+    const q = query.trim().toLowerCase();
+    if (!q) return easyClipItems;
+    return easyClipItems.filter((item) => {
+      if (item.type === 'text') {
+        return item.text?.toLowerCase().includes(q);
+      }
+      if (item.type === 'image') {
+        return (
+          'obrázek image foto screenshot snímek'.includes(q) ||
+          Boolean(item.width && item.height && `${item.width}x${item.height}`.includes(q))
+        );
+      }
+      return false;
+    });
+  }, [isEasyClipMode, query, easyClipItems]);
+
+  useEffect(() => {
+    if (isEasyClipMode) {
+      setEasyClipSelectedIndex(0);
+      easyClipAnchorRef.current = 0;
+      setSelectedEasyClipIds(new Set());
+    }
+  }, [isEasyClipMode, query]);
+
+  const formatRelativeTime = (timestamp: number): string => {
+    if (!timestamp) return '';
+    const diffSec = Math.floor((Date.now() - timestamp) / 1000);
+    if (diffSec < 45) return 'Právě teď';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `Před ${diffMin} min`;
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) {
+      const d = new Date(timestamp);
+      const h = String(d.getHours()).padStart(2, '0');
+      const m = String(d.getMinutes()).padStart(2, '0');
+      return `Dnes ${h}:${m}`;
+    }
+    const d = new Date(timestamp);
+    return `${d.getDate()}. ${d.getMonth() + 1}. ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
 
   // Listen to global color picker and tune color applied
@@ -415,17 +652,11 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     });
 
     const cleanupHide = window.electronAPI?.onWindowHideRequest?.(() => {
-      setIsRevealed(false);
+      resetSpotlightState();
     });
 
     const cleanupReset = window.electronAPI?.onResetSpotlight?.(() => {
-      setQuery('');
-      setSelectedIndex(0);
-      setParentItem(null);
-      setActionsParentItem(null);
-      savedParentItemRef.current = null;
-      restoringIndexRef.current = null;
-      setIsRevealed(false);
+      resetSpotlightState();
       inputRef.current?.blur();
     });
 
@@ -434,6 +665,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       setSelectedIndex(0);
       setParentItem(null);
       setActionsParentItem(null);
+      setIsEasyClipMode(false);
       savedParentItemRef.current = null;
       restoringIndexRef.current = null;
       setIsRevealed(true);
@@ -694,6 +926,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       setTimeout(() => {
         setCopiedInfoKey(null);
       }, 1500);
+      handleRefocusInput();
     } catch (err) {
       console.error('Failed to copy info value:', err);
     }
@@ -752,6 +985,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         quickCapEnabled: isQuickCapActive,
         fastSnapEnabled: isQuickCapActive,
         screenRulerEnabled: isScreenRulerActive,
+        easyClipEnabled: isEasyClipActive,
       });
       if (dtCommands.length > 0) {
         return dtCommands;
@@ -1162,36 +1396,63 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     setSelectedIndex(0);
   }, [results]);
 
-  // Scroll selected item or action into view
+  // Scroll selected item or action into view and keep scrollbar moving
   useEffect(() => {
-    if (listRef.current) {
-      if (actionsParentItem) {
-        if (selectedActionIndex === 0) {
-          listRef.current.scrollTop = 0;
-        } else {
-          const activeEl = listRef.current.querySelector('[data-action-selected="true"]');
-          if (activeEl) {
-            activeEl.scrollIntoView({ block: 'nearest' });
-          }
+    const container = listRef.current;
+    if (!container) return;
+
+    if (actionsParentItem) {
+      if (selectedActionIndex === 0) {
+        container.scrollTop = 0;
+        return;
+      }
+      const activeEl = container.querySelector<HTMLElement>('[data-action-selected="true"]');
+      if (activeEl) {
+        const containerRect = container.getBoundingClientRect();
+        const activeRect = activeEl.getBoundingClientRect();
+        if (activeRect.top < containerRect.top) {
+          container.scrollTop -= (containerRect.top - activeRect.top + 8);
+        } else if (activeRect.bottom > containerRect.bottom) {
+          container.scrollTop += (activeRect.bottom - containerRect.bottom + 8);
         }
-      } else {
-        const activeEl = listRef.current.querySelector('[data-selected="true"]');
-        if (activeEl) {
-          activeEl.scrollIntoView({ block: 'nearest' });
+      }
+    } else if (isEasyClipMode) {
+      if (easyClipSelectedIndex === 0) {
+        container.scrollTop = 0;
+        return;
+      }
+      const activeEl = container.querySelector<HTMLElement>('[data-selected="true"]');
+      if (activeEl) {
+        const containerRect = container.getBoundingClientRect();
+        const activeRect = activeEl.getBoundingClientRect();
+        if (activeRect.top < containerRect.top) {
+          container.scrollTop -= (containerRect.top - activeRect.top + 8);
+        } else if (activeRect.bottom > containerRect.bottom) {
+          container.scrollTop += (activeRect.bottom - containerRect.bottom + 8);
+        }
+      }
+    } else {
+      if (selectedIndex === 0) {
+        container.scrollTop = 0;
+        return;
+      }
+      const activeEl = container.querySelector<HTMLElement>('[data-selected="true"]');
+      if (activeEl) {
+        const containerRect = container.getBoundingClientRect();
+        const activeRect = activeEl.getBoundingClientRect();
+        if (activeRect.top < containerRect.top) {
+          container.scrollTop -= (containerRect.top - activeRect.top + 8);
+        } else if (activeRect.bottom > containerRect.bottom) {
+          container.scrollTop += (activeRect.bottom - containerRect.bottom + 8);
         }
       }
     }
-  }, [selectedIndex, selectedActionIndex, actionsParentItem]);
+  }, [selectedIndex, selectedActionIndex, actionsParentItem, isEasyClipMode, easyClipSelectedIndex]);
 
   // Smooth close helper - fades out in CSS before hiding native window
   const handleClose = () => {
-    setIsRevealed(false);
-    setIsDonkeyToolsOpen(false);
+    resetSpotlightState();
     setTimeout(() => {
-      setParentItem(null);
-      setActionsParentItem(null);
-      savedParentItemRef.current = null;
-      restoringIndexRef.current = null;
       window.electronAPI?.hideWindow?.();
     }, 90);
   };
@@ -1235,6 +1496,11 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       return;
     }
 
+    if (item.action === 'easyclip') {
+      await enterEasyClip();
+      return;
+    }
+
     if (item.id === 'colormaster-detected-color' && item.colorPreview) {
       const format = colorMasterConfig?.defaultFormat || 'hex';
       const parsed = parseColorQuery(item.colorPreview);
@@ -1257,12 +1523,18 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
     if (item.action === 'copy' || item.action === 'paste') {
       const toCopy = item.location || item.name;
+      const isSnippet = item.sourceId === 'snippet';
+      if (isSnippet) {
+        resetSpotlightState();
+      }
       if (window.electronAPI) {
         try {
           await window.electronAPI.executeAction({
-            action: 'copy',
+            action: isSnippet ? 'paste' : 'copy',
             location: toCopy,
             settings: item.settings,
+            sourceId: item.sourceId,
+            autoPaste: isSnippet,
           });
         } catch (err) {
           console.error('Clipboard copy error via electronAPI:', err);
@@ -1274,7 +1546,9 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           console.error('Clipboard copy error:', err);
         }
       }
-      handleClose();
+      if (!isSnippet) {
+        handleClose();
+      }
       return;
     }
 
@@ -1561,6 +1835,87 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       return;
     }
 
+    // If in EasyClip mode
+    if (isEasyClipMode) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (filteredEasyClipItems.length === 0) return;
+        if (e.shiftKey) {
+          // Range selection with Shift
+          const nextIndex = Math.min(easyClipSelectedIndex + 1, filteredEasyClipItems.length - 1);
+          setEasyClipSelectedIndex(nextIndex);
+          const start = Math.min(easyClipAnchorRef.current, nextIndex);
+          const end = Math.max(easyClipAnchorRef.current, nextIndex);
+          const newSet = new Set<string>();
+          for (let i = start; i <= end; i++) {
+            if (filteredEasyClipItems[i]) {
+              newSet.add(filteredEasyClipItems[i].id);
+            }
+          }
+          setSelectedEasyClipIds(newSet);
+        } else {
+          // Single navigation
+          const nextIndex = (easyClipSelectedIndex + 1) % filteredEasyClipItems.length;
+          setEasyClipSelectedIndex(nextIndex);
+          easyClipAnchorRef.current = nextIndex;
+          setSelectedEasyClipIds(new Set());
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (filteredEasyClipItems.length === 0) return;
+        if (e.shiftKey) {
+          // Range selection with Shift
+          const nextIndex = Math.max(0, easyClipSelectedIndex - 1);
+          setEasyClipSelectedIndex(nextIndex);
+          const start = Math.min(easyClipAnchorRef.current, nextIndex);
+          const end = Math.max(easyClipAnchorRef.current, nextIndex);
+          const newSet = new Set<string>();
+          for (let i = start; i <= end; i++) {
+            if (filteredEasyClipItems[i]) {
+              newSet.add(filteredEasyClipItems[i].id);
+            }
+          }
+          setSelectedEasyClipIds(newSet);
+        } else {
+          // Single navigation
+          const nextIndex =
+            (easyClipSelectedIndex - 1 + filteredEasyClipItems.length) % filteredEasyClipItems.length;
+          setEasyClipSelectedIndex(nextIndex);
+          easyClipAnchorRef.current = nextIndex;
+          setSelectedEasyClipIds(new Set());
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (selectedEasyClipIds.size > 1) {
+          handleCopyMultipleEasyClipItems();
+        } else {
+          const chosen = filteredEasyClipItems[easyClipSelectedIndex];
+          if (chosen) {
+            handleCopyEasyClipItem(chosen);
+          }
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        if (selectedEasyClipIds.size > 1) {
+          setSelectedEasyClipIds(new Set());
+          easyClipAnchorRef.current = easyClipSelectedIndex;
+        } else {
+          exitEasyClip();
+        }
+      } else if (e.key === 'Delete') {
+        e.preventDefault();
+        if (selectedEasyClipIds.size > 1) {
+          handleDeleteSelectedEasyClipItems();
+        } else {
+          const chosen = filteredEasyClipItems[easyClipSelectedIndex];
+          if (chosen) {
+            handleDeleteEasyClipItem(chosen.id);
+          }
+        }
+      }
+      return;
+    }
+
     // Ctrl+Backspace or Alt+Backspace -> completely clear search query string
     if (e.key === 'Backspace' && (e.ctrlKey || e.metaKey || e.altKey)) {
       e.preventDefault();
@@ -1626,6 +1981,25 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       }
     }
   };
+
+  const handleKeyDownRef = useRef(handleKeyDown);
+  handleKeyDownRef.current = handleKeyDown;
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.target !== inputRef.current) {
+        if (inputRef.current) {
+          inputRef.current.focus({ preventScroll: true });
+        }
+        handleKeyDownRef.current(e as unknown as React.KeyboardEvent);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, []);
 
   // Click on result item (supporting Shift, Ctrl, and Alt modifiers)
   const handleItemClick = (item: LauncherItem, e: React.MouseEvent) => {
@@ -1801,16 +2175,20 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       className={`w-full flex flex-col bg-[#1c1d24] border border-white/10 rounded-2xl shadow-2xl overflow-visible text-gray-100 spotlight-card ${
         isRevealed ? 'revealed' : ''
       }`}
+      onMouseUp={handleRefocusInput}
+      onClick={handleRefocusInput}
     >
       {/* Top Search Input Bar */}
       <div
         className={`flex items-center px-4 py-3.5 gap-3 bg-white/[0.02] rounded-t-2xl ${
-          results.length > 0 || parentItem || actionsParentItem ? 'border-b border-white/10' : 'rounded-b-2xl'
+          results.length > 0 || parentItem || actionsParentItem || isEasyClipMode ? 'border-b border-white/10' : 'rounded-b-2xl'
         }`}
       >
         <span
           className={`material-symbols-outlined select-none text-2xl ${
-            actionsParentItem
+            isEasyClipMode
+              ? 'text-rose-400'
+              : actionsParentItem
               ? 'text-purple-400'
               : parentItem
               ? 'text-indigo-400'
@@ -1823,7 +2201,9 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
               : 'text-indigo-400'
           }`}
         >
-          {actionsParentItem
+          {isEasyClipMode
+            ? 'content_paste'
+            : actionsParentItem
             ? 'bolt'
             : parentItem
             ? 'subdirectory_arrow_right'
@@ -1845,7 +2225,9 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           }}
           onKeyDown={handleKeyDown}
           placeholder={
-            actionsParentItem
+            isEasyClipMode
+              ? 'Hledat v historii schránky (EasyClip)...'
+              : actionsParentItem
               ? `Akce položky: „${actionsParentItem.name}“`
               : parentItem
               ? `Hledat v podpoložkách „${parentItem.name}“...`
@@ -1866,6 +2248,14 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             onClick={exitActions}
             className="w-8 h-8 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center cursor-pointer shrink-0"
             title="Zavřít nabídku akcí (Esc)"
+          >
+            <span className="material-symbols-outlined text-[19px] leading-none select-none">close</span>
+          </button>
+        ) : isEasyClipMode ? (
+          <button
+            onClick={exitEasyClip}
+            className="w-8 h-8 rounded-lg text-rose-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center cursor-pointer shrink-0"
+            title="Zavřít historii schránky (Esc)"
           >
             <span className="material-symbols-outlined text-[19px] leading-none select-none">close</span>
           </button>
@@ -1958,6 +2348,23 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                   >
                     <span className="material-symbols-outlined text-[20px] leading-none select-none">
                       straighten
+                    </span>
+                  </button>
+                )}
+
+                {/* EasyClip Subextension - Clipboard History Manager */}
+                {isEasyClipActive && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDonkeyToolsOpen(false);
+                      enterEasyClip();
+                    }}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all shadow-xl bg-[#1c1d28] hover:bg-rose-500/25 border border-white/15 hover:border-rose-400/50 text-gray-300 hover:text-rose-200 hover:scale-105 active:scale-95"
+                    title="EasyClip – Historie schránky"
+                  >
+                    <span className="material-symbols-outlined text-[20px] leading-none select-none">
+                      content_paste
                     </span>
                   </button>
                 )}
@@ -2114,7 +2521,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           {/* Unified Actions & Info Scrollable View */}
           <div
             ref={listRef}
-            className="max-h-[385px] overflow-y-auto p-2 focus:outline-none space-y-2"
+            className="max-h-[385px] overflow-y-auto p-2 focus:outline-none space-y-2 relative"
           >
             {/* 1. Screenshot Preview or Compact Info Section (BEFORE actions) */}
             {actionsParentItem?.imagePreview ? (
@@ -2378,6 +2785,244 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             </div>
           </div>
         </>
+      ) : isEasyClipMode ? (
+        <>
+          {/* EasyClip Header Banner */}
+          <div className="flex items-center justify-between px-4 py-2 bg-rose-950/40 border-b border-rose-500/20 text-xs text-rose-300 select-none">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={exitEasyClip}
+                className="flex items-center gap-1.5 text-rose-300 hover:text-white transition cursor-pointer"
+                title="Zpět do vyhledávání (Esc)"
+              >
+                <span className="material-symbols-outlined text-base">arrow_back</span>
+              </button>
+              <div className="flex items-center gap-1.5 font-medium">
+                <span className="material-symbols-outlined text-rose-400 text-base">content_paste</span>
+                <span>Historie schránky</span>
+                {selectedEasyClipIds.size > 1 ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/30 text-rose-200 border border-rose-400/40 font-mono font-semibold">
+                    Vybráno {selectedEasyClipIds.size} položek
+                  </span>
+                ) : (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono">
+                    {filteredEasyClipItems.length} {filteredEasyClipItems.length === 1 ? 'položka' : filteredEasyClipItems.length >= 2 && filteredEasyClipItems.length <= 4 ? 'položky' : 'položek'}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {easyClipItems.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearEasyClip}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-400/30 text-gray-400 hover:text-rose-200 transition text-[11px] cursor-pointer"
+                  title="Smazat celou historii schránky"
+                >
+                  <span className="material-symbols-outlined text-xs">delete_sweep</span>
+                  <span>Vymazat</span>
+                </button>
+              )}
+              <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono">
+                <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none whitespace-nowrap">Esc</kbd>
+                <span>Zpět</span>
+              </div>
+            </div>
+          </div>
+
+          {/* EasyClip Items List */}
+          <div
+            ref={listRef}
+            className="max-h-[400px] overflow-y-auto divide-y divide-white/[0.04] p-1.5 focus:outline-none relative"
+          >
+            {filteredEasyClipItems.length === 0 ? (
+              <div className="py-12 flex flex-col items-center justify-center text-center text-gray-400">
+                <span className="material-symbols-outlined text-4xl text-rose-500/40 mb-2 select-none">
+                  content_paste_off
+                </span>
+                <p className="text-sm font-medium text-gray-300">
+                  {query.trim() ? 'Žádné položky neodpovídají hledání' : 'Historie schránky je prázdná'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1 max-w-xs">
+                  {query.trim()
+                    ? 'Zkuste upravit hledaný výraz nebo vymazat filtr.'
+                    : 'Zkopírujte libovolný text nebo obrázek a objeví se zde v historii EasyClip.'}
+                </p>
+              </div>
+            ) : (
+              filteredEasyClipItems.map((item, idx) => {
+                const isItemMultiSelected = selectedEasyClipIds.has(item.id);
+                const isSelected = selectedEasyClipIds.size > 1 ? isItemMultiSelected : idx === easyClipSelectedIndex;
+                const isCursor = idx === easyClipSelectedIndex;
+                const isImage = item.type === 'image';
+                const charCount = item.charCount ?? (item.text ? item.text.length : 0);
+                const lineCount = item.lineCount ?? (item.text ? item.text.split('\n').length : 1);
+                const sizeKb = item.sizeBytes ? Math.round(item.sizeBytes / 1024) : 0;
+
+                return (
+                  <div
+                    key={item.id}
+                    data-selected={idx === easyClipSelectedIndex}
+                    onClick={(e) => handleEasyClipItemClick(item, idx, e)}
+                    className={`group relative flex items-start gap-3 p-2.5 rounded-lg cursor-pointer transition-all select-none ${
+                      isSelected
+                        ? 'bg-rose-500/20 border border-rose-500/40 text-white shadow-sm'
+                        : 'hover:bg-white/[0.04] text-gray-300 border border-transparent'
+                    } ${isCursor && selectedEasyClipIds.size > 1 ? 'ring-1 ring-rose-400/60' : ''}`}
+                  >
+                    {/* Icon or Image Thumbnail */}
+                    <div className="shrink-0 mt-0.5">
+                      {isImage ? (
+                        <div className="w-12 h-12 rounded-md overflow-hidden bg-black/40 border border-white/10 flex items-center justify-center">
+                          {item.dataUrl ? (
+                            <img
+                              src={item.dataUrl}
+                              alt="Clipboard thumbnail"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="material-symbols-outlined text-2xl text-rose-400">
+                              image
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            isSelected
+                              ? 'bg-rose-500/25 text-rose-300 border border-rose-400/40'
+                              : 'bg-white/5 text-gray-400 border border-white/10'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-lg">
+                            content_paste
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Content details */}
+                    <div className="flex-1 min-w-0 pr-14">
+                      {isImage ? (
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-rose-300 font-mono">
+                              Obrázek ({item.width ?? '?'} × {item.height ?? '?'} px)
+                            </span>
+                            {sizeKb > 0 && (
+                              <span className="text-[10px] text-gray-400 font-mono">
+                                {sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-gray-400 mt-1 flex items-center gap-2">
+                            <span>{formatRelativeTime(item.timestamp)}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          {/* Exact text preview (whitespace preserved) */}
+                          <div className="text-xs font-mono text-gray-200 line-clamp-3 whitespace-pre-wrap break-all select-none">
+                            {item.text}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1.5 text-[10px] text-gray-400 font-mono">
+                            <span className="px-1.5 py-0.2 rounded bg-white/5 border border-white/10 text-gray-300">
+                              {charCount} {charCount === 1 ? 'znak' : charCount >= 2 && charCount <= 4 ? 'znaky' : 'znaků'}
+                            </span>
+                            {lineCount > 1 && (
+                              <span className="px-1.5 py-0.2 rounded bg-white/5 border border-white/10 text-gray-300">
+                                {lineCount} {lineCount >= 2 && lineCount <= 4 ? 'řádky' : 'řádků'}
+                              </span>
+                            )}
+                            <span className="text-gray-500">•</span>
+                            <span>{formatRelativeTime(item.timestamp)}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions on Item: Copy badge & Delete button OR Multi-select checkbox */}
+                    <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5">
+                      {selectedEasyClipIds.size > 1 ? (
+                        <div
+                          className={`w-5 h-5 rounded flex items-center justify-center transition ${
+                            isItemMultiSelected
+                              ? 'bg-rose-500 text-white shadow-sm border border-rose-400'
+                              : 'border border-white/20 bg-white/5 text-transparent'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[14px] leading-none font-bold">check</span>
+                        </div>
+                      ) : (
+                        <>
+                          {isSelected && (
+                            <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-500/30 text-rose-200 border border-rose-400/40 text-[10px] font-mono shadow-sm">
+                              <kbd className="font-sans text-[9px]">↵</kbd> Kopírovat
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              handleDeleteEasyClipItem(item.id, e);
+                            }}
+                            className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"
+                            title="Odstranit ze schránky"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* EasyClip Footer Bar */}
+          <div className="px-4 py-2 bg-black/30 border-t border-white/5 flex items-center justify-between text-[11px] text-gray-400">
+            <button
+              type="button"
+              onClick={exitEasyClip}
+              className="flex items-center gap-1 text-gray-400 hover:text-white transition cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-sm">arrow_back</span>
+              <span>Zpět do vyhledávání</span>
+            </button>
+            {selectedEasyClipIds.size > 1 ? (
+              <div className="flex items-center gap-3 text-[11px]">
+                <span className="flex items-center gap-1.5 text-rose-300 font-medium">
+                  <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-rose-500/30 text-rose-200 border border-rose-500/40 rounded font-mono text-[10px] leading-none whitespace-nowrap">Enter</kbd>
+                  Kopírovat vybrané ({selectedEasyClipIds.size})
+                </span>
+                <span className="flex items-center gap-1.5 text-rose-300/80">
+                  <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded font-mono text-[10px] leading-none whitespace-nowrap">Del</kbd>
+                  Smazat vybrané ({selectedEasyClipIds.size})
+                </span>
+                <span className="flex items-center gap-1.5 text-gray-400">
+                  <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none whitespace-nowrap">Esc</kbd> Zrušit výběr
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 text-[11px] text-gray-400">
+                <span className="flex items-center gap-1.5 text-rose-300/90">
+                  <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded font-mono text-[10px] leading-none whitespace-nowrap">Enter</kbd> Kopírovat
+                </span>
+                <span className="flex items-center gap-1.5 text-gray-400">
+                  <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none whitespace-nowrap">Del</kbd> Smazat
+                </span>
+                <span className="flex items-center gap-1.5 text-gray-400">
+                  <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none whitespace-nowrap">Shift+↑↓</kbd> Výběr více
+                </span>
+                <span className="flex items-center gap-1.5 text-gray-400">
+                  <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none whitespace-nowrap">Esc</kbd> Zpět
+                </span>
+              </div>
+            )}
+          </div>
+        </>
       ) : (
         /* Regular Results List & Footer */
         results.length > 0 && (
@@ -2402,7 +3047,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
             <div
               ref={listRef}
-              className="max-h-[400px] overflow-y-auto divide-y divide-white/[0.04] p-1.5 focus:outline-none"
+              className="max-h-[400px] overflow-y-auto divide-y divide-white/[0.04] p-1.5 focus:outline-none relative"
             >
               {results.map((item, idx) => {
                 const isSelected = idx === selectedIndex;

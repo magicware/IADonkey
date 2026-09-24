@@ -6,21 +6,7 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
 
 ## 📋 Otevřené úkoly (k realizaci)
 
-- [ ] **1. Integrace multi-schránky na styl Ditto (EasyClip)**
-  - **Popis**: Pokročilý správce historie schránky jako subrozšíření DonkeyTools s rychlým vkládáním a historií.
-  - **Architektura & Procesy**:
-    - Služba na pozadí (`electron/clipboardService.ts`): Periodické sledování změn systémové schránky (`clipboard.readText()`, `readImage()`), deduplikace záznamů, posun existujícího záznamu na vrchol.
-    - Úložiště: Ukládání až 100 posledních položek v `userData/easyclip.json` s možností mazání a expirace.
-    - Plovoucí kompaktní okno (`hash: 'easyclip'`): Velikost ~380×480 px, frameless, otevření u kurzoru nebo v centru obrazovky.
-  - **Interakce & Klávesnice**:
-    - Okamžité filtrování fulltextem, procházení šipkami nahoru/dolů.
-    - Podpora vícenásobného výběru pomocí `Shift + šipky` / kliknutí: vložení více položek spojených oddělovačem (nový řádek / mezera).
-    - `Enter`: vložení vybrané položky, `Shift+Enter`: vložení jako čistý neformátovaný text, `Del`: smazání ze schránky, `Esc`: skrytí okna.
-  - **Mechanismus automatického vložení (Auto-Paste)**:
-    - Před otevřením EasyClip uložit HWND/identifikátor aktivního okna.
-    - Po stisku `Enter`: zkopírovat zvolený text do schránky, skrýt EasyClip, obnovit fokus do původního okna a syntetizovat stisk `Ctrl+V` (prostřednictvím nativního volání / Windows API).
-
-- [ ] **2. MagicGate: Přepínač mezi lokálním XML souborem a vzdáleným API GET**
+- [ ] **1. MagicGate: Přepínač mezi lokálním XML souborem a vzdáleným API GET**
   - **Popis**: Přepínač způsobu získávání instancí MagicGate – buď z lokálního deploy XML souboru, nebo dynamickým stažením přes REST API s autentizací.
   - **Datový model & Konfigurace**:
     - Rozšíření `MagicGateSettings` o `sourceMode: 'xml' | 'api'`, `apiUrl?: string`, `apiUsername?: string`, `apiPassword?: string`, `apiAuthType?: 'basic' | 'bearer' | 'credentials'`.
@@ -38,6 +24,6 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
 
-*(Všechny dosud dokončené úkoly byly schváleny a zkontrolovány.)*
+*(Žádné dokončené úkoly momentálně nečekají na kontrolu)*
 
 

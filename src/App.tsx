@@ -49,6 +49,11 @@ const DEFAULT_CONFIG: AppConfig = {
       color: '#f43f5e',
       defaultUnit: 'px',
     },
+    easyClip: {
+      enabled: false,
+      hotkey: '',
+      maxItems: 50,
+    },
   },
   updateUrl: 'https://raw.githubusercontent.com/magicware/IADonkey/main/version.json',
   lastDeclinedVersion: null,
@@ -587,6 +592,7 @@ export const App: React.FC = () => {
           quickCapConfig={config.donkeyTools?.quickCap || config.donkeyTools?.fastSnap}
           fastSnapConfig={config.donkeyTools?.quickCap || config.donkeyTools?.fastSnap}
           screenRulerConfig={config?.donkeyTools?.screenRuler}
+          easyClipConfig={config?.donkeyTools?.easyClip}
           onSaveConfig={handleSaveConfig}
           onOpenSettings={() => {
             if (window.electronAPI?.openSettingsWindow) {

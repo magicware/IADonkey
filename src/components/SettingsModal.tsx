@@ -229,6 +229,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const screenRulerMaxComboRef = useRef<string[]>([]);
   const screenRulerOriginalHotkeyRef = useRef<string>(config.donkeyTools?.screenRuler?.hotkey || '');
 
+  // EasyClip state & refs
+  const [isRecordingEasyClipHotkey, setIsRecordingEasyClipHotkey] = useState(false);
+  const [easyClipRecordedModifiers, setEasyClipRecordedModifiers] = useState<string[]>([]);
+  const [easyClipHotkeyError, setEasyClipHotkeyError] = useState<string | null>(null);
+  const easyClipPressedKeysRef = useRef<Set<string>>(new Set());
+  const easyClipMaxComboRef = useRef<string[]>([]);
+  const easyClipOriginalHotkeyRef = useRef<string>(config.donkeyTools?.easyClip?.hotkey || '');
+  const [easyClipItemCount, setEasyClipItemCount] = useState<number>(0);
+  const [easyClipClearSuccess, setEasyClipClearSuccess] = useState(false);
+
   const contentRef = useRef<HTMLDivElement>(null);
   const importSnippetsFileRef = useRef<HTMLInputElement>(null);
   const [snippetFeedback, setSnippetFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -1086,8 +1096,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
     if (activeTab === 'donkey-tools') {
       loadRecentQuickCaps();
+      loadEasyClipItemCount();
     }
   }, [activeTab]);
+
+  // Listen to EasyClip items updates in real time
+  useEffect(() => {
+    const unsub = window.electronAPI?.onEasyClipItemsUpdated?.((items) => {
+      if (Array.isArray(items)) {
+        setEasyClipItemCount(items.length);
+      }
+    });
+    return () => unsub?.();
+  }, []);
 
   // Check if at least one item (or any nested option) has settings === 'magicgate'
   const hasMagicGate = (item: LauncherItem): boolean => {
@@ -2332,6 +2353,336 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       screenRulerPressedKeysRef.current.clear();
       screenRulerMaxComboRef.current = [];
       setScreenRulerRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+  };
+
+  const loadEasyClipItemCount = async () => {
+    if (!window.electronAPI?.getEasyClipItems) return;
+    try {
+      const items = await window.electronAPI.getEasyClipItems();
+      setEasyClipItemCount(items ? items.length : 0);
+    } catch (err) {
+      console.error('Failed to load EasyClip items count:', err);
+    }
+  };
+
+  const handleClearEasyClipHistory = async () => {
+    if (!window.electronAPI?.clearEasyClipHistory) return;
+    try {
+      await window.electronAPI.clearEasyClipHistory();
+      setEasyClipItemCount(0);
+      setEasyClipClearSuccess(true);
+      setTimeout(() => setEasyClipClearSuccess(false), 3000);
+    } catch (err) {
+      console.error('Failed to clear EasyClip history:', err);
+    }
+  };
+
+  const handleOpenEasyClip = async () => {
+    onClose();
+    if (window.electronAPI?.openEasyClip) {
+      window.electronAPI.openEasyClip();
+    }
+  };
+
+  const handleEasyClipHotkeyFocus = () => {
+    setIsRecordingEasyClipHotkey(true);
+    setEasyClipHotkeyError(null);
+    easyClipOriginalHotkeyRef.current = formData.donkeyTools?.easyClip?.hotkey || '';
+    easyClipPressedKeysRef.current.clear();
+    easyClipMaxComboRef.current = [];
+    setEasyClipRecordedModifiers([]);
+    window.electronAPI?.pauseGlobalHotkey?.();
+  };
+
+  const handleEasyClipHotkeyBlur = () => {
+    setIsRecordingEasyClipHotkey(false);
+    easyClipPressedKeysRef.current.clear();
+    easyClipMaxComboRef.current = [];
+    setEasyClipRecordedModifiers([]);
+    window.electronAPI?.resumeGlobalHotkey?.();
+  };
+
+  const handleEasyClipHotkeyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Escape cancels recording and restores original hotkey
+    if (e.key === 'Escape') {
+      const fallback = easyClipOriginalHotkeyRef.current || '';
+      const isEnabled = formData.donkeyTools?.easyClip?.enabled ?? true;
+      const maxItems = formData.donkeyTools?.easyClip?.maxItems || 50;
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          easyClip: {
+            enabled: isEnabled,
+            hotkey: fallback,
+            maxItems,
+          },
+        },
+      };
+      setFormData(updated);
+      setEasyClipHotkeyError(null);
+      setIsRecordingEasyClipHotkey(false);
+      easyClipPressedKeysRef.current.clear();
+      easyClipMaxComboRef.current = [];
+      setEasyClipRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+
+    // Backspace when nothing held resets / clears the hotkey
+    if (e.key === 'Backspace' && easyClipPressedKeysRef.current.size === 0) {
+      const isEnabled = formData.donkeyTools?.easyClip?.enabled ?? true;
+      const maxItems = formData.donkeyTools?.easyClip?.maxItems || 50;
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          easyClip: {
+            enabled: isEnabled,
+            hotkey: '',
+            maxItems,
+          },
+        },
+      };
+      setFormData(updated);
+      handleSave(updated);
+      setEasyClipHotkeyError(null);
+      setIsRecordingEasyClipHotkey(false);
+      easyClipPressedKeysRef.current.clear();
+      easyClipMaxComboRef.current = [];
+      setEasyClipRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+
+    // Normalize key
+    let keyName = e.key;
+    if (keyName === 'Control') keyName = 'Ctrl';
+    else if (keyName === 'Alt') keyName = 'Alt';
+    else if (keyName === 'Shift') keyName = 'Shift';
+    else if (keyName === 'Meta') keyName = 'Super';
+    else if (keyName === ' ') keyName = 'Space';
+    else if (keyName === 'ArrowUp') keyName = 'Up';
+    else if (keyName === 'ArrowDown') keyName = 'Down';
+    else if (keyName === 'ArrowLeft') keyName = 'Left';
+    else if (keyName === 'ArrowRight') keyName = 'Right';
+    else if (/^[a-z]$/i.test(keyName)) keyName = keyName.toUpperCase();
+
+    easyClipPressedKeysRef.current.add(keyName);
+
+    // Sort order: Modifiers first, then normal keys
+    const order = ['Ctrl', 'Alt', 'Shift', 'Super'];
+    const currentKeys = Array.from(easyClipPressedKeysRef.current);
+    currentKeys.sort((a, b) => {
+      const idxA = order.indexOf(a);
+      const idxB = order.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    if (currentKeys.length > easyClipMaxComboRef.current.length) {
+      easyClipMaxComboRef.current = [...currentKeys];
+    }
+
+    setEasyClipRecordedModifiers(currentKeys);
+    setEasyClipHotkeyError(null);
+  };
+
+  const handleEasyClipHotkeyKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const combo = easyClipMaxComboRef.current;
+    const isEnabled = formData.donkeyTools?.easyClip?.enabled ?? true;
+    const maxItems = formData.donkeyTools?.easyClip?.maxItems || 50;
+
+    // If only 1 key was pressed and released: reset to previous hotkey + display red error
+    if (combo.length === 1) {
+      const fallback = easyClipOriginalHotkeyRef.current || '';
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          easyClip: {
+            enabled: isEnabled,
+            hotkey: fallback,
+            maxItems,
+          },
+        },
+      };
+      setFormData(updated);
+      setEasyClipHotkeyError('Je potřeba minimálně dvojkombinace kláves');
+      setIsRecordingEasyClipHotkey(false);
+      easyClipPressedKeysRef.current.clear();
+      easyClipMaxComboRef.current = [];
+      setEasyClipRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+
+    // If at least 2 keys were pressed: check collisions
+    if (combo.length >= 2) {
+      const finalHotkey = combo.join('+');
+      const conflictReason = getReservedHotkeyCollision(combo);
+
+      if (conflictReason) {
+        const fallback = easyClipOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            easyClip: {
+              enabled: isEnabled,
+              hotkey: fallback,
+              maxItems,
+            },
+          },
+        };
+        setFormData(updated);
+        setEasyClipHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – ${conflictReason}. Byla zachována původní zkratka.`);
+        setIsRecordingEasyClipHotkey(false);
+        easyClipPressedKeysRef.current.clear();
+        easyClipMaxComboRef.current = [];
+        setEasyClipRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      // Check collision with main launcher hotkey
+      const launcherHotkey = formData.hotkey || 'Ctrl+Alt+Space';
+      if (finalHotkey.toLowerCase() === launcherHotkey.toLowerCase()) {
+        const fallback = easyClipOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            easyClip: {
+              enabled: isEnabled,
+              hotkey: fallback,
+              maxItems,
+            },
+          },
+        };
+        setFormData(updated);
+        setEasyClipHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou vyhledávacího okna. Byla zachována původní zkratka.`);
+        setIsRecordingEasyClipHotkey(false);
+        easyClipPressedKeysRef.current.clear();
+        easyClipMaxComboRef.current = [];
+        setEasyClipRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      // Check collision with ColorMaster hotkey
+      const colorMasterHotkey = formData.donkeyTools?.colorMaster?.hotkey || '';
+      if (colorMasterHotkey && finalHotkey.toLowerCase() === colorMasterHotkey.toLowerCase()) {
+        const fallback = easyClipOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            easyClip: {
+              enabled: isEnabled,
+              hotkey: fallback,
+              maxItems,
+            },
+          },
+        };
+        setFormData(updated);
+        setEasyClipHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou ColorMaster kapátka. Byla zachována původní zkratka.`);
+        setIsRecordingEasyClipHotkey(false);
+        easyClipPressedKeysRef.current.clear();
+        easyClipMaxComboRef.current = [];
+        setEasyClipRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      // Check collision with QuickCap hotkey
+      const quickCapHotkey = formData.donkeyTools?.quickCap?.hotkey || formData.donkeyTools?.fastSnap?.hotkey || '';
+      if (quickCapHotkey && finalHotkey.toLowerCase() === quickCapHotkey.toLowerCase()) {
+        const fallback = easyClipOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            easyClip: {
+              enabled: isEnabled,
+              hotkey: fallback,
+              maxItems,
+            },
+          },
+        };
+        setFormData(updated);
+        setEasyClipHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou QuickCap výstřižku. Byla zachována původní zkratka.`);
+        setIsRecordingEasyClipHotkey(false);
+        easyClipPressedKeysRef.current.clear();
+        easyClipMaxComboRef.current = [];
+        setEasyClipRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      // Check collision with ScreenRuler hotkey
+      const screenRulerHotkey = formData.donkeyTools?.screenRuler?.hotkey || '';
+      if (screenRulerHotkey && finalHotkey.toLowerCase() === screenRulerHotkey.toLowerCase()) {
+        const fallback = easyClipOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            easyClip: {
+              enabled: isEnabled,
+              hotkey: fallback,
+              maxItems,
+            },
+          },
+        };
+        setFormData(updated);
+        setEasyClipHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou ScreenRuler měřítka. Byla zachována původní zkratka.`);
+        setIsRecordingEasyClipHotkey(false);
+        easyClipPressedKeysRef.current.clear();
+        easyClipMaxComboRef.current = [];
+        setEasyClipRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
+      setEasyClipHotkeyError(null);
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          easyClip: {
+            enabled: isEnabled,
+            hotkey: finalHotkey,
+            maxItems,
+          },
+        },
+      };
+      setFormData(updated);
+      handleSave(updated);
+      setIsRecordingEasyClipHotkey(false);
+      easyClipPressedKeysRef.current.clear();
+      easyClipMaxComboRef.current = [];
+      setEasyClipRecordedModifiers([]);
       (e.target as HTMLInputElement).blur();
       window.electronAPI?.resumeGlobalHotkey?.();
       return;
@@ -4702,6 +5053,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               const activeCount = [
                                 formData.donkeyTools?.colorMaster?.enabled === true,
                                 (formData.donkeyTools?.quickCap?.enabled ?? formData.donkeyTools?.fastSnap?.enabled) === true,
+                                formData.donkeyTools?.screenRuler?.enabled === true,
+                                formData.donkeyTools?.easyClip?.enabled === true,
                               ].filter(Boolean).length;
                               if (activeCount > 0) {
                                 return (
@@ -6655,6 +7008,225 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* SECTION 4: EasyClip */}
+              <div className="p-5 bg-white/[0.03] border border-white/10 rounded-2xl space-y-4 transition hover:border-white/20">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0 text-rose-400">
+                      <span className="material-symbols-outlined text-2xl">content_paste</span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-white tracking-wide">EasyClip</h4>
+                        <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded font-medium">
+                          Správce schránky
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                        Pokročilá historie schránky přímo ve Spotlightu s podporou formátovaného textu i zkopírovaných obrázků. Umožňuje okamžité vyhledávání a vkládání libovolné předchozí položky zpět do schránky.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={formData.donkeyTools?.easyClip?.enabled ?? false}
+                        onChange={(e) => {
+                          const updated = {
+                            ...formData,
+                            donkeyTools: {
+                              ...formData.donkeyTools,
+                              easyClip: {
+                                enabled: e.target.checked,
+                                hotkey: formData.donkeyTools?.easyClip?.hotkey || '',
+                                maxItems: formData.donkeyTools?.easyClip?.maxItems || 50,
+                              },
+                            },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                      />
+                      <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-600" />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Sub-settings when EasyClip is enabled */}
+                {(formData.donkeyTools?.easyClip?.enabled ?? false) && (
+                  <div className="pt-4 border-t border-white/5 space-y-4">
+                    {/* Hotkey configuration & Test Button */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-gray-300">
+                        Globální klávesová zkratka pro otevření EasyClipu (volitelné)
+                      </label>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              readOnly
+                              value={
+                                isRecordingEasyClipHotkey
+                                  ? (easyClipRecordedModifiers.length > 0
+                                      ? easyClipRecordedModifiers.join('+')
+                                      : 'Stiskněte kombinaci kláves...')
+                                  : (formData.donkeyTools?.easyClip?.hotkey || '')
+                              }
+                              placeholder="Klikněte pro záznam zkratky"
+                              onFocus={handleEasyClipHotkeyFocus}
+                              onBlur={handleEasyClipHotkeyBlur}
+                              onKeyDown={handleEasyClipHotkeyKeyDown}
+                              onKeyUp={handleEasyClipHotkeyKeyUp}
+                              className={`w-64 px-3 py-1.5 bg-black/40 border rounded-xl text-xs font-mono text-center cursor-pointer transition select-none ${
+                                isRecordingEasyClipHotkey
+                                  ? 'border-rose-500 ring-2 ring-rose-500/20 text-rose-300 animate-pulse'
+                                  : formData.donkeyTools?.easyClip?.hotkey
+                                  ? 'border-white/10 text-white hover:border-white/20'
+                                  : 'border-white/10 text-gray-400 hover:border-white/20'
+                              }`}
+                            />
+                            {formData.donkeyTools?.easyClip?.hotkey && !isRecordingEasyClipHotkey && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const updated = {
+                                    ...formData,
+                                    donkeyTools: {
+                                      ...formData.donkeyTools,
+                                      easyClip: {
+                                        enabled: formData.donkeyTools?.easyClip?.enabled ?? true,
+                                        hotkey: '',
+                                        maxItems: formData.donkeyTools?.easyClip?.maxItems || 50,
+                                      },
+                                    },
+                                  };
+                                  setFormData(updated);
+                                  handleSave(updated);
+                                  setEasyClipHotkeyError(null);
+                                }}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded flex items-center justify-center text-gray-400 hover:text-white transition"
+                                title="Odstranit zkratku"
+                              >
+                                <span className="material-symbols-outlined text-xs">close</span>
+                              </button>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleOpenEasyClip}
+                            className="px-3.5 py-1.5 bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-400/40 text-gray-300 hover:text-rose-200 rounded-xl text-xs font-medium transition cursor-pointer flex items-center gap-1.5 self-start sm:self-auto shrink-0"
+                            title="Otevře EasyClip ve Spotlightu"
+                          >
+                            <span className="material-symbols-outlined text-sm text-rose-400">open_in_new</span>
+                            <span>Otevřít EasyClip</span>
+                          </button>
+                        </div>
+
+                        {easyClipHotkeyError && (
+                          <p className="text-[11px] text-red-400 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">error</span>
+                            {easyClipHotkeyError}
+                          </p>
+                        )}
+                        <p className="text-[11px] text-gray-500">
+                          Klikněte do pole a stiskněte požadovanou kombinaci kláves (např. <kbd className="bg-white/10 px-1 rounded text-gray-300 font-mono">Alt+V</kbd> nebo <kbd className="bg-white/10 px-1 rounded text-gray-300 font-mono">Ctrl+Shift+V</kbd>). Backspace zkratku smaže, Escape zruší nahrávání.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Max Items in history */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-gray-300">
+                        Maximální počet uchovávaných položek v historii
+                      </label>
+                      <div className="flex items-center gap-2">
+                        {[25, 50, 100, 200].map((num) => {
+                          const currentMax = formData.donkeyTools?.easyClip?.maxItems || 50;
+                          const isSelected = currentMax === num;
+                          return (
+                            <button
+                              key={num}
+                              type="button"
+                              onClick={() => {
+                                const updated = {
+                                  ...formData,
+                                  donkeyTools: {
+                                    ...formData.donkeyTools,
+                                    easyClip: {
+                                      enabled: formData.donkeyTools?.easyClip?.enabled ?? true,
+                                      hotkey: formData.donkeyTools?.easyClip?.hotkey || '',
+                                      maxItems: num,
+                                    },
+                                  },
+                                };
+                                setFormData(updated);
+                                handleSave(updated);
+                              }}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition cursor-pointer border ${
+                                isSelected
+                                  ? 'bg-rose-600 text-white border-rose-500 shadow-sm'
+                                  : 'bg-black/30 text-gray-400 border-white/10 hover:border-white/20 hover:text-white'
+                              }`}
+                            >
+                              {num} položek
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Clipboard storage & Clear History */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-gray-300">
+                        Aktuální stav schránky
+                      </label>
+                      <div className="flex items-center justify-between p-3 bg-black/30 border border-white/5 rounded-xl text-xs">
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <span className="material-symbols-outlined text-rose-400 text-base">history</span>
+                          <span>Uloženo v historii: <strong className="text-white font-mono">{easyClipItemCount}</strong> položek</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {easyClipClearSuccess && (
+                            <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
+                              <span className="material-symbols-outlined text-sm">check</span>
+                              Historie byla vymazána
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={handleClearEasyClipHistory}
+                            disabled={easyClipItemCount === 0}
+                            className="px-3 py-1 bg-white/5 hover:bg-rose-500/20 disabled:opacity-40 disabled:hover:bg-white/5 border border-white/10 hover:border-rose-400/30 text-gray-300 hover:text-rose-200 rounded-lg text-xs transition cursor-pointer disabled:cursor-not-allowed flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-xs">delete_sweep</span>
+                            <span>Vymazat historii</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Usage banner */}
+                    <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5 text-[11px] text-gray-400">
+                      <span className="font-semibold text-rose-300 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-sm">info</span>
+                        Jak EasyClip používat
+                      </span>
+                      <ul className="list-disc list-inside space-y-0.5 text-gray-400 pl-1">
+                        <li>Zadejte příkaz <code className="bg-white/10 px-1 rounded text-white font-mono">/clip</code>, <code className="bg-white/10 px-1 rounded text-white font-mono">/schranka</code>, klikněte na ikonu schránky ve Spotlightu nebo použijte klávesovou zkratku.</li>
+                        <li>V zobrazení EasyClip můžete přímo psát a filtrovat historii textu v reálném čase.</li>
+                        <li>Stiskem <kbd className="bg-white/10 px-1 rounded font-mono text-[10px]">Enter</kbd> zkopírujete vybranou položku a okno se zavře.</li>
+                        <li>Klávesou <kbd className="bg-white/10 px-1 rounded font-mono text-[10px]">Del</kbd> odstraníte položku z historie, <kbd className="bg-white/10 px-1 rounded font-mono text-[10px]">Esc</kbd> se vrátíte zpět do vyhledávače.</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -7905,6 +8477,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   )}
 
+                  {formData.extensions?.donkeyTools && formData.donkeyTools?.easyClip?.enabled !== false && !!formData.donkeyTools?.easyClip?.hotkey?.trim() && (
+                    <div className="py-3 flex items-center justify-between">
+                      <div>
+                        <span className="font-medium text-white">Historie schránky (EasyClip)</span>
+                        <p className="text-gray-400 text-xs mt-0.5">Otevře vyhledávač v režimu správce schránky s historií zkopírovaných textů i obrázků.</p>
+                      </div>
+                      <kbd className="px-2.5 py-1 bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded-lg font-mono font-semibold shadow-sm">
+                        {formData.donkeyTools.easyClip.hotkey}
+                      </kbd>
+                    </div>
+                  )}
+
                   <div className="py-3 flex items-center justify-between">
                     <div>
                       <span className="font-medium text-white">Globální vyvolání launcheru</span>
@@ -8045,6 +8629,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </div>
                       <p className="text-gray-400 text-xs leading-relaxed">
                         Rychlé pořízení výstřižku libovolné oblasti obrazovky. Snímek se automaticky uloží do vybrané složky a současně vloží do systémové schránky pro okamžité vložení (Ctrl+V). Výstřižek spustíte příkazem <code className="bg-white/10 px-1 rounded">/quickcap</code>, ikonkou ve Spotlightu nebo nastavenou globální klávesovou zkratkou.
+                      </p>
+                    </div>
+                  )}
+
+                  {formData.extensions?.donkeyTools && formData.donkeyTools?.screenRuler?.enabled === true && (
+                    <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                      <div className="flex items-center gap-2 text-rose-400 font-semibold">
+                        <span className="material-symbols-outlined text-base">straighten</span>
+                        ScreenRuler (DonkeyTools)
+                      </div>
+                      <p className="text-gray-400 text-xs leading-relaxed">
+                        Přesné měření rozměrů, vzdáleností a pixelů na živé obrazovce. Nabízí obdélníkový výběr nebo celoobrazovkový kříž s kótami k okrajům obrazovky, jednotky px, % a dp s rychlým kopírováním (<kbd className="bg-white/10 px-1 rounded font-mono text-[10px]">C</kbd>) a zmrazením (<kbd className="bg-white/10 px-1 rounded font-mono text-[10px]">Mezerník</kbd>). Spustíte příkazem <code className="bg-white/10 px-1 rounded">/screenruler</code>, ikonou ve Spotlightu nebo klávesovou zkratkou.
+                      </p>
+                    </div>
+                  )}
+
+                  {formData.extensions?.donkeyTools && formData.donkeyTools?.easyClip?.enabled !== false && (
+                    <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                      <div className="flex items-center gap-2 text-rose-400 font-semibold">
+                        <span className="material-symbols-outlined text-base">content_paste</span>
+                        EasyClip (DonkeyTools)
+                      </div>
+                      <p className="text-gray-400 text-xs leading-relaxed">
+                        Chytrá historie schránky přímo ve vyhledávači Spotlight s podporou textu i zkopírovaných obrázků. Umožňuje rychlé fulltextové vyhledávání v historii, okamžité vložení (<kbd className="bg-white/10 px-1 rounded font-mono text-[10px]">Enter</kbd>) a smazání položky (<kbd className="bg-white/10 px-1 rounded font-mono text-[10px]">Del</kbd>). Spustíte příkazem <code className="bg-white/10 px-1 rounded">/clip</code>, <code className="bg-white/10 px-1 rounded">/schranka</code>, ikonou ve Spotlightu nebo nastavenou zkratkou.
                       </p>
                     </div>
                   )}

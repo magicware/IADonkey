@@ -1,6 +1,6 @@
 {
-  "version": "1.1.25",
-  "releaseNotes": "• Vydána nová verze 1.1.25 aplikace IADonkey.\n• Nastavení: Titulky v záhlaví pravého panelu (h2) globálně sjednoceny dle názvů v levém navigačním menu.\n• DonkeyTools: Záhlaví zjednodušeno na „DonkeyTools“ a nadpis obsahu upraven na „Systémové nástroje a utility“.\n• Editory kódu a IDE: Odstranění duplicitních nadpisů u záložek VS Code („Propojení s editorem kódu“) a Android Studio („Propojení s vývojovým prostředím“).",
-  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.25/IADonkey-Setup-1.1.25.exe",
-  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.25/IADonkey-1.1.25.zip"
+  "version": "1.1.26",
+  "releaseNotes": "• Vydána nová verze 1.1.26 aplikace IADonkey.\n• EasyClip (DonkeyTools): Pokročilá historie schránky (text i obrázky) s globální zkratkou a příkazy (/easyclip, /clip, /schranka).\n• Hromadný výběr a mazání ve schránce: Shift + šipky / Shift + klik, mazání klávesou Delete a reverzní vložení více položek odspodu nahoru.\n• Auto-paste: Automatické vložení položek schránky i snippetů přímo do původně aktivní aplikace.\n• Zlepšení zaměření a plynulosti: Spolehlivý návrat focusu a okamžitý reset Spotlightu bez problikávání předchozího stavu.",
+  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.26/IADonkey-Setup-1.1.26.exe",
+  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.26/IADonkey-1.1.26.zip"
 }

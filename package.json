@@ -1,6 +1,6 @@
 {
   "name": "iadonkey",
-  "version": "1.1.25",
+  "version": "1.1.26",
   "description": "IADonkey Launcher",
   "author": "MagicWare",
   "main": "dist-electron/main.js",
@@ -28,7 +28,8 @@
     ],
     "asarUnpack": [
       "electron/assets/**",
-      "**/color-picker.exe"
+      "**/color-picker.exe",
+      "**/paste-helper.exe"
     ],
     "win": {
       "icon": "build/icon.ico",
