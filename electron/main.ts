@@ -544,6 +544,7 @@ async function startQuickCapProcess(): Promise<void> {
     if (windowManager) {
       windowManager.setSkipSpotlightRestoreOnCloneClose(true);
       windowManager.hideImmediately();
+      windowManager.closeScreenRulerWindow();
       windowManager.getMainWindow()?.webContents.send('reset-spotlight');
     }
     const settingsWin = windowManager ? windowManager.getSettingsWindow() : null;
@@ -551,8 +552,8 @@ async function startQuickCapProcess(): Promise<void> {
       settingsWin.hide();
     }
 
-    // Krátká minimální prodleva pro překreslení DWM bez oken aplikace
-    await new Promise((r) => setTimeout(r, 40));
+    // Krátká prodleva pro překreslení DWM bez oken aplikace
+    await new Promise((r) => setTimeout(r, 50));
 
     const cursorPoint = screen.getCursorScreenPoint();
     const targetDisplay = screen.getDisplayNearestPoint(cursorPoint) || screen.getPrimaryDisplay();
@@ -620,12 +621,16 @@ async function startScreenRulerProcess(): Promise<void> {
     if (windowManager) {
       windowManager.setSkipSpotlightRestoreOnCloneClose(true);
       windowManager.hideImmediately();
+      windowManager.closeSnipperWindow();
       windowManager.getMainWindow()?.webContents.send('reset-spotlight');
     }
     const settingsWin = windowManager ? windowManager.getSettingsWindow() : null;
     if (settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible()) {
       settingsWin.hide();
     }
+
+    // Krátká prodleva pro překreslení DWM bez oken aplikace
+    await new Promise((r) => setTimeout(r, 40));
 
     const cursorPoint = screen.getCursorScreenPoint();
     const targetDisplay = screen.getDisplayNearestPoint(cursorPoint) || screen.getPrimaryDisplay();
@@ -1004,9 +1009,9 @@ function setupIpcHandlers() {
       status: 'success',
     });
     notificationService.show({
-      type: 'screenRuler',
-      title: 'ScreenRuler – Zkopírováno do schránky',
-      body: `Rozměry "${text}" byly zkopírovány do schránky.`,
+      type: 'clipboard',
+      title: 'Zkopírováno do schránky',
+      body: `Rozměry "${text}" byly úspěšně zkopírovány do schránky.`,
     });
   });
 

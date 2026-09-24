@@ -92,9 +92,7 @@ namespace IADonkey.ColorPicker {
         const uint SWP_NOACTIVATE = 0x0010;
         const uint SWP_SHOWWINDOW = 0x0040;
 
-        static IntPtr _mouseHook = IntPtr.Zero;
         static IntPtr _kbdHook = IntPtr.Zero;
-        static HookProc _mouseProc;
         static HookProc _kbdProc;
         static bool _picked = false;
         static DateTime _startTime;
@@ -167,36 +165,22 @@ namespace IADonkey.ColorPicker {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            _mouseProc = MouseHookCallback;
             _kbdProc = KeyboardHookCallback;
 
             IntPtr hEyeCursor = CreateEyedropperCursor();
-            if (hEyeCursor != IntPtr.Zero) {
-                uint[] cursorIds = { 32512, 32513, 32649, 32515, 32648 };
-                foreach (uint id in cursorIds) {
-                    IntPtr hCopy = CopyIcon(hEyeCursor);
-                    if (hCopy != IntPtr.Zero) {
-                        SetSystemCursor(hCopy, id);
-                    }
-                }
-            }
 
             using (var curProcess = Process.GetCurrentProcess())
             using (var curModule = curProcess.MainModule) {
                 IntPtr modHandle = GetModuleHandle(curModule.ModuleName);
-                _mouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, modHandle, 0);
                 _kbdHook = SetWindowsHookEx(WH_KEYBOARD_LL, _kbdProc, modHandle, 0);
             }
 
             try {
-                using (var form = new LoupeForm(hEyeCursor)) {
-                    Application.Run(form);
+                using (var overlay = new OverlayForm(hEyeCursor)) {
+                    Application.Run(overlay);
                 }
             } finally {
-                if (_mouseHook != IntPtr.Zero) UnhookWindowsHookEx(_mouseHook);
                 if (_kbdHook != IntPtr.Zero) UnhookWindowsHookEx(_kbdHook);
-                // Always restore default system cursors
-                SystemParametersInfo(SPI_SETCURSORS, 0, IntPtr.Zero, 0);
                 if (hEyeCursor != IntPtr.Zero) DestroyIcon(hEyeCursor);
             }
 
@@ -231,27 +215,6 @@ namespace IADonkey.ColorPicker {
             return Color.Black;
         }
 
-        static IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam) {
-            if (nCode >= 0) {
-                int msg = wParam.ToInt32();
-                bool inGracePeriod = (DateTime.UtcNow - _startTime).TotalMilliseconds < 200;
-
-                if (msg == WM_LBUTTONDOWN) {
-                    if (!inGracePeriod) {
-                        _picked = true;
-                        Application.Exit();
-                        return (IntPtr)1;
-                    }
-                } else if (msg == WM_RBUTTONDOWN) {
-                    if (!inGracePeriod) {
-                        Application.Exit();
-                        return (IntPtr)1;
-                    }
-                }
-            }
-            return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
-        }
-
         static IntPtr KeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam) {
             if (nCode >= 0 && wParam.ToInt32() == WM_KEYDOWN) {
                 int vkCode = Marshal.ReadInt32(lParam);
@@ -276,6 +239,62 @@ namespace IADonkey.ColorPicker {
             path.AddArc(rect.X, rect.Bottom - d, d, d, 90, 90);
             path.CloseFigure();
             return path;
+        }
+
+        class OverlayForm : Form {
+            LoupeForm _loupe;
+
+            public OverlayForm(IntPtr hCur) {
+                this.FormBorderStyle = FormBorderStyle.None;
+                this.StartPosition = FormStartPosition.Manual;
+                this.Bounds = SystemInformation.VirtualScreen;
+                this.ShowInTaskbar = false;
+                this.TopMost = true;
+                this.DoubleBuffered = true;
+                this.BackColor = Color.Black;
+                this.Opacity = 0.005;
+
+                if (hCur != IntPtr.Zero) {
+                    try {
+                        this.Cursor = new Cursor(CopyIcon(hCur));
+                    } catch { }
+                }
+
+                _loupe = new LoupeForm(hCur);
+                _loupe.Show();
+            }
+
+            protected override void OnMouseMove(MouseEventArgs e) {
+                base.OnMouseMove(e);
+                _loupe.UpdatePosition();
+            }
+
+            protected override void OnMouseDown(MouseEventArgs e) {
+                base.OnMouseDown(e);
+                if (e.Button == MouseButtons.Left) {
+                    _picked = true;
+                    Application.Exit();
+                } else if (e.Button == MouseButtons.Right) {
+                    Application.Exit();
+                }
+            }
+
+            protected override void OnKeyDown(KeyEventArgs e) {
+                base.OnKeyDown(e);
+                if (e.KeyCode == Keys.Escape) {
+                    Application.Exit();
+                } else if (e.KeyCode == Keys.Return || e.KeyCode == Keys.Space) {
+                    _picked = true;
+                    Application.Exit();
+                }
+            }
+
+            protected override void Dispose(bool disposing) {
+                if (disposing && _loupe != null && !_loupe.IsDisposed) {
+                    _loupe.Dispose();
+                }
+                base.Dispose(disposing);
+            }
         }
 
         class LoupeForm : Form {
@@ -306,7 +325,9 @@ namespace IADonkey.ColorPicker {
                 this.BackColor = Color.FromArgb(28, 29, 36);
 
                 // Apply physical rounded window region (rounded-2xl)
-                IntPtr rgn = CreateRoundRectRgn(0, 0, this.Width, this.Height, CORNER_RADIUS, CORNER_RADIUS);
+                // Windows GDI regions exclude the right and bottom boundaries [left, right) and [top, bottom).
+                // Passing Width + 1 and Height + 1 ensures right-most and bottom-most pixels and borders are not clipped.
+                IntPtr rgn = CreateRoundRectRgn(0, 0, this.Width + 1, this.Height + 1, CORNER_RADIUS, CORNER_RADIUS);
                 SetWindowRgn(this.Handle, rgn, true);
 
                 _gridBitmap = new Bitmap(GRID_COUNT, GRID_COUNT);
@@ -343,6 +364,16 @@ namespace IADonkey.ColorPicker {
 
                 SetWindowPos(this.Handle, HWND_TOPMOST, targetX, targetY, this.Width, this.Height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
                 this.Invalidate();
+            }
+
+            protected override void OnMouseDown(MouseEventArgs e) {
+                base.OnMouseDown(e);
+                if (e.Button == MouseButtons.Left) {
+                    _picked = true;
+                    Application.Exit();
+                } else if (e.Button == MouseButtons.Right) {
+                    Application.Exit();
+                }
             }
 
             protected override void OnPaint(PaintEventArgs e) {
@@ -388,40 +419,37 @@ namespace IADonkey.ColorPicker {
                     using (var cardFill = new SolidBrush(Color.FromArgb(12, 13, 17))) {
                         g.FillPath(cardFill, gridCardPath);
                     }
-                    using (var cardPen = new Pen(Color.FromArgb(35, 255, 255, 255), 1f)) {
-                        g.DrawPath(cardPen, gridCardPath);
-                    }
-                }
 
-                // 2. Render pixel grid
-                g.SmoothingMode = SmoothingMode.None;
-                for (int py = 0; py < GRID_COUNT; py++) {
-                    for (int px = 0; px < GRID_COUNT; px++) {
-                        Color c = _gridBitmap.GetPixel(px, py);
-                        using (var brush = new SolidBrush(c)) {
-                            g.FillRectangle(brush, startX + px * CELL_SIZE, startY + py * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                        }
-                        using (var pen = new Pen(Color.FromArgb(30, 255, 255, 255), 1)) {
-                            g.DrawRectangle(pen, startX + px * CELL_SIZE, startY + py * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                    // 2. Render pixel grid
+                    g.SmoothingMode = SmoothingMode.None;
+                    for (int py = 0; py < GRID_COUNT; py++) {
+                        for (int px = 0; px < GRID_COUNT; px++) {
+                            Color c = _gridBitmap.GetPixel(px, py);
+                            using (var brush = new SolidBrush(c)) {
+                                g.FillRectangle(brush, startX + px * CELL_SIZE, startY + py * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                            }
+                            using (var pen = new Pen(Color.FromArgb(30, 255, 255, 255), 1)) {
+                                g.DrawRectangle(pen, startX + px * CELL_SIZE, startY + py * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                            }
                         }
                     }
-                }
 
-                // 3. Highlight Center Pixel (DonkeyTools Rose + White border with anti-aliasing)
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                int centerBoxX = startX + half * CELL_SIZE;
-                int centerBoxY = startY + half * CELL_SIZE;
-                Rectangle centerTargetRect = new Rectangle(centerBoxX - 1, centerBoxY - 1, CELL_SIZE + 2, CELL_SIZE + 2);
-                using (var centerPath = CreateRoundedRectangle(centerTargetRect, 3)) {
-                    // Outer Rose accent border
-                    using (var rosePen = new Pen(Color.FromArgb(244, 63, 94), 2f)) {
-                        g.DrawPath(rosePen, centerPath);
-                    }
-                    // Inner white precision border
-                    Rectangle innerTargetRect = new Rectangle(centerBoxX, centerBoxY, CELL_SIZE, CELL_SIZE);
-                    using (var innerPath = CreateRoundedRectangle(innerTargetRect, 2)) {
-                        using (var whitePen = new Pen(Color.White, 1f)) {
-                            g.DrawPath(whitePen, innerPath);
+                    // 3. Highlight Center Pixel (DonkeyTools Rose + White border with anti-aliasing)
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    int centerBoxX = startX + half * CELL_SIZE;
+                    int centerBoxY = startY + half * CELL_SIZE;
+                    Rectangle centerTargetRect = new Rectangle(centerBoxX - 1, centerBoxY - 1, CELL_SIZE + 2, CELL_SIZE + 2);
+                    using (var centerPath = CreateRoundedRectangle(centerTargetRect, 3)) {
+                        // Outer Rose accent border
+                        using (var rosePen = new Pen(Color.FromArgb(244, 63, 94), 2f)) {
+                            g.DrawPath(rosePen, centerPath);
+                        }
+                        // Inner white precision border
+                        Rectangle innerTargetRect = new Rectangle(centerBoxX, centerBoxY, CELL_SIZE, CELL_SIZE);
+                        using (var innerPath = CreateRoundedRectangle(innerTargetRect, 2)) {
+                            using (var whitePen = new Pen(Color.White, 1f)) {
+                                g.DrawPath(whitePen, innerPath);
+                            }
                         }
                     }
                 }
@@ -463,29 +491,30 @@ namespace IADonkey.ColorPicker {
                 using (var kbdBorder = new Pen(Color.FromArgb(50, 255, 255, 255), 1f))
                 using (var kbdText = new SolidBrush(Color.FromArgb(220, 225, 235)))
                 using (var labelText = new SolidBrush(Color.FromArgb(156, 163, 175))) {
-                    // Badge 1: [Klik] Vybrat
+                    // Badge 1: [Klik] vybrat
                     Rectangle kbd1 = new Rectangle(14, footerY, 26, 14);
                     using (var p1 = CreateRoundedRectangle(kbd1, 3)) {
                         g.FillPath(kbdBg, p1);
                         g.DrawPath(kbdBorder, p1);
                     }
                     g.DrawString("Klik", kbdFont, kbdText, 16, footerY);
-                    g.DrawString("Vybrat", labelFont, labelText, 43, footerY);
+                    g.DrawString("vybrat", labelFont, labelText, 43, footerY);
 
-                    // Badge 2: [Esc] Zrušit
+                    // Badge 2: [Esc] konec
                     Rectangle kbd2 = new Rectangle(82, footerY, 24, 14);
                     using (var p2 = CreateRoundedRectangle(kbd2, 3)) {
                         g.FillPath(kbdBg, p2);
                         g.DrawPath(kbdBorder, p2);
                     }
                     g.DrawString("Esc", kbdFont, kbdText, 84, footerY);
-                    g.DrawString("Zrušit", labelFont, labelText, 109, footerY);
+                    g.DrawString("konec", labelFont, labelText, 109, footerY);
                 }
 
                 // 7. Outer Card Anti-aliased Border (Spotlight border-white/10)
                 Rectangle outerRect = new Rectangle(0, 0, this.Width - 1, this.Height - 1);
                 using (var outerPath = CreateRoundedRectangle(outerRect, CORNER_RADIUS / 2)) {
-                    using (var borderPen = new Pen(Color.FromArgb(40, 255, 255, 255), 1.5f)) {
+                    using (var borderPen = new Pen(Color.FromArgb(45, 255, 255, 255), 1f)) {
+                        borderPen.Alignment = PenAlignment.Inset;
                         g.DrawPath(borderPen, outerPath);
                     }
                 }

@@ -199,6 +199,10 @@ export class NotificationService {
         });
       }
 
+      notification.on('failed', (_event, error) => {
+        console.warn('[NotificationService] Notification failed:', error);
+      });
+
       notification.show();
 
       // Chromium ve vývojovém režimu vytváří zástupce asynchronně po zobrazení toastu

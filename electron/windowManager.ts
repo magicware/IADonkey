@@ -748,8 +748,13 @@ export class WindowManager {
     options?: { color?: string; defaultUnit?: string }
   ): BrowserWindow {
     const applyFullScreenAndShow = (win: BrowserWindow) => {
-      win.setBounds(displayBounds);
-      win.setAlwaysOnTop(true, 'screen-saver');
+      win.setBounds({
+        x: displayBounds.x,
+        y: displayBounds.y,
+        width: displayBounds.width,
+        height: displayBounds.height - 1,
+      });
+      win.setAlwaysOnTop(true);
       const initPayload = {
         width: displayBounds.width,
         height: displayBounds.height,
@@ -776,7 +781,7 @@ export class WindowManager {
       x: displayBounds.x,
       y: displayBounds.y,
       width: displayBounds.width,
-      height: displayBounds.height,
+      height: displayBounds.height - 1,
       frame: false,
       transparent: true,
       backgroundColor: '#00000000',
@@ -785,7 +790,7 @@ export class WindowManager {
       resizable: false,
       movable: false,
       show: false,
-      fullscreen: true,
+      fullscreen: false,
       hasShadow: false,
       enableLargerThanScreen: true,
       webPreferences: {
@@ -797,7 +802,7 @@ export class WindowManager {
       },
     });
 
-    this.rulerWindow.setAlwaysOnTop(true, 'screen-saver');
+    this.rulerWindow.setAlwaysOnTop(true);
 
     if (process.env.VITE_DEV_SERVER_URL) {
       this.rulerWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#ruler`);

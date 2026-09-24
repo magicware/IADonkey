@@ -1,6 +1,6 @@
 {
-  "version": "1.1.23",
-  "releaseNotes": "• Vydána nová verze 1.1.23 aplikace IADonkey.\n• Nové rozšíření ScreenRuler (Měřítko a pravítko obrazovky) v DonkeyTools s měřením rozměrů, poměrů stran, křížem a vzdálenostmi k okrajům.\n• Nativní systémová Windows notifikace při zkopírování rozměrů pravítka do schránky (nahrazení interního toastu) a záznam do Protokolu akcí.\n• Fixní 4místná šířka čísel v Ruler baru a sjednocení výšek všech ovládacích prvků nástrojové lišty.\n• Kompletní vizuální sjednocení všech nástrojů DonkeyTools se Spotlightem (ScreenRuler, QuickCap i nativní Kapátko ColorMaster s fyzicky zaoblenými rohy a grafitovým sklem).\n• Dynamická filtrace položek v Tray menu podle stavu zapnutí nástrojů a striktní Rose identita (#f43f5e).\n• Kompletní přehled naleznete v Nastavení -> Kompletní changelog.",
-  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.23/IADonkey-Setup-1.1.23.exe",
-  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.23/IADonkey-1.1.23.zip"
+  "version": "1.1.24",
+  "releaseNotes": "• Vydána nová verze 1.1.24 aplikace IADonkey.\n• ScreenRuler: První stisk Esc při aktivním výběru zruší pouze výběr; spolehlivé zobrazování nativních Windows notifikací po kopírování rozměrů.\n• ScreenRuler: Ikona crop_free v přepínači režimů, pevné grafitové pozadí bez průhledu a odstranění ikony klávesnice u zkratek.\n• QuickCap: Přidáno tlačítko „Vyfotit celou obrazovku“ s klávesovou zkratkou P; stisk Esc během tažení myší zruší rozpracovaný výběr.\n• QuickCap & ScreenRuler: Plynulé přepínání bez problikávání či černých záblesků díky přednačtení snímků a čistému zavírání.\n• ColorMaster: Dokonale ostrý vnější rámeček lupy v GDI bez oříznutí a sjednocení velikosti písmen u popisků zkratek.\n• Nastavení: Zobecnění popisku notifikace schránky pro všechny nástroje.",
+  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.24/IADonkey-Setup-1.1.24.exe",
+  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v1.1.24/IADonkey-1.1.24.zip"
 }

@@ -183,6 +183,7 @@ export interface NotificationSettings {
   silent?: boolean;
   quickCap?: boolean;
   colorMaster?: boolean;
+  screenRuler?: boolean;
   syncComplete?: boolean;
   updates?: boolean;
   clipboard?: boolean;

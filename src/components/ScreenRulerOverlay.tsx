@@ -2,13 +2,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Ruler,
   Crosshair,
-  Square,
   Lock,
   Unlock,
   Copy,
   Check,
   X,
-  Keyboard,
 } from 'lucide-react';
 
 export type RulerMode = 'box' | 'crosshair';
@@ -79,11 +77,15 @@ export const ScreenRulerOverlay: React.FC = () => {
     } catch {}
   };
 
-  const copyToClipboard = useCallback((text: string) => {
-    if (window.electronAPI?.copyScreenRulerDimensions) {
-      window.electronAPI.copyScreenRulerDimensions(text);
-    } else {
-      navigator.clipboard?.writeText(text);
+  const copyToClipboard = useCallback(async (text: string) => {
+    try {
+      if (window.electronAPI?.copyScreenRulerDimensions) {
+        await window.electronAPI.copyScreenRulerDimensions(text);
+      } else {
+        await navigator.clipboard?.writeText(text);
+      }
+    } catch (err) {
+      console.error('[ScreenRuler] Copy error:', err);
     }
     playCopyFeedback();
     setIsCopied(true);
@@ -134,6 +136,13 @@ export const ScreenRulerOverlay: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
+        if (boxRef.current && (boxRef.current.width > 3 || boxRef.current.height > 3)) {
+          setBox(null);
+          setIsDragging(false);
+          setDragStart(null);
+          setIsLocked(false);
+          return;
+        }
         handleClose();
         return;
       }
@@ -146,19 +155,27 @@ export const ScreenRulerOverlay: React.FC = () => {
 
       if (e.key.toLowerCase() === 'c' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
-        if (boxRef.current && boxRef.current.width > 0 && boxRef.current.height > 0) {
+        if (mode === 'box' && boxRef.current && boxRef.current.width > 0 && boxRef.current.height > 0) {
           const w = Math.round(boxRef.current.width);
           const h = Math.round(boxRef.current.height);
-          copyToClipboard(`${w}×${h} px`);
+          copyToClipboard(`${w}×${h} ${unit}`);
         } else {
-          copyToClipboard(`X: ${Math.round(mousePos.x)}, Y: ${Math.round(mousePos.y)}`);
+          copyToClipboard(`${Math.round(mousePos.x)} / ${Math.round(mousePos.y)} ${unit}`);
         }
         return;
       }
 
       if (e.key.toLowerCase() === 'm') {
         e.preventDefault();
-        setMode((prev) => (prev === 'box' ? 'crosshair' : 'box'));
+        setMode((prev) => {
+          const next = prev === 'box' ? 'crosshair' : 'box';
+          if (next === 'crosshair') {
+            setBox(null);
+            setIsDragging(false);
+            setDragStart(null);
+          }
+          return next;
+        });
         return;
       }
 
@@ -231,10 +248,20 @@ export const ScreenRulerOverlay: React.FC = () => {
     };
   }, []);
 
+  const handleSetMode = (newMode: 'box' | 'crosshair') => {
+    setMode(newMode);
+    if (newMode === 'crosshair') {
+      setBox(null);
+      setIsDragging(false);
+      setDragStart(null);
+    }
+  };
+
   // Mouse handlers for dragging bounding box
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return; // Only primary button
     if (isLocked) return;
+    if (mode !== 'box') return;
 
     const x = e.clientX;
     const y = e.clientY;
@@ -248,7 +275,7 @@ export const ScreenRulerOverlay: React.FC = () => {
     const y = e.clientY;
     setMousePos({ x, y });
 
-    if (isDragging && dragStart && !isLocked) {
+    if (isDragging && dragStart && !isLocked && mode === 'box') {
       const startX = dragStart.x;
       const startY = dragStart.y;
       const boxX = Math.min(startX, x);
@@ -269,6 +296,10 @@ export const ScreenRulerOverlay: React.FC = () => {
   const boxW = box ? Math.round(box.width) : 0;
   const boxH = box ? Math.round(box.height) : 0;
   const hasBox = box !== null && (boxW > 3 || boxH > 3);
+  const isSelection = mode === 'box' && box !== null && hasBox;
+  const val1 = isSelection ? Math.round(box!.width) : Math.round(mousePos.x);
+  const val2 = isSelection ? Math.round(box!.height) : Math.round(mousePos.y);
+  const separator = isSelection ? '×' : '/';
 
   return (
     <div
@@ -586,7 +617,7 @@ export const ScreenRulerOverlay: React.FC = () => {
 
       {/* ================= FLOATING TOP TOOLBAR (Spotlight Visual Style) ================= */}
       <div
-        className="fixed top-5 left-1/2 transform -translate-x-1/2 flex items-center gap-2 p-1.5 px-3 rounded-2xl shadow-2xl backdrop-blur-2xl border border-white/10 transition-all pointer-events-auto bg-[#1c1d24]/90 text-gray-100"
+        className="fixed top-5 left-1/2 transform -translate-x-1/2 flex items-center gap-2 p-1.5 px-3 rounded-2xl shadow-2xl border border-white/10 transition-all pointer-events-auto bg-[#1c1d24] text-gray-100"
         style={{
           zIndex: 50,
         }}
@@ -594,11 +625,8 @@ export const ScreenRulerOverlay: React.FC = () => {
       >
         {/* App Title / Icon (Unified h-8) */}
         <div className="h-8 flex items-center gap-2 pr-2.5 border-r border-white/10 shrink-0">
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-white shadow-sm"
-            style={{ backgroundColor: accentColor }}
-          >
-            <Ruler className="w-4 h-4 text-white" />
+          <div className="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shadow-sm shrink-0">
+            <Ruler className="w-4 h-4 text-rose-400" />
           </div>
           <div className="hidden sm:block text-xs font-semibold text-white tracking-wide">
             ScreenRuler
@@ -609,27 +637,25 @@ export const ScreenRulerOverlay: React.FC = () => {
         <div className="h-8 flex items-center bg-black/40 rounded-xl p-0.5 border border-white/10 shrink-0">
           <button
             type="button"
-            onClick={() => setMode('box')}
+            onClick={() => handleSetMode('box')}
             className={`h-7 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium transition-all ${
               mode === 'box'
-                ? 'bg-rose-600 text-white shadow-sm font-semibold'
-                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-sm font-semibold'
+                : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
             }`}
-            style={mode === 'box' ? { backgroundColor: accentColor } : {}}
             title="Obdélníkový výběr (M)"
           >
-            <Square className="w-3.5 h-3.5" />
+            <span className="material-symbols-outlined text-[15px] leading-none">crop_free</span>
             <span>Výběr</span>
           </button>
           <button
             type="button"
-            onClick={() => setMode('crosshair')}
+            onClick={() => handleSetMode('crosshair')}
             className={`h-7 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium transition-all ${
               mode === 'crosshair'
-                ? 'bg-rose-600 text-white shadow-sm font-semibold'
-                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-sm font-semibold'
+                : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
             }`}
-            style={mode === 'crosshair' ? { backgroundColor: accentColor } : {}}
             title="Kříž a vzdálenost k okrajům (M)"
           >
             <Crosshair className="w-3.5 h-3.5" />
@@ -637,14 +663,14 @@ export const ScreenRulerOverlay: React.FC = () => {
           </button>
         </div>
 
-        {/* Unit Selector (Unified h-8) */}
+        {/* Unit Selector (Unified h-8, Fixed Square Buttons) */}
         <div className="h-8 flex items-center bg-black/40 rounded-xl p-0.5 border border-white/10 shrink-0">
           {(['px', '%', 'dp'] as RulerUnit[]).map((u) => (
             <button
               key={u}
               type="button"
               onClick={() => setUnit(u)}
-              className={`h-7 px-2 rounded-lg text-[11px] font-mono font-medium transition-all flex items-center justify-center ${
+              className={`w-7 h-7 p-0 rounded-lg text-[11px] font-mono font-medium transition-all flex items-center justify-center ${
                 unit === u
                   ? 'bg-white/15 text-white font-bold shadow-sm'
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -656,15 +682,15 @@ export const ScreenRulerOverlay: React.FC = () => {
           ))}
         </div>
 
-        {/* Dimension display & Copy Button (Fixed 4-digit width to prevent jitter, Unified h-8) */}
+        {/* Dimension display & Copy Button (Fixed 4-digit width, Unified template to prevent jitter, Unified h-8) */}
         <button
           type="button"
           onClick={() => {
-            if (box && hasBox) {
-              const text = `${Math.round(box.width)}×${Math.round(box.height)} px`;
+            if (isSelection) {
+              const text = `${val1}×${val2} ${unit}`;
               copyToClipboard(text);
             } else {
-              const text = `X: ${Math.round(mousePos.x)}, Y: ${Math.round(mousePos.y)}`;
+              const text = `${val1} / ${val2} ${unit}`;
               copyToClipboard(text);
             }
           }}
@@ -677,28 +703,13 @@ export const ScreenRulerOverlay: React.FC = () => {
             <Copy className="w-3.5 h-3.5 text-gray-400 shrink-0" />
           )}
           <div className="flex items-center gap-1 font-mono text-xs tabular-nums select-none">
-            {box && hasBox ? (
-              <>
-                <span className="w-11 text-right font-semibold text-white inline-block">
-                  {Math.round(box.width)}
-                </span>
-                <span className="text-gray-500 font-normal">×</span>
-                <span className="w-11 text-left font-semibold text-white inline-block">
-                  {Math.round(box.height)}
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="text-gray-400 text-[11px]">X:</span>
-                <span className="w-11 text-right font-semibold text-white inline-block">
-                  {Math.round(mousePos.x)}
-                </span>
-                <span className="text-gray-400 text-[11px] ml-1">Y:</span>
-                <span className="w-11 text-right font-semibold text-white inline-block">
-                  {Math.round(mousePos.y)}
-                </span>
-              </>
-            )}
+            <span className="w-11 text-right font-semibold text-white inline-block">
+              {val1}
+            </span>
+            <span className="text-gray-500 font-normal mx-0.5">{separator}</span>
+            <span className="w-11 text-left font-semibold text-white inline-block">
+              {val2}
+            </span>
             <span className="text-[10px] text-gray-400 uppercase ml-0.5">{unit}</span>
           </div>
         </button>
@@ -719,7 +730,6 @@ export const ScreenRulerOverlay: React.FC = () => {
 
         {/* Keyboard hints pill (Spotlight kbd badges, Unified h-8) */}
         <div className="h-8 hidden lg:flex items-center gap-1.5 px-2.5 text-[11px] text-gray-400 border-l border-white/10 font-sans shrink-0">
-          <Keyboard className="w-3.5 h-3.5 text-gray-500 mr-0.5" />
           <kbd className="h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none flex items-center justify-center">Esc</kbd>
           <span>konec</span>
           <kbd className="h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none flex items-center justify-center ml-1">Space</kbd>

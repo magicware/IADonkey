@@ -7425,7 +7425,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <span className="material-symbols-outlined text-base text-indigo-400">content_copy</span>
                         <div>
                           <span className="text-xs font-medium text-gray-200 block">Kopírování do schránky</span>
-                          <span className="text-[11px] text-gray-400">Upozornění při zkopírování textu, hodnoty či cesty ze Spotlightu do schránky</span>
+                          <span className="text-[11px] text-gray-400">Upozornění při zkopírování textu, hodnoty, rozměrů či cesty do schránky (ze Spotlightu, pravítka apod.)</span>
                         </div>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Crop, Monitor, MousePointer, X } from 'lucide-react';
 
 interface QuickCapInitData {
   screenshotUrl: string;
@@ -15,37 +16,106 @@ export const QuickCapSnipper: React.FC = () => {
   const [isFinished, setIsFinished] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const isDraggingRef = useRef(isDragging);
+  isDraggingRef.current = isDragging;
+  const startPosRef = useRef(startPos);
+  startPosRef.current = startPos;
+  const currentPosRef = useRef(currentPos);
+  currentPosRef.current = currentPos;
+  const initDataRef = useRef(initData);
+  initDataRef.current = initData;
+
   const resetState = () => {
     setInitData(null);
     setIsFinished(false);
     setIsDragging(false);
     setStartPos(null);
     setCurrentPos(null);
+    isDraggingRef.current = false;
+    startPosRef.current = null;
+    currentPosRef.current = null;
+    initDataRef.current = null;
+  };
+
+  const handleCancel = () => {
+    resetState();
+    if (window.electronAPI?.cancelQuickCap) {
+      window.electronAPI.cancelQuickCap();
+    } else if (window.electronAPI?.cancelFastSnap) {
+      window.electronAPI.cancelFastSnap();
+    }
+  };
+
+  const handleCaptureFullScreen = async () => {
+    const width = Math.round(initDataRef.current?.width || window.innerWidth);
+    const height = Math.round(initDataRef.current?.height || window.innerHeight);
+    const payload = {
+      x: 0,
+      y: 0,
+      width,
+      height,
+      windowWidth: window.innerWidth,
+      windowHeight: window.innerHeight,
+    };
+    resetState();
+    const finishFn = window.electronAPI?.finishQuickCap || window.electronAPI?.finishFastSnap;
+    if (finishFn) {
+      await finishFn(payload);
+    }
   };
 
   useEffect(() => {
+    const applyInitData = (data: QuickCapInitData) => {
+      if (!data?.screenshotUrl) {
+        setInitData(data);
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        setInitData(data);
+        setIsFinished(false);
+        setIsDragging(false);
+        setStartPos(null);
+        setCurrentPos(null);
+      };
+      img.onerror = () => {
+        setInitData(data);
+      };
+      img.src = data.screenshotUrl;
+    };
+
     // Okamžité vyžádání dat při prvním mountu komponenty (řeší možný race condition)
     const fetchInit = window.electronAPI?.getQuickCapInitData || window.electronAPI?.getFastSnapInitData;
     if (fetchInit) {
       fetchInit().then((data) => {
         if (data) {
-          setInitData(data);
-          setIsFinished(false);
-          setIsDragging(false);
-          setStartPos(null);
-          setCurrentPos(null);
+          applyInitData(data);
         }
       });
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        resetState();
-        if (window.electronAPI?.cancelQuickCap) {
-          window.electronAPI.cancelQuickCap();
-        } else if (window.electronAPI?.cancelFastSnap) {
-          window.electronAPI.cancelFastSnap();
+        e.preventDefault();
+        // Pokud uživatel právě provádí výběr tažením, ESC pouze zruší rozpracovaný výběr
+        if (isDraggingRef.current || (startPosRef.current && currentPosRef.current)) {
+          setIsDragging(false);
+          setStartPos(null);
+          setCurrentPos(null);
+          isDraggingRef.current = false;
+          startPosRef.current = null;
+          currentPosRef.current = null;
+          return;
         }
+        handleCancel();
+        return;
+      }
+
+      // Klávesová zkratka 'P' pro vyfocení celé obrazovky
+      if (!isDraggingRef.current && e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        handleCaptureFullScreen();
+        return;
       }
     };
 
@@ -55,11 +125,7 @@ export const QuickCapSnipper: React.FC = () => {
     const listenInit = window.electronAPI?.onQuickCapInitData || window.electronAPI?.onFastSnapInitData;
     if (listenInit) {
       unsubscribeInit = listenInit((data) => {
-        setInitData(data);
-        setIsFinished(false);
-        setIsDragging(false);
-        setStartPos(null);
-        setCurrentPos(null);
+        applyInitData(data);
       });
     }
 
@@ -135,6 +201,10 @@ export const QuickCapSnipper: React.FC = () => {
     selectionBox = { x, y, w, h };
   }
 
+  if (!initData?.screenshotUrl) {
+    return null;
+  }
+
   return (
     <div
       ref={containerRef}
@@ -172,18 +242,54 @@ export const QuickCapSnipper: React.FC = () => {
         <div className="absolute inset-0 bg-black/45 pointer-events-none transition-opacity duration-150" />
       )}
 
-      {/* 3. Nápověda nahoře uprostřed (pokud se netáhne) – Spotlight Visual Style */}
+      {/* 3. Plovoucí horní panel (Spotlight Visual Style – sjednoceno s ScreenRuler) */}
       {!isDragging && (!selectionBox || selectionBox.w <= 0 || selectionBox.h <= 0) && (
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 pointer-events-none flex items-center gap-2.5 px-3.5 h-10 rounded-2xl bg-[#1c1d24]/90 text-gray-100 text-xs font-medium shadow-2xl border border-white/10 backdrop-blur-2xl animate-fade-in select-none">
-          <div className="w-6 h-6 rounded-lg bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
-            <span className="material-symbols-outlined text-[16px] leading-none">crop</span>
+        <div
+          className="fixed top-5 left-1/2 transform -translate-x-1/2 flex items-center gap-2 p-1.5 px-3 rounded-2xl shadow-2xl border border-white/10 transition-all pointer-events-auto bg-[#1c1d24] text-gray-100 select-none z-50 animate-fade-in"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {/* App Title / Icon (Unified h-8) */}
+          <div className="h-8 flex items-center gap-2 pr-2.5 border-r border-white/10 shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shadow-sm shrink-0">
+              <Crop className="w-4 h-4 text-rose-400" />
+            </div>
+            <div className="text-xs font-semibold text-white tracking-wide">
+              QuickCap
+            </div>
           </div>
-          <span className="text-white font-medium tracking-wide">Táhněte myší pro výběr výstřižku</span>
-          <div className="h-4 w-px bg-white/15 mx-0.5" />
-          <div className="flex items-center gap-1.5 text-gray-400 font-mono text-[11px]">
-            <kbd className="h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none flex items-center justify-center">Esc</kbd>
-            <span>pro zrušení</span>
+
+          {/* Action: Vyfotit celou obrazovku (Unified h-8) */}
+          <button
+            type="button"
+            onClick={handleCaptureFullScreen}
+            className="h-8 flex items-center gap-1.5 px-3 bg-black/40 hover:bg-white/10 text-white rounded-xl text-xs font-medium border border-white/10 hover:border-white/20 transition-all active:scale-95 cursor-pointer shrink-0"
+            title="Vyfotit celou obrazovku (P)"
+          >
+            <Monitor className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+            <span>Vyfotit celou obrazovku</span>
+          </button>
+
+          {/* Shortcuts pill (Spotlight kbd badges, Unified h-8) */}
+          <div className="h-8 flex items-center gap-1.5 px-2.5 text-[11px] text-gray-400 border-l border-white/10 font-sans shrink-0">
+            <kbd className="h-[18px] w-5 bg-white/10 text-gray-300 border border-white/15 rounded text-[10px] leading-none flex items-center justify-center shrink-0">
+              <MousePointer className="w-2.5 h-2.5 text-gray-300" />
+            </kbd>
+            <span>tažením vyberte</span>
+            <kbd className="h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none flex items-center justify-center ml-1">
+              Esc
+            </kbd>
+            <span>konec</span>
           </div>
+
+          {/* Close Button (Unified h-8 w-8) */}
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="w-8 h-8 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 hover:text-rose-100 border border-rose-500/30 flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0 ml-0.5"
+            title="Zavřít výstřižek (Escape)"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 

@@ -5,12 +5,27 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '1.1.23';
+export const CURRENT_APP_VERSION = '1.1.24';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '1.1.24',
+    date: '24. 9. 2026',
+    title: 'ScreenRuler zrušení výběru a spolehlivé notifikace schránky, QuickCap zkratka P a vyladění kapátka',
+    highlights: [
+      'ScreenRuler – Zrušení výběru přes ESC: První stisk klávesy Esc při aktivním obdélníkovém výběru zruší pouze rozpracovaný výběr bez uzavření pravítka, další stisk Esc pravítko zavře.',
+      'Spolehlivé nativní notifikace při kopírování: Zkopírování naměřených rozměrů (klikem na bar i klávesou C) spolehlivě zobrazí Windows toast banner; odstraněn systémový stav QUNS_BUSY, který toastové notifikace ve Windows potlačoval.',
+      'Vyladění nástrojové lišty ScreenRuleru: V přepínači režimů nasazena ikona crop_free pro obdélníkový výběr, odstraněna redundantní ikona klávesnice u lišty zkratek a nastaveno pevné neprůhledné grafitové pozadí bez nežádoucího průhledu.',
+      'QuickCap – Okamžitý snímek celé obrazovky zkratkou P: Přidáno tlačítko „Vyfotit celou obrazovku“ s klávesovou zkratkou P v bublině pro pořízení kompletního screenshotu jedním stiskem.',
+      'QuickCap – Reset tažení výběru přes ESC: Stisk klávesy Esc během tažení myší zruší aktuální výběr a umožní ihned provést nový výběr bez nutnosti restartu nástroje.',
+      'Plynulé přechody mezi nástroji bez problikávání: Odstraněny černé a bílé záblesky při rychlém střídání QuickCapu a ScreenRuleru díky přednačtení snímků obrazovky a vzájemnému korektnímu uzavírání oken.',
+      'Kapátko (ColorMaster) – Dokonale ostrý vnější rámeček: Odstraněn rámeček z vnitřního okénka lupy, opraveno oříznutí vnějšího rámečku celého plovoucího okna v GDI a sjednoceny texty zkratek na malá písmena.',
+      'Nastavení – Zobecnění notifikací schránky: Popisek volby „Kopírování do schránky“ v Nastavení byl rozšířen a zobecněn pro všechny nástroje (Spotlight, ScreenRuler apod.).',
+    ],
+  },
   {
     version: '1.1.23',
     date: '24. 9. 2026',
