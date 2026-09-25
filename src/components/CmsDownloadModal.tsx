@@ -163,17 +163,17 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <main className="w-full h-screen bg-[#0e0f12] border border-white/[0.08] flex flex-col justify-between text-gray-200 select-none overflow-hidden font-sans">
+    <main className="w-full h-screen m3-surface-main flex flex-col justify-between text-gray-200 select-none overflow-hidden font-sans">
       {/* Header - Native titlebar has close button, so no duplicate [X] here */}
-      <div className="p-4 border-b border-white/[0.06] bg-[#0a0a0d] flex items-center justify-between shrink-0">
+      <div className="p-5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white">
+          <div className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center text-white">
             <span className="material-symbols-outlined text-xl">folder_zip</span>
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-white text-base">Stažení CMSinFS zdrojáků</h2>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-white/[0.06] text-gray-300 border border-white/[0.08] font-medium">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-white/[0.06] text-gray-300 font-medium">
                 CMSinFS
               </span>
             </div>
@@ -185,9 +185,9 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
       </div>
 
       {/* Body Content - no page scrollbar, generous space for protocol with safe zone */}
-      <div className="flex-1 px-5 pt-4 pb-5 flex flex-col gap-3 min-h-0 overflow-hidden">
+      <div className="flex-1 px-6 pt-2 pb-5 flex flex-col gap-3.5 min-h-0 overflow-hidden">
         {/* Target directory info card */}
-        <div className="bg-[#14151b] border border-white/[0.06] rounded-xl p-3 space-y-1.5 shrink-0">
+        <div className="bg-white/[0.03] rounded-2xl p-4 space-y-2 shrink-0">
           <div className="flex items-center justify-between text-xs text-gray-400 font-medium">
             <span className="flex items-center gap-1.5 text-gray-300">
               <span className="material-symbols-outlined text-[15px] text-gray-400">folder_open</span>
@@ -195,7 +195,7 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
             </span>
             <span className="text-[11px] text-gray-500">Čistý přepis složky</span>
           </div>
-          <div className="font-mono text-[12px] text-gray-200 bg-black/40 px-3 py-1.5 rounded-lg border border-white/[0.06] break-all select-all">
+          <div className="font-mono text-[12px] text-gray-200 bg-black/40 px-3.5 py-2 rounded-xl break-all select-all">
             {targetDir || 'Není zadána cílová složka'}
           </div>
           <div className="text-[11px] text-gray-400 flex items-center gap-1.5 pt-0.5">
@@ -206,9 +206,9 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
 
         {/* Status / Progress view */}
         {(status === 'downloading' || status === 'purging' || status === 'extracting') && (
-          <div className="bg-[#14151b] border border-white/[0.06] rounded-xl p-3.5 space-y-2.5 text-center shrink-0">
+          <div className="bg-white/[0.03] rounded-2xl p-4 space-y-3 text-center shrink-0">
             {/* SVG rotating ring spinner with STATIC upright icon inside */}
-            <div className="relative w-11 h-11 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto">
+            <div className="relative w-11 h-11 rounded-full bg-white/[0.04] flex items-center justify-center mx-auto">
               <svg className="animate-spin w-11 h-11 text-white absolute inset-0" viewBox="0 0 44 44" fill="none">
                 <circle cx="22" cy="22" r="21" stroke="currentColor" strokeWidth="1" className="opacity-20" />
                 <circle
@@ -238,27 +238,27 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
 
             {/* Progress bar */}
             {percent !== undefined ? (
-              <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden border border-white/[0.06]">
+              <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden">
                 <div
                   className="h-full bg-white transition-all duration-200 rounded-full"
                   style={{ width: `${percent}%` }}
                 />
               </div>
             ) : (
-              <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden border border-white/[0.06]">
+              <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden">
                 <div className="h-full w-1/3 bg-white/70 rounded-full animate-[indeterminate_1.5s_infinite_linear]" />
               </div>
             )}
 
             {/* Steps indicator */}
             <div className="grid grid-cols-3 gap-2 text-[11px]">
-              <div className={`p-1.5 rounded-lg border text-center font-medium ${status === 'downloading' ? 'bg-white/[0.08] border-white/[0.14] text-white' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'}`}>
+              <div className={`p-1.5 rounded-full text-center font-medium ${status === 'downloading' ? 'bg-white/[0.1] text-white' : 'bg-emerald-500/15 text-emerald-400'}`}>
                 1. Stažení ZIP
               </div>
-              <div className={`p-1.5 rounded-lg border text-center font-medium ${status === 'purging' ? 'bg-white/[0.08] border-white/[0.14] text-white' : status === 'extracting' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-white/[0.02] border-white/[0.04] text-gray-500'}`}>
+              <div className={`p-1.5 rounded-full text-center font-medium ${status === 'purging' ? 'bg-white/[0.1] text-white' : status === 'extracting' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.03] text-gray-500'}`}>
                 2. Čištění složky
               </div>
-              <div className={`p-1.5 rounded-lg border text-center font-medium ${status === 'extracting' ? 'bg-white/[0.08] border-white/[0.14] text-white' : 'bg-white/[0.02] border-white/[0.04] text-gray-500'}`}>
+              <div className={`p-1.5 rounded-full text-center font-medium ${status === 'extracting' ? 'bg-white/[0.1] text-white' : 'bg-white/[0.03] text-gray-500'}`}>
                 3. Rozbalení
               </div>
             </div>
@@ -300,7 +300,7 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
           <div className="text-[11px] font-medium text-gray-400">Protokol operace:</div>
           <div
             ref={logContainerRef}
-            className="flex-1 min-h-[85px] overflow-y-auto bg-black/40 border border-white/[0.06] rounded-xl p-3 font-mono text-[11px] text-gray-300 space-y-0.5 leading-tight select-text"
+            className="flex-1 min-h-[85px] overflow-y-auto bg-black/40 rounded-2xl p-3.5 font-mono text-[11px] text-gray-300 space-y-0.5 leading-tight select-text"
           >
             {logs.map((log, idx) => (
               <div key={idx} className="whitespace-pre-wrap">{log}</div>
@@ -309,24 +309,24 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
         </div>
       </div>
 
-      {/* Footer - exact button layout matching GitCloneModal */}
-      <div className="p-4 border-t border-white/[0.06] bg-[#0a0a0d] flex items-center justify-between gap-3 shrink-0">
+      {/* Footer */}
+      <div className="p-5 flex items-center justify-between gap-3 shrink-0">
         {status === 'success' ? (
           <>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleOpenInExplorer}
-                className="px-4 py-2 rounded-xl text-xs font-normal flex items-center gap-1.5 transition cursor-pointer border bg-white/[0.08] hover:bg-white/[0.12] text-white border-white/[0.14]"
+                className="px-4 py-2 rounded-full text-xs font-medium flex items-center gap-1.5 transition cursor-pointer bg-white/[0.08] hover:bg-white/[0.14] text-white"
               >
                 <span className="material-symbols-outlined text-base">folder</span>
-                <span>Otevřít složku v Průzkumníku</span>
+                <span>Otevřít v Průzkumníku</span>
               </button>
               {vscodeEnabled && (
                 <button
                   type="button"
                   onClick={handleOpenInVscode}
-                  className="px-4 py-2 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/25 rounded-xl text-xs font-normal flex items-center gap-1.5 transition cursor-pointer"
+                  className="px-4 py-2 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 rounded-full text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-base">code</span>
                   <span>Otevřít ve VS Code</span>
@@ -336,7 +336,7 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
             <button
               type="button"
               onClick={handleFooterClose}
-              className="px-4 py-2 bg-white/[0.08] hover:bg-white/[0.12] text-white border border-white/[0.12] rounded-xl text-xs font-normal transition cursor-pointer"
+              className="px-5 py-2 bg-white/10 hover:bg-white/15 text-white rounded-full text-xs font-medium transition cursor-pointer"
             >
               Zavřít
             </button>
@@ -346,7 +346,7 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
             <button
               type="button"
               onClick={status === 'error' ? handleFooterClose : onClose}
-              className="px-4 py-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-gray-400 hover:text-white rounded-xl text-xs font-normal transition cursor-pointer"
+              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-full text-xs font-medium transition cursor-pointer"
             >
               {status === 'error' ? 'Zavřít' : 'Zrušit'}
             </button>
@@ -355,7 +355,7 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
               <button
                 type="button"
                 onClick={startDownload}
-                className="px-5 py-2 rounded-xl text-xs font-normal flex items-center gap-2 transition cursor-pointer bg-white/[0.08] hover:bg-white/[0.12] text-white border border-white/[0.14]"
+                className="m3-primary-pill px-5 py-2.5 rounded-full text-xs font-semibold flex items-center gap-2 transition cursor-pointer shadow-md"
               >
                 <span className="material-symbols-outlined text-sm">refresh</span>
                 <span>Zkusit znovu</span>

@@ -310,11 +310,11 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
-      <div className="bg-[#0e0f12] border border-white/[0.08] rounded-2xl w-full max-w-6xl h-[88vh] flex flex-col shadow-2xl overflow-hidden text-gray-200">
+      <div className="m3-surface-main rounded-[28px] w-full max-w-6xl h-[88vh] flex flex-col shadow-2xl overflow-hidden text-gray-200 border-none">
         {/* Header */}
-        <header className="p-4 border-b border-white/[0.06] flex items-center justify-between gap-4 bg-[#0a0a0d] shrink-0">
+        <header className="p-5 flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white shrink-0">
+            <div className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center text-white shrink-0">
               <span className="material-symbols-outlined text-2xl">format_list_bulleted</span>
             </div>
             <div className="min-w-0">
@@ -323,21 +323,21 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                   Položky ve vyhledávání
                 </h3>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/[0.06] text-gray-300 border border-white/[0.08]">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-white/[0.06] text-gray-300">
                     {filterQuery ? `${filteredMainOnlyCount} z ${totalMainOnlyCount}` : totalMainOnlyCount} hlavních
                   </span>
                   {totalGitCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/25">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-300">
                       {filterQuery ? `${filteredGitCount} z ${totalGitCount}` : totalGitCount} z Gitu
                     </span>
                   )}
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/[0.06] text-gray-300 border border-white/[0.08]">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-white/[0.06] text-gray-300">
                     {filterQuery ? `${filteredSnippetCount} z ${totalSnippetCount}` : totalSnippetCount} snippetů
                   </span>
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/[0.06] text-gray-300 border border-white/[0.08]">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-white/[0.06] text-gray-300">
                     {filterQuery ? `${filteredSubCount} z ${totalSubCount}` : totalSubCount} subpoložek
                   </span>
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/[0.1] text-white border border-white/[0.15]">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-white/[0.12] text-white">
                     {filterQuery ? `${filteredIndexedAll} celkem` : `${totalIndexedAll} celkem`}
                   </span>
                 </div>
@@ -351,7 +351,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer self-center shrink-0 flex items-center justify-center"
+            className="w-9 h-9 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer self-center shrink-0 flex items-center justify-center"
             title="Zavřít okno (Esc)"
           >
             <span className="material-symbols-outlined text-xl leading-none select-none">close</span>
@@ -359,16 +359,16 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
         </header>
 
         {/* Filter Toolbar */}
-        <div className="p-3 border-b border-white/[0.06] bg-white/[0.01] flex items-center justify-between gap-3 shrink-0 flex-wrap">
+        <div className="px-5 pb-3 flex items-center justify-between gap-3 shrink-0 flex-wrap">
           {/* Tab Switcher */}
-          <div className="flex items-center gap-1 bg-[#0a0a0d] p-1 rounded-xl border border-white/[0.06] shrink-0">
+          <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-full shrink-0">
             <button
               type="button"
               onClick={() => setViewTab('items')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-4 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
                 viewTab === 'items'
-                  ? 'bg-white/[0.1] text-white border border-white/[0.12] shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.02]'
+                  ? 'm3-primary-pill text-white shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200'
               }`}
             >
               <span className="material-symbols-outlined text-sm">format_list_bulleted</span>
@@ -380,16 +380,16 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
             <button
               type="button"
               onClick={() => setViewTab('banlist')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-4 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
                 viewTab === 'banlist'
-                  ? 'bg-rose-500/20 text-rose-200 border border-rose-500/30 shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.02]'
+                  ? 'bg-rose-500/20 text-rose-200 shadow-sm font-semibold'
+                  : 'text-gray-400 hover:text-gray-200'
               }`}
             >
               <span className="material-symbols-outlined text-sm">block</span>
               <span>Banlist</span>
               {banlist.length > 0 && (
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${viewTab === 'banlist' ? 'bg-white/20 text-white' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'}`}>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${viewTab === 'banlist' ? 'bg-white/20 text-white' : 'bg-rose-500/20 text-rose-300'}`}>
                   {banlist.length}
                 </span>
               )}
@@ -397,7 +397,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
           </div>
 
           <div className="relative flex-1 max-w-md">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none">
+            <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none">
               search
             </span>
             <input
@@ -405,13 +405,13 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
               placeholder={viewTab === 'items' ? "Filtrovat v názvech, odkazech, akcích či zdrojích..." : "Filtrovat zabanované položky..."}
-              className="w-full bg-[#0a0a0d] border border-white/[0.08] rounded-xl pl-9 pr-8 py-1.5 text-[13px] text-white placeholder:text-gray-500 focus:outline-none focus:border-white/[0.2] transition"
+              className="w-full bg-white/[0.04] focus:bg-white/[0.07] rounded-full pl-10 pr-9 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none transition"
               autoFocus
             />
             {filterQuery && (
               <button
                 onClick={() => setFilterQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-0.5 rounded transition"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-0.5 rounded-full transition"
                 title="Vymazat filtr"
               >
                 <span className="material-symbols-outlined text-sm">close</span>
@@ -422,7 +422,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
           {viewTab === 'items' && filteredSubCount > 0 && (
             <button
               onClick={toggleAllCollapse}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-xs font-medium transition cursor-pointer shrink-0"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-gray-300 hover:text-white text-xs font-medium transition cursor-pointer shrink-0"
             >
               <span className="material-symbols-outlined text-sm">
                 {areAllCollapsed ? 'unfold_more' : 'unfold_less'}

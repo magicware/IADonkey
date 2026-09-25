@@ -141,13 +141,13 @@ export const IconPickerModal: React.FC<IconPickerModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-[#1c1d24] border border-white/10 rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col overflow-hidden max-h-[85vh] text-gray-100"
+        className="m3-surface-main w-full max-w-3xl flex flex-col overflow-hidden max-h-[85vh] text-gray-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-white/[0.02]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full m3-primary-badge flex items-center justify-center shrink-0 shadow-sm">
               <span className="material-symbols-outlined text-lg">interests</span>
             </div>
             <div>
@@ -160,7 +160,7 @@ export const IconPickerModal: React.FC<IconPickerModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center cursor-pointer shrink-0"
+            className="w-8 h-8 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center cursor-pointer shrink-0"
             title="Zavřít (Esc)"
           >
             <span className="material-symbols-outlined text-[20px] leading-none">close</span>
@@ -168,9 +168,9 @@ export const IconPickerModal: React.FC<IconPickerModalProps> = ({
         </div>
 
         {/* Search Bar */}
-        <div className="p-4 border-b border-white/10 bg-white/[0.01]">
+        <div className="px-6 py-2">
           <div className="relative flex items-center">
-            <span className="material-symbols-outlined absolute left-3.5 text-gray-400 text-xl pointer-events-none">
+            <span className="material-symbols-outlined absolute left-4 text-gray-400 text-xl pointer-events-none">
               search
             </span>
             <input
@@ -179,13 +179,13 @@ export const IconPickerModal: React.FC<IconPickerModalProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Hledat ikonu (např. code, folder, terminal, mail, settings, košík)..."
-              className="w-full bg-black/40 border border-white/15 rounded-xl pl-11 pr-10 py-3 text-sm text-white placeholder-gray-500 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/30 font-sans transition"
+              className="w-full bg-white/[0.05] hover:bg-white/[0.08] focus:bg-white/[0.08] rounded-full pl-12 pr-10 py-2.5 text-sm text-white placeholder-gray-500 outline-none font-sans transition shadow-sm"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 text-gray-400 hover:text-white p-1 rounded cursor-pointer"
+                className="absolute right-3.5 text-gray-400 hover:text-white p-1 rounded-full cursor-pointer"
                 title="Vymazat dotaz"
               >
                 <span className="material-symbols-outlined text-base leading-none">close</span>
@@ -197,7 +197,7 @@ export const IconPickerModal: React.FC<IconPickerModalProps> = ({
         {/* Icons Grid (6 columns) */}
         <div
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto p-4 min-h-[280px] max-h-[460px]"
+          className="flex-1 overflow-y-auto p-6 min-h-[280px] max-h-[460px]"
         >
           {filteredIcons.length > 0 ? (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
@@ -212,10 +212,10 @@ export const IconPickerModal: React.FC<IconPickerModalProps> = ({
                       onClose();
                     }}
                     title={`${iconDef.name} (${iconDef.category})`}
-                    className={`group flex flex-col items-center justify-center p-2.5 rounded-xl border transition cursor-pointer text-center relative ${
+                    className={`group flex flex-col items-center justify-center p-3 rounded-2xl transition cursor-pointer text-center relative ${
                       isSelected
-                        ? 'bg-indigo-600/30 border-indigo-500 text-indigo-300 ring-1 ring-indigo-400 shadow-md'
-                        : 'bg-white/[0.02] border-white/5 hover:border-indigo-400/40 hover:bg-white/[0.07] text-gray-300 hover:text-white'
+                        ? 'm3-selected-card text-white shadow-md'
+                        : 'm3-item-card text-gray-300 hover:text-white'
                     }`}
                   >
                     <span className="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform mb-1.5 select-none leading-none">
@@ -233,7 +233,7 @@ export const IconPickerModal: React.FC<IconPickerModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setVisibleCount((prev) => Math.min(prev + 160, filteredIcons.length))}
-                    className="px-4 py-1.5 bg-white/5 hover:bg-white/10 text-xs text-indigo-300 hover:text-indigo-200 rounded-lg transition font-medium cursor-pointer flex items-center gap-1.5 border border-white/10"
+                    className="px-5 py-2 bg-white/[0.06] hover:bg-white/[0.1] text-xs m3-primary-text rounded-full transition font-semibold cursor-pointer flex items-center gap-1.5 shadow-sm"
                   >
                     <span className="material-symbols-outlined text-base">expand_more</span>
                     <span>Načíst další ({visibleCount} z {filteredIcons.length.toLocaleString('cs-CZ')})</span>
@@ -252,7 +252,7 @@ export const IconPickerModal: React.FC<IconPickerModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-between px-5 py-3 border-t border-white/10 bg-black/30 text-xs">
+        <div className="flex items-center justify-between px-6 py-3 text-xs bg-transparent">
           <div>
             {selectedIcon && (
               <button
@@ -261,7 +261,7 @@ export const IconPickerModal: React.FC<IconPickerModalProps> = ({
                   onSelect('');
                   onClose();
                 }}
-                className="text-rose-400 hover:text-rose-300 font-medium flex items-center gap-1 transition cursor-pointer"
+                className="px-3 py-1.5 rounded-full text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 font-medium flex items-center gap-1 transition cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">delete</span>
                 <span>Odebrat ikonu (bez ikony)</span>
@@ -276,7 +276,7 @@ export const IconPickerModal: React.FC<IconPickerModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-1.5 bg-white/10 hover:bg-white/15 text-gray-200 hover:text-white rounded-lg text-xs font-medium transition cursor-pointer"
+              className="m3-primary-pill px-5 py-2 rounded-full text-xs font-semibold transition cursor-pointer shadow-md"
             >
               Zavřít
             </button>

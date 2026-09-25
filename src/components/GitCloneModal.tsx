@@ -360,9 +360,9 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
   const content = (
     <>
       {/* Header */}
-      <div className="p-4 border-b border-white/[0.06] bg-[#0a0a0d] flex items-center justify-between shrink-0">
+      <div className="p-5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border bg-white/[0.06] border-white/[0.08] text-white">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-white/[0.06] text-white">
             <span className="material-symbols-outlined text-2xl">
               {isInstanceMode ? 'cloud_download' : 'download'}
             </span>
@@ -381,7 +381,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
         {!isStandaloneWindow && status !== 'cloning' && (
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
             title="Zavřít (Esc)"
           >
             <span className="material-symbols-outlined text-xl">close</span>
@@ -635,13 +635,13 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
               value={targetDir}
               onChange={(e) => setTargetDir(e.target.value)}
               placeholder={isInstanceMode ? 'C:\\dev\\magicgate\\InstanceName' : 'Vyberte cílovou složku...'}
-              className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none disabled:opacity-50 focus:border-purple-500/60"
+              className="flex-1 bg-white/[0.04] focus:bg-white/[0.07] rounded-full px-4 py-2 text-xs font-mono text-white focus:outline-none disabled:opacity-50 transition"
             />
             <button
               type="button"
               disabled={status === 'cloning'}
               onClick={handleSelectFolder}
-              className="px-3 py-2 rounded-xl text-xs font-normal flex items-center gap-1.5 transition cursor-pointer shrink-0 disabled:opacity-50 border bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-white border-purple-500/30"
+              className="px-4 py-2 rounded-full text-xs font-medium flex items-center gap-1.5 transition cursor-pointer shrink-0 disabled:opacity-50 bg-white/[0.08] hover:bg-white/[0.14] text-white"
               title="Vybrat složku"
             >
               <span className="material-symbols-outlined text-base">folder_open</span>
@@ -663,7 +663,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
               disabled={status === 'cloning'}
               checked={recursive}
               onChange={(e) => setRecursive(e.target.checked)}
-              className="w-4 h-4 rounded bg-white/10 border-white/20 focus:ring-0 focus:ring-offset-0 cursor-pointer disabled:opacity-50 text-purple-500"
+              className="w-4 h-4 rounded bg-white/10 border-none focus:ring-0 cursor-pointer disabled:opacity-50 text-purple-500"
             />
             <span>Rekurzivní klonování včetně submodulů (<code className="font-mono text-[11px] bg-white/10 px-1 rounded">--recursive</code>)</span>
           </label>
@@ -671,24 +671,24 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-white/[0.06] bg-[#0a0a0d] flex items-center justify-between gap-3 shrink-0">
+      <div className="p-5 flex items-center justify-between gap-3 shrink-0">
         {status === 'success' ? (
           <>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleOpenInExplorer}
-                className="px-4 py-2 rounded-xl text-xs font-normal flex items-center gap-1.5 transition cursor-pointer border bg-white/[0.08] hover:bg-white/[0.12] text-white border-white/[0.14]"
+                className="px-4 py-2 rounded-full text-xs font-medium flex items-center gap-1.5 transition cursor-pointer bg-white/[0.08] hover:bg-white/[0.14] text-white"
               >
                 <span className="material-symbols-outlined text-base">folder</span>
-                <span>Otevřít složku v Průzkumníku</span>
+                <span>Otevřít v Průzkumníku</span>
               </button>
               {/* Either Android Studio or VS Code - never both */}
               {isAndroid && androidStudioEnabled ? (
                 <button
                   type="button"
                   onClick={handleOpenInAndroidStudio}
-                  className="px-4 py-2 bg-pink-700/30 hover:bg-pink-700/50 text-pink-300 border border-pink-500/40 rounded-xl text-xs font-normal flex items-center gap-1.5 transition cursor-pointer"
+                  className="px-4 py-2 bg-pink-700/30 hover:bg-pink-700/50 text-pink-300 rounded-full text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-base">android</span>
                   <span>Otevřít v Android Studiu</span>
@@ -697,7 +697,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
                 <button
                   type="button"
                   onClick={handleOpenInVscode}
-                  className="px-4 py-2 bg-cyan-700/30 hover:bg-cyan-700/50 text-cyan-300 border border-cyan-500/40 rounded-xl text-xs font-normal flex items-center gap-1.5 transition cursor-pointer"
+                  className="px-4 py-2 bg-cyan-700/30 hover:bg-cyan-700/50 text-cyan-300 rounded-full text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-base">code</span>
                   <span>Otevřít ve VS Code</span>
@@ -707,7 +707,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
             <button
               type="button"
               onClick={handleFooterClose}
-              className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white rounded-xl text-xs font-normal transition cursor-pointer"
+              className="px-5 py-2 bg-white/10 hover:bg-white/15 text-white rounded-full text-xs font-medium transition cursor-pointer"
             >
               Zavřít
             </button>
@@ -718,7 +718,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
               type="button"
               disabled={status === 'cloning'}
               onClick={onClose}
-              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl text-xs font-normal transition cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-full text-xs font-medium transition cursor-pointer disabled:opacity-50"
             >
               Zrušit
             </button>
@@ -729,25 +729,21 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
                 !targetDir.trim() ||
                 (isInstanceMode && (isLoadingRepos || validInstanceRepos.length === 0));
 
-              const btnThemeClasses = isCloning
-                ? 'bg-white/[0.08] text-white cursor-wait opacity-95 border border-white/[0.12]'
-                : isBlocked
-                ? 'bg-white/[0.03] text-gray-500 cursor-not-allowed border border-transparent'
-                : 'bg-white/[0.08] hover:bg-white/[0.12] text-white border border-white/[0.14] cursor-pointer';
-
               return (
                 <button
                   type="button"
                   disabled={isCloning || isBlocked}
                   onClick={() => handleStartClone()}
-                  className={`px-5 py-2 rounded-xl text-xs font-normal flex items-center gap-2 transition select-none ${btnThemeClasses}`}
+                  className={`m3-primary-pill px-5 py-2.5 rounded-full text-xs font-semibold flex items-center gap-2 transition select-none shadow-md ${
+                    isCloning ? 'cursor-wait opacity-90' : isBlocked ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+                  }`}
                 >
                   {isCloning ? (
                     <>
                       <span className="material-symbols-outlined text-sm animate-spin text-white">
                         progress_activity
                       </span>
-                      <span className="text-white font-normal">
+                      <span className="text-white font-medium">
                         {isInstanceMode ? 'Klonuji sekce...' : 'Klonuji...'}
                       </span>
                     </>
@@ -764,8 +760,8 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
                           : 'Klonovat repozitář'}
                       </span>
                       {!isBlocked && (
-                        <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 text-[10px] font-sans font-normal bg-black/40 text-gray-300 rounded border border-white/[0.1]">
-                          ↵ Enter
+                        <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 text-[10px] font-sans font-normal bg-black/30 text-white rounded-full">
+                          ↵
                         </kbd>
                       )}
                     </>
@@ -781,7 +777,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
 
   if (isStandaloneWindow) {
     return (
-      <main className="w-full h-screen bg-[#0e0f12] text-gray-200 flex flex-col justify-between select-none overflow-hidden">
+      <main className="w-full h-screen m3-surface-main text-gray-200 flex flex-col justify-between select-none overflow-hidden font-sans">
         {content}
       </main>
     );
@@ -789,7 +785,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
-      <div className="bg-[#0e0f12] border border-white/[0.08] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden text-gray-200 flex flex-col">
+      <div className="m3-surface-main rounded-[28px] w-full max-w-lg shadow-2xl overflow-hidden text-gray-200 flex flex-col">
         {content}
       </div>
     </div>

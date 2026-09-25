@@ -18,18 +18,18 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose, isSpotl
   }, [onClose]);
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center p-2 ${isSpotlightView ? 'bg-transparent' : 'bg-black/75 backdrop-blur-sm'}`}>
-      <div className="bg-[#0e0f12] border border-white/[0.08] rounded-2xl w-full max-w-2xl max-h-[510px] p-6 shadow-2xl flex flex-col gap-4 text-gray-200 animate-in fade-in zoom-in-95 duration-150 select-none">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isSpotlightView ? 'bg-transparent' : 'bg-black/75 backdrop-blur-sm'}`}>
+      <div className="m3-surface-main w-full max-w-2xl max-h-[520px] p-6 flex flex-col gap-4 text-gray-200 select-none">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/[0.06] pb-3.5">
+        <div className="flex items-center justify-between pb-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white">
+            <div className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center text-white shadow-sm">
               <span className="material-symbols-outlined text-2xl">history_edu</span>
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-semibold text-white tracking-tight">Historie verzí a změn</h3>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-medium font-mono bg-white/[0.06] text-gray-300 border border-white/[0.08]">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium font-mono bg-white/[0.06] text-gray-300 shadow-sm">
                   Aktuální verze v{CURRENT_APP_VERSION}
                 </span>
               </div>
@@ -38,17 +38,17 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose, isSpotl
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
           >
             <span className="material-symbols-outlined text-lg">close</span>
           </button>
         </div>
 
         {/* Content: List of all releases */}
-        <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+        <div className="flex-1 overflow-y-auto pr-1 space-y-3">
           {/* Upcoming / in progress section (if any) */}
           {UPCOMING_CHANGELOG.length > 0 && (
-            <div className="p-4 rounded-xl border border-dashed border-amber-500/25 bg-amber-500/5 space-y-2">
+            <div className="p-4 rounded-2xl bg-amber-500/10 space-y-2 shadow-sm">
               <div className="flex items-center gap-2 text-amber-400 font-medium text-xs uppercase tracking-wider">
                 <span className="material-symbols-outlined text-sm">pending</span>
                 Připravuje se v příští verzi
@@ -70,10 +70,10 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose, isSpotl
             return (
               <div
                 key={entry.version}
-                className={`p-4 rounded-xl border transition ${
+                className={`p-4 rounded-2xl transition shadow-sm ${
                   isCurrent
-                    ? 'bg-white/[0.04] border-white/[0.14] shadow-sm'
-                    : 'bg-white/[0.02] border-white/[0.06]'
+                    ? 'm3-primary-bg-subtle'
+                    : 'm3-item-card'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
@@ -82,7 +82,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose, isSpotl
                   </div>
                   <div className="flex items-center gap-2">
                     {isCurrent && (
-                      <span className="text-[10px] uppercase font-medium font-mono px-2 py-0.5 rounded bg-white/[0.08] text-white border border-white/[0.12]">
+                      <span className="text-[10px] uppercase font-bold font-mono px-2.5 py-0.5 rounded-full m3-primary-badge">
                         Nainstalováno
                       </span>
                     )}
@@ -99,7 +99,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose, isSpotl
                 <ul className="space-y-1.5 mt-3 pl-1">
                   {entry.highlights.map((highlight, idx) => (
                     <li key={idx} className="flex items-start gap-2.5 text-xs text-gray-300 leading-relaxed">
-                      <span className="material-symbols-outlined text-gray-400 text-sm mt-0.5 shrink-0">
+                      <span className="material-symbols-outlined m3-primary-text text-sm mt-0.5 shrink-0">
                         check
                       </span>
                       <span>{highlight}</span>
@@ -112,13 +112,13 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose, isSpotl
         </div>
 
         {/* Footer */}
-        <div className="pt-3.5 border-t border-white/[0.06] flex items-center justify-between">
-          <span className="text-xs text-gray-500">
-            IADonkey Launcher • Verze {CURRENT_APP_VERSION}
+        <div className="pt-2 flex items-center justify-between">
+          <span className="text-xs text-gray-500 font-mono">
+            IADonkey Launcher • v{CURRENT_APP_VERSION}
           </span>
           <button
             onClick={onClose}
-            className="px-5 py-2 text-xs font-medium text-white bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.12] rounded-xl transition cursor-pointer"
+            className="m3-primary-pill px-6 py-2.5 text-xs font-semibold rounded-full transition cursor-pointer shadow-md"
           >
             Zavřít
           </button>

@@ -158,18 +158,18 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-[#1e1e28] border border-indigo-500/40 rounded-2xl w-full max-w-4xl max-h-[88vh] p-6 shadow-2xl flex flex-col gap-4 text-gray-200 animate-in fade-in zoom-in-95 duration-150 select-none">
+      <div className="m3-surface-main rounded-[28px] w-full max-w-4xl max-h-[88vh] p-6 shadow-2xl flex flex-col gap-4 text-gray-200 animate-in fade-in zoom-in-95 duration-150 select-none">
         
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
+        <div className="flex items-center justify-between pb-1 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+            <div className="w-10 h-10 rounded-full bg-indigo-600/20 flex items-center justify-center text-indigo-400">
               <span className="material-symbols-outlined text-2xl">menu_book</span>
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-white">Jak na zdroje dat</h3>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-indigo-500/20 text-indigo-300">
                   JSON Model & API
                 </span>
               </div>
@@ -181,7 +181,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer self-center shrink-0 flex items-center justify-center"
+            className="w-9 h-9 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer self-center shrink-0 flex items-center justify-center"
             title="Zavřít (Esc)"
           >
             <span className="material-symbols-outlined text-lg leading-none select-none">close</span>
@@ -189,13 +189,13 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-white/5 pb-2 shrink-0 overflow-x-auto">
+        <div className="flex items-center gap-2 shrink-0 overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab('schema')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`px-4 py-2 rounded-full text-xs font-semibold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'schema'
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'm3-primary-pill text-white shadow-sm'
                 : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
             }`}
           >
@@ -206,9 +206,9 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('actions')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`px-4 py-2 rounded-full text-xs font-semibold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'actions'
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'm3-primary-pill text-white shadow-sm'
                 : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
             }`}
           >
@@ -219,9 +219,9 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('snippets')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            className={`px-4 py-2 rounded-full text-xs font-semibold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'snippets'
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'm3-primary-pill text-white shadow-sm'
                 : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
             }`}
           >
@@ -233,10 +233,10 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('magicgate')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              className={`px-4 py-2 rounded-full text-xs font-semibold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
                 activeTab === 'magicgate'
-                  ? 'bg-amber-400 text-gray-950 font-bold shadow-sm border border-amber-400'
-                  : 'bg-amber-500/10 text-amber-300 hover:text-white hover:bg-amber-500/20 border border-amber-500/20'
+                  ? 'bg-amber-400 text-gray-950 font-bold shadow-sm'
+                  : 'bg-amber-500/10 text-amber-300 hover:text-white hover:bg-amber-500/20'
               }`}
             >
               <span className="material-symbols-outlined text-base">security</span>

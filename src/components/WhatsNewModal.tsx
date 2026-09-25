@@ -23,12 +23,12 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
   }, [onDismiss]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-2">
-      <div className="bg-[#0e0f12] border border-white/[0.08] rounded-2xl w-full max-w-xl max-h-[510px] p-6 shadow-2xl flex flex-col gap-4 text-gray-200 animate-in fade-in zoom-in-95 duration-150 select-none">
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="m3-surface-main w-full max-w-xl max-h-[520px] p-6 flex flex-col gap-4 text-gray-200 select-none">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/[0.06] pb-3.5">
+        <div className="flex items-center justify-between pb-2">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white shrink-0">
+            <div className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center text-white shrink-0 shadow-sm">
               <span className="material-symbols-outlined text-2xl select-none leading-none">auto_awesome</span>
             </div>
             <div className="min-w-0 flex-1">
@@ -42,8 +42,8 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
                       onOpenFullChangelog();
                     }
                   }}
-                  className={`px-2 py-0.5 rounded-full text-[11px] font-medium font-mono bg-white/[0.06] text-gray-300 border border-white/[0.08] transition shrink-0 ${
-                    onOpenFullChangelog ? 'hover:bg-white/[0.1] hover:text-white cursor-pointer' : ''
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium font-mono bg-white/[0.06] text-gray-300 transition shrink-0 shadow-sm ${
+                    onOpenFullChangelog ? 'hover:bg-white/[0.12] hover:text-white cursor-pointer' : ''
                   }`}
                   title={onOpenFullChangelog ? 'Zobrazit kompletní historii verzí (Changelog)' : undefined}
                 >
@@ -55,20 +55,20 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
           </div>
           <button
             onClick={onDismiss}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition shrink-0 cursor-pointer ml-2"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition shrink-0 cursor-pointer ml-2"
           >
             <span className="material-symbols-outlined text-lg leading-none select-none">close</span>
           </button>
         </div>
 
         {/* Highlights List - only the latest version items */}
-        <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1 py-1">
+        <div className="space-y-2 max-h-80 overflow-y-auto pr-1 py-1">
           {release.highlights.map((item, idx) => (
             <div
               key={idx}
-              className="flex items-start gap-3 p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.1] transition"
+              className="m3-item-card flex items-start gap-3 p-3 rounded-2xl"
             >
-              <span className="material-symbols-outlined text-gray-400 text-base mt-0.5 shrink-0">
+              <span className="material-symbols-outlined m3-primary-text text-base mt-0.5 shrink-0">
                 check_circle
               </span>
               <span className="text-xs text-gray-200 leading-relaxed font-normal">
@@ -79,10 +79,10 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="pt-3 border-t border-white/[0.06] flex items-center justify-end">
+        <div className="pt-2 flex items-center justify-end">
           <button
             onClick={onDismiss}
-            className="px-5 py-2 text-xs font-medium text-white bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.12] rounded-xl transition cursor-pointer"
+            className="m3-primary-pill px-6 py-2.5 text-xs font-semibold rounded-full transition cursor-pointer shadow-md"
           >
             Rozumím
           </button>

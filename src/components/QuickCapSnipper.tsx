@@ -245,12 +245,12 @@ export const QuickCapSnipper: React.FC = () => {
       {/* 3. Plovoucí horní panel (Spotlight Visual Style – sjednoceno s ScreenRuler) */}
       {!isDragging && (!selectionBox || selectionBox.w <= 0 || selectionBox.h <= 0) && (
         <div
-          className="fixed top-5 left-1/2 transform -translate-x-1/2 flex items-center gap-2 p-1.5 px-3 rounded-2xl shadow-2xl border border-white/10 transition-all pointer-events-auto bg-[#1c1d24] text-gray-100 select-none z-50 animate-fade-in"
+          className="fixed top-5 left-1/2 transform -translate-x-1/2 flex items-center gap-2.5 p-2 px-4 rounded-full shadow-2xl transition-all pointer-events-auto bg-[#15161c] text-gray-100 select-none z-50 animate-fade-in"
           onMouseDown={(e) => e.stopPropagation()}
         >
           {/* App Title / Icon (Unified h-8) */}
-          <div className="h-8 flex items-center gap-2 pr-2.5 border-r border-white/10 shrink-0">
-            <div className="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shadow-sm shrink-0">
+          <div className="h-8 flex items-center gap-2 pr-1 shrink-0">
+            <div className="w-8 h-8 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-400 shadow-sm shrink-0">
               <Crop className="w-4 h-4 text-rose-400" />
             </div>
             <div className="text-xs font-semibold text-white tracking-wide">
@@ -262,20 +262,20 @@ export const QuickCapSnipper: React.FC = () => {
           <button
             type="button"
             onClick={handleCaptureFullScreen}
-            className="h-8 flex items-center gap-1.5 px-3 bg-black/40 hover:bg-white/10 text-white rounded-xl text-xs font-medium border border-white/10 hover:border-white/20 transition-all active:scale-95 cursor-pointer shrink-0"
+            className="h-8 flex items-center gap-1.5 px-3.5 bg-white/[0.06] hover:bg-white/[0.12] text-white rounded-full text-xs font-semibold transition-all active:scale-95 cursor-pointer shrink-0 shadow-sm"
             title="Vyfotit celou obrazovku (P)"
           >
-            <Monitor className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+            <Monitor className="w-3.5 h-3.5 text-gray-300 shrink-0" />
             <span>Vyfotit celou obrazovku</span>
           </button>
 
           {/* Shortcuts pill (Spotlight kbd badges, Unified h-8) */}
-          <div className="h-8 flex items-center gap-1.5 px-2.5 text-[11px] text-gray-400 border-l border-white/10 font-sans shrink-0">
-            <kbd className="h-[18px] w-5 bg-white/10 text-gray-300 border border-white/15 rounded text-[10px] leading-none flex items-center justify-center shrink-0">
+          <div className="h-8 flex items-center gap-1.5 px-2 text-[11px] text-gray-400 font-sans shrink-0">
+            <kbd className="h-[20px] px-2 bg-white/[0.08] text-gray-300 rounded-full text-[10px] leading-none flex items-center justify-center shrink-0">
               <MousePointer className="w-2.5 h-2.5 text-gray-300" />
             </kbd>
             <span>tažením vyberte</span>
-            <kbd className="h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none flex items-center justify-center ml-1">
+            <kbd className="h-[20px] px-2 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[10px] leading-none flex items-center justify-center ml-1">
               Esc
             </kbd>
             <span>konec</span>
@@ -285,7 +285,7 @@ export const QuickCapSnipper: React.FC = () => {
           <button
             type="button"
             onClick={handleCancel}
-            className="w-8 h-8 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 hover:text-rose-100 border border-rose-500/30 flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0 ml-0.5"
+            className="w-8 h-8 rounded-full bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 hover:text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0 shadow-sm"
             title="Zavřít výstřižek (Escape)"
           >
             <X className="w-4 h-4" />
@@ -313,7 +313,7 @@ export const QuickCapSnipper: React.FC = () => {
 
           {/* Badge s rozměry (Spotlight Visual Style) */}
           <div
-            className={`absolute left-1/2 -translate-x-1/2 px-3 py-1 rounded-xl bg-[#1c1d24]/95 border border-white/10 text-white font-mono text-xs shadow-2xl backdrop-blur-xl pointer-events-none flex items-center gap-1.5 whitespace-nowrap tabular-nums ${
+            className={`absolute left-1/2 -translate-x-1/2 px-3.5 py-1 rounded-full bg-[#15161c]/95 text-white font-mono text-xs shadow-2xl backdrop-blur-xl pointer-events-none flex items-center gap-1.5 whitespace-nowrap tabular-nums ${
               selectionBox.y > 40 ? '-top-9' : 'bottom-3'
             }`}
           >

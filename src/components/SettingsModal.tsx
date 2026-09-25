@@ -4247,10 +4247,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="space-y-4">
               {/* Alert banner for synchronization */}
               <div
-                className="p-3.5 rounded-xl border flex items-center justify-between gap-4 text-[13px] font-medium animate-fade-in min-h-[58px]"
+                className="p-4 rounded-2xl flex items-center justify-between gap-4 text-[13px] font-medium animate-fade-in min-h-[58px]"
                 style={{
                   backgroundColor: `${formData.primaryColor || '#6366f1'}15`,
-                  borderColor: `${formData.primaryColor || '#6366f1'}35`,
                   color: formData.primaryColor || '#6366f1',
                 }}
               >
@@ -4311,10 +4310,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   type="button"
                   onClick={handleTriggerSync}
                   disabled={syncPhase !== 'idle'}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0 ${
+                  className={`m3-primary-pill flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition cursor-pointer shrink-0 shadow-sm ${
                     syncPhase === 'success'
-                      ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 cursor-default'
-                      : 'bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 disabled:cursor-not-allowed'
+                      ? 'bg-emerald-600/30 text-emerald-300 cursor-default'
+                      : 'disabled:opacity-50 disabled:cursor-not-allowed'
                   }`}
                   title={
                     syncPhase === 'syncing'
@@ -4362,7 +4361,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         setSampleRecord(null);
                         setInspectError(null);
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium border border-indigo-500/40 hover:border-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-white rounded-lg transition cursor-pointer"
+                      className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium bg-white/[0.06] hover:bg-white/[0.12] text-white rounded-full transition cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-base">description</span>
                       Přidat JSON soubor
@@ -4376,7 +4375,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         setSampleRecord(null);
                         setInspectError(null);
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium border border-indigo-500/40 hover:border-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-white rounded-lg transition cursor-pointer"
+                      className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium bg-white/[0.06] hover:bg-white/[0.12] text-white rounded-full transition cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-base">api</span>
                       Přidat API endpoint
@@ -4390,7 +4389,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         setSampleRecord(null);
                         setInspectError(null);
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium border border-purple-500/40 hover:border-purple-400 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 hover:text-white rounded-lg transition cursor-pointer"
+                      className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium bg-white/[0.06] hover:bg-white/[0.12] text-white rounded-full transition cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-base">data_object</span>
                       Přidat statická data
@@ -4447,17 +4446,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     return (
                       <div
                         key={src.id}
-                        className={`p-3.5 rounded-xl border transition ${
+                        className={`p-4 rounded-2xl transition-all shadow-sm ${
                           isCurrentlyEditing
-                            ? (src.type === 'static' ? 'bg-purple-950/20 border-purple-500/40 shadow-sm' : 'bg-white/[0.04] border-indigo-500/40 shadow-sm')
+                            ? (src.type === 'static' ? 'bg-purple-950/30' : 'bg-white/[0.06]')
                             : src.enabled
-                            ? 'bg-white/[0.02] border-white/10'
-                            : 'bg-black/20 border-white/5 opacity-60'
+                            ? 'bg-white/[0.03] hover:bg-white/[0.05]'
+                            : 'bg-black/20 opacity-60'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <span className={`material-symbols-outlined p-2 rounded-lg shrink-0 text-xl ${
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <span className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-xl ${
                               src.type === 'static'
                                 ? 'bg-purple-500/20 text-purple-400'
                                 : 'bg-indigo-500/20 text-indigo-400'
@@ -4467,20 +4466,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-semibold text-sm text-white">{src.name}</span>
-                                <span className={`text-[11px] uppercase font-mono px-1.5 py-0.5 rounded ${
+                                <span className={`text-[11px] uppercase font-mono px-2.5 py-0.5 rounded-full ${
                                   src.type === 'static'
-                                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold'
-                                    : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold'
+                                    ? 'bg-purple-500/20 text-purple-300 font-semibold'
+                                    : 'bg-indigo-500/20 text-indigo-300 font-semibold'
                                 }`}>
                                   {src.type}
                                 </span>
                                 {src.type === 'api' && (src as ApiSource).authType === 'getToken' && (
-                                  <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300">
+                                  <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300">
                                     getToken auth
                                   </span>
                                 )}
                                 {src.mapping && Object.keys(src.mapping).length > 0 && (
-                                  <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-gray-300 border border-white/10" title="Vlastní mapování polí je aktivní">
+                                  <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-white/10 text-gray-300" title="Vlastní mapování polí je aktivní">
                                     Mapováno
                                   </span>
                                 )}
@@ -4510,7 +4509,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 type="button"
                                 onClick={() => handleExportStaticSource(src as StaticSource)}
                                 title="Exportovat do JSON souboru (se sloučenými společnými parametry)"
-                                className="w-8 h-8 rounded-lg border border-purple-500/25 bg-purple-500/10 text-purple-400 hover:text-purple-300 hover:bg-purple-500/20 hover:border-purple-500/40 flex items-center justify-center shrink-0 transition-all cursor-pointer"
+                                className="w-8 h-8 rounded-full bg-purple-500/15 text-purple-400 hover:text-purple-300 hover:bg-purple-500/25 flex items-center justify-center shrink-0 transition-all cursor-pointer"
                               >
                                 <span className="material-symbols-outlined !text-[16px]" style={{ fontSize: '16px' }}>
                                   download
@@ -4526,10 +4525,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                   setTimeout(() => setCopiedSourceId(null), 2000);
                                 }}
                                 title={copiedSourceId === src.id ? 'Zkopírováno do schránky!' : 'Kopírovat URL adresu do schránky'}
-                                className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition-all cursor-pointer ${
+                                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer ${
                                   copiedSourceId === src.id
-                                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                                    : 'bg-indigo-500/10 border-indigo-500/25 text-indigo-400 hover:bg-indigo-500/20 hover:border-indigo-500/40 hover:text-white'
+                                    ? 'bg-emerald-500/20 text-emerald-400'
+                                    : 'bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25 hover:text-white'
                                 }`}
                               >
                                 <span className="material-symbols-outlined !text-[16px]" style={{ fontSize: '16px' }}>
@@ -4543,10 +4542,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               onMouseEnter={() => setHoveredEyeId(src.id)}
                               onMouseLeave={() => setHoveredEyeId(null)}
                               title={src.enabled ? 'Aktivní (kliknutím vypnete)' : 'Vypnuto (kliknutím aktivujete)'}
-                              className={`w-8 h-8 rounded-lg border transition-all duration-150 flex items-center justify-center shrink-0 cursor-pointer ${
+                              className={`w-8 h-8 rounded-full transition-all duration-150 flex items-center justify-center shrink-0 cursor-pointer ${
                                 (src.enabled && hoveredEyeId !== src.id) || (!src.enabled && hoveredEyeId === src.id)
-                                  ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 hover:border-emerald-500/50'
-                                  : 'bg-rose-500/15 border-rose-500/30 text-rose-400 hover:bg-rose-500/25 hover:border-rose-500/50'
+                                  ? 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'
+                                  : 'bg-rose-500/15 text-rose-400 hover:bg-rose-500/25'
                               }`}
                             >
                               <span className="material-symbols-outlined !text-[16px]" style={{ fontSize: '16px' }}>
@@ -4558,10 +4557,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <button
                               type="button"
                               onClick={() => handleStartEditSource(src)}
-                              className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition-all cursor-pointer ${
+                              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer ${
                                 isCurrentlyEditing
-                                  ? (src.type === 'static' ? 'bg-purple-600 border-purple-500 text-white' : 'bg-indigo-600 border-indigo-500 text-white')
-                                  : 'border-white/10 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 hover:border-white/20'
+                                  ? (src.type === 'static' ? 'bg-purple-600 text-white' : 'bg-indigo-600 text-white')
+                                  : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
                               }`}
                               title={isCurrentlyEditing ? 'Zavřít úpravy' : 'Upravit'}
                             >
@@ -4570,7 +4569,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <button
                               type="button"
                               onClick={() => handleDeleteSource(src.id)}
-                              className="w-8 h-8 rounded-lg border border-rose-500/25 bg-rose-500/10 text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 hover:border-rose-500/40 flex items-center justify-center shrink-0 transition-all cursor-pointer"
+                              className="w-8 h-8 rounded-full bg-rose-500/15 text-rose-400 hover:text-rose-300 hover:bg-rose-500/25 flex items-center justify-center shrink-0 transition-all cursor-pointer"
                               title="Smazat"
                             >
                               <span className="material-symbols-outlined !text-[16px]" style={{ fontSize: '16px' }}>delete</span>
@@ -8108,7 +8107,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {/* Section 1: Updates & Version */}
-              <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl space-y-5">
+              <div className="p-5 bg-white/[0.03] rounded-2xl space-y-5 shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
                   <div>
                     <span className="text-[13px] text-gray-400 block mb-1">Nainstalovaná verze</span>
@@ -8119,7 +8118,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     >
                       <span className="group-hover:text-indigo-300 transition-colors">v{CURRENT_APP_VERSION}</span>
                       {isDevelop && (
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase tracking-wider inline-flex items-center justify-center leading-none h-4.5 align-middle shadow-xs">
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 uppercase tracking-wider inline-flex items-center justify-center leading-none h-4.5 align-middle shadow-xs">
                           DEV
                         </span>
                       )}
@@ -8129,7 +8128,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowChangelog(true)}
-                      className="px-3.5 py-2 text-[13px] font-medium text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                      className="px-4 py-2 text-xs font-medium text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition cursor-pointer flex items-center gap-1.5"
                     >
                       <span className="material-symbols-outlined text-base">history_edu</span>
                       Historie změn
@@ -8137,7 +8136,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <button
                       type="button"
                       onClick={onCheckUpdate}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[13px] font-semibold transition flex items-center gap-1.5 cursor-pointer"
+                      className="m3-primary-pill px-5 py-2 text-xs font-semibold rounded-full transition flex items-center gap-1.5 cursor-pointer shadow-md"
                     >
                       <span className="material-symbols-outlined text-base">refresh</span>
                       Zkontrolovat aktualizace nyní
@@ -8147,16 +8146,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 {/* Developer Mode Easter Egg Feedback Messages under divider */}
                 {versionClickHint && (
-                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300 flex items-center gap-2 animate-pulse font-medium">
+                  <div className="p-3 bg-amber-500/10 rounded-2xl text-xs text-amber-300 flex items-center gap-2 animate-pulse font-medium">
                     <span className="material-symbols-outlined text-base text-amber-400 shrink-0">touch_app</span>
                     <span>{versionClickHint}</span>
                   </div>
                 )}
                 {developUnlockMessage && (
-                  <div className={`p-3 rounded-xl text-xs flex items-center gap-2 animate-fade-in font-medium ${
+                  <div className={`p-3 rounded-2xl text-xs flex items-center gap-2 animate-fade-in font-medium ${
                     developUnlockMessage.includes('Již jste')
-                      ? 'bg-amber-500/10 border border-amber-500/20 text-amber-300'
-                      : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300'
+                      ? 'bg-amber-500/10 text-amber-300'
+                      : 'bg-emerald-500/10 text-emerald-300'
                   }`}>
                     <span className={`material-symbols-outlined text-base shrink-0 ${
                       developUnlockMessage.includes('Již jste') ? 'text-amber-400' : 'text-emerald-400'
@@ -8168,7 +8167,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 )}
 
                 {updateStatusMessage ? (
-                  <div className="p-3.5 bg-indigo-950/30 border border-indigo-500/30 rounded-xl flex items-center gap-2.5 text-[13px] text-indigo-300">
+                  <div className="p-3.5 bg-indigo-950/30 rounded-2xl flex items-center gap-2.5 text-[13px] text-indigo-300">
                     <span className="material-symbols-outlined text-base text-indigo-400">info</span>
                     <span>{updateStatusMessage}</span>
                   </div>
@@ -8181,7 +8180,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {/* Section 2: Crashlogs & Error Diagnostics */}
-              <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+              <div className="bg-white/[0.03] rounded-2xl p-5 space-y-4 shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <h4 className="text-sm font-semibold text-rose-300 flex items-center gap-2">
@@ -8189,14 +8188,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       Chybové protokoly a diagnostika (Crashlogs)
                     </h4>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      Automaticky ukládané protokoly chyb ze složky <code className="bg-white/10 px-1.5 py-0.5 rounded text-gray-300 font-mono text-[11px]">crashlog/</code> pro rychlou diagnostiku.
+                      Automaticky ukládané protokoly chyb ze složky <code className="bg-white/10 px-2 py-0.5 rounded-full text-gray-300 font-mono text-[11px]">crashlog/</code> pro rychlou diagnostiku.
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
                       onClick={handleOpenCrashLogFolder}
-                      className="h-8 px-3 bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer border border-white/10 shrink-0"
+                      className="px-4 py-1.5 bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer shrink-0"
                       title="Otevře složku s crashlogy v Průzkumníku Windows"
                     >
                       <span className="material-symbols-outlined text-base text-indigo-400">folder_open</span>
@@ -8206,7 +8205,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <button
                         type="button"
                         onClick={handleClearCrashLogs}
-                        className="h-8 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer border border-rose-500/20 shrink-0"
+                        className="px-4 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer shrink-0"
                         title="Vymaže všechny soubory crashlogů"
                       >
                         <span className="material-symbols-outlined text-base text-rose-500">delete_sweep</span>

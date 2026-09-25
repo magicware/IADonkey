@@ -88,8 +88,8 @@ export class WindowManager {
     const primaryDisplay = screen.getPrimaryDisplay();
     const { bounds } = primaryDisplay;
 
-    const width = 740;
-    const height = 540;
+    const width = 800;
+    const height = 620;
     const x = Math.round(bounds.x + (bounds.width - width) / 2);
     const y = Math.round(bounds.y + (bounds.height - height) / 3);
 
@@ -164,8 +164,8 @@ export class WindowManager {
     const currentDisplay = screen.getDisplayNearestPoint(cursorPoint);
     const { bounds } = currentDisplay;
 
-    const width = 740;
-    const height = 540;
+    const width = 800;
+    const height = 620;
     const x = Math.round(bounds.x + (bounds.width - width) / 2);
     const y = Math.round(bounds.y + (bounds.height - height) / 3);
 

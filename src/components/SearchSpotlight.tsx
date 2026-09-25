@@ -2172,7 +2172,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
   return (
     <div
-      className={`w-full flex flex-col m3-surface-main text-gray-100 spotlight-card overflow-hidden ${
+      className={`w-full max-w-[740px] mx-auto flex flex-col m3-surface-main text-gray-100 spotlight-card overflow-visible relative ${
         isRevealed ? 'revealed' : ''
       }`}
       onMouseUp={handleRefocusInput}
@@ -2296,7 +2296,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
             {/* Subextensions vertical buttons list */}
             {isDonkeyToolsOpen && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 flex flex-col items-center gap-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 p-1.5 bg-[#15161c] rounded-2xl shadow-2xl">
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 flex flex-col items-center gap-2 z-50 animate-in fade-in zoom-in-95 duration-100 p-2 bg-[#15161c] rounded-full shadow-2xl">
                 {/* ColorMaster Subextension - Eyedropper */}
                 {isColorMasterActive && (
                   <button
@@ -2305,10 +2305,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       setIsDonkeyToolsOpen(false);
                       handlePickColor();
                     }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.12] text-gray-200 hover:text-white shadow-sm"
+                    className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.14] text-gray-200 hover:text-white shadow-md hover:scale-105 active:scale-95"
                     title="ColorMaster – Kapátko (nabrat barvu z obrazovky)"
                   >
-                    <span className="material-symbols-outlined text-[18px] leading-none select-none">
+                    <span className="material-symbols-outlined text-[19px] leading-none select-none">
                       colorize
                     </span>
                   </button>
@@ -2322,10 +2322,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       setIsDonkeyToolsOpen(false);
                       handleStartQuickCap();
                     }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.12] text-gray-200 hover:text-white shadow-sm"
+                    className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.14] text-gray-200 hover:text-white shadow-md hover:scale-105 active:scale-95"
                     title="QuickCap – Výstřižek obrazovky"
                   >
-                    <span className="material-symbols-outlined text-[18px] leading-none select-none">
+                    <span className="material-symbols-outlined text-[19px] leading-none select-none">
                       crop
                     </span>
                   </button>
@@ -2339,10 +2339,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       setIsDonkeyToolsOpen(false);
                       handleStartScreenRuler();
                     }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.12] text-gray-200 hover:text-white shadow-sm"
+                    className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.14] text-gray-200 hover:text-white shadow-md hover:scale-105 active:scale-95"
                     title="ScreenRuler – Měřítko a pravítko obrazovky"
                   >
-                    <span className="material-symbols-outlined text-[18px] leading-none select-none">
+                    <span className="material-symbols-outlined text-[19px] leading-none select-none">
                       straighten
                     </span>
                   </button>
@@ -2356,10 +2356,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       setIsDonkeyToolsOpen(false);
                       enterEasyClip();
                     }}
-                    className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.12] text-gray-200 hover:text-white shadow-sm"
+                    className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.14] text-gray-200 hover:text-white shadow-md hover:scale-105 active:scale-95"
                     title="EasyClip – Historie schránky"
                   >
-                    <span className="material-symbols-outlined text-[18px] leading-none select-none">
+                    <span className="material-symbols-outlined text-[19px] leading-none select-none">
                       content_paste
                     </span>
                   </button>

@@ -615,17 +615,18 @@ export const ScreenRulerOverlay: React.FC = () => {
         </>
       )}
 
-      {/* ================= FLOATING TOP TOOLBAR (Spotlight Visual Style) ================= */}
+      {/* ================= FLOATING TOP TOOLBAR (Material 3 Expressive Pill) ================= */}
       <div
-        className="fixed top-5 left-1/2 transform -translate-x-1/2 flex items-center gap-2 p-1.5 px-3 rounded-2xl shadow-2xl border border-white/10 transition-all pointer-events-auto bg-[#1c1d24] text-gray-100"
+        className="fixed top-5 left-1/2 transform -translate-x-1/2 flex items-center gap-2.5 p-2 px-4 rounded-full shadow-2xl transition-all pointer-events-auto bg-[#15161c]/95 backdrop-blur-xl text-gray-100"
         style={{
           zIndex: 50,
+          boxShadow: '0 20px 40px -10px rgba(0,0,0,0.7), 0 0 20px rgba(0,0,0,0.4)',
         }}
         onMouseDown={(e) => e.stopPropagation()} // don't trigger canvas drag
       >
-        {/* App Title / Icon (Unified h-8) */}
-        <div className="h-8 flex items-center gap-2 pr-2.5 border-r border-white/10 shrink-0">
-          <div className="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shadow-sm shrink-0">
+        {/* App Title / Icon */}
+        <div className="h-8 flex items-center gap-2.5 pr-1 shrink-0">
+          <div className="w-8 h-8 rounded-full bg-rose-500/15 flex items-center justify-center text-rose-400 shadow-sm shrink-0">
             <Ruler className="w-4 h-4 text-rose-400" />
           </div>
           <div className="hidden sm:block text-xs font-semibold text-white tracking-wide">
@@ -633,15 +634,15 @@ export const ScreenRulerOverlay: React.FC = () => {
           </div>
         </div>
 
-        {/* Mode Selector (Unified h-8) */}
-        <div className="h-8 flex items-center bg-black/40 rounded-xl p-0.5 border border-white/10 shrink-0">
+        {/* Mode Selector */}
+        <div className="h-8 flex items-center bg-white/[0.05] rounded-full p-1 gap-1 shrink-0">
           <button
             type="button"
             onClick={() => handleSetMode('box')}
-            className={`h-7 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium transition-all ${
+            className={`h-6 flex items-center gap-1.5 px-3 rounded-full text-xs font-medium transition-all ${
               mode === 'box'
-                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-sm font-semibold'
-                : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                ? 'bg-rose-500/20 text-rose-300 shadow-sm font-semibold'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
             title="Obdélníkový výběr (M)"
           >
@@ -651,10 +652,10 @@ export const ScreenRulerOverlay: React.FC = () => {
           <button
             type="button"
             onClick={() => handleSetMode('crosshair')}
-            className={`h-7 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium transition-all ${
+            className={`h-6 flex items-center gap-1.5 px-3 rounded-full text-xs font-medium transition-all ${
               mode === 'crosshair'
-                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-sm font-semibold'
-                : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                ? 'bg-rose-500/20 text-rose-300 shadow-sm font-semibold'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
             title="Kříž a vzdálenost k okrajům (M)"
           >
@@ -663,16 +664,16 @@ export const ScreenRulerOverlay: React.FC = () => {
           </button>
         </div>
 
-        {/* Unit Selector (Unified h-8, Fixed Square Buttons) */}
-        <div className="h-8 flex items-center bg-black/40 rounded-xl p-0.5 border border-white/10 shrink-0">
+        {/* Unit Selector */}
+        <div className="h-8 flex items-center bg-white/[0.05] rounded-full p-1 gap-1 shrink-0">
           {(['px', '%', 'dp'] as RulerUnit[]).map((u) => (
             <button
               key={u}
               type="button"
               onClick={() => setUnit(u)}
-              className={`w-7 h-7 p-0 rounded-lg text-[11px] font-mono font-medium transition-all flex items-center justify-center ${
+              className={`w-6 h-6 p-0 rounded-full text-[11px] font-mono font-medium transition-all flex items-center justify-center ${
                 unit === u
-                  ? 'bg-white/15 text-white font-bold shadow-sm'
+                  ? 'bg-white/20 text-white font-bold shadow-sm'
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
               title={`Jednotka měření: ${u} (U)`}
@@ -682,7 +683,7 @@ export const ScreenRulerOverlay: React.FC = () => {
           ))}
         </div>
 
-        {/* Dimension display & Copy Button (Fixed 4-digit width, Unified template to prevent jitter, Unified h-8) */}
+        {/* Dimension display & Copy Button */}
         <button
           type="button"
           onClick={() => {
@@ -694,7 +695,7 @@ export const ScreenRulerOverlay: React.FC = () => {
               copyToClipboard(text);
             }
           }}
-          className="h-8 flex items-center gap-2 px-3 bg-black/40 hover:bg-white/10 text-white rounded-xl text-xs font-mono border border-white/10 hover:border-white/20 transition-all active:scale-95 cursor-pointer shrink-0"
+          className="h-8 flex items-center gap-2 px-3.5 bg-white/[0.05] hover:bg-white/10 text-white rounded-full text-xs font-mono transition-all active:scale-95 cursor-pointer shrink-0"
           title="Kliknutím zkopírujte rozměr do schránky (C)"
         >
           {isCopied ? (
@@ -714,35 +715,35 @@ export const ScreenRulerOverlay: React.FC = () => {
           </div>
         </button>
 
-        {/* Lock / Freeze Button (Unified h-8 w-8) */}
+        {/* Lock / Freeze Button */}
         <button
           type="button"
           onClick={() => setIsLocked((prev) => !prev)}
-          className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-all active:scale-95 cursor-pointer shrink-0 ${
+          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0 ${
             isLocked
-              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
-              : 'bg-black/40 text-gray-400 hover:text-white hover:bg-white/10 border-white/10'
+              ? 'bg-amber-500/20 text-amber-300 shadow-sm'
+              : 'bg-white/[0.05] text-gray-400 hover:text-white hover:bg-white/10'
           }`}
           title={isLocked ? 'Odemknout výběr (Mezerník)' : 'Zmrazit výběr (Mezerník)'}
         >
           {isLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
         </button>
 
-        {/* Keyboard hints pill (Spotlight kbd badges, Unified h-8) */}
-        <div className="h-8 hidden lg:flex items-center gap-1.5 px-2.5 text-[11px] text-gray-400 border-l border-white/10 font-sans shrink-0">
-          <kbd className="h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none flex items-center justify-center">Esc</kbd>
+        {/* Keyboard hints pill */}
+        <div className="h-8 hidden lg:flex items-center gap-1.5 px-3 text-[11px] text-gray-400 font-sans shrink-0">
+          <kbd className="h-5 px-2 bg-white/10 text-gray-300 rounded-full font-mono text-[10px] leading-none flex items-center justify-center">Esc</kbd>
           <span>konec</span>
-          <kbd className="h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none flex items-center justify-center ml-1">Space</kbd>
+          <kbd className="h-5 px-2 bg-white/10 text-gray-300 rounded-full font-mono text-[10px] leading-none flex items-center justify-center ml-1">Space</kbd>
           <span>zámek</span>
-          <kbd className="h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none flex items-center justify-center ml-1">C</kbd>
+          <kbd className="h-5 px-2 bg-white/10 text-gray-300 rounded-full font-mono text-[10px] leading-none flex items-center justify-center ml-1">C</kbd>
           <span>kopírovat</span>
         </div>
 
-        {/* Close Button (Unified h-8 w-8) */}
+        {/* Close Button */}
         <button
           type="button"
           onClick={handleClose}
-          className="w-8 h-8 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 hover:text-rose-100 border border-rose-500/30 flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0 ml-0.5"
+          className="w-8 h-8 rounded-full bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 hover:text-rose-100 flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0 ml-0.5"
           title="Zavřít pravítko (Escape)"
         >
           <X className="w-4 h-4" />

@@ -80,12 +80,12 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
   }, [r, g, b, a]);
 
   return (
-    <div className="h-screen max-h-screen flex flex-col bg-[#141520] text-gray-200 select-none overflow-hidden">
+    <div className="h-screen max-h-screen flex flex-col m3-surface-main text-gray-200 select-none overflow-hidden font-sans">
       {/* Main Content (scrollable if window height is small, includes Header) */}
       <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-5">
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-          <div className="w-10 h-10 rounded-xl bg-rose-600/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+        <div className="flex items-center gap-3 pb-1">
+          <div className="w-10 h-10 rounded-full bg-rose-600/20 flex items-center justify-center text-rose-400 shrink-0">
             <span className="material-symbols-outlined text-2xl">tune</span>
           </div>
           <div>
@@ -95,14 +95,14 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
         </div>
 
         {/* Swatches comparison */}
-        <div className="grid grid-cols-2 gap-3 p-3 bg-white/[0.02] border border-white/5 rounded-2xl">
+        <div className="grid grid-cols-2 gap-3 p-3.5 bg-white/[0.03] rounded-2xl">
           <div className="space-y-1.5">
             <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Původní</span>
             <div
-              className="h-14 rounded-xl border border-white/15 shadow-inner flex items-center justify-center transition"
+              className="h-14 rounded-2xl shadow-inner flex items-center justify-center transition"
               style={{ backgroundColor: initialParsed.hex }}
             >
-              <span className="px-2 py-0.5 rounded bg-black/60 backdrop-blur-sm text-[11px] font-mono font-semibold text-white">
+              <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-sm text-[11px] font-mono font-semibold text-white">
                 {initialParsed.hex}
               </span>
             </div>
@@ -110,10 +110,10 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
           <div className="space-y-1.5">
             <span className="text-[11px] font-semibold text-rose-400 uppercase tracking-wider">Nová barva</span>
             <div
-              className="h-14 rounded-xl border border-white/15 shadow-inner flex items-center justify-center transition"
+              className="h-14 rounded-2xl shadow-inner flex items-center justify-center transition"
               style={{ backgroundColor: rgbaString }}
             >
-              <span className="px-2 py-0.5 rounded bg-black/60 backdrop-blur-sm text-[11px] font-mono font-semibold text-white">
+              <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-sm text-[11px] font-mono font-semibold text-white">
                 {a < 1 ? rgbaString : hex}
               </span>
             </div>
@@ -121,7 +121,7 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
         </div>
 
         {/* Sliders Section */}
-        <div className="space-y-3 bg-white/[0.02] border border-white/5 rounded-2xl p-4">
+        <div className="space-y-3 bg-white/[0.03] rounded-2xl p-4">
           {/* Red Slider */}
           <div className="flex items-center gap-3 text-xs font-medium">
             <span className="w-16 shrink-0 text-rose-400 font-bold whitespace-nowrap">R ({r})</span>
@@ -131,7 +131,7 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
               max={255}
               value={r}
               onChange={(e) => setR(Number(e.target.value))}
-              className="flex-1 accent-rose-500 cursor-pointer h-1.5 bg-white/10 rounded-lg"
+              className="flex-1 accent-rose-500 cursor-pointer h-1.5 bg-white/10 rounded-full"
             />
             <input
               type="number"
@@ -139,7 +139,7 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
               max={255}
               value={r}
               onChange={(e) => setR(Math.max(0, Math.min(255, Number(e.target.value))))}
-              className="w-14 bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-center font-mono text-xs text-white focus:outline-none focus:border-rose-500"
+              className="w-14 bg-black/40 rounded-full px-2 py-1 text-center font-mono text-xs text-white focus:outline-none"
             />
           </div>
 
@@ -152,7 +152,7 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
               max={255}
               value={g}
               onChange={(e) => setG(Number(e.target.value))}
-              className="flex-1 accent-emerald-500 cursor-pointer h-1.5 bg-white/10 rounded-lg"
+              className="flex-1 accent-emerald-500 cursor-pointer h-1.5 bg-white/10 rounded-full"
             />
             <input
               type="number"
@@ -160,7 +160,7 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
               max={255}
               value={g}
               onChange={(e) => setG(Math.max(0, Math.min(255, Number(e.target.value))))}
-              className="w-14 bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-center font-mono text-xs text-white focus:outline-none focus:border-emerald-500"
+              className="w-14 bg-black/40 rounded-full px-2 py-1 text-center font-mono text-xs text-white focus:outline-none"
             />
           </div>
 
@@ -173,7 +173,7 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
               max={255}
               value={b}
               onChange={(e) => setB(Number(e.target.value))}
-              className="flex-1 accent-blue-500 cursor-pointer h-1.5 bg-white/10 rounded-lg"
+              className="flex-1 accent-blue-500 cursor-pointer h-1.5 bg-white/10 rounded-full"
             />
             <input
               type="number"
@@ -181,7 +181,7 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
               max={255}
               value={b}
               onChange={(e) => setB(Math.max(0, Math.min(255, Number(e.target.value))))}
-              className="w-14 bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-center font-mono text-xs text-white focus:outline-none focus:border-blue-500"
+              className="w-14 bg-black/40 rounded-full px-2 py-1 text-center font-mono text-xs text-white focus:outline-none"
             />
           </div>
 
@@ -194,7 +194,7 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
               max={100}
               value={Math.round(a * 100)}
               onChange={(e) => setA(Number((Number(e.target.value) / 100).toFixed(2)))}
-              className="flex-1 accent-amber-500 cursor-pointer h-1.5 bg-white/10 rounded-lg"
+              className="flex-1 accent-amber-500 cursor-pointer h-1.5 bg-white/10 rounded-full"
             />
             <input
               type="number"
@@ -202,26 +202,26 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
               max={100}
               value={Math.round(a * 100)}
               onChange={(e) => setA(Number((Math.max(0, Math.min(100, Number(e.target.value))) / 100).toFixed(2)))}
-              className="w-14 bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-center font-mono text-xs text-white focus:outline-none focus:border-amber-500"
+              className="w-14 bg-black/40 rounded-full px-2 py-1 text-center font-mono text-xs text-white focus:outline-none"
             />
           </div>
         </div>
 
         {/* Quick Format Inputs */}
         <div className="grid grid-cols-2 gap-2.5 text-xs font-mono">
-          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex items-center justify-between">
+          <div className="bg-white/[0.03] rounded-2xl p-3 flex items-center justify-between">
             <span className="text-gray-400 font-sans text-[11px]">HEX:</span>
             <span className="font-semibold text-white select-all">{hex}</span>
           </div>
-          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex items-center justify-between">
+          <div className="bg-white/[0.03] rounded-2xl p-3 flex items-center justify-between">
             <span className="text-gray-400 font-sans text-[11px]">RGB:</span>
             <span className="font-semibold text-white select-all">{rgbString}</span>
           </div>
-          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex items-center justify-between">
+          <div className="bg-white/[0.03] rounded-2xl p-3 flex items-center justify-between">
             <span className="text-gray-400 font-sans text-[11px]">RGBA:</span>
             <span className="font-semibold text-white select-all">{rgbaString}</span>
           </div>
-          <div className="bg-white/[0.02] border border-white/5 rounded-xl p-2.5 flex items-center justify-between">
+          <div className="bg-white/[0.03] rounded-2xl p-3 flex items-center justify-between">
             <span className="text-gray-400 font-sans text-[11px]">HSL:</span>
             <span className="font-semibold text-white select-all">{hslString}</span>
           </div>
@@ -229,11 +229,11 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
       </div>
 
       {/* Fixed Footer Buttons */}
-      <div className="shrink-0 flex items-center justify-between border-t border-white/10 bg-[#141520] px-6 py-4">
+      <div className="shrink-0 flex items-center justify-between p-5">
         <button
           type="button"
           onClick={handleCancel}
-          className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+          className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 rounded-full text-xs font-medium transition cursor-pointer"
         >
           Zrušit (Esc)
         </button>
@@ -241,10 +241,10 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
         <button
           type="button"
           onClick={handleSave}
-          className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+          className="m3-primary-pill px-5 py-2.5 rounded-full text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-md"
         >
           <span className="material-symbols-outlined text-sm">check</span>
-          <span>Uložit a pokračovat v akcích</span>
+          <span>Uložit barvu</span>
         </button>
       </div>
     </div>

@@ -572,7 +572,7 @@ export const App: React.FC = () => {
           window.electronAPI?.hideWindow?.();
         }
       }}
-      className="w-full h-screen p-2 flex flex-col justify-start select-none bg-transparent"
+      className="w-full h-screen p-6 sm:p-7 flex flex-col justify-start select-none bg-transparent"
     >
       {/* Search Bar & Autocomplete list */}
       {!showWhatsNew && !showChangelog && !updateInfo && !showSettings && (
