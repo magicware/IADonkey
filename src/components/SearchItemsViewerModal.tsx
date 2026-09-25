@@ -309,35 +309,35 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
-      <div className="bg-[#181920] border border-white/10 rounded-2xl w-full max-w-6xl h-[88vh] flex flex-col shadow-2xl overflow-hidden text-gray-200">
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
+      <div className="bg-[#0e0f12] border border-white/[0.08] rounded-2xl w-full max-w-6xl h-[88vh] flex flex-col shadow-2xl overflow-hidden text-gray-200">
         {/* Header */}
-        <header className="p-4 border-b border-white/10 flex items-center justify-between gap-4 bg-[#1e1f29] shrink-0">
+        <header className="p-4 border-b border-white/[0.06] flex items-center justify-between gap-4 bg-[#0a0a0d] shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white shrink-0">
               <span className="material-symbols-outlined text-2xl">format_list_bulleted</span>
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h3 className="text-base font-bold text-white tracking-wide">
+                <h3 className="text-base font-semibold text-white tracking-tight">
                   Položky ve vyhledávání
                 </h3>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-indigo-500/15 text-indigo-300 border border-indigo-500/25">
+                  <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/[0.06] text-gray-300 border border-white/[0.08]">
                     {filterQuery ? `${filteredMainOnlyCount} z ${totalMainOnlyCount}` : totalMainOnlyCount} hlavních
                   </span>
                   {totalGitCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
+                    <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/25">
                       {filterQuery ? `${filteredGitCount} z ${totalGitCount}` : totalGitCount} z Gitu
                     </span>
                   )}
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-teal-500/15 text-teal-300 border border-teal-500/25">
+                  <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/[0.06] text-gray-300 border border-white/[0.08]">
                     {filterQuery ? `${filteredSnippetCount} z ${totalSnippetCount}` : totalSnippetCount} snippetů
                   </span>
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-sky-500/15 text-sky-300 border border-sky-500/25">
+                  <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/[0.06] text-gray-300 border border-white/[0.08]">
                     {filterQuery ? `${filteredSubCount} z ${totalSubCount}` : totalSubCount} subpoložek
                   </span>
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-white/10 text-white border border-white/20">
+                  <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/[0.1] text-white border border-white/[0.15]">
                     {filterQuery ? `${filteredIndexedAll} celkem` : `${totalIndexedAll} celkem`}
                   </span>
                 </div>
@@ -359,16 +359,16 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
         </header>
 
         {/* Filter Toolbar */}
-        <div className="p-3 border-b border-white/5 bg-white/[0.02] flex items-center justify-between gap-3 shrink-0 flex-wrap">
+        <div className="p-3 border-b border-white/[0.06] bg-white/[0.01] flex items-center justify-between gap-3 shrink-0 flex-wrap">
           {/* Tab Switcher */}
-          <div className="flex items-center gap-1 bg-[#121318] p-1 rounded-xl border border-white/10 shrink-0">
+          <div className="flex items-center gap-1 bg-[#0a0a0d] p-1 rounded-xl border border-white/[0.06] shrink-0">
             <button
               type="button"
               onClick={() => setViewTab('items')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
                 viewTab === 'items'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                  ? 'bg-white/[0.1] text-white border border-white/[0.12] shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.02]'
               }`}
             >
               <span className="material-symbols-outlined text-sm">format_list_bulleted</span>
@@ -380,10 +380,10 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
             <button
               type="button"
               onClick={() => setViewTab('banlist')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
                 viewTab === 'banlist'
-                  ? 'bg-rose-600 text-white shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                  ? 'bg-rose-500/20 text-rose-200 border border-rose-500/30 shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.02]'
               }`}
             >
               <span className="material-symbols-outlined text-sm">block</span>
@@ -405,7 +405,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
               placeholder={viewTab === 'items' ? "Filtrovat v názvech, odkazech, akcích či zdrojích..." : "Filtrovat zabanované položky..."}
-              className="w-full bg-[#121318] border border-white/10 rounded-xl pl-9 pr-8 py-1.5 text-[13px] text-white placeholder:text-gray-500 focus:outline-none focus:border-indigo-500/60 transition"
+              className="w-full bg-[#0a0a0d] border border-white/[0.08] rounded-xl pl-9 pr-8 py-1.5 text-[13px] text-white placeholder:text-gray-500 focus:outline-none focus:border-white/[0.2] transition"
               autoFocus
             />
             {filterQuery && (
@@ -874,14 +874,14 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
         )}
 
         {/* Footer info */}
-        <footer className="px-4 py-2.5 bg-[#14151b] border-t border-white/10 flex items-center justify-between text-xs text-gray-400 shrink-0">
+        <footer className="px-4 py-2.5 bg-[#0a0a0d] border-t border-white/[0.06] flex items-center justify-between text-xs text-gray-400 shrink-0">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm text-indigo-400">info</span>
+            <span className="material-symbols-outlined text-sm text-gray-400">info</span>
             <span>Pořadí položek odpovídá přesně prioritě zobrazení výsledků ve Spotlight vyhledávání.</span>
           </div>
           <button
             onClick={onClose}
-            className="px-4 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium transition cursor-pointer"
+            className="px-4 py-1 bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.12] text-white rounded-lg font-normal transition cursor-pointer"
           >
             Zavřít
           </button>

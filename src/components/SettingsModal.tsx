@@ -3918,24 +3918,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="w-full h-screen flex bg-[#181920] text-gray-200 select-none overflow-hidden">
+    <div className="w-full h-screen flex bg-[#0e0f12] text-gray-200 select-none overflow-hidden font-sans">
       {/* Left Sidebar */}
-      <aside className="w-60 bg-[#121318] border-r border-white/10 flex flex-col shrink-0">
+      <aside className="w-60 bg-[#0a0a0d] border-r border-white/[0.06] flex flex-col shrink-0">
         {/* Sidebar Brand Header */}
-        <div className="p-4 flex items-center justify-between">
+        <div className="p-4 flex items-center justify-between border-b border-white/[0.04]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
-              <span className="material-symbols-outlined text-xl">settings</span>
+            <div className="w-8 h-8 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white shrink-0">
+              <span className="material-symbols-outlined text-[19px]">settings</span>
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white tracking-wide leading-tight">IADonkey</h2>
-              <span className="text-[11px] text-gray-400 block leading-tight">Nastavení</span>
+              <h2 className="text-sm font-semibold text-white tracking-tight leading-tight">IADonkey</h2>
+              <span className="text-[11px] text-gray-500 block leading-tight">Nastavení</span>
             </div>
           </div>
           <button
             type="button"
             onClick={() => setShowChangelog(true)}
-            className="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-white/10 hover:bg-white/20 text-indigo-300 hover:text-indigo-200 transition cursor-pointer"
+            className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-white/[0.06] hover:bg-white/[0.1] text-gray-300 border border-white/[0.08] transition cursor-pointer"
             title="Kliknutím zobrazíte historii verzí a novinky (Changelog)"
           >
             v{CURRENT_APP_VERSION}
@@ -3943,21 +3943,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Sidebar Navigation */}
-        <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
+        <nav className="flex-1 p-2.5 space-y-1 overflow-y-auto">
           <button
             type="button"
             onClick={() => setActiveTab('sources')}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer ${
               activeTab === 'sources'
-                ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
+                ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-sm'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.03] border border-transparent'
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <span className="material-symbols-outlined text-xl text-indigo-400">database</span>
+              <span className={`material-symbols-outlined text-lg ${activeTab === 'sources' ? 'text-white' : 'text-gray-400'}`}>database</span>
               <span>Zdroje dat</span>
             </div>
-            <span className="text-[11px] px-1.5 py-0.5 rounded bg-white/10 text-gray-300 font-mono">
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-gray-300 border border-white/[0.08] font-mono">
               {formData.sources.length}
             </span>
           </button>
@@ -3966,18 +3966,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('extensions')}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer ${
               activeTab === 'extensions'
-                ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
+                ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-sm'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.03] border border-transparent'
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <span className="material-symbols-outlined text-xl text-indigo-400">extension</span>
+              <span className={`material-symbols-outlined text-lg ${activeTab === 'extensions' ? 'text-white' : 'text-gray-400'}`}>extension</span>
               <span>Rozšíření</span>
             </div>
             {activeExtensionsCount > 0 && (
-              <span className="text-[11px] px-1.5 py-0.5 rounded bg-white/10 text-gray-300 font-mono">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-gray-300 border border-white/[0.08] font-mono">
                 {activeExtensionsCount}
               </span>
             )}
@@ -3988,14 +3988,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('magicgate')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'magicgate'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 shadow-sm'
-                  : 'text-gray-400 hover:text-amber-200 hover:bg-white/[0.04] border border-transparent'
+                  ? 'bg-amber-500/10 text-amber-200 border border-amber-500/25 shadow-sm'
+                  : 'text-gray-400 hover:text-amber-200 hover:bg-white/[0.03] border border-transparent'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-xl text-amber-400">security</span>
+                <span className="material-symbols-outlined text-lg text-amber-400">security</span>
                 <span>MagicGate</span>
               </div>
             </button>
@@ -4006,14 +4006,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('mlog')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'mlog'
-                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30 shadow-sm'
-                  : 'text-gray-400 hover:text-sky-200 hover:bg-white/[0.04] border border-transparent'
+                  ? 'bg-sky-500/10 text-sky-200 border border-sky-500/25 shadow-sm'
+                  : 'text-gray-400 hover:text-sky-200 hover:bg-white/[0.03] border border-transparent'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-xl text-sky-400">support_agent</span>
+                <span className="material-symbols-outlined text-lg text-sky-400">support_agent</span>
                 <span>Taskmanager</span>
               </div>
             </button>
@@ -4024,14 +4024,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('github')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'github'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
-                  : 'text-gray-400 hover:text-emerald-200 hover:bg-white/[0.04] border border-transparent'
+                  ? 'bg-emerald-500/10 text-emerald-200 border border-emerald-500/25 shadow-sm'
+                  : 'text-gray-400 hover:text-emerald-200 hover:bg-white/[0.03] border border-transparent'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-xl text-emerald-400">
+                <span className="material-symbols-outlined text-lg text-emerald-400">
                   folder_code
                 </span>
                 <span>GitHub</span>
@@ -4044,14 +4044,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('vscode')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'vscode'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm'
-                  : 'text-gray-400 hover:text-cyan-200 hover:bg-white/[0.04] border border-transparent'
+                  ? 'bg-cyan-500/10 text-cyan-200 border border-cyan-500/25 shadow-sm'
+                  : 'text-gray-400 hover:text-cyan-200 hover:bg-white/[0.03] border border-transparent'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-xl text-cyan-400">code</span>
+                <span className="material-symbols-outlined text-lg text-cyan-400">code</span>
                 <span>VS Code</span>
               </div>
             </button>
@@ -4062,14 +4062,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('android-studio')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'android-studio'
-                  ? 'bg-pink-500/20 text-pink-300 border border-pink-500/30 shadow-sm'
-                  : 'text-gray-400 hover:text-pink-200 hover:bg-white/[0.04] border border-transparent'
+                  ? 'bg-pink-500/10 text-pink-200 border border-pink-500/25 shadow-sm'
+                  : 'text-gray-400 hover:text-pink-200 hover:bg-white/[0.03] border border-transparent'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-xl text-pink-400">android</span>
+                <span className="material-symbols-outlined text-lg text-pink-400">android</span>
                 <span>Android Studio</span>
               </div>
             </button>
@@ -4080,14 +4080,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('donkey-tools')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'donkey-tools'
-                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-sm'
-                  : 'text-gray-400 hover:text-rose-200 hover:bg-white/[0.04] border border-transparent'
+                  ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-sm'
+                  : 'text-gray-400 hover:text-rose-200 hover:bg-white/[0.03] border border-transparent'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-xl text-rose-400">construction</span>
+                <span className="material-symbols-outlined text-lg text-rose-400">construction</span>
                 <span>DonkeyTools</span>
               </div>
             </button>
@@ -4097,13 +4097,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('snippets')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer ${
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer ${
               activeTab === 'snippets'
-                ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
+                ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-sm'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.03] border border-transparent'
             }`}
           >
-            <span className="material-symbols-outlined text-xl text-indigo-400">draw</span>
+            <span className={`material-symbols-outlined text-lg ${activeTab === 'snippets' ? 'text-white' : 'text-gray-400'}`}>draw</span>
             <span>Snippety</span>
           </button>
 
@@ -4111,13 +4111,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('general')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer ${
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer ${
               activeTab === 'general'
-                ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
+                ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-sm'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.03] border border-transparent'
             }`}
           >
-            <span className="material-symbols-outlined text-xl text-indigo-400">tune</span>
+            <span className={`material-symbols-outlined text-lg ${activeTab === 'general' ? 'text-white' : 'text-gray-400'}`}>tune</span>
             <span>Obecné</span>
           </button>
 
@@ -4125,14 +4125,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('system')}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer ${
               activeTab === 'system' || activeTab === 'updates'
-                ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
+                ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-sm'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.03] border border-transparent'
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <span className="material-symbols-outlined text-xl text-indigo-400">dns</span>
+              <span className={`material-symbols-outlined text-lg ${activeTab === 'system' || activeTab === 'updates' ? 'text-white' : 'text-gray-400'}`}>dns</span>
               <span>Systém</span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -4148,7 +4148,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {crashLogs.length > 0 ? (
                 <span
                   title={`${crashLogs.length} ${crashLogs.length === 1 ? 'chyba v protokolu' : crashLogs.length < 5 ? 'chyby v protokolu' : 'chyb v protokolu'}`}
-                  className="text-[11px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono font-bold"
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/25 font-mono font-bold"
                 >
                   {crashLogs.length}
                 </span>
@@ -4160,14 +4160,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('help')}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer ${
               activeTab === 'help'
-                ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04] border border-transparent'
+                ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-sm'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.03] border border-transparent'
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <span className="material-symbols-outlined text-xl text-indigo-400">help</span>
+              <span className={`material-symbols-outlined text-lg ${activeTab === 'help' ? 'text-white' : 'text-gray-400'}`}>help</span>
               <span>Nápověda</span>
             </div>
           </button>
@@ -4177,17 +4177,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('develop')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer ${
                 activeTab === 'develop'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 shadow-sm'
+                  ? 'bg-amber-500/10 text-amber-200 border border-amber-500/25 shadow-sm'
                   : 'text-amber-400/80 hover:text-amber-200 hover:bg-amber-500/10 border border-amber-500/20'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-xl text-amber-400">bug_report</span>
+                <span className="material-symbols-outlined text-lg text-amber-400">bug_report</span>
                 <span>Vývojář</span>
               </div>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider font-bold">
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/25 uppercase tracking-wider font-bold">
                 DEV
               </span>
             </button>
@@ -4197,11 +4197,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       </aside>
 
       {/* Main Right Content Pane */}
-      <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#181920]">
+      <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#0e0f12]">
         {/* Right Pane Header */}
-        <header className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02] shrink-0">
+        <header className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between bg-[#0a0a0d]/40 shrink-0">
           <div>
-            <h2 className="text-base font-bold text-white tracking-wide">
+            <h2 className="text-base font-semibold text-white tracking-tight">
               {activeTab === 'sources' && 'Zdroje dat'}
               {activeTab === 'extensions' && 'Rozšíření'}
               {activeTab === 'magicgate' && 'MagicGate'}
@@ -4216,7 +4216,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeTab === 'help' && 'Nápověda'}
               {activeTab === 'develop' && 'Vývojář'}
             </h2>
-            <p className="text-[13px] text-gray-400 mt-1">
+            <p className="text-[13px] text-gray-400 mt-0.5">
               {activeTab === 'sources' && 'Správa lokálních JSON souborů a vzdálených API endpointů'}
               {activeTab === 'extensions' && 'Správa doplňkových modulů, firemních nástrojů a externích služeb'}
               {activeTab === 'magicgate' && 'Konfigurace tichého přihlášení pro instanci IS Tour'}

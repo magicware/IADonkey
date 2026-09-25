@@ -360,15 +360,15 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
   const content = (
     <>
       {/* Header */}
-      <div className="p-4 border-b border-white/10 bg-[#1e1f29] flex items-center justify-between shrink-0">
+      <div className="p-4 border-b border-white/[0.06] bg-[#0a0a0d] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border bg-purple-500/20 border-purple-500/30 text-purple-300">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border bg-white/[0.06] border-white/[0.08] text-white">
             <span className="material-symbols-outlined text-2xl">
               {isInstanceMode ? 'cloud_download' : 'download'}
             </span>
           </div>
           <div>
-            <h3 className="text-base font-bold text-white tracking-wide">
+            <h3 className="text-base font-semibold text-white tracking-tight">
               {isInstanceMode ? `Klonovat repozitáře instance` : 'Klonovat repozitář'}
             </h3>
             <p className="text-xs text-gray-400">
@@ -671,14 +671,14 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-white/10 bg-[#1e1f29] flex items-center justify-between gap-3 shrink-0">
+      <div className="p-4 border-t border-white/[0.06] bg-[#0a0a0d] flex items-center justify-between gap-3 shrink-0">
         {status === 'success' ? (
           <>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleOpenInExplorer}
-                className="px-4 py-2 rounded-xl text-xs font-normal flex items-center gap-1.5 transition cursor-pointer border bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border-purple-500/40"
+                className="px-4 py-2 rounded-xl text-xs font-normal flex items-center gap-1.5 transition cursor-pointer border bg-white/[0.08] hover:bg-white/[0.12] text-white border-white/[0.14]"
               >
                 <span className="material-symbols-outlined text-base">folder</span>
                 <span>Otevřít složku v Průzkumníku</span>
@@ -730,10 +730,10 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
                 (isInstanceMode && (isLoadingRepos || validInstanceRepos.length === 0));
 
               const btnThemeClasses = isCloning
-                ? 'bg-purple-600 text-white cursor-wait opacity-95'
+                ? 'bg-white/[0.08] text-white cursor-wait opacity-95 border border-white/[0.12]'
                 : isBlocked
-                ? 'bg-white/5 text-gray-500 cursor-not-allowed'
-                : 'bg-purple-600 hover:bg-purple-500 text-white cursor-pointer';
+                ? 'bg-white/[0.03] text-gray-500 cursor-not-allowed border border-transparent'
+                : 'bg-white/[0.08] hover:bg-white/[0.12] text-white border border-white/[0.14] cursor-pointer';
 
               return (
                 <button
@@ -764,7 +764,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
                           : 'Klonovat repozitář'}
                       </span>
                       {!isBlocked && (
-                        <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 text-[10px] font-sans font-normal bg-black/20 text-white/80 rounded border border-white/20">
+                        <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 text-[10px] font-sans font-normal bg-black/40 text-gray-300 rounded border border-white/[0.1]">
                           ↵ Enter
                         </kbd>
                       )}
@@ -781,15 +781,15 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
 
   if (isStandaloneWindow) {
     return (
-      <main className="w-full h-screen bg-[#181920] text-gray-200 flex flex-col justify-between select-none overflow-hidden">
+      <main className="w-full h-screen bg-[#0e0f12] text-gray-200 flex flex-col justify-between select-none overflow-hidden">
         {content}
       </main>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
-      <div className="bg-[#181920] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden text-gray-200 flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
+      <div className="bg-[#0e0f12] border border-white/[0.08] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden text-gray-200 flex flex-col">
         {content}
       </div>
     </div>
