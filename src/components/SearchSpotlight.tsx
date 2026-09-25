@@ -2172,49 +2172,47 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
   return (
     <div
-      className={`w-full flex flex-col bg-[#0e0f12] border border-white/[0.08] rounded-2xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)] overflow-visible text-gray-100 spotlight-card ${
+      className={`w-full flex flex-col m3-surface-main text-gray-100 spotlight-card overflow-hidden ${
         isRevealed ? 'revealed' : ''
       }`}
       onMouseUp={handleRefocusInput}
       onClick={handleRefocusInput}
     >
-      {/* Top Search Input Bar */}
-      <div
-        className={`flex items-center px-4 py-3.5 gap-3.5 bg-transparent ${
-          results.length > 0 || parentItem || actionsParentItem || isEasyClipMode ? 'border-b border-white/[0.06]' : ''
-        }`}
-      >
-        <span
-          className={`material-symbols-outlined select-none text-2xl transition-colors duration-150 ${
-            isEasyClipMode
-              ? 'text-rose-400'
+      {/* Top Search Input Bar - M3 Borderless with soft layer */}
+      <div className="flex items-center px-4 py-3 gap-3 bg-transparent">
+        <div className="w-9 h-9 rounded-full bg-white/[0.05] shadow-sm flex items-center justify-center shrink-0">
+          <span
+            className={`material-symbols-outlined select-none text-[20px] transition-colors duration-150 ${
+              isEasyClipMode
+                ? 'text-rose-400'
+                : actionsParentItem
+                ? 'm3-actions-text'
+                : parentItem
+                ? 'm3-primary-text'
+                : isMlogMode
+                ? 'text-indigo-400'
+                : isGitPrefix
+                ? 'text-emerald-400'
+                : isMagicGatePrefix
+                ? 'text-amber-400'
+                : 'text-gray-400'
+            }`}
+          >
+            {isEasyClipMode
+              ? 'content_paste'
               : actionsParentItem
-              ? 'text-purple-400'
+              ? 'bolt'
               : parentItem
-              ? 'text-indigo-400'
+              ? 'subdirectory_arrow_right'
               : isMlogMode
-              ? 'text-indigo-400'
+              ? 'support_agent'
               : isGitPrefix
-              ? 'text-emerald-400'
+              ? 'folder_code'
               : isMagicGatePrefix
-              ? 'text-amber-400'
-              : 'text-gray-400'
-          }`}
-        >
-          {isEasyClipMode
-            ? 'content_paste'
-            : actionsParentItem
-            ? 'bolt'
-            : parentItem
-            ? 'subdirectory_arrow_right'
-            : isMlogMode
-            ? 'support_agent'
-            : isGitPrefix
-            ? 'folder_code'
-            : isMagicGatePrefix
-            ? 'security'
-            : 'search'}
-        </span>
+              ? 'security'
+              : 'search'}
+          </span>
+        </div>
         <input
           ref={inputRef}
           type="text"
@@ -2246,30 +2244,28 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         {actionsParentItem ? (
           <button
             onClick={exitActions}
-            className="w-8 h-8 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center cursor-pointer shrink-0"
+            className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.09] text-gray-400 hover:text-white transition flex items-center justify-center cursor-pointer shrink-0"
             title="Zavřít nabídku akcí (Esc)"
           >
-            <span className="material-symbols-outlined text-[19px] leading-none select-none">close</span>
+            <span className="material-symbols-outlined text-[18px] leading-none select-none">close</span>
           </button>
         ) : isEasyClipMode ? (
           <button
             onClick={exitEasyClip}
-            className="w-8 h-8 rounded-lg text-rose-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center cursor-pointer shrink-0"
+            className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.09] text-rose-400 hover:text-white transition flex items-center justify-center cursor-pointer shrink-0"
             title="Zavřít historii schránky (Esc)"
           >
-            <span className="material-symbols-outlined text-[19px] leading-none select-none">close</span>
+            <span className="material-symbols-outlined text-[18px] leading-none select-none">close</span>
           </button>
         ) : query.length > 0 ? (
           <button
             onClick={() => setQuery('')}
-            className="w-8 h-8 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center cursor-pointer shrink-0"
+            className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.09] text-gray-400 hover:text-white transition flex items-center justify-center cursor-pointer shrink-0"
             title="Vymazat dotaz"
           >
-            <span className="material-symbols-outlined text-[19px] leading-none select-none">close</span>
+            <span className="material-symbols-outlined text-[18px] leading-none select-none">close</span>
           </button>
         ) : null}
-
-        <div className="h-5 w-[1px] bg-white/15 mx-0.5 shrink-0 self-center" />
 
         {/* DonkeyTools Quick Tools Button & Subextensions Flyout */}
         {showDonkeyToolsIcon && (
@@ -2286,21 +2282,21 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                   status: 'info',
                 });
               }}
-              className={`relative w-8 h-8 rounded-lg transition-colors flex items-center justify-center cursor-pointer shrink-0 ${
+              className={`relative w-8 h-8 rounded-full transition-all flex items-center justify-center cursor-pointer shrink-0 shadow-sm ${
                 isDonkeyToolsOpen
-                  ? 'bg-white/[0.1] text-white border border-white/[0.16] shadow-sm'
-                  : 'text-gray-400 hover:text-white hover:bg-white/10'
+                  ? 'm3-primary-pill shadow-md'
+                  : 'bg-white/[0.04] hover:bg-white/[0.09] text-gray-300 hover:text-white'
               }`}
               title="DonkeyTools – Rychlé nástroje"
             >
-              <span className="material-symbols-outlined text-[20px] leading-none select-none">
+              <span className="material-symbols-outlined text-[19px] leading-none select-none">
                 construction
               </span>
             </button>
 
             {/* Subextensions vertical buttons list */}
             {isDonkeyToolsOpen && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 flex flex-col items-center gap-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 p-1 bg-[#0e0f12] border border-white/[0.1] rounded-xl shadow-2xl">
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 flex flex-col items-center gap-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 p-1.5 bg-[#15161c] rounded-2xl shadow-2xl">
                 {/* ColorMaster Subextension - Eyedropper */}
                 {isColorMasterActive && (
                   <button
@@ -2309,10 +2305,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       setIsDonkeyToolsOpen(false);
                       handlePickColor();
                     }}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.15] text-gray-300 hover:text-white"
+                    className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.12] text-gray-200 hover:text-white shadow-sm"
                     title="ColorMaster – Kapátko (nabrat barvu z obrazovky)"
                   >
-                    <span className="material-symbols-outlined text-[19px] leading-none select-none">
+                    <span className="material-symbols-outlined text-[18px] leading-none select-none">
                       colorize
                     </span>
                   </button>
@@ -2326,10 +2322,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       setIsDonkeyToolsOpen(false);
                       handleStartQuickCap();
                     }}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.15] text-gray-300 hover:text-white"
+                    className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.12] text-gray-200 hover:text-white shadow-sm"
                     title="QuickCap – Výstřižek obrazovky"
                   >
-                    <span className="material-symbols-outlined text-[19px] leading-none select-none">
+                    <span className="material-symbols-outlined text-[18px] leading-none select-none">
                       crop
                     </span>
                   </button>
@@ -2343,10 +2339,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       setIsDonkeyToolsOpen(false);
                       handleStartScreenRuler();
                     }}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.15] text-gray-300 hover:text-white"
+                    className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.12] text-gray-200 hover:text-white shadow-sm"
                     title="ScreenRuler – Měřítko a pravítko obrazovky"
                   >
-                    <span className="material-symbols-outlined text-[19px] leading-none select-none">
+                    <span className="material-symbols-outlined text-[18px] leading-none select-none">
                       straighten
                     </span>
                   </button>
@@ -2360,10 +2356,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       setIsDonkeyToolsOpen(false);
                       enterEasyClip();
                     }}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/[0.15] text-gray-300 hover:text-white"
+                    className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.12] text-gray-200 hover:text-white shadow-sm"
                     title="EasyClip – Historie schránky"
                   >
-                    <span className="material-symbols-outlined text-[19px] leading-none select-none">
+                    <span className="material-symbols-outlined text-[18px] leading-none select-none">
                       content_paste
                     </span>
                   </button>
@@ -2377,7 +2373,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           type="button"
           onClick={onRefreshData}
           disabled={syncStatus !== 'idle'}
-          className="relative w-8 h-8 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center cursor-pointer disabled:cursor-default shrink-0 self-center"
+          className="relative w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.09] text-gray-300 hover:text-white transition flex items-center justify-center cursor-pointer disabled:cursor-default shrink-0 self-center shadow-sm"
           title={
             syncStatus === 'success'
               ? 'Synchronizace proběhla úspěšně'
@@ -2389,13 +2385,13 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             onAnimationIteration={handleSyncAnimationIteration}
             className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${
               syncStatus === 'spinning'
-                ? 'animate-sync-spin text-indigo-400 opacity-100 scale-100'
+                ? 'animate-sync-spin m3-primary-text opacity-100 scale-100'
                 : syncStatus === 'success'
                 ? 'opacity-0 scale-75 pointer-events-none'
-                : 'opacity-100 scale-100 text-gray-400 hover:text-white'
+                : 'opacity-100 scale-100 text-gray-300 hover:text-white'
             }`}
           >
-            <span className="material-symbols-outlined text-[20px] leading-none select-none flex items-center justify-center">
+            <span className="material-symbols-outlined text-[19px] leading-none select-none flex items-center justify-center">
               sync
             </span>
           </div>
@@ -2408,7 +2404,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                 : 'opacity-0 scale-75 pointer-events-none'
             }`}
           >
-            <span className="material-symbols-outlined text-[20px] leading-none select-none flex items-center justify-center">
+            <span className="material-symbols-outlined text-[19px] leading-none select-none flex items-center justify-center">
               check
             </span>
           </div>
@@ -2419,12 +2415,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           onMouseUp={handleSettingsMouseUp}
           onMouseLeave={handleSettingsMouseLeave}
           onClick={handleSettingsClick}
-          className={`relative w-8 h-8 rounded-lg transition-colors flex items-center justify-center cursor-pointer shrink-0 ${
+          className={`relative w-8 h-8 rounded-full transition-all flex items-center justify-center cursor-pointer shrink-0 shadow-sm ${
             settingsHoldProgress > 0
               ? settingsHoldProgress > 60
-                ? 'bg-rose-500/20 text-rose-300'
-                : 'bg-indigo-500/20 text-indigo-300'
-              : 'text-gray-400 hover:text-white hover:bg-white/10'
+                ? 'bg-rose-500/25 text-rose-300'
+                : 'm3-primary-badge'
+              : 'bg-white/[0.04] hover:bg-white/[0.09] text-gray-300 hover:text-white'
           }`}
           title="Otevřít nastavení (podržením 3s otevřete správce ukončení a restartu)"
         >
@@ -2492,14 +2488,14 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           {/* Actions & Info Banner */}
           <div
             onClick={exitActions}
-            className="flex items-center justify-between px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.06] text-xs text-gray-300 hover:bg-white/[0.05] hover:text-white cursor-pointer transition select-none"
+            className="m-2 p-3 px-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] shadow-sm flex items-center justify-between text-xs text-gray-300 transition cursor-pointer select-none"
             title="Klikněte pro návrat zpět do vyhledávání (Esc)"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <span className="material-symbols-outlined text-base text-gray-400">arrow_back</span>
               {actionsParentItem.colorPreview && (
                 <div
-                  className="w-4 h-4 rounded border border-white/20 shadow-inner flex items-center justify-center shrink-0"
+                  className="w-4 h-4 rounded-full shadow-inner flex items-center justify-center shrink-0 ring-1 ring-white/20"
                   style={{ backgroundColor: actionsParentItem.colorPreview }}
                 />
               )}
@@ -2512,36 +2508,38 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                 <strong className="text-white font-medium">{actionsParentItem.name}</strong>
               </span>
             </div>
-            <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono">
-              <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/[0.08] text-gray-200 border border-white/[0.12] rounded font-mono text-[9px] leading-none whitespace-nowrap">Esc</kbd>
-              <span>Zpět</span>
+            <div className="flex items-center gap-1.5">
+              <span className="rounded-full px-2.5 py-1 bg-white/[0.06] text-gray-300 font-mono text-[10px] flex items-center gap-1">
+                <kbd className="font-bold text-[9px] leading-none">Esc</kbd>
+                <span>Zpět</span>
+              </span>
             </div>
           </div>
 
           {/* Unified Actions & Info Scrollable View */}
           <div
             ref={listRef}
-            className="max-h-[385px] overflow-y-auto p-2 focus:outline-none space-y-2 relative"
+            className="max-h-[385px] overflow-y-auto px-2 py-1 focus:outline-none space-y-2 relative"
           >
             {/* 1. Screenshot Preview or Compact Info Section (BEFORE actions) */}
             {actionsParentItem?.imagePreview ? (
-              <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+              <div className="p-3 rounded-2xl bg-white/[0.03] shadow-sm space-y-2">
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-300">
                     <span className="material-symbols-outlined text-sm text-gray-400">crop</span>
                     <span>Náhled výstřižku</span>
                   </div>
                   {actionsParentItem.info?.['Rozměry'] && (
-                    <span className="text-[10px] text-gray-400 font-mono bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.08]">
+                    <span className="text-[10px] text-gray-400 font-mono bg-white/[0.05] px-2 py-0.5 rounded-full">
                       {actionsParentItem.info['Rozměry']}
                     </span>
                   )}
                 </div>
-                <div className="w-full flex items-center justify-center p-2 bg-black/40 rounded-lg border border-white/[0.06] overflow-hidden">
+                <div className="w-full flex items-center justify-center p-2 bg-black/40 rounded-xl overflow-hidden shadow-inner">
                   <img
                     src={actionsParentItem.imagePreview}
                     alt={actionsParentItem.name}
-                    className="max-h-[190px] max-w-full object-contain rounded select-none shadow-md border border-white/10"
+                    className="max-h-[190px] max-w-full object-contain rounded-lg select-none shadow-md"
                     style={{ objectFit: 'contain' }}
                   />
                 </div>
@@ -2554,7 +2552,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
               const visibleEntries = allInfoEntries.slice(safePage * ITEMS_PER_PAGE, (safePage + 1) * ITEMS_PER_PAGE);
 
               return (
-                <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-1.5">
+                <div className="p-3 rounded-2xl bg-white/[0.03] shadow-sm space-y-2">
                   <div className="flex items-center justify-between px-1">
                     <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-300">
                       <span className="material-symbols-outlined text-sm text-gray-400">info</span>
@@ -2567,7 +2565,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                     </div>
                     <div className="flex items-center gap-2">
                       {allInfoEntries.length > ITEMS_PER_PAGE && (
-                        <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono bg-black/40 px-1.5 py-0.5 rounded border border-white/[0.06]">
+                        <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono bg-black/40 px-2 py-0.5 rounded-full">
                           <span>
                             {safePage + 1} / {totalPages}
                           </span>
@@ -2578,7 +2576,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                               e.stopPropagation();
                               setInfoPage((prev) => Math.max(0, prev - 1));
                             }}
-                            className="p-0.5 rounded hover:bg-white/10 text-gray-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center"
+                            className="p-0.5 rounded-full hover:bg-white/10 text-gray-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center"
                             title="Předchozí strana (←)"
                           >
                             <span className="material-symbols-outlined !text-[12px]" style={{ fontSize: '12px' }}>chevron_left</span>
@@ -2590,7 +2588,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                               e.stopPropagation();
                               setInfoPage((prev) => Math.min(totalPages - 1, prev + 1));
                             }}
-                            className="p-0.5 rounded hover:bg-white/10 text-gray-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center"
+                            className="p-0.5 rounded-full hover:bg-white/10 text-gray-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center"
                             title="Další strana (→)"
                           >
                             <span className="material-symbols-outlined !text-[12px]" style={{ fontSize: '12px' }}>chevron_right</span>
@@ -2612,10 +2610,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                           key={key}
                           onClick={() => handleCopyInfoValue(key, strVal)}
                           title={`Kliknutím zkopírujete „${strVal}“ do schránky`}
-                          className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border transition cursor-pointer min-w-0 ${
+                          className={`flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl transition cursor-pointer min-w-0 ${
                             isCopied
-                              ? 'bg-emerald-500/10 border-emerald-500/30'
-                              : 'bg-black/30 border-white/[0.06] hover:border-white/20 hover:bg-white/[0.04]'
+                              ? 'bg-emerald-500/20 text-emerald-200'
+                              : 'bg-black/30 hover:bg-white/[0.06] text-gray-300'
                           }`}
                         >
                           <span className="text-[11px] text-gray-400 truncate shrink-0 max-w-[45%] select-none font-medium">
@@ -2639,7 +2637,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
             {/* 2. Actions List */}
             {hasItemActions(actionsParentItem) && (
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {getItemActions(actionsParentItem).map((action, idx) => {
                   const isSelected = idx === selectedActionIndex;
                   const isVscode = action.settings === 'vscode' || action.action === 'vscode';
@@ -2650,8 +2648,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                   const isClose = action.action === 'close';
 
                   const itemSelectedClass = isSelected
-                    ? 'bg-white/[0.07] border-white/[0.14] text-white shadow-sm'
-                    : 'bg-transparent border-transparent hover:bg-white/[0.03] text-gray-300';
+                    ? 'm3-actions-selected-card text-white'
+                    : 'm3-item-card text-gray-300';
 
                   const iconColorClass = isClose
                     ? 'text-rose-400'
@@ -2662,12 +2660,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                     : 'text-gray-400';
 
                   const badgeClass = isClose
-                    ? 'bg-rose-500/10 border-rose-500/25 text-rose-300'
+                    ? 'bg-rose-500/15 text-rose-300'
                     : isVscode
-                    ? 'bg-sky-500/10 border-sky-500/25 text-sky-300'
+                    ? 'bg-sky-500/15 text-sky-300'
                     : isAndroid
-                    ? 'bg-pink-500/10 border-pink-500/25 text-pink-300'
-                    : 'bg-white/[0.05] border-white/[0.08] text-gray-300';
+                    ? 'bg-pink-500/15 text-pink-300'
+                    : 'bg-white/[0.06] text-gray-300';
 
                   return (
                     <div
@@ -2678,9 +2676,14 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                         setSelectedActionIndex(idx);
                         handleExecuteAction(actionsParentItem, action);
                       }}
-                      className={`flex items-center px-3 py-2 rounded-xl cursor-pointer transition-colors duration-150 gap-3 border ${itemSelectedClass}`}
+                      className={`relative flex items-center px-4 py-2.5 rounded-2xl cursor-pointer transition-all duration-150 gap-3.5 overflow-hidden ${itemSelectedClass}`}
                     >
-                      <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+                      {/* Left vertical indicator for selected action */}
+                      {isSelected && (
+                        <div className="absolute left-0 top-2 bottom-2 w-1.5 rounded-r-full m3-actions-indicator shadow-sm" />
+                      )}
+
+                      <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-white/[0.05]">
                         <span className={`material-symbols-outlined text-[19px] ${iconColorClass}`}>
                           {action.icon || (action.action === 'close' ? 'close' : action.action === 'clone' ? 'download' : action.action === 'clonerecursive' ? 'folder_zip' : action.action === 'mgclone' || action.action === 'mgclonerecursive' ? 'cloud_download' : action.action === 'copy' ? 'content_copy' : 'open_in_new')}
                         </span>
@@ -2691,7 +2694,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                           <span className="font-medium text-sm truncate leading-tight">
                             {action.name}
                           </span>
-                          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border font-medium uppercase ${badgeClass}`}>
+                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-medium uppercase ${badgeClass}`}>
                             {isVscode
                               ? 'VS Code'
                               : isAndroid
@@ -2717,14 +2720,14 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       </div>
 
                       {isSelected && (
-                        <div className="flex-shrink-0 text-xs flex items-center gap-1.5 text-gray-300">
+                        <div className="flex-shrink-0">
                           {isPreparation ? (
                             <span className="text-gray-400 italic text-[11px]">Připravujeme...</span>
                           ) : (
-                            <>
-                              <span className="text-gray-400 text-[11px]">Provést</span>
-                              <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/[0.08] text-gray-200 border border-white/[0.12] rounded font-mono text-[9px] leading-none whitespace-nowrap">Enter</kbd>
-                            </>
+                            <span className="m3-actions-pill px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow-sm">
+                              <kbd className="text-[10px] font-mono leading-none">↵</kbd>
+                              <span>Provést</span>
+                            </span>
                           )}
                         </div>
                       )}
@@ -2735,19 +2738,21 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             )}
           </div>
 
-          {/* Actions & Info Footer */}
-          <div className="px-4 py-2.5 bg-[#0a0a0d] border-t border-white/[0.06] rounded-b-2xl flex items-center justify-between text-[11px] text-gray-400">
+          {/* Actions & Info Floating Action Bar Footer */}
+          <div className="mx-2 my-2 px-4 py-2 rounded-2xl bg-white/[0.025] shadow-sm flex items-center justify-between text-xs text-gray-400">
             <button
               type="button"
               onClick={exitActions}
-              className="flex items-center gap-1 text-gray-400 hover:text-white transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-gray-200 transition cursor-pointer"
             >
               <span className="material-symbols-outlined text-sm">arrow_back</span>
               <span>Zpět do vyhledávání</span>
             </button>
-            <div className="flex items-center gap-2 font-mono text-gray-500">
+            <div className="flex items-center gap-2">
               {hasItemActions(actionsParentItem) && (
-                <span>{actionsParentItem.actions!.length} akcí</span>
+                <span className="rounded-full px-2.5 py-0.5 bg-white/[0.04] text-gray-400 font-mono text-[11px]">
+                  {actionsParentItem.actions!.length} akcí
+                </span>
               )}
             </div>
           </div>
@@ -2755,54 +2760,55 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       ) : isEasyClipMode ? (
         <>
           {/* EasyClip Header Banner */}
-          <div className="flex items-center justify-between px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.06] text-xs text-gray-300 select-none">
-            <div className="flex items-center gap-2">
+          <div className="m-2 p-3 px-4 rounded-2xl bg-white/[0.03] shadow-sm flex items-center justify-between text-xs text-gray-300 select-none">
+            <div className="flex items-center gap-2.5">
               <button
                 type="button"
                 onClick={exitEasyClip}
-                className="flex items-center gap-1.5 text-gray-400 hover:text-white transition cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-gray-200 transition cursor-pointer"
                 title="Zpět do vyhledávání (Esc)"
               >
                 <span className="material-symbols-outlined text-base">arrow_back</span>
+                <span>Zpět</span>
               </button>
-              <div className="flex items-center gap-1.5 font-medium">
+              <div className="flex items-center gap-2 font-medium">
                 <span className="material-symbols-outlined text-rose-400 text-base">content_paste</span>
                 <span className="text-white">Historie schránky</span>
                 {selectedEasyClipIds.size > 1 ? (
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/30 font-mono font-semibold">
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-mono font-semibold">
                     Vybráno {selectedEasyClipIds.size} položek
                   </span>
                 ) : (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.04] text-gray-400 border border-white/[0.08] font-mono">
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/[0.06] text-gray-300 font-mono">
                     {filteredEasyClipItems.length} {filteredEasyClipItems.length === 1 ? 'položka' : filteredEasyClipItems.length >= 2 && filteredEasyClipItems.length <= 4 ? 'položky' : 'položek'}
                   </span>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               {easyClipItems.length > 0 && (
                 <button
                   type="button"
                   onClick={handleClearEasyClip}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/[0.04] hover:bg-rose-500/15 border border-white/[0.08] hover:border-rose-500/30 text-gray-400 hover:text-rose-300 transition text-[11px] cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] hover:bg-rose-500/20 text-gray-300 hover:text-rose-200 transition text-xs cursor-pointer"
                   title="Smazat celou historii schránky"
                 >
-                  <span className="material-symbols-outlined text-xs">delete_sweep</span>
+                  <span className="material-symbols-outlined text-sm">delete_sweep</span>
                   <span>Vymazat</span>
                 </button>
               )}
-              <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono">
-                <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/[0.08] text-gray-200 border border-white/[0.12] rounded font-mono text-[9px] leading-none whitespace-nowrap">Esc</kbd>
-                <span>Zpět</span>
-              </div>
+              <span className="rounded-full px-2.5 py-1 bg-white/[0.06] text-gray-300 font-mono text-[10px] flex items-center gap-1">
+                <kbd className="font-bold text-[9px] leading-none">Esc</kbd>
+                <span>Zavřít</span>
+              </span>
             </div>
           </div>
 
           {/* EasyClip Items List */}
           <div
             ref={listRef}
-            className="max-h-[400px] overflow-y-auto space-y-1 p-1.5 focus:outline-none relative"
+            className="max-h-[400px] overflow-y-auto space-y-1.5 px-2 py-1 focus:outline-none relative"
           >
             {filteredEasyClipItems.length === 0 ? (
               <div className="py-12 flex flex-col items-center justify-center text-center text-gray-400">
@@ -2833,16 +2839,21 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                     key={item.id}
                     data-selected={idx === easyClipSelectedIndex}
                     onClick={(e) => handleEasyClipItemClick(item, idx, e)}
-                    className={`group relative flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-colors duration-150 select-none border ${
+                    className={`group relative flex items-start gap-3.5 p-3 rounded-2xl cursor-pointer transition-all duration-150 select-none overflow-hidden ${
                       isSelected
-                        ? 'bg-white/[0.07] border-white/[0.14] text-white shadow-sm'
-                        : 'bg-transparent border-transparent hover:bg-white/[0.03] text-gray-300'
-                    } ${isCursor && selectedEasyClipIds.size > 1 ? 'ring-1 ring-white/30' : ''}`}
+                        ? 'm3-selected-card text-white'
+                        : 'm3-item-card text-gray-300'
+                    } ${isCursor && selectedEasyClipIds.size > 1 ? 'ring-2 ring-white/40' : ''}`}
                   >
+                    {/* Left vertical indicator for selected item */}
+                    {isSelected && (
+                      <div className="absolute left-0 top-2 bottom-2 w-1.5 rounded-r-full m3-selected-indicator shadow-sm" />
+                    )}
+
                     {/* Icon or Image Thumbnail */}
                     <div className="shrink-0 mt-0.5">
                       {isImage ? (
-                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-black/40 border border-white/[0.08] flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-black/40 shadow-inner flex items-center justify-center">
                           {item.dataUrl ? (
                             <img
                               src={item.dataUrl}
@@ -2857,10 +2868,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                         </div>
                       ) : (
                         <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                          className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
                             isSelected
-                              ? 'bg-white/[0.08] text-rose-300 border border-white/[0.12]'
-                              : 'bg-white/[0.04] text-gray-400 border border-white/[0.06]'
+                              ? 'bg-white/[0.12] text-white'
+                              : 'bg-white/[0.05] text-rose-300'
                           }`}
                         >
                           <span className="material-symbols-outlined text-lg">
@@ -2871,7 +2882,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                     </div>
 
                     {/* Content details */}
-                    <div className="flex-1 min-w-0 pr-14">
+                    <div className="flex-1 min-w-0 pr-20">
                       {isImage ? (
                         <div>
                           <div className="flex items-center gap-2">
@@ -2879,12 +2890,12 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                               Obrázek ({item.width ?? '?'} × {item.height ?? '?'} px)
                             </span>
                             {sizeKb > 0 && (
-                              <span className="text-[10px] text-gray-500 font-mono">
+                              <span className="text-[10px] text-gray-400 font-mono">
                                 {sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`}
                               </span>
                             )}
                           </div>
-                          <div className="text-[11px] text-gray-500 mt-1 flex items-center gap-2">
+                          <div className="text-[11px] text-gray-400 mt-1 flex items-center gap-2">
                             <span>{formatRelativeTime(item.timestamp)}</span>
                           </div>
                         </div>
@@ -2894,30 +2905,30 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                           <div className="text-xs font-mono text-gray-200 line-clamp-3 whitespace-pre-wrap break-all select-none">
                             {item.text}
                           </div>
-                          <div className="flex items-center gap-2 mt-1.5 text-[10px] text-gray-400 font-mono">
-                            <span className="px-1.5 py-0.2 rounded bg-white/[0.04] border border-white/[0.08] text-gray-300">
+                          <div className="flex items-center gap-2 mt-2 text-[10px] text-gray-400 font-mono">
+                            <span className="px-2 py-0.5 rounded-full bg-white/[0.06] text-gray-300">
                               {charCount} {charCount === 1 ? 'znak' : charCount >= 2 && charCount <= 4 ? 'znaky' : 'znaků'}
                             </span>
                             {lineCount > 1 && (
-                              <span className="px-1.5 py-0.2 rounded bg-white/[0.04] border border-white/[0.08] text-gray-300">
+                              <span className="px-2 py-0.5 rounded-full bg-white/[0.06] text-gray-300">
                                 {lineCount} {lineCount >= 2 && lineCount <= 4 ? 'řádky' : 'řádků'}
                               </span>
                             )}
-                            <span className="text-gray-600">•</span>
-                            <span className="text-gray-500">{formatRelativeTime(item.timestamp)}</span>
+                            <span className="text-gray-500">•</span>
+                            <span className="text-gray-400">{formatRelativeTime(item.timestamp)}</span>
                           </div>
                         </div>
                       )}
                     </div>
 
                     {/* Actions on Item: Copy badge & Delete button OR Multi-select checkbox */}
-                    <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5">
+                    <div className="absolute right-3 top-3 flex items-center gap-2">
                       {selectedEasyClipIds.size > 1 ? (
                         <div
-                          className={`w-5 h-5 rounded flex items-center justify-center transition ${
+                          className={`w-5 h-5 rounded-full flex items-center justify-center transition ${
                             isItemMultiSelected
-                              ? 'bg-rose-500 text-white shadow-sm border border-rose-400'
-                              : 'border border-white/20 bg-white/5 text-transparent'
+                              ? 'bg-rose-500 text-white shadow-sm'
+                              : 'bg-white/10 text-transparent'
                           }`}
                         >
                           <span className="material-symbols-outlined text-[14px] leading-none font-bold">check</span>
@@ -2925,8 +2936,9 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       ) : (
                         <>
                           {isSelected && (
-                            <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/[0.08] text-gray-200 border border-white/[0.12] text-[10px] font-mono shadow-sm">
-                              <kbd className="font-sans text-[9px]">↵</kbd> Kopírovat
+                            <span className="m3-primary-pill hidden sm:inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold shadow-sm">
+                              <kbd className="text-[10px] font-mono leading-none">↵</kbd>
+                              <span>Kopírovat</span>
                             </span>
                           )}
                           <button
@@ -2934,7 +2946,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                             onClick={(e) => {
                               handleDeleteEasyClipItem(item.id, e);
                             }}
-                            className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"
                             title="Odstranit ze schránky"
                           >
                             <span className="material-symbols-outlined text-[16px]">delete</span>
@@ -2948,43 +2960,40 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             )}
           </div>
 
-          {/* EasyClip Footer Bar */}
-          <div className="px-4 py-2.5 bg-[#0a0a0d] border-t border-white/[0.06] rounded-b-2xl flex items-center justify-between text-[11px] text-gray-400">
+          {/* EasyClip Floating Action Bar Footer */}
+          <div className="mx-2 my-2 px-4 py-2 rounded-2xl bg-white/[0.025] shadow-sm flex items-center justify-between text-xs text-gray-400">
             <button
               type="button"
               onClick={exitEasyClip}
-              className="flex items-center gap-1 text-gray-400 hover:text-white transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-gray-200 transition cursor-pointer"
             >
               <span className="material-symbols-outlined text-sm">arrow_back</span>
               <span>Zpět do vyhledávání</span>
             </button>
             {selectedEasyClipIds.size > 1 ? (
-              <div className="flex items-center gap-3 text-[11px]">
-                <span className="flex items-center gap-1.5 text-gray-300 font-medium">
-                  <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded font-mono text-[9px] leading-none whitespace-nowrap">Enter</kbd>
-                  Kopírovat vybrané ({selectedEasyClipIds.size})
+              <div className="flex items-center gap-2">
+                <span className="bg-rose-500/20 text-rose-300 rounded-full px-3 py-1 text-xs font-medium flex items-center gap-1.5 shadow-sm">
+                  <kbd className="bg-rose-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold leading-none">↵</kbd>
+                  <span>Kopírovat vybrané ({selectedEasyClipIds.size})</span>
                 </span>
-                <span className="flex items-center gap-1.5 text-gray-400">
-                  <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/[0.08] text-gray-300 border border-white/[0.12] rounded font-mono text-[9px] leading-none whitespace-nowrap">Del</kbd>
-                  Smazat vybrané
-                </span>
-                <span className="flex items-center gap-1.5 text-gray-400">
-                  <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/[0.08] text-gray-300 border border-white/[0.12] rounded font-mono text-[9px] leading-none whitespace-nowrap">Esc</kbd> Zrušit výběr
+                <span className="bg-white/[0.06] text-gray-300 rounded-full px-3 py-1 text-xs font-medium flex items-center gap-1.5 shadow-sm">
+                  <kbd className="bg-white/[0.12] text-white px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold leading-none">Del</kbd>
+                  <span>Smazat</span>
                 </span>
               </div>
             ) : (
-              <div className="flex items-center gap-3 text-[11px] text-gray-400">
-                <span className="flex items-center gap-1.5 text-gray-300">
-                  <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/[0.08] text-gray-200 border border-white/[0.12] rounded font-mono text-[9px] leading-none whitespace-nowrap">Enter</kbd> Kopírovat
+              <div className="flex items-center gap-2">
+                <span className="m3-primary-badge rounded-full px-3 py-1 text-xs font-medium flex items-center gap-1.5 shadow-sm">
+                  <kbd className="m3-primary-pill px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold leading-none">↵</kbd>
+                  <span>Kopírovat</span>
                 </span>
-                <span className="flex items-center gap-1.5 text-gray-400">
-                  <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/[0.08] text-gray-300 border border-white/[0.12] rounded font-mono text-[9px] leading-none whitespace-nowrap">Del</kbd> Smazat
+                <span className="bg-white/[0.06] text-gray-300 rounded-full px-3 py-1 text-xs font-medium flex items-center gap-1.5 shadow-sm">
+                  <kbd className="bg-white/[0.12] text-white px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold leading-none">Del</kbd>
+                  <span>Smazat</span>
                 </span>
-                <span className="flex items-center gap-1.5 text-gray-400">
-                  <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/[0.08] text-gray-300 border border-white/[0.12] rounded font-mono text-[9px] leading-none whitespace-nowrap">Shift+↑↓</kbd> Výběr více
-                </span>
-                <span className="flex items-center gap-1.5 text-gray-400">
-                  <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/[0.08] text-gray-300 border border-white/[0.12] rounded font-mono text-[9px] leading-none whitespace-nowrap">Esc</kbd> Zpět
+                <span className="bg-white/[0.06] text-gray-300 rounded-full px-3 py-1 text-xs font-medium flex items-center gap-1.5 shadow-sm">
+                  <kbd className="bg-white/[0.12] text-white px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold leading-none">Shift+↑↓</kbd>
+                  <span>Více</span>
                 </span>
               </div>
             )}
@@ -2998,15 +3007,15 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             {parentItem && (
               <div
                 onClick={exitSubitems}
-                className="flex items-center justify-between px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.06] text-xs text-gray-300 hover:bg-white/[0.05] hover:text-white cursor-pointer transition select-none"
+                className="m-2 p-3 px-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] shadow-sm flex items-center justify-between text-xs text-gray-200 cursor-pointer transition select-none"
                 title="Klikněte pro návrat zpět (Esc)"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   <span className="material-symbols-outlined text-base text-gray-400">arrow_back</span>
                   <span>Podpoložky položky: <strong className="text-white font-medium">{parentItem.name}</strong></span>
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono">
-                  <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/[0.08] text-gray-200 border border-white/[0.12] rounded font-mono text-[9px] leading-none whitespace-nowrap">Esc</kbd>
+                  <kbd className="inline-flex items-center justify-center px-2 py-0.5 bg-white/[0.08] text-gray-200 rounded-full font-mono text-[9px] leading-none whitespace-nowrap">Esc</kbd>
                   <span>Zpět</span>
                 </div>
               </div>
@@ -3014,7 +3023,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
             <div
               ref={listRef}
-              className="max-h-[400px] overflow-y-auto divide-y divide-white/[0.04] p-1.5 focus:outline-none relative"
+              className="max-h-[420px] overflow-y-auto px-2 py-1.5 space-y-1.5 focus:outline-none relative"
             >
               {results.map((item, idx) => {
                 const isSelected = idx === selectedIndex;
@@ -3034,6 +3043,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                   item.sourceId?.startsWith('engine-')
                 );
 
+                const itemCardClass = isSelected
+                  ? 'm3-selected-card shadow-lg text-white'
+                  : 'bg-white/[0.025] hover:bg-white/[0.06] text-gray-300 shadow-sm';
+
                 return (
                   <div
                     key={item.id || `${item.name}-${idx}`}
@@ -3042,15 +3055,20 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       setSelectedIndex(idx);
                       handleItemClick(item, e);
                     }}
-                    className={`flex items-center px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-100 gap-3 ${
-                      isSelected
-                        ? 'bg-white/[0.07] border border-white/[0.14] text-white shadow-sm'
-                        : 'hover:bg-white/[0.03] text-gray-300 border border-transparent'
-                    }`}
+                    className={`m3-item-card rounded-2xl px-3.5 py-2.5 flex items-center gap-3.5 cursor-pointer transition-all select-none ${itemCardClass}`}
                   >
+                    {/* Left Accent Indicator in user's color */}
+                    <div
+                      className={`w-1.5 h-7 rounded-full shrink-0 transition-all ${
+                        isSelected ? 'm3-selected-indicator opacity-100 scale-y-100' : 'bg-transparent opacity-0 scale-y-50'
+                      }`}
+                    />
+
                     {/* Column 1: Icon or Image with subitems badge */}
-                    <div className="relative flex-shrink-0 flex items-center justify-center">
-                      <div className="w-8 h-8 flex items-center justify-center overflow-hidden">
+                    <div className="relative shrink-0 flex items-center justify-center">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden transition-colors ${
+                        isSelected ? 'bg-white/[0.1] shadow-inner' : 'bg-white/[0.04]'
+                      }`}>
                         {item.colorPreview ? (
                           <div
                             className="w-6 h-6 rounded-lg border border-white/20 shadow-inner flex items-center justify-center shrink-0"
@@ -3085,7 +3103,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                                   : 'code'
                               )
                             }
-                            className="w-6 h-6 text-gray-400"
+                            className="w-5 h-5 text-gray-300"
                           />
                         )}
                       </div>
@@ -3096,22 +3114,21 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                             enterSubitems(item);
                           }}
                           title={`Zobrazit ${item.options!.length} podpoložek (Alt+Enter)`}
-                          className="absolute -bottom-1 -right-1 min-w-[17px] h-[17px] px-1 rounded-full text-[9px] font-bold text-white flex items-center justify-center shadow-md cursor-pointer border border-[#0e0f12] transition-transform hover:scale-110 select-none"
-                          style={{ backgroundColor: 'var(--color-primary-hex, #6366f1)' }}
+                          className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[9px] font-bold text-white flex items-center justify-center shadow-md cursor-pointer transition-transform hover:scale-110 select-none m3-primary-pill"
                         >
                           {item.options!.length}
                         </div>
                       )}
                     </div>
 
-                    {/* Column 2: Name <br> Location */}
+                    {/* Column 2: Name & Subtitle */}
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm truncate leading-tight">
                           {item.name}
                         </span>
 
-                        {/* Standalone action/info chip only when item has actions or info but NO other chip */}
+                        {/* Standalone action/info chip in rounded-full pill style */}
                         {hasActionsOrInfo && !hasAnyChip && (
                           <button
                             type="button"
@@ -3119,10 +3136,10 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                               e.stopPropagation();
                               enterActions(item);
                             }}
-                            className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 transition cursor-pointer select-none flex items-center gap-1"
+                            className="px-2.5 py-0.5 rounded-full text-[10px] font-medium m3-actions-badge hover:opacity-90 transition cursor-pointer select-none flex items-center gap-1 shadow-sm"
                             title={hasActions ? 'Zobrazit akce a informace (Shift+Enter)' : 'Zobrazit informace (Shift+Enter)'}
                           >
-                            <span className="material-symbols-outlined text-[11px] leading-none">
+                            <span className="material-symbols-outlined text-[12px] leading-none">
                               {hasActions ? 'bolt' : 'info'}
                             </span>
                             <span>{hasActions ? 'Akce' : 'Info'}</span>
@@ -3138,13 +3155,13 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                                 enterActions(item);
                               }
                             }}
-                            className={`text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 select-none ${
-                              hasActionsOrInfo ? 'hover:bg-emerald-500/30 cursor-pointer' : 'cursor-default'
+                            className={`text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 shadow-sm flex items-center gap-1 select-none ${
+                              hasActionsOrInfo ? 'hover:bg-emerald-500/25 cursor-pointer' : 'cursor-default'
                             }`}
                             title={hasActionsOrInfo ? 'Git položka – klikněte nebo stiskněte Shift+Enter pro akce a informace' : 'Git položka'}
                           >
                             {hasActionsOrInfo && (
-                              <span className="material-symbols-outlined text-[11px] leading-none">
+                              <span className="material-symbols-outlined text-[12px] leading-none">
                                 {hasActions ? 'bolt' : 'info'}
                               </span>
                             )}
@@ -3157,14 +3174,14 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                             {item.shortcuts.map((shortcut) => (
                               <span
                                 key={shortcut}
-                                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-teal-500/15 text-teal-300 border border-teal-500/25 font-medium select-none"
+                                className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-300 font-medium select-none shadow-sm"
                               >
                                 {shortcut}
                               </span>
                             ))}
                           </div>
                         ) : item.sourceId === 'snippet' ? (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 font-medium">
+                          <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-teal-500/15 text-teal-300 font-medium shadow-sm">
                             Snippet
                           </span>
                         ) : null}
@@ -3174,34 +3191,34 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                             {item.shortcuts.map((shortcut) => (
                               <span
                                 key={shortcut}
-                                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/25 font-medium select-none"
+                                className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 font-medium select-none shadow-sm"
                               >
                                 {shortcut}
                               </span>
                             ))}
                           </div>
                         ) : item.sourceId === 'donkeytools' ? (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-medium">
+                          <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-300 font-medium shadow-sm">
                             DonkeyTools
                           </span>
                         ) : null}
                         {(item.sourceId === 'gmail' || item.id?.startsWith('gmail-')) && (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold">
+                          <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold shadow-sm">
                             Gmail
                           </span>
                         )}
                         {item.priority === -2 && (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">
+                          <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-sky-500/15 text-sky-300 font-medium shadow-sm">
                             MLog
                           </span>
                         )}
                         {item.priority === -1 && (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-gray-300">
+                          <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-white/10 text-gray-300 shadow-sm">
                             Kalkulačka
                           </span>
                         )}
                         {item.priority === 99 && (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-medium">
+                          <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-sky-500/15 text-sky-300 font-medium shadow-sm">
                             Aplikace
                           </span>
                         )}
@@ -3211,7 +3228,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                             const engine = SEARCH_ENGINES.find((e) => e.id === engineId);
                             if (engine) {
                               return (
-                                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-medium ${engine.chipClass}`}>
+                                <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full font-medium shadow-sm ${engine.chipClass}`}>
                                   {engine.chipLabel}
                                 </span>
                               );
@@ -3228,13 +3245,13 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                                 enterActions(item);
                               }
                             }}
-                            className={`text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 select-none ${
-                              hasActionsOrInfo ? 'hover:bg-amber-500/30 cursor-pointer' : 'cursor-default'
+                            className={`text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 shadow-sm flex items-center gap-1 select-none ${
+                              hasActionsOrInfo ? 'hover:bg-amber-500/25 cursor-pointer' : 'cursor-default'
                             }`}
                             title={hasActionsOrInfo ? 'MagicGate položka – klikněte nebo stiskněte Shift+Enter pro podrobné informace o serveru' : 'MagicGate'}
                           >
                             {hasActionsOrInfo && (
-                              <span className="material-symbols-outlined text-[11px] leading-none">
+                              <span className="material-symbols-outlined text-[12px] leading-none">
                                 {hasActions ? 'bolt' : 'info'}
                               </span>
                             )}
@@ -3242,40 +3259,29 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                           </button>
                         )}
                       </div>
-                      <div className="text-xs mt-0.5 font-mono flex items-center gap-1.5 flex-nowrap min-w-0 w-full overflow-hidden">
+                      <div className="text-xs mt-0.5 font-mono flex items-center gap-1.5 flex-nowrap min-w-0 w-full overflow-hidden text-gray-400">
                         {renderSubtitle(item, isSelected)}
                       </div>
                     </div>
 
-                    {/* Action icon on selection */}
+                    {/* Active item Primary Action Pill on the right */}
                     {isSelected && (
-                      <div className={`flex-shrink-0 text-xs flex items-center gap-1.5 opacity-80 ${isShiftDown && hasActionsOrInfo ? 'text-purple-300' : 'text-indigo-300'}`}>
+                      <div className="flex-shrink-0 flex items-center gap-1.5 ml-auto">
                         {isShiftDown && hasActionsOrInfo ? (
-                          <>
+                          <div className="m3-actions-pill rounded-full px-3 py-1 flex items-center gap-1.5 text-xs font-semibold shadow-md animate-in fade-in zoom-in-95 duration-100">
                             <span>{hasActions ? 'Akce' : 'Info'}</span>
-                            <span className="material-symbols-outlined text-sm">
-                              {hasActions ? 'bolt' : 'info'}
-                            </span>
-                          </>
+                            <kbd className="text-[10px] bg-black/25 px-1.5 py-0.5 rounded-full font-mono font-bold leading-none">⇧↵</kbd>
+                          </div>
                         ) : isAltDown && hasOptions ? (
-                          <>
+                          <div className="m3-primary-pill rounded-full px-3 py-1 flex items-center gap-1.5 text-xs font-semibold shadow-md animate-in fade-in zoom-in-95 duration-100">
                             <span>Subpoložky</span>
-                            <span className="material-symbols-outlined text-sm">subdirectory_arrow_right</span>
-                          </>
-                        ) : isCtrlDown && item.options?.[0] ? (
-                          <>
-                            <span>{item.options[0].action === 'copy' ? 'Kopírovat' : 'Otevřít'}</span>
-                            <span className="material-symbols-outlined text-sm">
-                              {item.options[0].action === 'copy' ? 'content_copy' : 'arrow_forward'}
-                            </span>
-                          </>
+                            <kbd className="text-[10px] bg-black/25 px-1.5 py-0.5 rounded-full font-mono font-bold leading-none">⌥↵</kbd>
+                          </div>
                         ) : (
-                          <>
+                          <div className="m3-primary-pill rounded-full px-3 py-1 flex items-center gap-1.5 text-xs font-semibold shadow-md animate-in fade-in zoom-in-95 duration-100">
                             <span>{item.action === 'copy' || item.action === 'paste' ? 'Kopírovat' : 'Otevřít'}</span>
-                            <span className="material-symbols-outlined text-sm">
-                              {item.action === 'copy' || item.action === 'paste' ? 'content_copy' : 'arrow_forward'}
-                            </span>
-                          </>
+                            <kbd className="text-[10px] bg-black/25 px-1.5 py-0.5 rounded-full font-mono font-bold leading-none">↵</kbd>
+                          </div>
                         )}
                       </div>
                     )}
@@ -3284,45 +3290,49 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
               })}
             </div>
 
-            {/* Footer bar */}
-            <div className="px-4 py-2 bg-[#0a0a0d] border-t border-white/[0.06] rounded-b-2xl flex items-center justify-between text-[11px] text-gray-400 select-none">
-              <div className="flex items-center gap-2">
+            {/* Material 3 Floating Action Bar */}
+            <div className="m-2.5 p-2 px-3.5 rounded-2xl bg-white/[0.03] shadow-sm flex items-center justify-between text-xs text-gray-400 select-none">
+              <div className="flex items-center gap-2 flex-wrap">
                 {parentItem ? (
                   <button
                     type="button"
                     onClick={exitSubitems}
-                    className="flex items-center gap-1.5 text-gray-400 hover:text-white transition cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-gray-200 transition cursor-pointer"
                   >
-                    <span className="material-symbols-outlined text-[15px]">arrow_back</span>
+                    <span className="material-symbols-outlined text-sm">arrow_back</span>
                     <span>Zpět na hlavní výběr</span>
                   </button>
                 ) : (
-                  <div className="flex items-center gap-3.5 text-[11px] text-gray-400">
-                    <span className="flex items-center gap-1.5">
-                      <kbd className="inline-flex items-center justify-center h-[17px] px-1.5 bg-white/[0.08] text-gray-200 border border-white/[0.12] rounded font-mono text-[9px] leading-none whitespace-nowrap">Enter</kbd> Otevřít
+                  <>
+                    <span className="m3-primary-badge rounded-full px-3 py-1 text-xs font-medium flex items-center gap-1.5 shadow-sm">
+                      <kbd className="m3-primary-pill px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold leading-none">↵</kbd>
+                      <span>Otevřít</span>
                     </span>
                     {hasItemActionsOrInfo(results[selectedIndex]) && (
-                      <span className="flex items-center gap-1.5 text-purple-300/90">
-                        <kbd className="inline-flex items-center justify-center h-[17px] px-1.5 bg-purple-500/15 text-purple-300 border border-purple-500/25 rounded font-mono text-[9px] leading-none whitespace-nowrap">Shift+Enter</kbd>{' '}
-                        {hasItemActions(results[selectedIndex]) && hasItemInfo(results[selectedIndex])
-                          ? 'Akce a info'
-                          : hasItemActions(results[selectedIndex])
-                          ? 'Akce'
-                          : 'Info'}
+                      <span className="m3-actions-badge rounded-full px-3 py-1 text-xs font-medium flex items-center gap-1.5 shadow-sm">
+                        <kbd className="m3-actions-pill px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold leading-none">Shift+↵</kbd>
+                        <span>
+                          {hasItemActions(results[selectedIndex]) && hasItemInfo(results[selectedIndex])
+                            ? 'Akce a info'
+                            : hasItemActions(results[selectedIndex])
+                            ? 'Akce'
+                            : 'Info'}
+                        </span>
                       </span>
                     )}
                     {results[selectedIndex]?.options && results[selectedIndex].options!.length > 0 && (
-                      <span className="flex items-center gap-1.5 text-indigo-300/80">
-                        <kbd className="inline-flex items-center justify-center h-[17px] px-1.5 bg-indigo-500/15 text-indigo-300 border border-indigo-500/25 rounded font-mono text-[9px] leading-none whitespace-nowrap">Alt+Enter</kbd> Subpoložky
+                      <span className="bg-white/[0.06] text-gray-300 rounded-full px-3 py-1 text-xs font-medium flex items-center gap-1.5 shadow-sm">
+                        <kbd className="bg-white/[0.12] text-white px-1.5 py-0.5 rounded-full text-[9px] font-mono font-bold leading-none">Alt+↵</kbd>
+                        <span>Subpoložky ({results[selectedIndex].options!.length})</span>
                       </span>
                     )}
-                    {results[selectedIndex]?.options?.[0] && (
-                      <span className="flex items-center gap-1.5 text-teal-300/80">
-                        <kbd className="inline-flex items-center justify-center h-[17px] px-1.5 bg-teal-500/15 text-teal-300 border border-teal-500/25 rounded font-mono text-[9px] leading-none whitespace-nowrap">Ctrl+Enter</kbd> {results[selectedIndex].options![0].action === 'copy' ? 'Kopírovat' : '1. volba'}
-                      </span>
-                    )}
-                  </div>
+                  </>
                 )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full px-2.5 py-0.5 bg-white/[0.04] text-gray-400 font-mono text-[11px]">
+                  {results.length} výsledků
+                </span>
               </div>
             </div>
           </>

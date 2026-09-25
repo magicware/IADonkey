@@ -150,6 +150,29 @@ export function applyPrimaryColor(hexColor?: string) {
     .ring-indigo-500\\/50 {
       --tw-ring-color: rgba(${r}, ${g}, ${b}, 0.5) !important;
     }
+
+    /* Material 3 Expressive tokens */
+    .m3-selected-card {
+      background-color: rgba(${r}, ${g}, ${b}, 0.22) !important;
+      box-shadow: 0 6px 24px -4px rgba(${r}, ${g}, ${b}, 0.38) !important;
+    }
+    .m3-selected-indicator {
+      background-color: ${fullHex} !important;
+    }
+    .m3-primary-pill {
+      background-color: ${fullHex} !important;
+      color: #ffffff !important;
+    }
+    .m3-primary-badge {
+      background-color: rgba(${r}, ${g}, ${b}, 0.18) !important;
+      color: ${hexLighter} !important;
+    }
+    .m3-primary-text {
+      color: ${hexLighter} !important;
+    }
+    .m3-primary-bg-subtle {
+      background-color: rgba(${r}, ${g}, ${b}, 0.12) !important;
+    }
   `;
 }
 
@@ -280,6 +303,26 @@ export function applyActionsColor(hexColor?: string) {
     /* Shadows */
     .shadow-purple-900\\/30 {
       --tw-shadow-color: rgba(${r}, ${g}, ${b}, 0.35) !important;
+    }
+
+    /* Material 3 Actions tokens */
+    .m3-actions-selected-card {
+      background-color: rgba(${r}, ${g}, ${b}, 0.22) !important;
+      box-shadow: 0 6px 24px -4px rgba(${r}, ${g}, ${b}, 0.38) !important;
+    }
+    .m3-actions-indicator {
+      background-color: ${fullHex} !important;
+    }
+    .m3-actions-pill {
+      background-color: ${fullHex} !important;
+      color: #ffffff !important;
+    }
+    .m3-actions-badge {
+      background-color: rgba(${r}, ${g}, ${b}, 0.18) !important;
+      color: ${hexLighter} !important;
+    }
+    .m3-actions-text {
+      color: ${hexLighter} !important;
     }
   `;
 }

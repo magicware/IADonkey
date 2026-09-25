@@ -50,7 +50,7 @@ const ColorPickerSection: React.FC<ColorPickerSectionProps> = ({
   );
 
   return (
-    <div className="space-y-3 pt-4 border-t border-white/10">
+    <div className="space-y-3 pt-2">
       <div>
         <h4 className="font-semibold text-sm text-white flex items-center gap-2">
           <span className={`material-symbols-outlined text-lg ${iconColorClass}`}>{icon}</span>
@@ -59,10 +59,10 @@ const ColorPickerSection: React.FC<ColorPickerSectionProps> = ({
         <p className="text-[13px] text-gray-400 mt-1">{description}</p>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-white/[0.02] border border-white/5 p-4 rounded-xl">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white/[0.03] p-4 rounded-2xl shadow-sm">
         {/* Active color preview indicator (left) */}
         <div className="flex items-center gap-3">
-          <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-white/20 shadow-inner flex items-center justify-center">
+          <div className="relative w-10 h-10 rounded-full overflow-hidden shadow-inner flex items-center justify-center ring-2 ring-white/20">
             <div
               className="w-full h-full"
               style={{ backgroundColor: effectiveColor }}
@@ -84,7 +84,7 @@ const ColorPickerSection: React.FC<ColorPickerSectionProps> = ({
               type="button"
               onClick={() => onColorChange(preset.hex)}
               title={preset.name}
-              className={`w-7 h-7 rounded-full transition transform hover:scale-110 flex items-center justify-center cursor-pointer ${
+              className={`w-7 h-7 rounded-full transition transform hover:scale-110 flex items-center justify-center cursor-pointer shadow-sm ${
                 effectiveColor.toLowerCase() === preset.hex.toLowerCase()
                   ? 'ring-2 ring-white ring-offset-2 ring-offset-[#181920]'
                   : 'opacity-70 hover:opacity-100'
@@ -105,7 +105,7 @@ const ColorPickerSection: React.FC<ColorPickerSectionProps> = ({
               }
             }}
             title="Nabrat barvu z obrazovky (Kapátko)"
-            className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-gray-300 hover:text-white transition flex items-center justify-center cursor-pointer ml-1"
+            className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition flex items-center justify-center cursor-pointer ml-1 shadow-sm"
           >
             <span className="material-symbols-outlined text-sm">colorize</span>
           </button>
@@ -3920,11 +3920,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   return (
     <div className="w-full h-screen flex bg-[#0e0f12] text-gray-200 select-none overflow-hidden font-sans">
       {/* Left Sidebar */}
-      <aside className="w-60 bg-[#0a0a0d] border-r border-white/[0.06] flex flex-col shrink-0">
+      <aside className="w-60 bg-[#121319] flex flex-col shrink-0 shadow-2xl z-10">
         {/* Sidebar Brand Header */}
-        <div className="p-4 flex items-center justify-between border-b border-white/[0.04]">
+        <div className="p-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white shrink-0">
+            <div className="w-8 h-8 rounded-full bg-white/[0.06] flex items-center justify-center text-white shrink-0 shadow-sm">
               <span className="material-symbols-outlined text-[19px]">settings</span>
             </div>
             <div>
@@ -3935,7 +3935,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setShowChangelog(true)}
-            className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-white/[0.06] hover:bg-white/[0.1] text-gray-300 border border-white/[0.08] transition cursor-pointer"
+            className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium bg-white/[0.06] hover:bg-white/[0.1] text-gray-300 transition cursor-pointer shadow-sm"
             title="Kliknutím zobrazíte historii verzí a novinky (Changelog)"
           >
             v{CURRENT_APP_VERSION}
@@ -3947,17 +3947,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('sources')}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer ${
               activeTab === 'sources'
-                ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-sm'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.03] border border-transparent'
+                ? 'm3-selected-card text-white font-semibold'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
             }`}
           >
             <div className="flex items-center gap-2.5">
               <span className={`material-symbols-outlined text-lg ${activeTab === 'sources' ? 'text-white' : 'text-gray-400'}`}>database</span>
               <span>Zdroje dat</span>
             </div>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-gray-300 border border-white/[0.08] font-mono">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.08] text-gray-300 font-mono">
               {formData.sources.length}
             </span>
           </button>
@@ -3966,10 +3966,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('extensions')}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer ${
               activeTab === 'extensions'
-                ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-sm'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.03] border border-transparent'
+                ? 'm3-selected-card text-white font-semibold'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
             }`}
           >
             <div className="flex items-center gap-2.5">
@@ -3977,7 +3977,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <span>Rozšíření</span>
             </div>
             {activeExtensionsCount > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-gray-300 border border-white/[0.08] font-mono">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.08] text-gray-300 font-mono">
                 {activeExtensionsCount}
               </span>
             )}
@@ -3988,10 +3988,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('magicgate')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'magicgate'
-                  ? 'bg-amber-500/10 text-amber-200 border border-amber-500/25 shadow-sm'
-                  : 'text-gray-400 hover:text-amber-200 hover:bg-white/[0.03] border border-transparent'
+                  ? 'bg-amber-500/20 text-amber-200 font-semibold shadow-sm'
+                  : 'text-gray-400 hover:text-amber-200 hover:bg-white/[0.04]'
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -4006,10 +4006,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('mlog')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'mlog'
-                  ? 'bg-sky-500/10 text-sky-200 border border-sky-500/25 shadow-sm'
-                  : 'text-gray-400 hover:text-sky-200 hover:bg-white/[0.03] border border-transparent'
+                  ? 'bg-sky-500/20 text-sky-200 font-semibold shadow-sm'
+                  : 'text-gray-400 hover:text-sky-200 hover:bg-white/[0.04]'
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -4024,10 +4024,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('github')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'github'
-                  ? 'bg-emerald-500/10 text-emerald-200 border border-emerald-500/25 shadow-sm'
-                  : 'text-gray-400 hover:text-emerald-200 hover:bg-white/[0.03] border border-transparent'
+                  ? 'bg-emerald-500/20 text-emerald-200 font-semibold shadow-sm'
+                  : 'text-gray-400 hover:text-emerald-200 hover:bg-white/[0.04]'
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -4044,10 +4044,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('vscode')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'vscode'
-                  ? 'bg-cyan-500/10 text-cyan-200 border border-cyan-500/25 shadow-sm'
-                  : 'text-gray-400 hover:text-cyan-200 hover:bg-white/[0.03] border border-transparent'
+                  ? 'bg-cyan-500/20 text-cyan-200 font-semibold shadow-sm'
+                  : 'text-gray-400 hover:text-cyan-200 hover:bg-white/[0.04]'
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -4062,10 +4062,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('android-studio')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'android-studio'
-                  ? 'bg-pink-500/10 text-pink-200 border border-pink-500/25 shadow-sm'
-                  : 'text-gray-400 hover:text-pink-200 hover:bg-white/[0.03] border border-transparent'
+                  ? 'bg-pink-500/20 text-pink-200 font-semibold shadow-sm'
+                  : 'text-gray-400 hover:text-pink-200 hover:bg-white/[0.04]'
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -4080,10 +4080,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('donkey-tools')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'donkey-tools'
-                  ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-sm'
-                  : 'text-gray-400 hover:text-rose-200 hover:bg-white/[0.03] border border-transparent'
+                  ? 'm3-selected-card text-white font-semibold'
+                  : 'text-gray-400 hover:text-rose-200 hover:bg-white/[0.04]'
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -4097,10 +4097,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('snippets')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer ${
+            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer ${
               activeTab === 'snippets'
-                ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-sm'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.03] border border-transparent'
+                ? 'm3-selected-card text-white font-semibold'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
             }`}
           >
             <span className={`material-symbols-outlined text-lg ${activeTab === 'snippets' ? 'text-white' : 'text-gray-400'}`}>draw</span>
@@ -4111,10 +4111,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('general')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer ${
+            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer ${
               activeTab === 'general'
-                ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-sm'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.03] border border-transparent'
+                ? 'm3-selected-card text-white font-semibold'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
             }`}
           >
             <span className={`material-symbols-outlined text-lg ${activeTab === 'general' ? 'text-white' : 'text-gray-400'}`}>tune</span>
@@ -4125,10 +4125,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('system')}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer ${
               activeTab === 'system' || activeTab === 'updates'
-                ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-sm'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.03] border border-transparent'
+                ? 'm3-selected-card text-white font-semibold'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
             }`}
           >
             <div className="flex items-center gap-2.5">
@@ -4148,7 +4148,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {crashLogs.length > 0 ? (
                 <span
                   title={`${crashLogs.length} ${crashLogs.length === 1 ? 'chyba v protokolu' : crashLogs.length < 5 ? 'chyby v protokolu' : 'chyb v protokolu'}`}
-                  className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/25 font-mono font-bold"
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-mono font-bold"
                 >
                   {crashLogs.length}
                 </span>
@@ -4160,10 +4160,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('help')}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer ${
               activeTab === 'help'
-                ? 'bg-white/[0.08] text-white border border-white/[0.12] shadow-sm'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.03] border border-transparent'
+                ? 'm3-selected-card text-white font-semibold'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
             }`}
           >
             <div className="flex items-center gap-2.5">
@@ -4177,17 +4177,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('develop')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer ${
                 activeTab === 'develop'
-                  ? 'bg-amber-500/10 text-amber-200 border border-amber-500/25 shadow-sm'
-                  : 'text-amber-400/80 hover:text-amber-200 hover:bg-amber-500/10 border border-amber-500/20'
+                  ? 'bg-amber-500/20 text-amber-200 font-semibold shadow-sm'
+                  : 'text-amber-400/80 hover:text-amber-200 hover:bg-amber-500/10'
               }`}
             >
               <div className="flex items-center gap-2.5">
                 <span className="material-symbols-outlined text-lg text-amber-400">bug_report</span>
                 <span>Vývojář</span>
               </div>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/25 uppercase tracking-wider font-bold">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 uppercase tracking-wider font-bold">
                 DEV
               </span>
             </button>
@@ -4199,7 +4199,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       {/* Main Right Content Pane */}
       <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#0e0f12]">
         {/* Right Pane Header */}
-        <header className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between bg-[#0a0a0d]/40 shrink-0">
+        <header className="px-6 py-4 flex items-center justify-between bg-transparent shrink-0">
           <div>
             <h2 className="text-base font-semibold text-white tracking-tight">
               {activeTab === 'sources' && 'Zdroje dat'}
@@ -4233,7 +4233,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </p>
           </div>
           {saveSuccess && (
-            <span className="text-[13px] text-emerald-400 flex items-center gap-1.5 font-medium animate-fade-in bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg shrink-0">
+            <span className="text-[13px] text-emerald-300 flex items-center gap-1.5 font-medium animate-fade-in bg-emerald-500/15 px-3.5 py-1.5 rounded-full shadow-sm shrink-0">
               <span className="material-symbols-outlined text-base">check_circle</span>
               Změny uloženy
             </span>
@@ -7641,14 +7641,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {activeTab === 'general' && (
             <div className="space-y-6">
               {/* Hotkey Section */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-sm text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg text-indigo-400">keyboard</span>
-                  Globální klávesová zkratka
-                </h4>
-                <p className="text-[13px] text-gray-400 mt-1">
-                  Kombinace kláves pro otevření vyhledávacího okna uprostřed monitoru s myší.
-                </p>
+              <div className="space-y-3 bg-white/[0.03] p-4 rounded-2xl shadow-sm">
+                <div>
+                  <h4 className="font-semibold text-sm text-white flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg text-indigo-400">keyboard</span>
+                    Globální klávesová zkratka
+                  </h4>
+                  <p className="text-[13px] text-gray-400 mt-1">
+                    Kombinace kláves pro otevření vyhledávacího okna uprostřed monitoru s myší.
+                  </p>
+                </div>
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <div className="relative">
@@ -7666,12 +7668,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         onBlur={handleHotkeyBlur}
                         onKeyDown={handleHotkeyKeyDown}
                         onKeyUp={handleHotkeyKeyUp}
-                        className={`w-64 border rounded-xl px-3 py-2.5 text-sm font-mono cursor-pointer transition outline-none select-none text-center font-semibold ${
+                        className={`w-64 rounded-full px-4 py-2.5 text-sm font-mono cursor-pointer transition outline-none select-none text-center font-semibold shadow-sm ${
                           hotkeyError
-                            ? 'bg-rose-950/30 border-rose-500 text-rose-300 ring-2 ring-rose-500/30'
+                            ? 'bg-rose-950/40 text-rose-300 ring-2 ring-rose-500/50'
                             : isRecordingHotkey
-                            ? 'bg-indigo-950/60 border-indigo-400 ring-2 ring-indigo-500/50 text-indigo-200'
-                            : 'bg-black/30 border-white/10 text-white hover:border-white/20'
+                            ? 'm3-selected-card text-white ring-2 ring-white/50'
+                            : 'bg-white/[0.06] text-white hover:bg-white/[0.1]'
                         }`}
                         placeholder="Klikněte pro nastavení zkratky"
                       />
@@ -7729,7 +7731,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               />
 
               {/* Installed Apps Section */}
-              <div className="space-y-3 pt-4 border-t border-white/10">
+              <div className="space-y-3 p-4 rounded-2xl bg-white/[0.03] shadow-sm">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h4 className="font-semibold text-sm text-white flex items-center gap-2">
@@ -7757,7 +7759,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {/* Default Search Engine Section */}
-              <div className="space-y-3 pt-4 border-t border-white/10">
+              <div className="space-y-3 p-4 rounded-2xl bg-white/[0.03] shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h4 className="font-semibold text-sm text-white flex items-center gap-2">
@@ -7786,7 +7788,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         setFormData(updated);
                         handleSave(updated);
                       }}
-                      className="bg-black/40 border border-white/15 hover:border-indigo-500/50 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 transition cursor-pointer min-w-[200px]"
+                      className="bg-black/40 rounded-full px-4 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-indigo-500/50 transition cursor-pointer min-w-[200px] shadow-sm"
                     >
                       {SEARCH_ENGINES.map((engine) => (
                         <option key={engine.id} value={engine.id} className="bg-[#181920] text-white">
