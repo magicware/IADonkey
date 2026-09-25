@@ -325,8 +325,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // EasyClip API
   getEasyClipItems: (): Promise<EasyClipItem[]> => ipcRenderer.invoke('easyclip-get-items'),
-  copyEasyClipItem: (id: string): Promise<boolean> => ipcRenderer.invoke('easyclip-copy-item', id),
-  copyMultipleEasyClipItems: (ids: string[]): Promise<boolean> => ipcRenderer.invoke('easyclip-copy-multiple', ids),
+  copyEasyClipItem: (id: string, paste: boolean = true): Promise<boolean> => ipcRenderer.invoke('easyclip-copy-item', id, paste),
+  copyMultipleEasyClipItems: (ids: string[], paste: boolean = true): Promise<boolean> => ipcRenderer.invoke('easyclip-copy-multiple', ids, paste),
   deleteEasyClipItem: (id: string): Promise<boolean> => ipcRenderer.invoke('easyclip-delete-item', id),
   deleteMultipleEasyClipItems: (ids: string[]): Promise<boolean> => ipcRenderer.invoke('easyclip-delete-multiple', ids),
   clearEasyClipHistory: (): Promise<boolean> => ipcRenderer.invoke('easyclip-clear-history'),

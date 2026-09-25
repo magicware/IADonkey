@@ -279,6 +279,7 @@ export interface UpdateInfo {
   currentVersion: string;
   releaseNotes?: string;
   downloadUrl?: string;
+  isSimulated?: boolean;
 }
 
 export interface DownloadProgress {

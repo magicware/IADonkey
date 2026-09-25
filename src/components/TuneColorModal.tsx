@@ -95,11 +95,11 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
         </div>
 
         {/* Swatches comparison */}
-        <div className="grid grid-cols-2 gap-3 p-3.5 bg-white/[0.03] rounded-2xl">
+        <div className="grid grid-cols-2 gap-3 p-3.5 bg-white/[0.03] border border-white/10 rounded-2xl">
           <div className="space-y-1.5">
             <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Původní</span>
             <div
-              className="h-14 rounded-2xl shadow-inner flex items-center justify-center transition"
+              className="h-14 rounded-2xl border border-white/10 shadow-inner flex items-center justify-center transition overflow-hidden"
               style={{ backgroundColor: initialParsed.hex }}
             >
               <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-sm text-[11px] font-mono font-semibold text-white">
@@ -110,7 +110,7 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
           <div className="space-y-1.5">
             <span className="text-[11px] font-semibold text-rose-400 uppercase tracking-wider">Nová barva</span>
             <div
-              className="h-14 rounded-2xl shadow-inner flex items-center justify-center transition"
+              className="h-14 rounded-2xl border border-white/10 shadow-inner flex items-center justify-center transition overflow-hidden"
               style={{ backgroundColor: rgbaString }}
             >
               <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-sm text-[11px] font-mono font-semibold text-white">
@@ -187,14 +187,14 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
 
           {/* Alpha Slider */}
           <div className="flex items-center gap-3 text-xs font-medium">
-            <span className="w-16 shrink-0 text-amber-400 font-bold whitespace-nowrap">A ({Math.round(a * 100)}%)</span>
+            <span className="w-16 shrink-0 text-gray-300 font-bold whitespace-nowrap">A ({Math.round(a * 100)}%)</span>
             <input
               type="range"
               min={0}
               max={100}
               value={Math.round(a * 100)}
               onChange={(e) => setA(Number((Number(e.target.value) / 100).toFixed(2)))}
-              className="flex-1 accent-amber-500 cursor-pointer h-1.5 bg-white/10 rounded-full"
+              className="flex-1 accent-gray-300 cursor-pointer h-1.5 bg-white/10 rounded-full"
             />
             <input
               type="number"
@@ -241,7 +241,7 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
         <button
           type="button"
           onClick={handleSave}
-          className="m3-primary-pill px-5 py-2.5 rounded-full text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-md"
+          className="px-5 py-2.5 rounded-full text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white"
         >
           <span className="material-symbols-outlined text-sm">check</span>
           <span>Uložit barvu</span>

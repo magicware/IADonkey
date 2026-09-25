@@ -154,7 +154,7 @@ export function applyPrimaryColor(hexColor?: string) {
     /* Material 3 Expressive tokens */
     .m3-selected-card {
       background-color: rgba(${r}, ${g}, ${b}, 0.22) !important;
-      box-shadow: 0 6px 24px -4px rgba(${r}, ${g}, ${b}, 0.38) !important;
+      box-shadow: none !important;
     }
     .m3-selected-indicator {
       background-color: ${fullHex} !important;
@@ -172,6 +172,9 @@ export function applyPrimaryColor(hexColor?: string) {
     }
     .m3-primary-bg-subtle {
       background-color: rgba(${r}, ${g}, ${b}, 0.12) !important;
+    }
+    .m3-primary-surface {
+      background-color: rgba(${r}, ${g}, ${b}, 0.2) !important;
     }
   `;
 }
@@ -308,7 +311,7 @@ export function applyActionsColor(hexColor?: string) {
     /* Material 3 Actions tokens */
     .m3-actions-selected-card {
       background-color: rgba(${r}, ${g}, ${b}, 0.22) !important;
-      box-shadow: 0 6px 24px -4px rgba(${r}, ${g}, ${b}, 0.38) !important;
+      box-shadow: none !important;
     }
     .m3-actions-indicator {
       background-color: ${fullHex} !important;

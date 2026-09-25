@@ -28,7 +28,7 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-2">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center text-white shrink-0 shadow-sm">
+            <div className="w-10 h-10 rounded-full m3-primary-badge flex items-center justify-center shrink-0 shadow-sm">
               <span className="material-symbols-outlined text-2xl select-none leading-none">auto_awesome</span>
             </div>
             <div className="min-w-0 flex-1">
@@ -82,7 +82,7 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({
         <div className="pt-2 flex items-center justify-end">
           <button
             onClick={onDismiss}
-            className="m3-primary-pill px-6 py-2.5 text-xs font-semibold rounded-full transition cursor-pointer shadow-md"
+            className="px-6 py-2.5 text-xs font-semibold text-gray-200 hover:text-white bg-white/[0.06] hover:bg-white/[0.12] rounded-full transition cursor-pointer shadow-sm"
           >
             Rozumím
           </button>

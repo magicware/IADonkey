@@ -1063,22 +1063,26 @@ function setupIpcHandlers() {
     return easyClipService.getItems();
   });
 
-  ipcMain.handle('easyclip-copy-item', async (_event, id: string) => {
+  ipcMain.handle('easyclip-copy-item', async (_event, id: string, paste: boolean = true) => {
     const success = await easyClipService.copyItem(id);
     if (success) {
       windowManager.hideImmediately();
-      const hwnd = windowManager.getMainWindowHandle();
-      pasteService.simulatePaste(80, hwnd);
+      if (paste) {
+        const hwnd = windowManager.getMainWindowHandle();
+        pasteService.simulatePaste(80, hwnd);
+      }
     }
     return success;
   });
 
-  ipcMain.handle('easyclip-copy-multiple', async (_event, ids: string[]) => {
+  ipcMain.handle('easyclip-copy-multiple', async (_event, ids: string[], paste: boolean = true) => {
     const success = await easyClipService.copyMultipleItems(ids);
     if (success) {
       windowManager.hideImmediately();
-      const hwnd = windowManager.getMainWindowHandle();
-      pasteService.simulatePaste(80, hwnd);
+      if (paste) {
+        const hwnd = windowManager.getMainWindowHandle();
+        pasteService.simulatePaste(80, hwnd);
+      }
     }
     return success;
   });

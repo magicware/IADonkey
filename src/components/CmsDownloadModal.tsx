@@ -167,13 +167,13 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
       {/* Header - Native titlebar has close button, so no duplicate [X] here */}
       <div className="p-5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center text-white">
+          <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
             <span className="material-symbols-outlined text-xl">folder_zip</span>
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-white text-base">Stažení CMSinFS zdrojáků</h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-white/[0.06] text-gray-300 font-medium">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-purple-500/20 text-purple-300 font-medium">
                 CMSinFS
               </span>
             </div>
@@ -190,7 +190,7 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
         <div className="bg-white/[0.03] rounded-2xl p-4 space-y-2 shrink-0">
           <div className="flex items-center justify-between text-xs text-gray-400 font-medium">
             <span className="flex items-center gap-1.5 text-gray-300">
-              <span className="material-symbols-outlined text-[15px] text-gray-400">folder_open</span>
+              <span className="material-symbols-outlined text-[15px] text-purple-400">folder_open</span>
               Cílová složka instance:
             </span>
             <span className="text-[11px] text-gray-500">Čistý přepis složky</span>
@@ -199,7 +199,7 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
             {targetDir || 'Není zadána cílová složka'}
           </div>
           <div className="text-[11px] text-gray-400 flex items-center gap-1.5 pt-0.5">
-            <span className="material-symbols-outlined text-[13px] text-emerald-400">info</span>
+            <span className="material-symbols-outlined text-[13px] text-purple-400">info</span>
             <span>Před rozbalením se složka instance kompletně vyčistí – nezůstanou v ní staré soubory.</span>
           </div>
         </div>
@@ -208,8 +208,8 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
         {(status === 'downloading' || status === 'purging' || status === 'extracting') && (
           <div className="bg-white/[0.03] rounded-2xl p-4 space-y-3 text-center shrink-0">
             {/* SVG rotating ring spinner with STATIC upright icon inside */}
-            <div className="relative w-11 h-11 rounded-full bg-white/[0.04] flex items-center justify-center mx-auto">
-              <svg className="animate-spin w-11 h-11 text-white absolute inset-0" viewBox="0 0 44 44" fill="none">
+            <div className="relative w-11 h-11 rounded-full bg-purple-500/10 flex items-center justify-center mx-auto">
+              <svg className="animate-spin w-11 h-11 text-purple-400 absolute inset-0" viewBox="0 0 44 44" fill="none">
                 <circle cx="22" cy="22" r="21" stroke="currentColor" strokeWidth="1" className="opacity-20" />
                 <circle
                   cx="22"
@@ -222,7 +222,7 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
                   className="opacity-90"
                 />
               </svg>
-              <span className="material-symbols-outlined text-lg text-white select-none">download</span>
+              <span className="material-symbols-outlined text-lg text-purple-400 select-none">download</span>
             </div>
 
             <div>
@@ -240,25 +240,25 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
             {percent !== undefined ? (
               <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden">
                 <div
-                  className="h-full bg-white transition-all duration-200 rounded-full"
+                  className="h-full bg-purple-600 transition-all duration-200 rounded-full"
                   style={{ width: `${percent}%` }}
                 />
               </div>
             ) : (
               <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden">
-                <div className="h-full w-1/3 bg-white/70 rounded-full animate-[indeterminate_1.5s_infinite_linear]" />
+                <div className="h-full w-1/3 bg-purple-600/80 rounded-full animate-[indeterminate_1.5s_infinite_linear]" />
               </div>
             )}
 
             {/* Steps indicator */}
             <div className="grid grid-cols-3 gap-2 text-[11px]">
-              <div className={`p-1.5 rounded-full text-center font-medium ${status === 'downloading' ? 'bg-white/[0.1] text-white' : 'bg-emerald-500/15 text-emerald-400'}`}>
+              <div className={`p-1.5 rounded-full text-center font-medium ${status === 'downloading' ? 'bg-purple-500/20 text-purple-300' : 'bg-emerald-500/15 text-emerald-400'}`}>
                 1. Stažení ZIP
               </div>
-              <div className={`p-1.5 rounded-full text-center font-medium ${status === 'purging' ? 'bg-white/[0.1] text-white' : status === 'extracting' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.03] text-gray-500'}`}>
+              <div className={`p-1.5 rounded-full text-center font-medium ${status === 'purging' ? 'bg-purple-500/20 text-purple-300' : status === 'extracting' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.03] text-gray-500'}`}>
                 2. Čištění složky
               </div>
-              <div className={`p-1.5 rounded-full text-center font-medium ${status === 'extracting' ? 'bg-white/[0.1] text-white' : 'bg-white/[0.03] text-gray-500'}`}>
+              <div className={`p-1.5 rounded-full text-center font-medium ${status === 'extracting' ? 'bg-purple-500/20 text-purple-300' : 'bg-white/[0.03] text-gray-500'}`}>
                 3. Rozbalení
               </div>
             </div>
@@ -267,8 +267,8 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
 
         {/* Success View */}
         {status === 'success' && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 text-center space-y-2.5 shrink-0">
-            <div className="w-11 h-11 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto">
+          <div className="bg-emerald-500/10 rounded-2xl p-4 text-center space-y-2.5 shrink-0">
+            <div className="w-11 h-11 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
               <span className="material-symbols-outlined text-2xl">check_circle</span>
             </div>
             <div>
@@ -282,8 +282,8 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
 
         {/* Error View */}
         {status === 'error' && (
-          <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-3.5 text-center space-y-2 shrink-0">
-            <div className="w-11 h-11 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center mx-auto">
+          <div className="bg-rose-500/10 rounded-2xl p-3.5 text-center space-y-2 shrink-0">
+            <div className="w-11 h-11 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
               <span className="material-symbols-outlined text-2xl">error</span>
             </div>
             <div>
@@ -319,7 +319,7 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
                 onClick={handleOpenInExplorer}
                 className="px-4 py-2 rounded-full text-xs font-medium flex items-center gap-1.5 transition cursor-pointer bg-white/[0.08] hover:bg-white/[0.14] text-white"
               >
-                <span className="material-symbols-outlined text-base">folder</span>
+                <span className="material-symbols-outlined text-base text-purple-400">folder</span>
                 <span>Otevřít v Průzkumníku</span>
               </button>
               {vscodeEnabled && (

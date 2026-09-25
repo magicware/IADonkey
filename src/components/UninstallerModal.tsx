@@ -22,21 +22,21 @@ export const UninstallerModal: React.FC = () => {
   };
 
   return (
-    <div className="w-screen h-screen bg-[#14141e] text-gray-200 flex flex-col select-none overflow-hidden font-sans border border-white/10 rounded-2xl shadow-2xl">
+    <div className="w-screen h-screen bg-[#14151b] text-gray-200 flex flex-col select-none overflow-hidden font-sans rounded-[28px] shadow-2xl">
       {/* Draggable Titlebar */}
-      <div className="h-10 bg-[#181926]/90 border-b border-white/10 flex items-center justify-between px-4" style={{ WebkitAppRegion: 'drag' } as any}>
+      <div className="h-11 bg-[#181926]/90 flex items-center justify-between px-5" style={{ WebkitAppRegion: 'drag' } as any}>
         <div className="flex items-center gap-2.5">
-          <div className="w-5 h-5 rounded-lg bg-rose-500/20 border border-rose-500/40 flex items-center justify-center">
+          <div className="w-6 h-6 rounded-full bg-rose-500/20 flex items-center justify-center">
             <span className="material-symbols-outlined text-sm text-rose-400">delete</span>
           </div>
           <span className="text-xs font-semibold text-gray-300">IADonkey – Odinstalace</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400 font-mono">v{CURRENT_APP_VERSION}</span>
+          <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/5 text-gray-400 font-mono">v{CURRENT_APP_VERSION}</span>
         </div>
         <button
           type="button"
           onClick={handleCancel}
           style={{ WebkitAppRegion: 'no-drag' } as any}
-          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-rose-600 text-gray-400 hover:text-white transition"
+          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition"
         >
           <span className="material-symbols-outlined text-sm">close</span>
         </button>
@@ -45,7 +45,7 @@ export const UninstallerModal: React.FC = () => {
       <div className="flex-1 p-8 flex flex-col items-center justify-center text-center space-y-5 my-auto">
         {!done ? (
           <>
-            <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400">
+            <div className="w-16 h-16 rounded-2xl bg-rose-500/20 flex items-center justify-center text-rose-400">
               <span className="material-symbols-outlined text-4xl">delete_forever</span>
             </div>
             <div className="space-y-1 max-w-sm">
@@ -59,7 +59,7 @@ export const UninstallerModal: React.FC = () => {
                 type="button"
                 disabled={isUninstalling}
                 onClick={handleCancel}
-                className="px-5 py-2 text-xs font-semibold text-gray-300 bg-white/10 hover:bg-white/20 rounded-xl transition"
+                className="px-5 py-2 text-xs font-semibold text-gray-300 bg-white/10 hover:bg-white/20 rounded-full transition"
               >
                 Zrušit
               </button>
@@ -67,7 +67,7 @@ export const UninstallerModal: React.FC = () => {
                 type="button"
                 disabled={isUninstalling}
                 onClick={handleConfirmUninstall}
-                className="px-5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 rounded-xl transition flex items-center gap-1.5 shadow-lg shadow-rose-600/30"
+                className="px-5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 rounded-full transition flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">delete</span>
                 {isUninstalling ? 'Odinstalovávám...' : 'Odinstalovat'}
@@ -76,7 +76,7 @@ export const UninstallerModal: React.FC = () => {
           </>
         ) : (
           <>
-            <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-emerald-400">
               <span className="material-symbols-outlined text-4xl">check_circle</span>
             </div>
             <div className="space-y-1">
@@ -86,7 +86,7 @@ export const UninstallerModal: React.FC = () => {
             <button
               type="button"
               onClick={handleCancel}
-              className="px-6 py-2 text-xs font-semibold text-white bg-white/10 hover:bg-white/20 rounded-xl transition mt-4"
+              className="px-6 py-2 text-xs font-semibold text-white bg-white/10 hover:bg-white/20 rounded-full transition mt-4"
             >
               Zavřít
             </button>

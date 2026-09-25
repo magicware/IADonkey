@@ -314,7 +314,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
         {/* Header */}
         <header className="p-5 flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center text-white shrink-0">
+            <div className="w-10 h-10 rounded-full bg-indigo-500/15 flex items-center justify-center text-indigo-400 shrink-0">
               <span className="material-symbols-outlined text-2xl">format_list_bulleted</span>
             </div>
             <div className="min-w-0">
@@ -323,7 +323,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                   Položky ve vyhledávání
                 </h3>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-white/[0.06] text-gray-300">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-indigo-500/15 text-indigo-300 m3-primary-badge">
                     {filterQuery ? `${filteredMainOnlyCount} z ${totalMainOnlyCount}` : totalMainOnlyCount} hlavních
                   </span>
                   {totalGitCount > 0 && (
@@ -337,7 +337,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                   <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-white/[0.06] text-gray-300">
                     {filterQuery ? `${filteredSubCount} z ${totalSubCount}` : totalSubCount} subpoložek
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-white/[0.12] text-white">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-purple-500/15 text-purple-300 m3-actions-badge">
                     {filterQuery ? `${filteredIndexedAll} celkem` : `${totalIndexedAll} celkem`}
                   </span>
                 </div>
@@ -367,7 +367,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
               onClick={() => setViewTab('items')}
               className={`px-4 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
                 viewTab === 'items'
-                  ? 'm3-primary-pill text-white shadow-sm'
+                  ? 'bg-indigo-500/20 m3-primary-surface text-white shadow-sm font-semibold'
                   : 'text-gray-400 hover:text-gray-200'
               }`}
             >
@@ -382,7 +382,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
               onClick={() => setViewTab('banlist')}
               className={`px-4 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
                 viewTab === 'banlist'
-                  ? 'bg-rose-500/20 text-rose-200 shadow-sm font-semibold'
+                  ? 'bg-rose-500/20 text-white shadow-sm font-semibold'
                   : 'text-gray-400 hover:text-gray-200'
               }`}
             >
@@ -435,7 +435,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
         {viewTab === 'banlist' ? (
           <>
             {/* Banlist Table Column Headers */}
-            <div className="grid grid-cols-[2fr_2fr_120px_150px_100px] items-center px-4 py-2 bg-[#14151b] border-b border-white/10 text-[11px] font-semibold text-gray-400 uppercase tracking-wider shrink-0">
+            <div className="grid grid-cols-[2fr_2fr_120px_150px_100px] items-center px-4 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider shrink-0 bg-transparent">
               <div>Název položky</div>
               <div>Cíl / Umístění (Location)</div>
               <div>Zdroj / Typ</div>
@@ -444,7 +444,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
             </div>
 
             {/* Banlist Content */}
-            <div className="flex-1 overflow-y-auto divide-y divide-white/[0.04]">
+            <div className="flex-1 overflow-y-auto space-y-1 p-2">
               {filteredBanlist.length === 0 ? (
                 <div className="p-12 text-center text-gray-400 space-y-2">
                   <span className="material-symbols-outlined text-4xl text-gray-500">
@@ -461,7 +461,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                 filteredBanlist.map((b, idx) => (
                   <div
                     key={b.id || `${b.name}-${idx}`}
-                    className="grid grid-cols-[2fr_2fr_120px_150px_100px] items-center px-4 py-2.5 gap-2 text-[13px] hover:bg-white/[0.02] transition-colors"
+                    className="grid grid-cols-[2fr_2fr_120px_150px_100px] items-center px-4 py-2.5 gap-2 text-[13px] bg-white/[0.02] hover:bg-white/[0.05] rounded-2xl transition-colors"
                   >
                     <div className="flex items-center gap-2 min-w-0 pr-2">
                       <span className="material-symbols-outlined text-rose-400 text-lg shrink-0 select-none">
@@ -501,10 +501,10 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                           <button
                             disabled={isUnbanning}
                             onClick={() => handleUnban(b, bKey)}
-                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition cursor-pointer ${
+                            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition cursor-pointer ${
                               isUnbanning
-                                ? 'bg-amber-500/15 text-amber-400 border-amber-500/30 cursor-wait'
-                                : 'bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 border-emerald-500/30'
+                                ? 'bg-amber-500/15 text-amber-400 cursor-wait'
+                                : 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
                             }`}
                             title="Odbanovat položku a obnovit její import"
                           >
@@ -531,7 +531,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
         ) : (
           <>
             {/* Table Column Headers (Sticky) */}
-            <div className="grid grid-cols-[70px_44px_1.5fr_2fr_80px_110px_90px] items-center px-4 py-2 bg-[#14151b] border-b border-white/10 text-[11px] font-semibold text-gray-400 uppercase tracking-wider shrink-0">
+            <div className="grid grid-cols-[70px_44px_1.5fr_2fr_80px_110px_90px] items-center px-4 py-2.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider shrink-0 bg-transparent">
               <div className="text-center">Priorita</div>
               <div className="text-center">Ikona</div>
               <div>Název položky</div>
@@ -542,7 +542,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
             </div>
 
             {/* Items List */}
-            <div onScroll={handleListScroll} className="flex-1 overflow-y-auto divide-y divide-white/[0.04]">
+            <div onScroll={handleListScroll} className="flex-1 overflow-y-auto space-y-1 p-2">
               {filteredData.length === 0 ? (
                 <div className="p-12 text-center text-gray-400 space-y-2">
                   <span className="material-symbols-outlined text-4xl text-gray-500">search_off</span>
@@ -562,20 +562,20 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                   const isCopied = copiedKey === itemKey;
 
                   return (
-                    <div key={itemKey} className="group transition-colors hover:bg-white/[0.02]">
+                    <div key={itemKey} className="group bg-white/[0.02] hover:bg-white/[0.05] rounded-2xl transition-colors">
                       {/* Main Item Row */}
-                      <div className="grid grid-cols-[70px_44px_1.5fr_2fr_80px_110px_90px] items-center px-4 py-2 gap-2 text-[13px]">
+                      <div className="grid grid-cols-[70px_44px_1.5fr_2fr_80px_110px_90px] items-center px-4 py-2.5 gap-2 text-[13px]">
                         {/* Column 1: Priority */}
                         <div className="flex justify-center">
                           <span
-                            className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold select-none border ${
+                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold select-none ${
                               (item.priority ?? 0) < 0
-                                ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                                ? 'bg-purple-500/20 text-purple-300'
                                 : (item.priority ?? 0) === 0
-                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                ? 'bg-emerald-500/20 text-emerald-300'
                                 : (item.priority ?? 0) === 99
-                                ? 'bg-sky-500/20 text-sky-300 border-sky-500/30'
-                                : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                                ? 'bg-sky-500/20 text-sky-300'
+                                : 'bg-indigo-500/20 text-indigo-300'
                             }`}
                             title={`Priorita: ${item.priority ?? 0}`}
                           >
@@ -585,7 +585,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
 
                         {/* Column 2: Icon or Favicon */}
                         <div className="flex items-center justify-center">
-                          <div className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center overflow-hidden">
+                          <div className="w-7 h-7 rounded-xl bg-white/[0.04] flex items-center justify-center overflow-hidden">
                             <MaterialIcon
                               icon={item.icon}
                               image={item.image}
@@ -626,7 +626,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                             {hasSubitems && (
                               <button
                                 onClick={() => toggleCollapse(itemKey)}
-                                className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-sky-500/20 text-sky-300 border border-sky-500/30 hover:bg-sky-500/30 transition cursor-pointer select-none"
+                                className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 transition cursor-pointer select-none"
                                 title={isCollapsed ? 'Rozbalit subpoložky' : 'Sbalit subpoložky'}
                               >
                                 <span>{subitems.length} {subitems.length === 1 ? 'subpoložka' : subitems.length < 5 ? 'subpoložky' : 'subpoložek'}</span>
@@ -637,7 +637,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                             )}
 
                             {item.settings === 'magicgate' && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30 select-none flex items-center gap-1">
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/20 text-amber-300 select-none flex items-center gap-1">
                                 {(item.actions?.length || (item.info && Object.keys(item.info).length > 0)) && (
                                   <span className="material-symbols-outlined text-[11px] leading-none">
                                     {item.actions?.length ? 'bolt' : 'info'}
@@ -648,7 +648,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                             )}
 
                             {item.settings === 'git' && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 select-none flex items-center gap-1">
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/20 text-emerald-300 select-none flex items-center gap-1">
                                 {(item.actions?.length || (item.info && Object.keys(item.info).length > 0)) && (
                                   <span className="material-symbols-outlined text-[11px] leading-none">
                                     {item.actions?.length ? 'bolt' : 'info'}
@@ -659,7 +659,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                             )}
 
                             {(item.actions?.length || (item.info && Object.keys(item.info).length > 0)) && !item.settings && (!item.shortcuts || item.shortcuts.length === 0) && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30 select-none flex items-center gap-1">
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/20 text-purple-300 select-none flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[11px] leading-none">
                                   {item.actions?.length ? 'bolt' : 'info'}
                                 </span>
@@ -672,7 +672,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                                 {item.shortcuts.map((sc) => (
                                   <span
                                     key={sc}
-                                    className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-teal-500/15 text-teal-300 border border-teal-500/25 select-none"
+                                    className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-teal-500/15 text-teal-300 select-none"
                                   >
                                     {sc}
                                   </span>
@@ -699,7 +699,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
 
                         {/* Column 5: Action */}
                         <div className="flex justify-center">
-                          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-white/5 text-gray-300 border border-white/10 uppercase">
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium bg-white/5 text-gray-300 uppercase">
                             {item.action || 'open'}
                           </span>
                         </div>
@@ -715,7 +715,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                             <>
                               <button
                                 onClick={() => handleCopy(item.location!, itemKey)}
-                                className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition cursor-pointer"
+                                className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition cursor-pointer"
                                 title={isCopied ? 'Zkopírováno!' : 'Zkopírovat do schránky'}
                               >
                                 <span className={`material-symbols-outlined text-[16px] ${isCopied ? 'text-emerald-400' : ''}`}>
@@ -725,7 +725,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                               {isUrlOrPath(item.location) && (
                                 <button
                                   onClick={() => handleOpen(item.location)}
-                                  className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition cursor-pointer"
+                                  className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition cursor-pointer"
                                   title="Otevřít odkaz"
                                 >
                                   <span className="material-symbols-outlined text-[16px]">open_in_new</span>
@@ -737,7 +737,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                             <button
                               disabled={banningKey === itemKey}
                               onClick={() => handleBan(item, itemKey)}
-                              className={`p-1 rounded transition cursor-pointer ${
+                              className={`p-1.5 rounded-full transition cursor-pointer ${
                                 banningKey === itemKey
                                   ? 'bg-rose-500/20 text-rose-400 cursor-wait'
                                   : 'hover:bg-rose-500/15 text-gray-500 hover:text-rose-400'
@@ -754,7 +754,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
 
                       {/* Subitems (Options) Indented List */}
                       {hasSubitems && !isCollapsed && (
-                        <div className="bg-white/[0.015] border-t border-white/[0.03] divide-y divide-white/[0.02]">
+                        <div className="bg-black/20 rounded-xl m-1.5 divide-y divide-white/[0.02]">
                           {subitems.map((sub, sIdx) => {
                             const subKey = `${itemKey}-sub-${sIdx}`;
                             const isSubCopied = copiedKey === subKey;
@@ -762,13 +762,13 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                             return (
                               <div
                                 key={subKey}
-                                className="grid grid-cols-[70px_44px_1.5fr_2fr_80px_110px_90px] items-center px-4 py-1.5 gap-2 text-[12px] hover:bg-white/[0.03] transition-colors"
+                                className="grid grid-cols-[70px_44px_1.5fr_2fr_80px_110px_90px] items-center px-4 py-2 gap-2 text-[12px] hover:bg-white/[0.03] transition-colors"
                               >
                                 {/* Column 1: Priority */}
                                 <div className="flex justify-center items-center gap-1 pl-4">
                                   <span className="text-gray-500 font-mono text-xs select-none">└─</span>
                                   <span
-                                    className="px-1.5 py-0.2 rounded text-[10px] font-mono text-gray-400 bg-white/5 border border-white/5 select-none"
+                                    className="px-2 py-0.5 rounded-full text-[10px] font-mono text-gray-400 bg-white/5 select-none"
                                     title={`Priorita subpoložky: ${sub.priority ?? item.priority ?? 0}`}
                                   >
                                     {sub.priority ?? item.priority ?? 0}
@@ -777,7 +777,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
 
                                 {/* Column 2: Subitem Icon / Favicon */}
                                 <div className="flex items-center justify-center">
-                                  <div className="w-6 h-6 rounded bg-white/[0.03] border border-white/5 flex items-center justify-center overflow-hidden">
+                                  <div className="w-6 h-6 rounded-lg bg-white/[0.03] flex items-center justify-center overflow-hidden">
                                     <MaterialIcon
                                       icon={sub.icon?.trim() ? sub.icon : item.icon}
                                       image={sub.image?.trim() ? sub.image : item.image}
@@ -795,7 +795,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                                     <span className="font-medium text-gray-300 truncate text-[12px]" title={sub.name}>
                                       {sub.name}
                                     </span>
-                                    <span className="px-1 py-0.2 rounded text-[9px] font-mono text-sky-300 bg-sky-500/10 border border-sky-500/20 select-none">
+                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-mono text-sky-300 bg-sky-500/15 select-none">
                                       Subpoložka
                                     </span>
                                   </div>
@@ -818,7 +818,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
 
                                 {/* Column 5: Subitem Action */}
                                 <div className="flex justify-center">
-                                  <span className="px-1.5 py-0.2 rounded text-[10px] font-mono text-gray-400 bg-white/5 border border-white/5 uppercase">
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono text-gray-400 bg-white/5 uppercase">
                                     {sub.action || item.action || 'open'}
                                   </span>
                                 </div>
@@ -834,7 +834,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                                     <>
                                       <button
                                         onClick={() => handleCopy(sub.location!, subKey)}
-                                        className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-white transition cursor-pointer"
+                                        className="p-1.5 rounded-full hover:bg-white/10 text-gray-500 hover:text-white transition cursor-pointer"
                                         title={isSubCopied ? 'Zkopírováno!' : 'Zkopírovat odkaz'}
                                       >
                                         <span className={`material-symbols-outlined text-[15px] ${isSubCopied ? 'text-emerald-400' : ''}`}>
@@ -844,7 +844,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                                       {isUrlOrPath(sub.location) && (
                                         <button
                                           onClick={() => handleOpen(sub.location)}
-                                          className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-white transition cursor-pointer"
+                                          className="p-1.5 rounded-full hover:bg-white/10 text-gray-500 hover:text-white transition cursor-pointer"
                                           title="Otevřít odkaz"
                                         >
                                           <span className="material-symbols-outlined text-[15px]">open_in_new</span>
@@ -874,14 +874,14 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
         )}
 
         {/* Footer info */}
-        <footer className="px-4 py-2.5 bg-[#0a0a0d] border-t border-white/[0.06] flex items-center justify-between text-xs text-gray-400 shrink-0">
+        <footer className="px-4 py-2.5 bg-black/30 flex items-center justify-between text-xs text-gray-400 shrink-0">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-sm text-gray-400">info</span>
             <span>Pořadí položek odpovídá přesně prioritě zobrazení výsledků ve Spotlight vyhledávání.</span>
           </div>
           <button
             onClick={onClose}
-            className="px-4 py-1 bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.12] text-white rounded-lg font-normal transition cursor-pointer"
+            className="px-5 py-1.5 bg-white/[0.08] hover:bg-white/[0.14] text-white rounded-full font-medium transition cursor-pointer"
           >
             Zavřít
           </button>

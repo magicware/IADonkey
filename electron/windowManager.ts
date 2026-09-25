@@ -1084,8 +1084,8 @@ export class WindowManager {
     }
 
     this.splashWindow = new BrowserWindow({
-      width: 380,
-      height: 350,
+      width: 440,
+      height: 400,
       frame: false,
       transparent: true,
       backgroundColor: '#00000000',
@@ -1117,6 +1117,7 @@ export class WindowManager {
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 16px;
     user-select: none;
     -webkit-user-select: none;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
@@ -1124,68 +1125,109 @@ export class WindowManager {
   .card {
     width: 100%;
     height: 100%;
-    background-color: #141520;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: #14151b;
+    border-radius: 28px;
+    border: none;
     outline: none;
-    box-shadow: none;
+    box-shadow: 0 24px 64px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     justify-content: flex-start;
-    padding: 30px 35px 26px 35px;
+    padding: 32px 36px 28px 36px;
     text-align: left;
+    -webkit-app-region: drag;
   }
   .icon {
-    width: 58px;
-    height: 58px;
+    width: 60px;
+    height: 60px;
     object-fit: contain;
-    border-radius: 14px;
-    margin-bottom: 14px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    border-radius: 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  }
+  .header-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
   }
   .title {
-    font-size: 24px;
-    font-weight: 700;
+    font-size: 26px;
+    font-weight: 800;
     color: #ffffff;
-    letter-spacing: 0.3px;
+    letter-spacing: -0.4px;
     line-height: 1.15;
-    margin-bottom: 3px;
   }
-  .version {
-    font-size: 12px;
+  .version-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    background-color: rgba(99, 102, 241, 0.18);
+    color: #a5b4fc;
+    font-size: 11px;
     font-weight: 600;
-    color: #818cf8;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.5px;
   }
   .spacer {
     flex: 1;
-    min-height: 12px;
+    min-height: 14px;
   }
   .description {
-    font-size: 11.5px;
-    line-height: 1.5;
-    color: #9ca3af;
-    margin-bottom: 16px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: #94a3b8;
+    margin-bottom: 18px;
   }
-  .copyright {
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
     font-size: 11px;
-    color: #6b7280;
+    color: #64748b;
     letter-spacing: 0.2px;
+  }
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #818cf8;
+    font-weight: 500;
+  }
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #818cf8;
+    animation: pulse 1.8s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; transform: scale(0.9); }
+    50% { opacity: 1; transform: scale(1.1); }
   }
 </style>
 </head>
 <body>
   <div class="card">
     ${iconDataUrl ? `<img class="icon" src="${iconDataUrl}" alt="IADonkey" />` : ''}
-    <div class="title">IADonkey</div>
-    <div class="version">v${version}</div>
+    <div class="header-row">
+      <div class="title">IADonkey</div>
+      <div class="version-badge">v${version}</div>
+    </div>
     <div class="spacer"></div>
     <div class="description">
       Rychlý a inteligentní spouštěč pro vaše každodenní úkoly a produktivitu. Sjednocuje vyhledávání, pracovní nástroje a automatizaci do jednoho přehledného prostředí.
     </div>
-    <div class="copyright">© 2026 Petr Coolhanek</div>
+    <div class="footer">
+      <div>© 2026 Petr Coolhanek</div>
+      <div class="status-indicator">
+        <span class="status-dot"></span>
+        <span>Spouštění...</span>
+      </div>
+    </div>
   </div>
 </body>
 </html>`;

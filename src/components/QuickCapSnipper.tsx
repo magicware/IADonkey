@@ -245,7 +245,10 @@ export const QuickCapSnipper: React.FC = () => {
       {/* 3. Plovoucí horní panel (Spotlight Visual Style – sjednoceno s ScreenRuler) */}
       {!isDragging && (!selectionBox || selectionBox.w <= 0 || selectionBox.h <= 0) && (
         <div
-          className="fixed top-5 left-1/2 transform -translate-x-1/2 flex items-center gap-2.5 p-2 px-4 rounded-full shadow-2xl transition-all pointer-events-auto bg-[#15161c] text-gray-100 select-none z-50 animate-fade-in"
+          className="fixed top-5 left-1/2 transform -translate-x-1/2 flex items-center gap-2.5 p-2 px-4 rounded-full transition-all pointer-events-auto bg-[#15161c] text-gray-100 select-none z-50 animate-fade-in"
+          style={{
+            boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.45), 0 2px 8px -2px rgba(0, 0, 0, 0.25)',
+          }}
           onMouseDown={(e) => e.stopPropagation()}
         >
           {/* App Title / Icon (Unified h-8) */}

@@ -617,10 +617,10 @@ export const ScreenRulerOverlay: React.FC = () => {
 
       {/* ================= FLOATING TOP TOOLBAR (Material 3 Expressive Pill) ================= */}
       <div
-        className="fixed top-5 left-1/2 transform -translate-x-1/2 flex items-center gap-2.5 p-2 px-4 rounded-full shadow-2xl transition-all pointer-events-auto bg-[#15161c]/95 backdrop-blur-xl text-gray-100"
+        className="fixed top-5 left-1/2 transform -translate-x-1/2 flex items-center gap-2.5 p-2 px-4 rounded-full transition-all pointer-events-auto bg-[#15161c]/95 backdrop-blur-xl text-gray-100"
         style={{
           zIndex: 50,
-          boxShadow: '0 20px 40px -10px rgba(0,0,0,0.7), 0 0 20px rgba(0,0,0,0.4)',
+          boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.45), 0 2px 8px -2px rgba(0, 0, 0, 0.25)',
         }}
         onMouseDown={(e) => e.stopPropagation()} // don't trigger canvas drag
       >

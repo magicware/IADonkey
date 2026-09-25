@@ -251,7 +251,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
           {/* TAB 1: SCHEMA */}
           {activeTab === 'schema' && (
             <div className="space-y-4">
-              <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl text-gray-300 leading-relaxed">
+              <div className="p-4 bg-white/[0.03] rounded-2xl text-gray-300 leading-relaxed">
                 Každý datový zdroj (místní JSON soubor nebo REST API) vrací pole objektů položek <code className="text-indigo-300 font-mono">[ &#123; ... &#125; ]</code> nebo objekt s polem pod klíčem <code className="text-indigo-300 font-mono">data</code>, <code className="text-indigo-300 font-mono">items</code> či <code className="text-indigo-300 font-mono">results</code>.
               </div>
 
@@ -261,13 +261,13 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                   Atributy položky (LauncherItem)
                 </h4>
 
-                <div className="divide-y divide-white/5 border border-white/5 rounded-xl bg-white/[0.01] overflow-hidden">
+                <div className="divide-y divide-white/5 rounded-2xl bg-white/[0.02] overflow-hidden">
                   
                   {/* name */}
-                  <div className="p-3 grid grid-cols-1 md:grid-cols-4 gap-2">
+                  <div className="p-3.5 grid grid-cols-1 md:grid-cols-4 gap-2">
                     <div className="font-mono text-indigo-300 font-semibold flex items-center gap-1.5">
                       <span>name</span>
-                      <span className="text-[10px] text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1 rounded">povinné</span>
+                      <span className="text-[10px] text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full font-sans font-semibold uppercase tracking-wider">povinné</span>
                     </div>
                     <div className="md:col-span-3 text-gray-300 leading-relaxed">
                       <span className="text-white font-medium">Zobrazovaný název položky</span>. Hlavní textový titulek ve vyhledávači, podle kterého se primárně filtruje.
@@ -275,7 +275,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                   </div>
 
                   {/* location */}
-                  <div className="p-3 grid grid-cols-1 md:grid-cols-4 gap-2">
+                  <div className="p-3.5 grid grid-cols-1 md:grid-cols-4 gap-2">
                     <div className="font-mono text-indigo-300 font-semibold">location</div>
                     <div className="md:col-span-3 text-gray-300 leading-relaxed">
                       <span className="text-white font-medium">Cílová hodnota, adresa nebo cesta</span>. Může to být webová adresa (<code className="font-mono text-gray-200">https://...</code>), lokální cesta (<code className="font-mono text-gray-200">C:\...</code>) nebo text ke zkopírování.
@@ -283,7 +283,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                   </div>
 
                   {/* action */}
-                  <div className="p-3 grid grid-cols-1 md:grid-cols-4 gap-2">
+                  <div className="p-3.5 grid grid-cols-1 md:grid-cols-4 gap-2">
                     <div className="font-mono text-indigo-300 font-semibold">action</div>
                     <div className="md:col-span-3 text-gray-300 leading-relaxed">
                       <span className="text-white font-medium">Výchozí chování po stisku Enter</span>. Možné hodnoty: <code className="font-mono text-indigo-200">"open"</code> (otevřít URL/soubor), <code className="font-mono text-indigo-200">"copy"</code> / <code className="font-mono text-indigo-200">"snippet"</code> (zkopírovat do schránky){githubEnabled ? <>, <code className="font-mono text-emerald-400">"clone"</code> (Git klonování), <code className="font-mono text-emerald-400">"clonerecursive"</code></> : null}. Výchozí je <code className="font-mono text-gray-200">"open"</code>.
@@ -291,7 +291,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                   </div>
 
                   {/* icon */}
-                  <div className="p-3 grid grid-cols-1 md:grid-cols-4 gap-2">
+                  <div className="p-3.5 grid grid-cols-1 md:grid-cols-4 gap-2">
                     <div className="font-mono text-indigo-300 font-semibold">icon</div>
                     <div className="md:col-span-3 text-gray-300 leading-relaxed">
                       <span className="text-white font-medium">Název Google Material ikony</span>. Např. <code className="font-mono text-gray-200">"public"</code>, <code className="font-mono text-gray-200">"terminal"</code>, <code className="font-mono text-gray-200">"folder"</code>, <code className="font-mono text-gray-200">"database"</code>, <code className="font-mono text-gray-200">"api"</code>, <code className="font-mono text-gray-200">"code"</code>, <code className="font-mono text-gray-200">"settings"</code>. Výchozí je <code className="font-mono text-gray-200">"code"</code>.
@@ -299,7 +299,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                   </div>
 
                   {/* image */}
-                  <div className="p-3 grid grid-cols-1 md:grid-cols-4 gap-2">
+                  <div className="p-3.5 grid grid-cols-1 md:grid-cols-4 gap-2">
                     <div className="font-mono text-indigo-300 font-semibold">image</div>
                     <div className="md:col-span-3 text-gray-300 leading-relaxed">
                       <span className="text-white font-medium">URL adresa obrázku nebo loga</span>. Pokud zadáte hodnotu <code className="font-mono text-emerald-300 font-bold">"&#123;favicon&#125;"</code>, IADonkey automaticky stáhne a uloží favikonu z domény uvedené v <code className="font-mono text-gray-200">location</code>.
@@ -307,7 +307,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                   </div>
 
                   {/* priority */}
-                  <div className="p-3 grid grid-cols-1 md:grid-cols-4 gap-2">
+                  <div className="p-3.5 grid grid-cols-1 md:grid-cols-4 gap-2">
                     <div className="font-mono text-indigo-300 font-semibold">priority</div>
                     <div className="md:col-span-3 text-gray-300 leading-relaxed">
                       <span className="text-white font-medium">Priorita řazení</span> (číslo, výchozí 0). Položky s vyšší prioritou se při rovnosti vyhledávací relevance zobrazují na vyšších pozicích.
@@ -315,7 +315,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                   </div>
 
                   {/* settings */}
-                  <div className="p-3 grid grid-cols-1 md:grid-cols-4 gap-2">
+                  <div className="p-3.5 grid grid-cols-1 md:grid-cols-4 gap-2">
                     <div className="font-mono text-indigo-300 font-semibold">settings</div>
                     <div className="md:col-span-3 text-gray-300 leading-relaxed">
                       <span className="text-white font-medium">Systémové napojení</span>:
@@ -331,23 +331,23 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                   </div>
 
                   {/* options */}
-                  <div className="p-3 grid grid-cols-1 md:grid-cols-4 gap-2">
+                  <div className="p-3.5 grid grid-cols-1 md:grid-cols-4 gap-2">
                     <div className="font-mono text-indigo-300 font-semibold">options</div>
                     <div className="md:col-span-3 text-gray-300 leading-relaxed">
-                      <span className="text-white font-medium">Pole vnořených subpoložek</span>. Do subpoložek se vstupuje stiskem <kbd className="px-1.5 py-0.5 bg-white/10 rounded font-mono text-gray-200">Alt + Enter</kbd>. Lze také okamžitě spustit 1. subpoložku přes <kbd className="px-1.5 py-0.5 bg-white/10 rounded font-mono text-gray-200">Ctrl + Enter</kbd>. Subpoložky mají stejnou strukturu <code className="font-mono text-indigo-300">LauncherItem</code> a mohou se dále rekurzivně větvit.
+                      <span className="text-white font-medium">Pole vnořených subpoložek</span>. Do subpoložek se vstupuje stiskem <kbd className="px-2 py-0.5 bg-white/10 rounded-full font-mono text-gray-200">Alt + Enter</kbd>. Lze také okamžitě spustit 1. subpoložku přes <kbd className="px-2 py-0.5 bg-white/10 rounded-full font-mono text-gray-200">Ctrl + Enter</kbd>. Subpoložky mají stejnou strukturu <code className="font-mono text-indigo-300">LauncherItem</code> a mohou se dále rekurzivně větvit.
                     </div>
                   </div>
 
                   {/* actions */}
-                  <div className="p-3 grid grid-cols-1 md:grid-cols-4 gap-2">
+                  <div className="p-3.5 grid grid-cols-1 md:grid-cols-4 gap-2">
                     <div className="font-mono text-indigo-300 font-semibold">actions</div>
                     <div className="md:col-span-3 text-gray-300 leading-relaxed">
-                      <span className="text-white font-medium">Doplňkové akce položky</span> nabízené v menu akcí (<kbd className="px-1.5 py-0.5 bg-white/10 rounded font-mono text-gray-200">Shift + Enter</kbd>). Každá akce obsahuje <code className="font-mono text-gray-200">name</code>, <code className="font-mono text-gray-200">action</code>, volitelnou vlastní <code className="font-mono text-gray-200">location</code> a <code className="font-mono text-gray-200">icon</code>.
+                      <span className="text-white font-medium">Doplňkové akce položky</span> nabízené v menu akcí (<kbd className="px-2 py-0.5 bg-white/10 rounded-full font-mono text-gray-200">Shift + Enter</kbd>). Každá akce obsahuje <code className="font-mono text-gray-200">name</code>, <code className="font-mono text-gray-200">action</code>, volitelnou vlastní <code className="font-mono text-gray-200">location</code> a <code className="font-mono text-gray-200">icon</code>.
                     </div>
                   </div>
 
                   {/* info */}
-                  <div className="p-3 grid grid-cols-1 md:grid-cols-4 gap-2">
+                  <div className="p-3.5 grid grid-cols-1 md:grid-cols-4 gap-2">
                     <div className="font-mono text-indigo-300 font-semibold">info</div>
                     <div className="md:col-span-3 text-gray-300 leading-relaxed">
                       <span className="text-white font-medium">Klíč-hodnota metadata</span> (<code className="font-mono text-gray-200">&#123; "Klíč": "Hodnota" &#125;</code>). Zobrazují se v přehledném informačním panelu nad akcemi v detailu položky (např. Server, Databáze, Verze, Zodpovědná osoba).
@@ -370,16 +370,16 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
           {/* TAB 2: ACTIONS */}
           {activeTab === 'actions' && (
             <div className="space-y-4">
-              <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl text-gray-300 leading-relaxed">
-                Akce definují, co se stane při stisku klávesy <kbd className="px-1.5 py-0.5 bg-white/10 rounded font-mono text-gray-200">Enter</kbd> na položce nebo při výběru v menu akcí <kbd className="px-1.5 py-0.5 bg-white/10 rounded font-mono text-gray-200">Shift + Enter</kbd>.
+              <div className="p-4 bg-white/[0.03] rounded-2xl text-gray-300 leading-relaxed">
+                Akce definují, co se stane při stisku klávesy <kbd className="px-2 py-0.5 bg-white/10 rounded-full font-mono text-gray-200">Enter</kbd> na položce nebo při výběru v menu akcí <kbd className="px-2 py-0.5 bg-white/10 rounded-full font-mono text-gray-200">Shift + Enter</kbd>.
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* open */}
-                <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                <div className="p-4 bg-white/[0.03] rounded-2xl space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-mono font-bold text-indigo-300 text-sm">"open"</span>
-                    <span className="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[10px] font-medium">Výchozí</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-semibold uppercase tracking-wider">Výchozí</span>
                   </div>
                   <p className="text-gray-300 leading-relaxed">
                     Otevře webovou stránku ve výchozím prohlížeči, spustí lokální program (<code className="font-mono text-gray-200">.exe</code>), nebo otevře složku v Průzkumníku souborů Windows.
@@ -387,10 +387,10 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                 </div>
 
                 {/* copy */}
-                <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                <div className="p-4 bg-white/[0.03] rounded-2xl space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-mono font-bold text-indigo-300 text-sm">"copy" / "snippet"</span>
-                    <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-medium">Schránka</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-semibold uppercase tracking-wider">Schránka</span>
                   </div>
                   <p className="text-gray-300 leading-relaxed">
                     Zkopíruje hodnotu z <code className="font-mono text-gray-200">location</code> do schránky (clipboardu) a zobrazí notifikaci o zkopírování.
@@ -400,10 +400,10 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                 {githubEnabled && (
                   <>
                     {/* clone */}
-                    <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                    <div className="p-4 bg-white/[0.03] rounded-2xl space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="font-mono font-bold text-emerald-400 text-sm">"clone"</span>
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-medium">Git</span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-semibold uppercase tracking-wider">Git</span>
                       </div>
                       <p className="text-gray-300 leading-relaxed">
                         Otevře samostatné okno pro klonování Git repozitáře s výběrem cílové složky a možností volby rekurze.
@@ -411,10 +411,10 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                     </div>
 
                     {/* clonerecursive */}
-                    <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-1.5">
+                    <div className="p-4 bg-white/[0.03] rounded-2xl space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="font-mono font-bold text-emerald-400 text-sm">"clonerecursive"</span>
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-medium">Git</span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-semibold uppercase tracking-wider">Git</span>
                       </div>
                       <p className="text-gray-300 leading-relaxed">
                         Otevře okno klonování s předvybraným zaškrtávátkem pro rekurzivní stažení submodulů (<code className="font-mono text-gray-200">git clone --recursive</code>).
@@ -426,10 +426,10 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                 {magicGateEnabled && (
                   <>
                     {/* mgclone */}
-                    <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-1.5">
+                    <div className="p-4 bg-amber-500/10 rounded-2xl space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="font-mono font-bold text-amber-300 text-sm">"mgclone"</span>
-                        <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-medium">MagicGate</span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-semibold uppercase tracking-wider">MagicGate</span>
                       </div>
                       <p className="text-gray-300 leading-relaxed">
                         Získá seznam repozitářů sekcí instance přes Administraci a otevře hromadné klonování všech sekcí.
@@ -437,10 +437,10 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                     </div>
 
                     {/* mgclonerecursive */}
-                    <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-1.5">
+                    <div className="p-4 bg-amber-500/10 rounded-2xl space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="font-mono font-bold text-amber-300 text-sm">"mgclonerecursive"</span>
-                        <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-medium">MagicGate</span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-semibold uppercase tracking-wider">MagicGate</span>
                       </div>
                       <p className="text-gray-300 leading-relaxed">
                         Hromadně stáhne všechny repozitáře sekcí vybrané instance včetně rekurzivních submodulů.
@@ -456,7 +456,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
           {activeTab === 'snippets' && (
             <div className="space-y-4">
               {/* Snippet 1 */}
-              <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-2.5">
+              <div className="p-4 bg-white/[0.03] rounded-2xl space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div>
                     <h5 className="font-bold text-white text-xs">1. Základní webový odkaz s favikonou</h5>
@@ -465,7 +465,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleCopySnippet('basic', SNIPPET_BASIC)}
-                    className="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 rounded-lg font-medium transition flex items-center gap-1.5 cursor-pointer"
+                    className="px-3.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 rounded-full font-medium transition flex items-center gap-1.5 cursor-pointer text-xs"
                   >
                     <span className="material-symbols-outlined text-sm">
                       {copiedSnippetId === 'basic' ? 'check' : 'content_copy'}
@@ -473,13 +473,13 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                     <span>{copiedSnippetId === 'basic' ? 'Zkopírováno!' : 'Kopírovat snippet'}</span>
                   </button>
                 </div>
-                <pre className="p-3 bg-black/40 border border-white/5 rounded-lg font-mono text-[11px] text-gray-300 overflow-x-auto">
+                <pre className="p-3.5 bg-black/40 rounded-xl font-mono text-[11px] text-gray-300 overflow-x-auto">
                   {SNIPPET_BASIC}
                 </pre>
               </div>
 
               {/* Snippet 2 */}
-              <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-2.5">
+              <div className="p-4 bg-white/[0.03] rounded-2xl space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div>
                     <h5 className="font-bold text-white text-xs">2. Pokročilá položka: Subpoložky, Akce a Metadata</h5>
@@ -488,7 +488,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleCopySnippet('advanced', SNIPPET_ADVANCED)}
-                    className="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 rounded-lg font-medium transition flex items-center gap-1.5 cursor-pointer"
+                    className="px-3.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 rounded-full font-medium transition flex items-center gap-1.5 cursor-pointer text-xs"
                   >
                     <span className="material-symbols-outlined text-sm">
                       {copiedSnippetId === 'advanced' ? 'check' : 'content_copy'}
@@ -496,14 +496,14 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                     <span>{copiedSnippetId === 'advanced' ? 'Zkopírováno!' : 'Kopírovat snippet'}</span>
                   </button>
                 </div>
-                <pre className="p-3 bg-black/40 border border-white/5 rounded-lg font-mono text-[11px] text-gray-300 overflow-x-auto">
+                <pre className="p-3.5 bg-black/40 rounded-xl font-mono text-[11px] text-gray-300 overflow-x-auto">
                   {SNIPPET_ADVANCED}
                 </pre>
               </div>
 
               {/* Snippet 3 */}
               {githubEnabled && (
-                <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2.5">
+                <div className="p-4 bg-emerald-500/10 rounded-2xl space-y-2.5">
                   <div className="flex items-center justify-between">
                     <div>
                       <h5 className="font-bold text-emerald-300 text-xs">3. Git repozitář se systémovou integrací</h5>
@@ -512,7 +512,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handleCopySnippet('git', SNIPPET_GIT)}
-                      className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-lg font-medium transition flex items-center gap-1.5 cursor-pointer"
+                      className="px-3.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 rounded-full font-medium transition flex items-center gap-1.5 cursor-pointer text-xs"
                     >
                       <span className="material-symbols-outlined text-sm">
                         {copiedSnippetId === 'git' ? 'check' : 'content_copy'}
@@ -520,7 +520,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                       <span>{copiedSnippetId === 'git' ? 'Zkopírováno!' : 'Kopírovat snippet'}</span>
                     </button>
                   </div>
-                  <pre className="p-3 bg-black/40 border border-emerald-500/15 rounded-lg font-mono text-[11px] text-gray-300 overflow-x-auto">
+                  <pre className="p-3.5 bg-black/40 rounded-xl font-mono text-[11px] text-gray-300 overflow-x-auto">
                     {SNIPPET_GIT}
                   </pre>
                 </div>
@@ -528,7 +528,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
 
               {/* Snippet 4: MagicGate */}
               {magicGateEnabled && (
-                <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-2.5">
+                <div className="p-4 bg-amber-500/10 rounded-2xl space-y-2.5">
                   <div className="flex items-center justify-between">
                     <div>
                       <h5 className="font-bold text-amber-300 text-xs">4. MagicGate instance se systémovým přihlášením</h5>
@@ -537,7 +537,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handleCopySnippet('magicgate', SNIPPET_MAGICGATE)}
-                      className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-lg font-medium transition flex items-center gap-1.5 cursor-pointer"
+                      className="px-3.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-full font-medium transition flex items-center gap-1.5 cursor-pointer text-xs"
                     >
                       <span className="material-symbols-outlined text-sm">
                         {copiedSnippetId === 'magicgate' ? 'check' : 'content_copy'}
@@ -545,7 +545,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                       <span>{copiedSnippetId === 'magicgate' ? 'Zkopírováno!' : 'Kopírovat snippet'}</span>
                     </button>
                   </div>
-                  <pre className="p-3 bg-black/40 border border-white/5 rounded-lg font-mono text-[11px] text-gray-300 overflow-x-auto">
+                  <pre className="p-3.5 bg-black/40 rounded-xl font-mono text-[11px] text-gray-300 overflow-x-auto">
                     {SNIPPET_MAGICGATE}
                   </pre>
                 </div>
@@ -556,7 +556,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
           {/* TAB 4: MAGICGATE MODEL */}
           {magicGateEnabled && activeTab === 'magicgate' && (
             <div className="space-y-4">
-              <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-200 leading-relaxed">
+              <div className="p-4 bg-amber-500/10 rounded-2xl text-amber-200 leading-relaxed">
                 Rozšíření MagicGate automaticky načítá konfigurace serverů a instancí z XML deploy souboru. Níže je popsáno, jak se XML struktura transformuje do výsledných položek IADonkey.
               </div>
 
@@ -567,39 +567,39 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
                 </h4>
 
                 <div className="space-y-2">
-                  <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1">
+                  <div className="p-3.5 bg-white/[0.03] rounded-2xl space-y-1">
                     <span className="font-semibold text-white">1. Server & Instance</span>
                     <p className="text-gray-400 leading-relaxed">
                       Značky <code className="font-mono text-gray-300">&lt;Server Name="..."&gt;</code> a <code className="font-mono text-gray-300">&lt;Instance Name="..."&gt;</code>. Servery i instance obsahující v názvu slovo <em>bench</em> jsou automaticky vynechány.
                     </p>
                   </div>
 
-                  <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1">
+                  <div className="p-3.5 bg-white/[0.03] rounded-2xl space-y-1">
                     <span className="font-semibold text-white">2. Aplikace a Subpoložky</span>
                     <p className="text-gray-400 leading-relaxed">
                       Uvnitř instance se projdou všechny tagy <code className="font-mono text-gray-300">&lt;App Name="..." Url="..." /&gt;</code>:
                       <ul className="list-disc list-inside mt-1 space-y-0.5 text-gray-400">
                         <li>První platná aplikace (např. Administrace <code className="font-mono text-gray-300">A</code>) se stane <strong>hlavní položkou</strong>.</li>
-                        <li>Další aplikace (<code className="font-mono text-gray-300">Web</code>, <code className="font-mono text-gray-300">API</code>, <code className="font-mono text-gray-300">BO</code>) se automaticky vloží do <strong>subpoložek (<kbd className="px-1 py-0.2 bg-white/10 rounded font-mono text-[10px]">Alt+Enter</kbd>)</strong> s favikonou.</li>
+                        <li>Další aplikace (<code className="font-mono text-gray-300">Web</code>, <code className="font-mono text-gray-300">API</code>, <code className="font-mono text-gray-300">BO</code>) se automaticky vloží do <strong>subpoložek (<kbd className="px-2 py-0.5 bg-white/10 rounded-full font-mono text-[10px]">Alt+Enter</kbd>)</strong> s favikonou.</li>
                       </ul>
                     </p>
                   </div>
 
-                  <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1">
+                  <div className="p-3.5 bg-white/[0.03] rounded-2xl space-y-1">
                     <span className="font-semibold text-white">3. Automatická metadata (info)</span>
                     <p className="text-gray-400 leading-relaxed">
-                      Z XML se do informačního panelu položky (<kbd className="px-1 py-0.2 bg-white/10 rounded font-mono text-[10px]">Shift+Enter</kbd>) automaticky načítají <strong>všechny dostupné XML atributy a parametry</strong> daného serveru i instance (např. Server, Instance, DB Server, Umístění serveru, Provider, Požadavek, Root Path, FTP, Zálohy a další). Veškerá tato metadata lze jedním kliknutím zkopírovat do schránky a slouží také pro vyhledávání.
+                      Z XML se do informačního panelu položky (<kbd className="px-2 py-0.5 bg-white/10 rounded-full font-mono text-[10px]">Shift+Enter</kbd>) automaticky načítají <strong>všechny dostupné XML atributy a parametry</strong> daného serveru i instance (např. Server, Instance, DB Server, Umístění serveru, Provider, Požadavek, Root Path, FTP, Zálohy a další). Veškerá tato metadata lze jedním kliknutím zkopírovat do schránky a slouží také pro vyhledávání.
                     </p>
                   </div>
 
-                  <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1">
+                  <div className="p-3.5 bg-white/[0.03] rounded-2xl space-y-1">
                     <span className="font-semibold text-white">4. Klonování repozitářů sekcí</span>
                     <p className="text-gray-400 leading-relaxed">
                       Z Administrace se automaticky vygeneruje akce <code className="font-mono text-amber-300">mgclone</code>. Ta přes CmsFs endpoint načte všechny repozitáře sekcí v instanci a umožní jejich stažení do podsložek (s volitelnou rekurzí přes checkbox).
                     </p>
                   </div>
 
-                  <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1">
+                  <div className="p-3.5 bg-white/[0.03] rounded-2xl space-y-1">
                     <span className="font-semibold text-white">5. Rychlé vyhledávání instancí (prefix magicgate: / mg:)</span>
                     <p className="text-gray-400 leading-relaxed">
                       Zadáním prefixu <code className="font-mono text-amber-300">magicgate:</code> nebo <code className="font-mono text-amber-300">mg:</code> ve vyhledávači (např. <code className="font-mono text-gray-300">magicgate:</code> pro zobrazení všech nebo <code className="font-mono text-gray-300">magicgate: produkce</code>) filtrujete výhradně v instancích MagicGate bez míchání ostatních zdrojů.
@@ -613,14 +613,14 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="pt-3 border-t border-white/10 flex items-center justify-between shrink-0">
+        <div className="pt-3 flex items-center justify-between shrink-0">
           <span className="text-[11px] text-gray-500">
             Při úpravě nebo rozšíření JSON schématu v aplikaci je nutné aktualizovat i tuto dokumentaci.
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
+            className="px-5 py-2 bg-white/10 hover:bg-white/15 text-white rounded-full text-xs font-semibold transition cursor-pointer"
           >
             Zavřít průvodce
           </button>

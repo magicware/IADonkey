@@ -11,7 +11,9 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
   updateInfo,
   onDecline,
 }) => {
-  const [downloadState, setDownloadState] = useState<'idle' | 'downloading' | 'completed' | 'error'>('idle');
+  const [downloadState, setDownloadState] = useState<'idle' | 'downloading' | 'completed' | 'error'>(() => {
+    return updateInfo.isSimulated ? 'downloading' : 'idle';
+  });
   const [progress, setProgress] = useState<DownloadProgress>({ percent: 0, transferred: 0, total: 0 });
   const [downloadedPath, setDownloadedPath] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -25,7 +27,7 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
     window.addEventListener('keydown', handleKeyDown);
 
     let unsubscribe: (() => void) | undefined;
-    if (window.electronAPI?.onUpdateDownloadProgress) {
+    if (window.electronAPI?.onUpdateDownloadProgress && !updateInfo.isSimulated) {
       unsubscribe = window.electronAPI.onUpdateDownloadProgress((p: DownloadProgress) => {
         setProgress(p);
       });
@@ -35,9 +37,41 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       if (unsubscribe) unsubscribe();
     };
-  }, [onDecline]);
+  }, [onDecline, updateInfo.isSimulated]);
+
+  // Simulation mode: fake download progress over ~2 seconds
+  useEffect(() => {
+    if (!updateInfo.isSimulated || downloadState !== 'downloading') return;
+
+    let currentPercent = 0;
+    const totalBytes = 28.5 * 1024 * 1024; // ~28.5 MB package
+    setProgress({ percent: 0, transferred: 0, total: totalBytes });
+
+    const interval = setInterval(() => {
+      currentPercent += Math.floor(Math.random() * 8) + 14;
+      if (currentPercent >= 100) {
+        currentPercent = 100;
+        clearInterval(interval);
+        setProgress({ percent: 100, transferred: totalBytes, total: totalBytes });
+        setTimeout(() => {
+          setDownloadedPath('simulated_update_package.exe');
+          setDownloadState('completed');
+        }, 500);
+      } else {
+        const transferred = Math.round((currentPercent / 100) * totalBytes);
+        setProgress({ percent: currentPercent, transferred, total: totalBytes });
+      }
+    }, 280);
+
+    return () => clearInterval(interval);
+  }, [updateInfo.isSimulated, downloadState]);
 
   const handleStartDownload = async () => {
+    if (updateInfo.isSimulated) {
+      setDownloadState('downloading');
+      return;
+    }
+
     if (!updateInfo.downloadUrl) {
       setErrorMessage('Není k dispozici platná adresa ke stažení aktualizace.');
       setDownloadState('error');
@@ -64,12 +98,20 @@ export const UpdateDialog: React.FC<UpdateDialogProps> = ({
   };
 
   const handleInstallAndRestart = () => {
+    if (updateInfo.isSimulated) {
+      onDecline();
+      return;
+    }
     if (downloadedPath && window.electronAPI?.installUpdate) {
       window.electronAPI.installUpdate(downloadedPath);
     }
   };
 
   const handleFallbackBrowser = () => {
+    if (updateInfo.isSimulated) {
+      onDecline();
+      return;
+    }
     if (updateInfo.downloadUrl && window.electronAPI?.openExternal) {
       window.electronAPI.openExternal(updateInfo.downloadUrl);
     }

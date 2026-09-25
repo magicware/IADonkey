@@ -361,8 +361,25 @@ export const App: React.FC = () => {
     setUpdateInfo(null);
   };
 
+  const handleSimulateUpdate = () => {
+    window.electronAPI?.logAction?.({
+      type: 'action',
+      title: 'Spuštěna simulace aktualizace aplikace',
+      details: `Simulace přechodu z v${CURRENT_APP_VERSION} na v1.2.0`,
+      status: 'info',
+    });
+    setUpdateInfo({
+      hasUpdate: true,
+      latestVersion: '1.2.0 (Simulace)',
+      currentVersion: CURRENT_APP_VERSION,
+      releaseNotes: '• Nový vylepšený design systém\n• Rychlejší vyhledávání v repozitářích\n• Opravy drobných chyb a vylepšení stability',
+      downloadUrl: 'https://example.com/simulated-update.exe',
+      isSimulated: true,
+    });
+  };
+
   const handleDeclineUpdate = async () => {
-    if (updateInfo && config && window.electronAPI) {
+    if (updateInfo && !updateInfo.isSimulated && config && window.electronAPI) {
       const updatedConfig: AppConfig = {
         ...config,
         lastDeclinedVersion: updateInfo.latestVersion,
@@ -425,6 +442,7 @@ export const App: React.FC = () => {
           syncProgress={syncProgress}
           updateStatusMessage={updateStatusMessage}
           updateInfo={updateInfo}
+          onSimulateUpdate={handleSimulateUpdate}
         />
         {/* Update Dialog in settings view if simulated */}
         {updateInfo && (
@@ -482,8 +500,8 @@ export const App: React.FC = () => {
   // Dedicated Power / Quit / Restart Window mode
   if (isPowerView) {
     return (
-      <main className="w-full h-screen bg-[#181920] border border-white/10 flex flex-col justify-between p-5 text-gray-200 select-none">
-        <div className="flex items-center justify-between pb-3 border-b border-white/10">
+      <main className="w-full h-screen bg-[#14151b] flex flex-col justify-between p-5 text-gray-200 select-none">
+        <div className="flex items-center justify-between pb-3">
           <div className="flex items-center gap-2.5">
             <span className="material-symbols-outlined text-indigo-400 text-xl">power_settings_new</span>
             <span className="font-semibold text-sm text-white">Správa aplikace IADonkey</span>
@@ -491,7 +509,7 @@ export const App: React.FC = () => {
           <button
             type="button"
             onClick={() => window.electronAPI?.closePowerWindow?.()}
-            className="w-7 h-7 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center cursor-pointer"
+            className="w-8 h-8 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center cursor-pointer"
             title="Zavřít"
           >
             <span className="material-symbols-outlined text-base">close</span>
@@ -504,18 +522,18 @@ export const App: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/10">
+        <div className="flex items-center justify-end gap-2.5 pt-3">
           <button
             type="button"
             onClick={() => window.electronAPI?.closePowerWindow?.()}
-            className="px-3.5 py-1.5 rounded-xl text-xs font-medium text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+            className="px-4 py-2 rounded-full text-xs font-semibold text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
           >
             Zrušit
           </button>
           <button
             type="button"
             onClick={() => window.electronAPI?.restartApp?.()}
-            className="px-3.5 py-1.5 rounded-xl text-xs font-medium bg-indigo-600/25 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/40 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+            className="px-4 py-2 rounded-full text-xs font-semibold bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
           >
             <span className="material-symbols-outlined text-sm">restart_alt</span>
             <span>Restartovat</span>
@@ -523,7 +541,7 @@ export const App: React.FC = () => {
           <button
             type="button"
             onClick={() => window.electronAPI?.quitApp?.()}
-            className="px-3.5 py-1.5 rounded-xl text-xs font-medium bg-rose-600/25 hover:bg-rose-600/40 text-rose-300 border border-rose-500/40 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+            className="px-4 py-2 rounded-full text-xs font-semibold bg-rose-600/30 hover:bg-rose-600/50 text-rose-300 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
           >
             <span className="material-symbols-outlined text-sm">power_settings_new</span>
             <span>Ukončit</span>
@@ -625,6 +643,7 @@ export const App: React.FC = () => {
           syncProgress={syncProgress}
           updateStatusMessage={updateStatusMessage}
           updateInfo={updateInfo}
+          onSimulateUpdate={handleSimulateUpdate}
         />
       )}
 

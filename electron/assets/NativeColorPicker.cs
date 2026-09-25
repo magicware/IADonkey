@@ -75,6 +75,28 @@ namespace IADonkey.ColorPicker {
         [DllImport("user32.dll")]
         static extern int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, bool bRedraw);
 
+        [DllImport("dwmapi.dll")]
+        static extern int DwmExtendFrameIntoClientArea(IntPtr hWnd, ref MARGINS pMarInset);
+
+        [DllImport("dwmapi.dll")]
+        static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct MARGINS {
+            public int leftWidth;
+            public int rightWidth;
+            public int topHeight;
+            public int bottomHeight;
+        }
+
+        const int DWMWA_NCRENDERING_POLICY = 2;
+        const int DWMNCRP_ENABLED = 2;
+        const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+        const int DWMWCP_ROUND = 2;
+        const int WS_THICKFRAME = 0x00040000;
+        const int WS_CAPTION = 0x00C00000;
+        const int WM_NCCALCSIZE = 0x0083;
+
         delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
 
         const int WH_MOUSE_LL = 14;
@@ -306,6 +328,24 @@ namespace IADonkey.ColorPicker {
             Timer _timer;
             Bitmap _gridBitmap;
 
+            protected override CreateParams CreateParams {
+                get {
+                    CreateParams cp = base.CreateParams;
+                    // WS_THICKFRAME and WS_CAPTION tell Windows DWM to attach the full modern diffused window shadow
+                    cp.Style |= WS_THICKFRAME | WS_CAPTION;
+                    return cp;
+                }
+            }
+
+            protected override void WndProc(ref Message m) {
+                if (m.Msg == WM_NCCALCSIZE && m.WParam != IntPtr.Zero) {
+                    // Suppress standard title bar and window frame, allowing custom full client rendering
+                    m.Result = IntPtr.Zero;
+                    return;
+                }
+                base.WndProc(ref m);
+            }
+
             public LoupeForm(IntPtr hCur) {
                 if (hCur != IntPtr.Zero) {
                     try {
@@ -318,17 +358,21 @@ namespace IADonkey.ColorPicker {
                 this.TopMost = true;
                 this.DoubleBuffered = true;
 
-                // Width: 126 grid + 28 padding = 154 px. Height: ~226 px
-                this.Size = new Size(GRID_PIXELS + 28, GRID_PIXELS + 100);
+                // Width: 126 grid + 28 padding = 154 px. Height: ~224 px
+                this.Size = new Size(GRID_PIXELS + 28, GRID_PIXELS + 98);
 
-                // Exact Spotlight card background: #1c1d24
-                this.BackColor = Color.FromArgb(28, 29, 36);
+                // Material 3 Expressive surface background: #181920
+                this.BackColor = Color.FromArgb(24, 25, 32);
 
-                // Apply physical rounded window region (rounded-2xl)
-                // Windows GDI regions exclude the right and bottom boundaries [left, right) and [top, bottom).
-                // Passing Width + 1 and Height + 1 ensures right-most and bottom-most pixels and borders are not clipped.
-                IntPtr rgn = CreateRoundRectRgn(0, 0, this.Width + 1, this.Height + 1, CORNER_RADIUS, CORNER_RADIUS);
-                SetWindowRgn(this.Handle, rgn, true);
+                // Enable modern DWM widely diffused drop shadow and smooth rounded corners (Windows 11)
+                try {
+                    int policy = DWMNCRP_ENABLED;
+                    DwmSetWindowAttribute(this.Handle, DWMWA_NCRENDERING_POLICY, ref policy, sizeof(int));
+                    int corner = DWMWCP_ROUND;
+                    DwmSetWindowAttribute(this.Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
+                    MARGINS margins = new MARGINS { leftWidth = 1, rightWidth = 1, topHeight = 1, bottomHeight = 1 };
+                    DwmExtendFrameIntoClientArea(this.Handle, ref margins);
+                } catch { }
 
                 _gridBitmap = new Bitmap(GRID_COUNT, GRID_COUNT);
 
@@ -413,11 +457,14 @@ namespace IADonkey.ColorPicker {
                 int startX = 14;
                 int startY = 14;
 
-                // 1. Inner Loupe Frame Card (rounded background)
-                Rectangle gridCardRect = new Rectangle(startX - 2, startY - 2, GRID_PIXELS + 4, GRID_PIXELS + 4);
-                using (var gridCardPath = CreateRoundedRectangle(gridCardRect, 8)) {
-                    using (var cardFill = new SolidBrush(Color.FromArgb(12, 13, 17))) {
-                        g.FillPath(cardFill, gridCardPath);
+                // 1. Lens Aperture (Circular Mag Lens)
+                Rectangle lensRect = new Rectangle(startX, startY, GRID_PIXELS, GRID_PIXELS);
+                using (var lensPath = new GraphicsPath()) {
+                    lensPath.AddEllipse(lensRect);
+                    g.SetClip(lensPath);
+
+                    using (var lensBg = new SolidBrush(Color.FromArgb(14, 15, 20))) {
+                        g.FillEllipse(lensBg, lensRect);
                     }
 
                     // 2. Render pixel grid
@@ -428,96 +475,89 @@ namespace IADonkey.ColorPicker {
                             using (var brush = new SolidBrush(c)) {
                                 g.FillRectangle(brush, startX + px * CELL_SIZE, startY + py * CELL_SIZE, CELL_SIZE, CELL_SIZE);
                             }
-                            using (var pen = new Pen(Color.FromArgb(30, 255, 255, 255), 1)) {
+                            using (var pen = new Pen(Color.FromArgb(20, 255, 255, 255), 1)) {
                                 g.DrawRectangle(pen, startX + px * CELL_SIZE, startY + py * CELL_SIZE, CELL_SIZE, CELL_SIZE);
                             }
                         }
                     }
 
-                    // 3. Highlight Center Pixel (DonkeyTools Rose + White border with anti-aliasing)
-                    g.SmoothingMode = SmoothingMode.AntiAlias;
-                    int centerBoxX = startX + half * CELL_SIZE;
-                    int centerBoxY = startY + half * CELL_SIZE;
-                    Rectangle centerTargetRect = new Rectangle(centerBoxX - 1, centerBoxY - 1, CELL_SIZE + 2, CELL_SIZE + 2);
-                    using (var centerPath = CreateRoundedRectangle(centerTargetRect, 3)) {
-                        // Outer Rose accent border
-                        using (var rosePen = new Pen(Color.FromArgb(244, 63, 94), 2f)) {
-                            g.DrawPath(rosePen, centerPath);
-                        }
-                        // Inner white precision border
-                        Rectangle innerTargetRect = new Rectangle(centerBoxX, centerBoxY, CELL_SIZE, CELL_SIZE);
-                        using (var innerPath = CreateRoundedRectangle(innerTargetRect, 2)) {
-                            using (var whitePen = new Pen(Color.White, 1f)) {
-                                g.DrawPath(whitePen, innerPath);
-                            }
-                        }
+                    g.ResetClip();
+                }
+
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+
+                // 2. Subtle Lens Bezel Ring
+                using (var ringPen = new Pen(Color.FromArgb(50, 255, 255, 255), 1.5f)) {
+                    g.DrawEllipse(ringPen, lensRect);
+                }
+
+                // 3. Highlight Center Reticle (Reticle / Target Ring with contrast shadow)
+                int centerBoxX = startX + half * CELL_SIZE;
+                int centerBoxY = startY + half * CELL_SIZE;
+                Rectangle centerTargetRect = new Rectangle(centerBoxX - 1, centerBoxY - 1, CELL_SIZE + 2, CELL_SIZE + 2);
+                using (var centerPath = CreateRoundedRectangle(centerTargetRect, 3)) {
+                    // Outer dark drop-shadow for visibility on any bright background
+                    using (var shadowPen = new Pen(Color.FromArgb(160, 0, 0, 0), 2.5f)) {
+                        g.DrawPath(shadowPen, centerPath);
+                    }
+                    // Inner white precision border
+                    using (var whitePen = new Pen(Color.White, 1.5f)) {
+                        g.DrawPath(whitePen, centerPath);
                     }
                 }
 
-                // 4. Color Swatch & Value Section
-                int swatchY = startY + GRID_PIXELS + 10;
+                // 4. Color Swatch (Circular Pill with multi-layered diffused soft shadow, borderless) & Value Section
+                int swatchY = startY + GRID_PIXELS + 12;
                 Rectangle swatchRect = new Rectangle(14, swatchY, 28, 28);
-                using (var swatchPath = CreateRoundedRectangle(swatchRect, 7)) {
-                    using (var swatchBrush = new SolidBrush(centerColor)) {
-                        g.FillPath(swatchBrush, swatchPath);
-                    }
-                    using (var swatchBorder = new Pen(Color.FromArgb(70, 255, 255, 255), 1.5f)) {
-                        g.DrawPath(swatchBorder, swatchPath);
-                    }
+                // Outer diffuse layer
+                using (var s3 = new SolidBrush(Color.FromArgb(25, 0, 0, 0))) {
+                    g.FillEllipse(s3, new Rectangle(12, swatchY + 3, 32, 31));
+                }
+                // Mid soft layer
+                using (var s2 = new SolidBrush(Color.FromArgb(40, 0, 0, 0))) {
+                    g.FillEllipse(s2, new Rectangle(13, swatchY + 2, 30, 30));
+                }
+                // Near shadow layer
+                using (var s1 = new SolidBrush(Color.FromArgb(60, 0, 0, 0))) {
+                    g.FillEllipse(s1, new Rectangle(14, swatchY + 1, 28, 28));
+                }
+                using (var swatchBrush = new SolidBrush(centerColor)) {
+                    g.FillEllipse(swatchBrush, swatchRect);
                 }
 
                 string hexText = string.Format("#{0:X2}{1:X2}{2:X2}", centerColor.R, centerColor.G, centerColor.B);
                 string rgbText = string.Format("RGB: {0}, {1}, {2}", centerColor.R, centerColor.G, centerColor.B);
 
-                using (var hexFont = new Font("Consolas", 10.5f, FontStyle.Bold))
+                using (var hexFont = new Font("Segoe UI", 10.5f, FontStyle.Bold))
                 using (var rgbFont = new Font("Segoe UI", 7.5f, FontStyle.Regular))
                 using (var textBrush = new SolidBrush(Color.White))
                 using (var subBrush = new SolidBrush(Color.FromArgb(156, 163, 175))) {
-                    g.DrawString(hexText, hexFont, textBrush, 48, swatchY - 1);
-                    g.DrawString(rgbText, rgbFont, subBrush, 49, swatchY + 15);
+                    g.DrawString(hexText, hexFont, textBrush, 49, swatchY - 1);
+                    g.DrawString(rgbText, rgbFont, subBrush, 50, swatchY + 16);
                 }
 
-                // 5. Divider Line
+                // 5. Divider Line (ultra subtle)
                 int divY = swatchY + 36;
-                using (var divPen = new Pen(Color.FromArgb(25, 255, 255, 255), 1f)) {
+                using (var divPen = new Pen(Color.FromArgb(18, 255, 255, 255), 1f)) {
                     g.DrawLine(divPen, 14, divY, this.Width - 14, divY);
                 }
 
-                // 6. Footer Shortcut Badges (Spotlight <kbd> style)
+                // 6. Footer Shortcut Text (Inverted colors: text in white, shortcut keys in rose accent, no button boxes)
                 int footerY = divY + 7;
-                using (var kbdFont = new Font("Segoe UI", 7f, FontStyle.Bold))
-                using (var labelFont = new Font("Segoe UI", 7f, FontStyle.Regular))
-                using (var kbdBg = new SolidBrush(Color.FromArgb(35, 255, 255, 255)))
-                using (var kbdBorder = new Pen(Color.FromArgb(50, 255, 255, 255), 1f))
-                using (var kbdText = new SolidBrush(Color.FromArgb(220, 225, 235)))
-                using (var labelText = new SolidBrush(Color.FromArgb(156, 163, 175))) {
-                    // Badge 1: [Klik] vybrat
-                    Rectangle kbd1 = new Rectangle(14, footerY, 26, 14);
-                    using (var p1 = CreateRoundedRectangle(kbd1, 3)) {
-                        g.FillPath(kbdBg, p1);
-                        g.DrawPath(kbdBorder, p1);
-                    }
-                    g.DrawString("Klik", kbdFont, kbdText, 16, footerY);
-                    g.DrawString("vybrat", labelFont, labelText, 43, footerY);
+                using (var keyFont = new Font("Segoe UI", 8f, FontStyle.Bold))
+                using (var labelFont = new Font("Segoe UI", 7.5f, FontStyle.Regular))
+                using (var keyBrush = new SolidBrush(Color.FromArgb(244, 63, 94)))
+                using (var labelBrush = new SolidBrush(Color.White)) {
+                    // Left: ↵ vybrat
+                    g.DrawString("↵", keyFont, keyBrush, 14, footerY - 1);
+                    g.DrawString("vybrat", labelFont, labelBrush, 28, footerY);
 
-                    // Badge 2: [Esc] konec
-                    Rectangle kbd2 = new Rectangle(82, footerY, 24, 14);
-                    using (var p2 = CreateRoundedRectangle(kbd2, 3)) {
-                        g.FillPath(kbdBg, p2);
-                        g.DrawPath(kbdBorder, p2);
-                    }
-                    g.DrawString("Esc", kbdFont, kbdText, 84, footerY);
-                    g.DrawString("konec", labelFont, labelText, 109, footerY);
+                    // Right: Esc konec
+                    g.DrawString("Esc", keyFont, keyBrush, 86, footerY - 1);
+                    g.DrawString("konec", labelFont, labelBrush, 110, footerY);
                 }
 
-                // 7. Outer Card Anti-aliased Border (Spotlight border-white/10)
-                Rectangle outerRect = new Rectangle(0, 0, this.Width - 1, this.Height - 1);
-                using (var outerPath = CreateRoundedRectangle(outerRect, CORNER_RADIUS / 2)) {
-                    using (var borderPen = new Pen(Color.FromArgb(45, 255, 255, 255), 1f)) {
-                        borderPen.Alignment = PenAlignment.Inset;
-                        g.DrawPath(borderPen, outerPath);
-                    }
-                }
+                // 7. Outer Card: borderless (clean M3 surface with CS_DROPSHADOW system window shadow)
             }
 
             protected override void Dispose(bool disposing) {

@@ -23,7 +23,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose, isSpotl
         {/* Header */}
         <div className="flex items-center justify-between pb-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center text-white shadow-sm">
+            <div className="w-10 h-10 rounded-full m3-primary-badge flex items-center justify-center shadow-sm">
               <span className="material-symbols-outlined text-2xl">history_edu</span>
             </div>
             <div>
@@ -118,7 +118,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose, isSpotl
           </span>
           <button
             onClick={onClose}
-            className="m3-primary-pill px-6 py-2.5 text-xs font-semibold rounded-full transition cursor-pointer shadow-md"
+            className="px-6 py-2.5 text-xs font-semibold text-gray-200 hover:text-white bg-white/[0.06] hover:bg-white/[0.12] rounded-full transition cursor-pointer shadow-sm"
           >
             Zavřít
           </button>

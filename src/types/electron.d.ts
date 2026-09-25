@@ -214,8 +214,8 @@ declare global {
 
       // EasyClip API
       getEasyClipItems?: () => Promise<import('./index').EasyClipItem[]>;
-      copyEasyClipItem?: (id: string) => Promise<boolean>;
-      copyMultipleEasyClipItems?: (ids: string[]) => Promise<boolean>;
+      copyEasyClipItem?: (id: string, paste?: boolean) => Promise<boolean>;
+      copyMultipleEasyClipItems?: (ids: string[], paste?: boolean) => Promise<boolean>;
       deleteEasyClipItem?: (id: string) => Promise<boolean>;
       deleteMultipleEasyClipItems?: (ids: string[]) => Promise<boolean>;
       clearEasyClipHistory?: () => Promise<boolean>;
