@@ -163,7 +163,6 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
   if (!isOpen) return null;
 
   return (
-  return (
     <main className="w-full h-screen bg-[#0e0f12] border border-white/[0.08] flex flex-col justify-between text-gray-200 select-none overflow-hidden font-sans">
       {/* Header - Native titlebar has close button, so no duplicate [X] here */}
       <div className="p-4 border-b border-white/[0.06] bg-[#0a0a0d] flex items-center justify-between shrink-0">
