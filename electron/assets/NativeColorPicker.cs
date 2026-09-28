@@ -93,6 +93,9 @@ namespace IADonkey.ColorPicker {
         const int DWMNCRP_ENABLED = 2;
         const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
         const int DWMWCP_ROUND = 2;
+        const int DWMWA_BORDER_COLOR = 34;
+        const int DWMWA_COLOR_NONE = unchecked((int)0xFFFFFFFE);
+        const int CS_DROPSHADOW = 0x00020000;
         const int WS_THICKFRAME = 0x00040000;
         const int WS_CAPTION = 0x00C00000;
         const int WM_NCCALCSIZE = 0x0083;
@@ -169,7 +172,11 @@ namespace IADonkey.ColorPicker {
         const uint SPI_SETCURSORS = 0x0057;
 
         static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+        const uint SWP_NOSIZE = 0x0001;
+        const uint SWP_NOMOVE = 0x0002;
+        const uint SWP_NOZORDER = 0x0004;
         const uint SWP_NOACTIVATE = 0x0010;
+        const uint SWP_FRAMECHANGED = 0x0020;
         const uint SWP_SHOWWINDOW = 0x0040;
 
         static IntPtr _kbdHook = IntPtr.Zero;
@@ -422,6 +429,8 @@ namespace IADonkey.ColorPicker {
             protected override CreateParams CreateParams {
                 get {
                     CreateParams cp = base.CreateParams;
+                    // Class style CS_DROPSHADOW provides native diffused drop shadow
+                    cp.ClassStyle |= CS_DROPSHADOW;
                     // WS_THICKFRAME and WS_CAPTION tell Windows DWM to attach the full modern diffused window shadow
                     cp.Style |= WS_THICKFRAME | WS_CAPTION;
                     return cp;
@@ -455,14 +464,17 @@ namespace IADonkey.ColorPicker {
                 // Material 3 Expressive surface background: #181920
                 this.BackColor = Color.FromArgb(24, 25, 32);
 
-                // Enable modern DWM widely diffused drop shadow and smooth rounded corners (Windows 11)
+                // Enable modern DWM widely diffused drop shadow and smooth rounded corners without outer border (Windows 11)
                 try {
                     int policy = DWMNCRP_ENABLED;
                     DwmSetWindowAttribute(this.Handle, DWMWA_NCRENDERING_POLICY, ref policy, sizeof(int));
                     int corner = DWMWCP_ROUND;
                     DwmSetWindowAttribute(this.Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
+                    int noBorder = DWMWA_COLOR_NONE;
+                    DwmSetWindowAttribute(this.Handle, DWMWA_BORDER_COLOR, ref noBorder, sizeof(int));
                     MARGINS margins = new MARGINS { leftWidth = 1, rightWidth = 1, topHeight = 1, bottomHeight = 1 };
                     DwmExtendFrameIntoClientArea(this.Handle, ref margins);
+                    SetWindowPos(this.Handle, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
                 } catch { }
 
                 _gridBitmap = new Bitmap(GRID_COUNT, GRID_COUNT);
