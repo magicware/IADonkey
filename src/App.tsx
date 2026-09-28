@@ -13,6 +13,8 @@ import { SplashScreen } from './components/SplashScreen';
 import { TuneColorModal } from './components/TuneColorModal';
 import { QuickCapSnipper } from './components/QuickCapSnipper';
 import { ScreenRulerOverlay } from './components/ScreenRulerOverlay';
+import { WindowFrame } from './components/WindowFrame';
+import { PowerManagementModal } from './components/PowerManagementModal';
 import { CURRENT_APP_VERSION, getLatestRelease } from './changelog';
 import { applyPrimaryColor, applyActionsColor } from './utils/theme';
 
@@ -422,37 +424,51 @@ export const App: React.FC = () => {
   if (isSettingsView) {
     if (!isInitialReady) {
       return (
-        <main className="w-full h-screen bg-[#181920] flex flex-col items-center justify-center text-gray-400 gap-3 select-none">
-          <div className="w-7 h-7 rounded-full border-2 border-white/10 border-t-indigo-500 animate-spin" />
-          <span className="text-xs font-medium tracking-wide text-gray-400">Načítám nastavení...</span>
-        </main>
+        <WindowFrame
+          title="IADonkey – Nastavení"
+          allowMinimize={true}
+          allowMaximize={true}
+          onClose={() => window.close()}
+        >
+          <main className="w-full h-full bg-[#181920] flex flex-col items-center justify-center text-gray-400 gap-3 select-none">
+            <div className="w-7 h-7 rounded-full border-2 border-white/10 border-t-indigo-500 animate-spin" />
+            <span className="text-xs font-medium tracking-wide text-gray-400">Načítám nastavení...</span>
+          </main>
+        </WindowFrame>
       );
     }
 
     return (
-      <main className="w-full h-screen bg-[#181920] overflow-hidden text-gray-200">
-        <SettingsModal
-          config={config}
-          items={items}
-          onSaveConfig={handleSaveConfig}
-          onClose={() => window.close()}
-          onTriggerSync={handleRefreshData}
-          onCheckUpdate={handleCheckUpdate}
-          isSyncing={isSyncing}
-          syncProgress={syncProgress}
-          updateStatusMessage={updateStatusMessage}
-          updateInfo={updateInfo}
-          onSimulateUpdate={handleSimulateUpdate}
-        />
-        {/* Update Dialog in settings view if simulated */}
-        {updateInfo && (
-          <UpdateDialog
+      <WindowFrame
+        title="IADonkey – Nastavení"
+        allowMinimize={true}
+        allowMaximize={true}
+        onClose={() => window.close()}
+      >
+        <main className="w-full h-full bg-[#181920] overflow-hidden text-gray-200">
+          <SettingsModal
+            config={config}
+            items={items}
+            onSaveConfig={handleSaveConfig}
+            onClose={() => window.close()}
+            onTriggerSync={handleRefreshData}
+            onCheckUpdate={handleCheckUpdate}
+            isSyncing={isSyncing}
+            syncProgress={syncProgress}
+            updateStatusMessage={updateStatusMessage}
             updateInfo={updateInfo}
-            onAccept={handleAcceptUpdate}
-            onDecline={handleDeclineUpdate}
+            onSimulateUpdate={handleSimulateUpdate}
           />
-        )}
-      </main>
+          {/* Update Dialog in settings view if simulated */}
+          {updateInfo && (
+            <UpdateDialog
+              updateInfo={updateInfo}
+              onAccept={handleAcceptUpdate}
+              onDecline={handleDeclineUpdate}
+            />
+          )}
+        </main>
+      </WindowFrame>
     );
   }
 
@@ -465,89 +481,79 @@ export const App: React.FC = () => {
         ? `${baseCloneDir.replace(/[\\/]+$/, '')}\\magicgate\\${gitCloneParams.repoName}`
         : baseCloneDir);
 
+    const winTitle = gitCloneParams.isInstanceMode
+      ? `IADonkey – Klonovat repozitáře instance (${gitCloneParams.repoName || 'Instance'})`
+      : `IADonkey – Klonovat repozitář${gitCloneParams.repoName ? ` (${gitCloneParams.repoName})` : ''}`;
+
     return (
-      <GitCloneModal
-        isOpen={true}
+      <WindowFrame
+        title={winTitle}
+        allowMinimize={true}
+        allowMaximize={true}
         onClose={() => window.close()}
-        repoName={gitCloneParams.repoName}
-        repoUrl={gitCloneParams.repoUrl}
-        defaultTargetDir={initialTargetDir}
-        initialRecursive={gitCloneParams.recursive}
-        isStandaloneWindow={true}
-        isInstanceMode={gitCloneParams.isInstanceMode}
-        adminUrl={gitCloneParams.adminUrl}
-        vscodeEnabled={config.extensions?.vscode ?? false}
-        androidStudioEnabled={config.extensions?.androidStudio ?? false}
-        repoLanguage={gitCloneParams.repoLanguage}
-      />
+      >
+        <GitCloneModal
+          isOpen={true}
+          onClose={() => window.close()}
+          repoName={gitCloneParams.repoName}
+          repoUrl={gitCloneParams.repoUrl}
+          defaultTargetDir={initialTargetDir}
+          initialRecursive={gitCloneParams.recursive}
+          isStandaloneWindow={true}
+          isInstanceMode={gitCloneParams.isInstanceMode}
+          adminUrl={gitCloneParams.adminUrl}
+          vscodeEnabled={config.extensions?.vscode ?? false}
+          androidStudioEnabled={config.extensions?.androidStudio ?? false}
+          repoLanguage={gitCloneParams.repoLanguage}
+        />
+      </WindowFrame>
     );
   }
 
   // Dedicated CMSinFS Download Window mode
   if (isCmsDownloadView) {
     return (
-      <CmsDownloadModal
-        isOpen={true}
-        onClose={() => window.close()}
-        instanceName={cmsDownloadParams.instanceName}
-        adminUrl={cmsDownloadParams.adminUrl}
-        targetDir={cmsDownloadParams.targetDir}
-        vscodeEnabled={config.extensions?.vscode ?? false}
-      />
+      <WindowFrame
+        title={`IADonkey – Stažení CMSinFS zdrojáků (${cmsDownloadParams.instanceName || 'Instance'})`}
+        allowMinimize={true}
+        allowMaximize={true}
+        onClose={() => {
+          if (window.electronAPI?.closeCmsDownloadWindow) {
+            window.electronAPI.closeCmsDownloadWindow(true);
+          } else {
+            window.close();
+          }
+        }}
+      >
+        <CmsDownloadModal
+          isOpen={true}
+          onClose={() => {
+            if (window.electronAPI?.closeCmsDownloadWindow) {
+              window.electronAPI.closeCmsDownloadWindow(true);
+            } else {
+              window.close();
+            }
+          }}
+          instanceName={cmsDownloadParams.instanceName}
+          adminUrl={cmsDownloadParams.adminUrl}
+          targetDir={cmsDownloadParams.targetDir}
+          vscodeEnabled={config.extensions?.vscode ?? false}
+        />
+      </WindowFrame>
     );
   }
 
   // Dedicated Power / Quit / Restart Window mode
   if (isPowerView) {
     return (
-      <main className="w-full h-screen bg-[#14151b] flex flex-col justify-between p-5 text-gray-200 select-none">
-        <div className="flex items-center justify-between pb-3">
-          <div className="flex items-center gap-2.5">
-            <span className="material-symbols-outlined text-indigo-400 text-xl">power_settings_new</span>
-            <span className="font-semibold text-sm text-white">Správa aplikace IADonkey</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => window.electronAPI?.closePowerWindow?.()}
-            className="w-8 h-8 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center cursor-pointer"
-            title="Zavřít"
-          >
-            <span className="material-symbols-outlined text-base">close</span>
-          </button>
-        </div>
-
-        <div className="py-2">
-          <p className="text-xs text-gray-400 leading-relaxed">
-            Zvolte požadovanou systémovou akci. Aplikaci můžete restartovat pro opětovné načtení procesů nebo ji zcela ukončit.
-          </p>
-        </div>
-
-        <div className="flex items-center justify-end gap-2.5 pt-3">
-          <button
-            type="button"
-            onClick={() => window.electronAPI?.closePowerWindow?.()}
-            className="px-4 py-2 rounded-full text-xs font-semibold text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
-          >
-            Zrušit
-          </button>
-          <button
-            type="button"
-            onClick={() => window.electronAPI?.restartApp?.()}
-            className="px-4 py-2 rounded-full text-xs font-semibold bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-          >
-            <span className="material-symbols-outlined text-sm">restart_alt</span>
-            <span>Restartovat</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => window.electronAPI?.quitApp?.()}
-            className="px-4 py-2 rounded-full text-xs font-semibold bg-rose-600/30 hover:bg-rose-600/50 text-rose-300 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-          >
-            <span className="material-symbols-outlined text-sm">power_settings_new</span>
-            <span>Ukončit</span>
-          </button>
-        </div>
-      </main>
+      <WindowFrame
+        title="IADonkey – Správa aplikace"
+        allowMinimize={true}
+        allowMaximize={false}
+        onClose={() => window.electronAPI?.closePowerWindow?.()}
+      >
+        <PowerManagementModal onClose={() => window.electronAPI?.closePowerWindow?.()} />
+      </WindowFrame>
     );
   }
 
@@ -556,7 +562,22 @@ export const App: React.FC = () => {
     const rawSearch = window.location.search || (window.location.hash.includes('?') ? window.location.hash.slice(window.location.hash.indexOf('?') + 1) : '');
     const params = new URLSearchParams(rawSearch);
     const initialColor = params.get('color') || '#6366f1';
-    return <TuneColorModal initialColor={initialColor} />;
+    return (
+      <WindowFrame
+        title="IADonkey – Doladění barvy"
+        allowMinimize={true}
+        allowMaximize={true}
+        onClose={() => {
+          if (window.electronAPI?.closeTuneColorWindow) {
+            window.electronAPI.closeTuneColorWindow();
+          } else {
+            window.close();
+          }
+        }}
+      >
+        <TuneColorModal initialColor={initialColor} />
+      </WindowFrame>
+    );
   }
 
   // QuickCap Snipper Screen Overlay mode

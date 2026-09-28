@@ -98,6 +98,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   const [easyClipSelectedIndex, setEasyClipSelectedIndex] = useState<number>(0);
   const [selectedEasyClipIds, setSelectedEasyClipIds] = useState<Set<string>>(new Set());
   const easyClipAnchorRef = useRef<number>(0);
+  const isEyedropperRef = useRef<boolean>(false);
 
   const isColorMasterActive = Boolean(donkeyToolsEnabled && colorMasterConfig?.enabled === true);
   const isQuickCapActive = Boolean(donkeyToolsEnabled && (quickCapConfig?.enabled === true || fastSnapConfig?.enabled === true));
@@ -196,6 +197,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     setSelectedEasyClipIds(new Set());
     savedParentItemRef.current = null;
     restoringIndexRef.current = null;
+    isEyedropperRef.current = false;
   };
 
   const enterEasyClip = async () => {
@@ -438,6 +440,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     if (window.electronAPI?.onColorPickedGlobal) {
       const unsub = window.electronAPI.onColorPickedGlobal((data: { color: string; formatted: string }) => {
         if (data.color) {
+          isEyedropperRef.current = true;
           const parsed = parseColorQuery(data.color);
           const format = colorMasterConfig?.defaultFormat || 'hex';
           setQuery(data.color);
@@ -448,6 +451,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           }
           setIsRevealed(true);
           inputRef.current?.focus();
+          setTimeout(() => inputRef.current?.focus(), 50);
+          setTimeout(() => inputRef.current?.focus(), 150);
         }
       });
       return () => unsub?.();
@@ -910,6 +915,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
   // Return from actions mode back to search results
   const exitActions = () => {
+    isEyedropperRef.current = false;
     setActionsParentItem(null);
     setSelectedActionIndex(0);
     setInfoPage(0);
@@ -1839,7 +1845,15 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         if (chosen) {
           handleExecuteAction(actionsParentItem, chosen);
         }
-      } else if (e.key === 'Escape' || e.key === 'Backspace') {
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        if (isEyedropperRef.current) {
+          isEyedropperRef.current = false;
+          handleClose();
+        } else {
+          exitActions();
+        }
+      } else if (e.key === 'Backspace') {
         e.preventDefault();
         exitActions();
       }
@@ -2403,7 +2417,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             }`}
           >
             <span className="material-symbols-outlined text-[19px] leading-none select-none flex items-center justify-center">
-              sync
+              autorenew
             </span>
           </div>
 
@@ -2787,7 +2801,9 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             <div className="flex items-center gap-4 flex-wrap">
               {hasItemActions(actionsParentItem) && (
                 <span className="text-xs font-semibold flex items-center gap-1.5">
-                  <kbd className="text-[10px] m3-actions-text font-mono font-bold leading-none">↵</kbd>
+                  <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] m3-actions-text rounded-full font-mono text-[9px] leading-none select-none">
+                    Enter
+                  </kbd>
                   <span className="text-white">Provést</span>
                 </span>
               )}
@@ -3013,34 +3029,34 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
               {selectedEasyClipIds.size > 1 ? (
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-semibold flex items-center gap-1.5">
-                    <kbd className="text-[10px] text-rose-400 font-mono font-bold leading-none">
-                      {isCtrlDown ? 'Ctrl+↵' : '↵'}
+                    <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">
+                      {isCtrlDown ? 'Ctrl+Enter' : 'Enter'}
                     </kbd>
                     <span className="text-white">
                       {isCtrlDown ? 'Kopírovat' : 'Vložit'} vybrané ({selectedEasyClipIds.size})
                     </span>
                   </span>
                   <span className="text-xs font-semibold flex items-center gap-1.5">
-                    <kbd className="text-[10px] text-rose-400 font-mono font-bold leading-none">Del</kbd>
+                    <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">Del</kbd>
                     <span className="text-white">Smazat</span>
                   </span>
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-semibold flex items-center gap-1.5">
-                    <kbd className="text-[10px] text-rose-400 font-mono font-bold leading-none">
-                      {isCtrlDown ? 'Ctrl+↵' : '↵'}
+                    <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">
+                      {isCtrlDown ? 'Ctrl+Enter' : 'Enter'}
                     </kbd>
                     <span className="text-white">
                       {isCtrlDown ? 'Kopírovat' : 'Vložit'}
                     </span>
                   </span>
                   <span className="text-xs font-semibold flex items-center gap-1.5">
-                    <kbd className="text-[10px] text-rose-400 font-mono font-bold leading-none">Del</kbd>
+                    <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">Del</kbd>
                     <span className="text-white">Smazat</span>
                   </span>
                   <span className="text-xs font-semibold flex items-center gap-1.5">
-                    <kbd className="text-[10px] text-rose-400 font-mono font-bold leading-none">Shift+↑↓</kbd>
+                    <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">Shift+↑↓</kbd>
                     <span className="text-white">Více</span>
                   </span>
                 </div>
@@ -3350,18 +3366,24 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
               <div className="flex items-center gap-4 flex-wrap">
                 {results[selectedIndex]?.action === 'copy' || results[selectedIndex]?.action === 'paste' ? (
                   <span className="text-xs font-semibold flex items-center gap-1.5">
-                    <kbd className="text-[10px] text-emerald-400 font-mono font-bold leading-none">↵</kbd>
+                    <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-emerald-400 rounded-full font-mono text-[9px] leading-none select-none">
+                      Enter
+                    </kbd>
                     <span className="text-white">Kopírovat</span>
                   </span>
                 ) : (
                   <span className="text-xs font-semibold flex items-center gap-1.5">
-                    <kbd className="text-[10px] m3-primary-text font-mono font-bold leading-none">↵</kbd>
+                    <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] m3-primary-text rounded-full font-mono text-[9px] leading-none select-none">
+                      Enter
+                    </kbd>
                     <span className="text-white">Otevřít</span>
                   </span>
                 )}
                 {hasItemActionsOrInfo(results[selectedIndex]) && (
                   <span className="text-xs font-semibold flex items-center gap-1.5">
-                    <kbd className="text-[10px] m3-actions-text font-mono font-bold leading-none">Shift+↵</kbd>
+                    <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] m3-actions-text rounded-full font-mono text-[9px] leading-none select-none">
+                      Shift+Enter
+                    </kbd>
                     <span className="text-white">
                       {hasItemActions(results[selectedIndex]) && hasItemInfo(results[selectedIndex])
                         ? 'Akce a info'
@@ -3373,7 +3395,9 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                 )}
                 {results[selectedIndex]?.options && results[selectedIndex].options!.length > 0 && (
                   <span className="text-xs font-semibold flex items-center gap-1.5">
-                    <kbd className="text-[10px] text-sky-400 font-mono font-bold leading-none">Alt+↵</kbd>
+                    <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-sky-400 rounded-full font-mono text-[9px] leading-none select-none">
+                      Alt+Enter
+                    </kbd>
                     <span className="text-white">Subpoložky ({results[selectedIndex].options!.length})</span>
                   </span>
                 )}

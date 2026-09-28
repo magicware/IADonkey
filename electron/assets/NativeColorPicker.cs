@@ -108,6 +108,64 @@ namespace IADonkey.ColorPicker {
         const int VK_RETURN = 0x0D;
         const int VK_SPACE = 0x20;
 
+        [DllImport("user32.dll")]
+        static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+        [DllImport("kernel32.dll")]
+        static extern uint GetCurrentThreadId();
+
+        [DllImport("user32.dll")]
+        static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
+        [DllImport("user32.dll")]
+        static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        static extern bool BringWindowToTop(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
+        static extern void SwitchToThisWindow(IntPtr hWnd, bool fAltTab);
+
+        [DllImport("user32.dll")]
+        static extern bool AllowSetForegroundWindow(int dwProcessId);
+
+        const int SW_SHOW = 5;
+        const int ASFW_ANY = -1;
+
+        static IntPtr _parentHwnd = IntPtr.Zero;
+        static int _parentPid = 0;
+
+        public static void ForceForeground(IntPtr hWnd) {
+            try {
+                AllowSetForegroundWindow(ASFW_ANY);
+                if (hWnd == IntPtr.Zero) return;
+
+                ShowWindow(hWnd, SW_SHOW);
+                BringWindowToTop(hWnd);
+                SetForegroundWindow(hWnd);
+                SwitchToThisWindow(hWnd, true);
+
+                IntPtr fg = GetForegroundWindow();
+                if (fg != hWnd) {
+                    uint dummy;
+                    uint foreThread = GetWindowThreadProcessId(fg, out dummy);
+                    uint currentThread = GetCurrentThreadId();
+                    if (foreThread != 0 && foreThread != currentThread) {
+                        AttachThreadInput(currentThread, foreThread, true);
+                        BringWindowToTop(hWnd);
+                        SetForegroundWindow(hWnd);
+                        AttachThreadInput(currentThread, foreThread, false);
+                    }
+                }
+            } catch { }
+        }
+
         const uint SPI_SETCURSORS = 0x0057;
 
         static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
@@ -177,10 +235,30 @@ namespace IADonkey.ColorPicker {
                 try { SetProcessDPIAware(); } catch { }
             }
 
-            if (args.Length > 0 && (args[0] == "--instant" || args[0] == "-i")) {
+            bool instant = false;
+            for (int i = 0; i < args.Length; i++) {
+                if (args[i] == "--instant" || args[i] == "-i") {
+                    instant = true;
+                } else if (args[i] == "--parent-hwnd" && i + 1 < args.Length) {
+                    long hwndVal;
+                    if (long.TryParse(args[i + 1], out hwndVal)) {
+                        _parentHwnd = new IntPtr(hwndVal);
+                    }
+                    i++;
+                } else if (args[i] == "--parent-pid" && i + 1 < args.Length) {
+                    int pidVal;
+                    if (int.TryParse(args[i + 1], out pidVal)) {
+                        _parentPid = pidVal;
+                    }
+                    i++;
+                }
+            }
+
+            if (instant) {
                 Point pt = Cursor.Position;
                 Color c = ReadSinglePixel(pt.X, pt.Y);
                 Console.WriteLine("#{0:X2}{1:X2}{2:X2}", c.R, c.G, c.B);
+                if (_parentHwnd != IntPtr.Zero) ForceForeground(_parentHwnd);
                 return;
             }
 
@@ -204,12 +282,19 @@ namespace IADonkey.ColorPicker {
             } finally {
                 if (_kbdHook != IntPtr.Zero) UnhookWindowsHookEx(_kbdHook);
                 if (hEyeCursor != IntPtr.Zero) DestroyIcon(hEyeCursor);
+                if (_parentHwnd != IntPtr.Zero) ForceForeground(_parentHwnd);
             }
 
             if (_picked) {
                 Point p = Cursor.Position;
                 Color c = ReadSinglePixel(p.X, p.Y);
                 Console.WriteLine("#{0:X2}{1:X2}{2:X2}", c.R, c.G, c.B);
+            }
+
+            if (_parentHwnd != IntPtr.Zero) {
+                ForceForeground(_parentHwnd);
+            } else {
+                try { AllowSetForegroundWindow(ASFW_ANY); } catch { }
             }
         }
 
@@ -241,10 +326,12 @@ namespace IADonkey.ColorPicker {
             if (nCode >= 0 && wParam.ToInt32() == WM_KEYDOWN) {
                 int vkCode = Marshal.ReadInt32(lParam);
                 if (vkCode == VK_ESCAPE) {
+                    if (_parentHwnd != IntPtr.Zero) ForceForeground(_parentHwnd);
                     Application.Exit();
                     return (IntPtr)1;
                 } else if (vkCode == VK_RETURN || vkCode == VK_SPACE) {
                     _picked = true;
+                    if (_parentHwnd != IntPtr.Zero) ForceForeground(_parentHwnd);
                     Application.Exit();
                     return (IntPtr)1;
                 }
@@ -295,8 +382,10 @@ namespace IADonkey.ColorPicker {
                 base.OnMouseDown(e);
                 if (e.Button == MouseButtons.Left) {
                     _picked = true;
+                    if (_parentHwnd != IntPtr.Zero) ForceForeground(_parentHwnd);
                     Application.Exit();
                 } else if (e.Button == MouseButtons.Right) {
+                    if (_parentHwnd != IntPtr.Zero) ForceForeground(_parentHwnd);
                     Application.Exit();
                 }
             }
@@ -304,9 +393,11 @@ namespace IADonkey.ColorPicker {
             protected override void OnKeyDown(KeyEventArgs e) {
                 base.OnKeyDown(e);
                 if (e.KeyCode == Keys.Escape) {
+                    if (_parentHwnd != IntPtr.Zero) ForceForeground(_parentHwnd);
                     Application.Exit();
                 } else if (e.KeyCode == Keys.Return || e.KeyCode == Keys.Space) {
                     _picked = true;
+                    if (_parentHwnd != IntPtr.Zero) ForceForeground(_parentHwnd);
                     Application.Exit();
                 }
             }
@@ -414,8 +505,10 @@ namespace IADonkey.ColorPicker {
                 base.OnMouseDown(e);
                 if (e.Button == MouseButtons.Left) {
                     _picked = true;
+                    if (_parentHwnd != IntPtr.Zero) ForceForeground(_parentHwnd);
                     Application.Exit();
                 } else if (e.Button == MouseButtons.Right) {
+                    if (_parentHwnd != IntPtr.Zero) ForceForeground(_parentHwnd);
                     Application.Exit();
                 }
             }

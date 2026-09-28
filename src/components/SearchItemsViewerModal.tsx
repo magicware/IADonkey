@@ -309,7 +309,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-in fade-in duration-150 window-modal-overlay">
       <div className="m3-surface-main rounded-[28px] w-full max-w-6xl h-[88vh] flex flex-col shadow-2xl overflow-hidden text-gray-200 border-none">
         {/* Header */}
         <header className="p-5 flex items-center justify-between gap-4 shrink-0">
@@ -371,9 +371,15 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                   : 'text-gray-400 hover:text-gray-200'
               }`}
             >
-              <span className="material-symbols-outlined text-sm">format_list_bulleted</span>
-              <span>Indexované položky</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${viewTab === 'items' ? 'bg-white/20 text-white' : 'bg-white/10 text-gray-400'}`}>
+              <span className="material-symbols-outlined text-sm text-indigo-400 m3-primary-text">format_list_bulleted</span>
+              <span>Kompletní položky</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${
+                  viewTab === 'items'
+                    ? 'bg-indigo-500/30 text-indigo-200 m3-primary-badge'
+                    : 'bg-indigo-500/15 text-indigo-300 m3-primary-badge'
+                }`}
+              >
                 {filteredIndexedAll}
               </span>
             </button>
@@ -386,13 +392,17 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                   : 'text-gray-400 hover:text-gray-200'
               }`}
             >
-              <span className="material-symbols-outlined text-sm">block</span>
+              <span className="material-symbols-outlined text-sm text-rose-400">block</span>
               <span>Banlist</span>
-              {banlist.length > 0 && (
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${viewTab === 'banlist' ? 'bg-white/20 text-white' : 'bg-rose-500/20 text-rose-300'}`}>
-                  {banlist.length}
-                </span>
-              )}
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${
+                  viewTab === 'banlist'
+                    ? 'bg-rose-500/30 text-rose-200'
+                    : 'bg-rose-500/15 text-rose-300'
+                }`}
+              >
+                {filterQuery ? filteredBanlist.length : banlist.length}
+              </span>
             </button>
           </div>
 
@@ -454,7 +464,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
                     {filterQuery ? `Žádná zabanovaná položka neodpovídá "${filterQuery}"` : 'Žádné položky nejsou na banlistu'}
                   </p>
                   <p className="text-xs text-gray-500 max-w-md mx-auto">
-                    {filterQuery ? 'Zkuste upravit hledaný výraz.' : 'Položky můžete zabanovat v záložce Indexované položky kliknutím na ikonu zákazu. Zabanované položky se vynechají z importu i vyhledávače.'}
+                    {filterQuery ? 'Zkuste upravit hledaný výraz.' : 'Položky můžete zabanovat v záložce Kompletní položky kliknutím na ikonu zákazu. Zabanované položky se vynechají z importu i vyhledávače.'}
                   </p>
                 </div>
               ) : (
@@ -881,9 +891,13 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="px-5 py-1.5 bg-white/[0.08] hover:bg-white/[0.14] text-white rounded-full font-medium transition cursor-pointer"
+            className="px-5 py-1.5 bg-white/[0.08] hover:bg-white/[0.14] text-white rounded-full font-medium transition cursor-pointer flex items-center gap-1.5"
+            title="Zavřít (Esc)"
           >
-            Zavřít
+            <span>Zavřít</span>
+            <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[9px] leading-none select-none">
+              Esc
+            </kbd>
           </button>
         </footer>
       </div>

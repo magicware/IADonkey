@@ -4,9 +4,9 @@ import appLogo from '../assets/icon.png';
 
 export const SplashScreen: React.FC = () => {
   return (
-    <div className="w-screen h-screen bg-transparent p-4 flex items-center justify-center select-none overflow-hidden font-sans">
+    <div className="w-screen h-screen bg-transparent p-9 flex items-center justify-center select-none overflow-hidden font-sans">
       <div
-        className="w-full h-full bg-[#14151b] text-gray-200 rounded-[28px] shadow-2xl flex flex-col items-start justify-between p-8 relative outline-none border-0"
+        className="w-full h-full m3-surface-main text-gray-200 rounded-[28px] flex flex-col items-start justify-between p-8 relative outline-none border-0"
         style={{ WebkitAppRegion: 'drag' } as any}
       >
         <div>
@@ -32,7 +32,7 @@ export const SplashScreen: React.FC = () => {
         <div className="flex-1 min-h-[14px]" />
 
         {/* Brief description */}
-        <p className="text-[12px] text-gray-400 leading-relaxed mb-4">
+        <p className="text-[12px] text-gray-400 leading-relaxed mb-8">
           Rychlý a inteligentní spouštěč pro vaše každodenní úkoly a produktivitu. Sjednocuje vyhledávání, pracovní nástroje a automatizaci do jednoho přehledného prostředí.
         </p>
 

@@ -709,9 +709,13 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
             <button
               type="button"
               onClick={handleFooterClose}
-              className="px-5 py-2 bg-white/10 hover:bg-white/15 text-white rounded-full text-xs font-medium transition cursor-pointer"
+              className="px-5 py-2 bg-white/10 hover:bg-white/15 text-white rounded-full text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
+              title="Zavřít okno (Enter / Esc)"
             >
-              Zavřít
+              <span>Zavřít</span>
+              <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[9px] leading-none select-none">
+                Enter
+              </kbd>
             </button>
           </>
         ) : (
@@ -720,9 +724,13 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
               type="button"
               disabled={status === 'cloning'}
               onClick={onClose}
-              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-full text-xs font-medium transition cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-full text-xs font-medium transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              title="Zrušit a zavřít okno (Esc)"
             >
-              Zrušit
+              <span>Zrušit</span>
+              <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[9px] leading-none select-none">
+                Esc
+              </kbd>
             </button>
 
             {(() => {
@@ -743,6 +751,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
                       ? 'bg-white/10 text-gray-500 opacity-40 cursor-not-allowed'
                       : 'bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white cursor-pointer'
                   }`}
+                  title={!isBlocked ? 'Klonovat (Enter)' : undefined}
                 >
                   {isCloning ? (
                     <>
@@ -766,8 +775,8 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
                           : 'Klonovat repozitář'}
                       </span>
                       {!isBlocked && (
-                        <kbd className="hidden sm:inline-block ml-1 px-1.5 py-0.5 text-[10px] font-sans font-normal bg-black/30 text-white rounded-full">
-                          ↵
+                        <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-black/30 text-white/90 rounded-full font-mono text-[9px] leading-none select-none">
+                          Enter
                         </kbd>
                       )}
                     </>
@@ -783,14 +792,14 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
 
   if (isStandaloneWindow) {
     return (
-      <main className="w-full h-screen m3-surface-main text-gray-200 flex flex-col justify-between select-none overflow-hidden font-sans">
+      <main className="w-full h-full m3-surface-main text-gray-200 flex flex-col justify-between select-none overflow-hidden font-sans">
         {content}
       </main>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 select-none animate-in fade-in duration-150 window-modal-overlay">
       <div className="m3-surface-main rounded-[28px] w-full max-w-lg shadow-2xl overflow-hidden text-gray-200 flex flex-col">
         {content}
       </div>

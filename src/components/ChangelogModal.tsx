@@ -18,7 +18,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose, isSpotl
   }, [onClose]);
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isSpotlightView ? 'bg-transparent' : 'bg-black/75 backdrop-blur-sm'}`}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 window-modal-overlay ${isSpotlightView ? 'bg-transparent' : 'bg-black/75 backdrop-blur-sm'}`}>
       <div className="m3-surface-main w-full max-w-2xl max-h-[520px] p-6 flex flex-col gap-4 text-gray-200 select-none">
         {/* Header */}
         <div className="flex items-center justify-between pb-2">
@@ -118,9 +118,13 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose, isSpotl
           </span>
           <button
             onClick={onClose}
-            className="px-6 py-2.5 text-xs font-semibold text-gray-200 hover:text-white bg-white/[0.06] hover:bg-white/[0.12] rounded-full transition cursor-pointer shadow-sm"
+            className="px-6 py-2.5 text-xs font-semibold text-gray-200 hover:text-white bg-white/[0.06] hover:bg-white/[0.12] rounded-full transition cursor-pointer shadow-sm flex items-center gap-1.5"
+            title="Zavřít okno (Esc)"
           >
-            Zavřít
+            <span>Zavřít</span>
+            <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[9px] leading-none select-none">
+              Esc
+            </kbd>
           </button>
         </div>
       </div>

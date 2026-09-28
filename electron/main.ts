@@ -211,7 +211,26 @@ async function pickScreenColorNative(
 
   return new Promise((resolve) => {
     try {
+      const targetWin = options?.noSpotlight
+        ? (windowManager ? windowManager.getSettingsWindow() : null)
+        : (windowManager ? windowManager.getMainWindow() : null);
+
+      const nativeHwnd = targetWin && !targetWin.isDestroyed() ? targetWin.getNativeWindowHandle() : null;
+      let hwndString = '0';
+      if (nativeHwnd && nativeHwnd.length >= 4) {
+        try {
+          hwndString = nativeHwnd.length >= 8 ? nativeHwnd.readBigInt64LE(0).toString() : nativeHwnd.readInt32LE(0).toString();
+        } catch {
+          hwndString = '0';
+        }
+      }
+
       const args = instant ? ['--instant'] : [];
+      if (hwndString !== '0') {
+        args.push('--parent-hwnd', hwndString);
+      }
+      args.push('--parent-pid', process.pid.toString());
+
       const child = spawn(exePath, args, {
         windowsHide: false,
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -227,16 +246,16 @@ async function pickScreenColorNative(
       });
 
       const restoreWindows = () => {
-        setTimeout(() => {
-          if (wasMainVisible && windowManager) {
-            windowManager.showSpotlight();
-          } else {
-            const settingsWin = windowManager ? windowManager.getSettingsWindow() : null;
-            if (settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible()) {
-              settingsWin.focus();
-            }
+        if (wasMainVisible && windowManager) {
+          windowManager.showSpotlight();
+          app.focus({ steal: true });
+        } else {
+          const settingsWin = windowManager ? windowManager.getSettingsWindow() : null;
+          if (settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible()) {
+            app.focus({ steal: true });
+            settingsWin.focus();
           }
-        }, 80);
+        }
       };
 
       child.on('close', (code) => {
@@ -308,11 +327,20 @@ async function pickScreenColorNative(
             windowManager.showSpotlight();
             const win = windowManager.getMainWindow();
             if (win && !win.isDestroyed()) {
+              if (win.isMinimized()) {
+                win.restore();
+              }
+              win.show();
+              win.setAlwaysOnTop(true);
+              app.focus({ steal: true });
+              win.focus();
+              win.webContents.focus();
               win.webContents.send('color-picked-global', { color: pickedColor, formatted });
             }
           } else {
             const settingsWin = windowManager ? windowManager.getSettingsWindow() : null;
             if (settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible()) {
+              app.focus({ steal: true });
               settingsWin.focus();
             }
           }
@@ -332,9 +360,21 @@ async function pickScreenColorNative(
 
           if (wasMainVisible && windowManager) {
             windowManager.showSpotlight();
+            const win = windowManager.getMainWindow();
+            if (win && !win.isDestroyed()) {
+              if (win.isMinimized()) {
+                win.restore();
+              }
+              win.show();
+              win.setAlwaysOnTop(true);
+              app.focus({ steal: true });
+              win.focus();
+              win.webContents.focus();
+            }
           } else {
             const settingsWin = windowManager ? windowManager.getSettingsWindow() : null;
             if (settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible()) {
+              app.focus({ steal: true });
               settingsWin.focus();
             }
           }
@@ -1238,7 +1278,7 @@ function setupIpcHandlers() {
     windowManager.openCmsDownloadWindow(params);
   });
 
-  ipcMain.handle('close-cms-download-window', (_event, restoreSpotlight: boolean = false) => {
+  ipcMain.handle('close-cms-download-window', (_event, restoreSpotlight: boolean = true) => {
     windowManager.setSkipSpotlightRestoreOnCmsDownloadClose(!restoreSpotlight);
     windowManager.closeCmsDownloadWindow();
   });
@@ -1870,6 +1910,23 @@ function setupIpcHandlers() {
     win?.minimize();
   });
 
+  ipcMain.handle('maximize-window', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return false;
+    if (win.isMaximized()) {
+      win.unmaximize();
+      return false;
+    } else {
+      win.maximize();
+      return true;
+    }
+  });
+
+  ipcMain.handle('is-window-maximized', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return win ? win.isMaximized() : false;
+  });
+
   ipcMain.handle('close-window', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     win?.close();
@@ -1992,6 +2049,27 @@ function setupIpcHandlers() {
 
   ipcMain.handle('get-splash-status', () => {
     return windowManager ? windowManager.getLastSplashStatus() : { percent: 15, text: 'Inicializace aplikace...' };
+  });
+
+  ipcMain.handle('show-splash-screen', async () => {
+    if (!windowManager) return;
+    const version = app.getVersion() || '2.0.0';
+    windowManager.createSplashWindow(version);
+    await windowManager.whenSplashReady();
+
+    const steps = [
+      { percent: 15, text: 'Inicializace aplikace...' },
+      { percent: 35, text: 'Načítání konfigurace a modulů...' },
+      { percent: 60, text: 'Příprava vyhledávacího indexu...' },
+      { percent: 85, text: 'Ověřování datových zdrojů...' },
+      { percent: 100, text: 'Připraveno ke spuštění!' },
+    ];
+    for (const step of steps) {
+      windowManager.updateSplashStatus(step.percent, step.text);
+      await new Promise((r) => setTimeout(r, 600));
+    }
+    await new Promise((r) => setTimeout(r, 500));
+    await windowManager.closeSplashWindow(200);
   });
 }
 

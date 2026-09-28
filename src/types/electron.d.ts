@@ -170,10 +170,14 @@ declare global {
       installerPerformUninstall?: () => Promise<void>;
       onInstallerProgress?: (callback: (progress: { percent: number; phase: string; detail?: string }) => void) => () => void;
       minimizeWindow?: () => Promise<void>;
+      maximizeWindow?: () => Promise<boolean>;
+      isWindowMaximized?: () => Promise<boolean>;
       closeWindow?: () => Promise<void>;
+      onWindowMaximizeChanged?: (callback: (isMaximized: boolean) => void) => () => void;
 
       // Splash Screen API
       getSplashStatus?: () => Promise<{ percent: number; text: string }>;
+      showSplashScreen?: () => Promise<void>;
       onSplashStatus?: (callback: (status: { percent: number; text: string }) => void) => () => void;
 
       // Diagnostics & Logs API

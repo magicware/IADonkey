@@ -20,6 +20,14 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
     - V režimu XML: výběr cesty k souboru na disku s validací existence.
     - V režimu API: URL endpointu, volba typu autentizace, tlačítko *„Otestovat připojení k API“*.
 
+- [ ] **2. Analýza dodatečné shortcut lišty (rychlého panelu zástupců)**
+  - **Popis**: Možnost připnout si vyhledané položky ze Spotlightu i jejich konkrétní akce jako zástupce (zkratky / shortcuts) do rychlého panelu pro okamžité spuštění.
+  - **K zamyšlení & UX/UI analýza**:
+    - **Umístění a vizuál lišty**: Kompaktní dock panel (např. lišta pod vyhledávacím řádkem, boční panel, nebo konfigurovatelná plovoucí lišta).
+    - **Způsob připínání**: Akce v nabídce položky (*„Připnout na rychlý panel“* / klávesová zkratka), drag & drop, nebo správa v Nastavení.
+    - **Reprezentace zástupců**: Miniatury ikon s badge indikátorem, tooltip s plným názvem a akcí, rychlé spuštění přes klávesy (např. 1–9 nebo Alt+1–9).
+    - **Datový model & Konfigurace**: Ukládání seznamu zástupců v konfiguraci aplikace (`pinnedShortcuts: { id, name, icon, action, location, settings }[]`).
+
 ---
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)

@@ -80,7 +80,7 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
   }, [r, g, b, a]);
 
   return (
-    <div className="h-screen max-h-screen flex flex-col m3-surface-main text-gray-200 select-none overflow-hidden font-sans">
+    <div className="w-full h-full flex flex-col m3-surface-main text-gray-200 select-none overflow-hidden font-sans">
       {/* Main Content (scrollable if window height is small, includes Header) */}
       <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-5">
         {/* Header */}
@@ -233,18 +233,26 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
         <button
           type="button"
           onClick={handleCancel}
-          className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 rounded-full text-xs font-medium transition cursor-pointer"
+          className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-full text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
+          title="Zrušit a zavřít okno (Esc)"
         >
-          Zrušit (Esc)
+          <span>Zrušit</span>
+          <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[9px] leading-none select-none">
+            Esc
+          </kbd>
         </button>
 
         <button
           type="button"
           onClick={handleSave}
           className="px-5 py-2.5 rounded-full text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white"
+          title="Uložit barvu (Enter)"
         >
           <span className="material-symbols-outlined text-sm">check</span>
           <span>Uložit barvu</span>
+          <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-black/30 text-white/90 rounded-full font-mono text-[9px] leading-none select-none">
+            Enter
+          </kbd>
         </button>
       </div>
     </div>

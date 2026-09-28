@@ -137,10 +137,15 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
-      } else if (e.key === 'Enter' && status === 'success') {
-        e.preventDefault();
-        handleOpenInExplorer();
-        handleFooterClose();
+      } else if (e.key === 'Enter') {
+        if (status === 'success') {
+          e.preventDefault();
+          handleOpenInExplorer();
+          handleFooterClose();
+        } else if (status === 'error') {
+          e.preventDefault();
+          startDownload();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -163,7 +168,7 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <main className="w-full h-screen m3-surface-main flex flex-col justify-between text-gray-200 select-none overflow-hidden font-sans">
+    <main className="w-full h-full m3-surface-main flex flex-col justify-between text-gray-200 select-none overflow-hidden font-sans">
       {/* Header - Native titlebar has close button, so no duplicate [X] here */}
       <div className="p-5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
@@ -336,29 +341,41 @@ export const CmsDownloadModal: React.FC<CmsDownloadModalProps> = ({
             <button
               type="button"
               onClick={handleFooterClose}
-              className="px-5 py-2 bg-white/10 hover:bg-white/15 text-white rounded-full text-xs font-medium transition cursor-pointer"
+              className="px-5 py-2 bg-white/10 hover:bg-white/15 text-white rounded-full text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
+              title="Zavřít okno (Enter / Esc)"
             >
-              Zavřít
+              <span>Zavřít</span>
+              <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[9px] leading-none select-none">
+                Enter
+              </kbd>
             </button>
           </>
         ) : (
           <>
             <button
               type="button"
-              onClick={status === 'error' ? handleFooterClose : onClose}
-              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-full text-xs font-medium transition cursor-pointer"
+              onClick={onClose}
+              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-full text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
+              title="Zrušit a zavřít okno (Esc)"
             >
-              {status === 'error' ? 'Zavřít' : 'Zrušit'}
+              <span>Zrušit</span>
+              <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[9px] leading-none select-none">
+                Esc
+              </kbd>
             </button>
 
             {status === 'error' ? (
               <button
                 type="button"
                 onClick={startDownload}
-                className="m3-primary-pill px-5 py-2.5 rounded-full text-xs font-semibold flex items-center gap-2 transition cursor-pointer shadow-md"
+                className="m3-actions-pill bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white px-5 py-2.5 rounded-full text-xs font-semibold flex items-center gap-2 transition cursor-pointer shadow-md"
+                title="Zkusit znovu (Enter)"
               >
                 <span className="material-symbols-outlined text-sm">refresh</span>
                 <span>Zkusit znovu</span>
+                <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-black/30 text-white/90 rounded-full font-mono text-[9px] leading-none select-none">
+                  Enter
+                </kbd>
               </button>
             ) : (
               <div className="flex items-center gap-2 text-xs text-gray-300 font-mono">

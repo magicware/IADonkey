@@ -198,10 +198,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('installer-progress', handler);
   },
   minimizeWindow: (): Promise<void> => ipcRenderer.invoke('minimize-window'),
+  maximizeWindow: (): Promise<boolean> => ipcRenderer.invoke('maximize-window'),
+  isWindowMaximized: (): Promise<boolean> => ipcRenderer.invoke('is-window-maximized'),
   closeWindow: (): Promise<void> => ipcRenderer.invoke('close-window'),
+  onWindowMaximizeChanged: (callback: (isMaximized: boolean) => void) => {
+    const handler = (_event: any, isMaximized: boolean) => callback(isMaximized);
+    ipcRenderer.on('window-maximize-changed', handler);
+    return () => ipcRenderer.removeListener('window-maximize-changed', handler);
+  },
 
   // Splash Screen API
   getSplashStatus: (): Promise<{ percent: number; text: string }> => ipcRenderer.invoke('get-splash-status'),
+  showSplashScreen: (): Promise<void> => ipcRenderer.invoke('show-splash-screen'),
   onSplashStatus: (callback: (status: { percent: number; text: string }) => void) => {
     const handler = (_event: any, status: any) => callback(status);
     ipcRenderer.on('splash-status', handler);

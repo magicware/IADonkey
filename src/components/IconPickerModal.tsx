@@ -137,7 +137,7 @@ export const IconPickerModal: React.FC<IconPickerModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+      className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in window-modal-overlay"
       onClick={onClose}
     >
       <div
@@ -276,9 +276,13 @@ export const IconPickerModal: React.FC<IconPickerModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="m3-primary-pill px-5 py-2 rounded-full text-xs font-semibold transition cursor-pointer shadow-md"
+              className="m3-primary-pill px-5 py-2 rounded-full text-xs font-semibold transition cursor-pointer shadow-md flex items-center gap-1.5"
+              title="Zavřít výběr ikon (Esc)"
             >
-              Zavřít
+              <span>Zavřít</span>
+              <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-black/30 text-white/90 rounded-full font-mono text-[9px] leading-none select-none">
+                Esc
+              </kbd>
             </button>
           </div>
         </div>

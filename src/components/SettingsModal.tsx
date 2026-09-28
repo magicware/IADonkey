@@ -152,6 +152,48 @@ function getReservedHotkeyCollision(combo: string[]): string | null {
   return null;
 }
 
+const getGitRepoData = (item: LauncherItem): { repoName: string; repoUrl: string } | null => {
+  const isGit = item.settings === 'git' || item.sourceId === 'github' || item.sourceId === 'git';
+  const cloneAction = item.actions?.find((a) => a.action === 'clone' || a.action === 'clonerecursive');
+  if (isGit || cloneAction) {
+    const repoUrl =
+      cloneAction?.location ||
+      (item.location && (item.location.startsWith('http') || item.location.endsWith('.git')) ? item.location : null);
+    if (repoUrl && item.name) {
+      return {
+        repoName: item.name,
+        repoUrl,
+      };
+    }
+  }
+  return null;
+};
+
+const getMagicGateInstanceData = (item: LauncherItem): { instanceName: string; adminUrl: string } | null => {
+  const isMg =
+    item.settings === 'magicgate' ||
+    item.sourceId === 'magicgate' ||
+    item.sourceId === 'magicgate-xml' ||
+    Boolean(item.actions?.some((a) => a.action === 'mgclone' || a.action === 'mgclonerecursive'));
+
+  if (isMg) {
+    const adminUrl =
+      item.info?.['Admin URL'] ||
+      item.actions?.find((a) => a.action === 'mgclone' || a.action === 'mgclonerecursive')?.location ||
+      (item.location && item.location.includes('/Administration') ? item.location : undefined) ||
+      item.options?.find((opt) => opt.name?.trim().toUpperCase() === 'A' || opt.name?.toLowerCase().includes('administrace'))?.location ||
+      (item.location && (item.location.startsWith('http://') || item.location.startsWith('https://')) ? item.location : undefined);
+
+    if (adminUrl && item.name) {
+      return {
+        instanceName: item.name,
+        adminUrl,
+      };
+    }
+  }
+  return null;
+};
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   config,
   items,
@@ -181,6 +223,61 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [colorMasterRecordedModifiers, setColorMasterRecordedModifiers] = useState<string[]>([]);
   const [colorMasterHotkeyError, setColorMasterHotkeyError] = useState<string | null>(null);
   const [isSharedDropdownOpen, setIsSharedDropdownOpen] = useState(false);
+  const [openSimDropdown, setOpenSimDropdown] = useState<'github' | 'magicgate' | 'cms' | null>(null);
+
+  useEffect(() => {
+    if (!openSimDropdown) return;
+    const handleDocClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-sim-dropdown]')) {
+        setOpenSimDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleDocClick);
+    return () => document.removeEventListener('mousedown', handleDocClick);
+  }, [openSimDropdown]);
+
+  const firstGithubRepo = useMemo(() => {
+    for (const it of items) {
+      const res = getGitRepoData(it);
+      if (res) return res;
+      if (it.options) {
+        for (const opt of it.options) {
+          const optRes = getGitRepoData(opt);
+          if (optRes) return optRes;
+        }
+      }
+    }
+    return null;
+  }, [items]);
+
+  const firstMagicGateInstance = useMemo(() => {
+    for (const it of items) {
+      const res = getMagicGateInstanceData(it);
+      if (res) return res;
+      if (it.options) {
+        for (const opt of it.options) {
+          const optRes = getMagicGateInstanceData(opt);
+          if (optRes) return optRes;
+        }
+      }
+    }
+    return null;
+  }, [items]);
+
+  const firstCmsInstance = useMemo(() => {
+    if (!firstMagicGateInstance) return null;
+    const basePath = formData.magicgate?.instanceSourceCodesPath?.trim() || 'C:\\development\\CMSinFS';
+    const cleanBase = basePath.replace(/[\\/]+$/, '');
+    const cleanInst = (firstMagicGateInstance.instanceName || 'instance').trim().replace(/^[\\/]+|[\\/]+$/g, '');
+    const sep = cleanBase.includes('/') && !cleanBase.includes('\\') ? '/' : '\\';
+    return {
+      instanceName: firstMagicGateInstance.instanceName,
+      adminUrl: firstMagicGateInstance.adminUrl,
+      targetDir: `${cleanBase}${sep}${cleanInst}`,
+    };
+  }, [firstMagicGateInstance, formData.magicgate?.instanceSourceCodesPath]);
+
   const [hoveredEyeId, setHoveredEyeId] = useState<string | null>(null);
   const [copiedSourceId, setCopiedSourceId] = useState<string | null>(null);
   const [detectedKeys, setDetectedKeys] = useState<string[]>([]);
@@ -3132,7 +3229,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           {/* Column 3: Action indicator */}
                           <div className="shrink-0 text-xs flex items-center gap-1.5 text-indigo-200 opacity-90 select-none">
                             <span className="text-[11px]">Provést</span>
-                            <kbd className="inline-flex items-center justify-center h-[18px] px-1.5 bg-white/10 text-gray-300 border border-white/15 rounded font-mono text-[10px] leading-none whitespace-nowrap">
+                            <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[9px] leading-none select-none">
                               Enter
                             </kbd>
                           </div>
@@ -3922,7 +4019,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="w-full h-screen flex bg-[#0e0f12] text-gray-200 select-none overflow-hidden font-sans">
+    <div className="w-full h-full flex bg-[#0e0f12] text-gray-200 select-none overflow-hidden font-sans">
       {/* Left Sidebar */}
       <aside className="w-60 bg-[#121319] flex flex-col shrink-0 shadow-2xl z-10">
         {/* Sidebar Brand Header */}
@@ -4086,7 +4183,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               onClick={() => setActiveTab('donkey-tools')}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'donkey-tools'
-                  ? 'm3-selected-card text-white font-semibold'
+                  ? 'bg-rose-500/20 text-rose-200 font-semibold shadow-sm'
                   : 'text-gray-400 hover:text-rose-200 hover:bg-white/[0.04]'
               }`}
             >
@@ -4248,7 +4345,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* TAB 1: Sources */}
           {activeTab === 'sources' && (
-            <div className="space-y-4">
+            <div className="space-y-4 animate-fade-in max-w-4xl">
               {/* Alert banner for synchronization */}
               <div
                 className="p-4 rounded-2xl flex items-center justify-between gap-4 text-[13px] font-medium animate-fade-in min-h-[58px]"
@@ -4637,11 +4734,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div className="flex items-center gap-2">
                         <h3 className="text-sm font-bold text-white tracking-wide">Katalog ikon Material Symbols</h3>
                         {formData.iconsLastDownloadedAt ? (
-                          <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full font-medium">
+                          <span className="text-[10px] uppercase font-semibold bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full">
                             Aktualizováno
                           </span>
                         ) : (
-                          <span className="text-[10px] bg-white/5 text-gray-400 px-2.5 py-0.5 rounded-full font-medium">
+                          <span className="text-[10px] uppercase font-semibold bg-white/5 text-gray-400 px-2.5 py-0.5 rounded-full">
                             Nestáhnuto
                           </span>
                         )}
@@ -5139,7 +5236,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB 2: MagicGate Credentials */}
           {activeTab === 'magicgate' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-fade-in max-w-4xl">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-amber-400">security</span>
@@ -5339,7 +5436,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB Taskmanager */}
           {activeTab === 'mlog' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-fade-in max-w-4xl">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-sky-400">support_agent</span>
@@ -5471,7 +5568,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB: GitHub */}
           {activeTab === 'github' && (
-            <div className="space-y-6 animate-fade-in max-w-2xl">
+            <div className="space-y-6 animate-fade-in max-w-4xl">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-emerald-400">
@@ -6084,7 +6181,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB: Visual Studio Code */}
           {activeTab === 'vscode' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-fade-in max-w-4xl">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-cyan-400">code</span>
@@ -6193,7 +6290,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB: Android Studio */}
           {activeTab === 'android-studio' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-fade-in max-w-4xl">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-pink-400">android</span>
@@ -6621,6 +6718,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               }`}
                               placeholder="Klikněte pro nastavení zkratky"
                             />
+                            {(formData.donkeyTools?.quickCap?.hotkey || formData.donkeyTools?.fastSnap?.hotkey) && !isRecordingQuickCapHotkey && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const updated = {
+                                    ...formData,
+                                    donkeyTools: {
+                                      ...formData.donkeyTools,
+                                      quickCap: {
+                                        enabled: formData.donkeyTools?.quickCap?.enabled ?? formData.donkeyTools?.fastSnap?.enabled ?? true,
+                                        hotkey: '',
+                                        saveDirectory: formData.donkeyTools?.quickCap?.saveDirectory || formData.donkeyTools?.fastSnap?.saveDirectory,
+                                      },
+                                      fastSnap: {
+                                        enabled: formData.donkeyTools?.quickCap?.enabled ?? formData.donkeyTools?.fastSnap?.enabled ?? true,
+                                        hotkey: '',
+                                        saveDirectory: formData.donkeyTools?.quickCap?.saveDirectory || formData.donkeyTools?.fastSnap?.saveDirectory,
+                                      },
+                                    },
+                                  };
+                                  setFormData(updated);
+                                  handleSave(updated);
+                                  setQuickCapHotkeyError(null);
+                                }}
+                                className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-400 hover:text-white transition cursor-pointer"
+                                title="Odstranit zkratku"
+                              >
+                                <span className="material-symbols-outlined text-xs">close</span>
+                              </button>
+                            )}
                           </div>
 
                           <button
@@ -6874,6 +7002,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               }`}
                               placeholder="Klikněte pro nastavení zkratky"
                             />
+                            {formData.donkeyTools?.screenRuler?.hotkey && !isRecordingScreenRulerHotkey && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const updated = {
+                                    ...formData,
+                                    donkeyTools: {
+                                      ...formData.donkeyTools,
+                                      screenRuler: {
+                                        enabled: formData.donkeyTools?.screenRuler?.enabled ?? true,
+                                        hotkey: '',
+                                        color: formData.donkeyTools?.screenRuler?.color || '#f43f5e',
+                                        defaultUnit: formData.donkeyTools?.screenRuler?.defaultUnit || 'px',
+                                      },
+                                    },
+                                  };
+                                  setFormData(updated);
+                                  handleSave(updated);
+                                  setScreenRulerHotkeyError(null);
+                                }}
+                                className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-400 hover:text-white transition cursor-pointer"
+                                title="Odstranit zkratku"
+                              >
+                                <span className="material-symbols-outlined text-xs">close</span>
+                              </button>
+                            )}
                           </div>
 
                             <button
@@ -6907,135 +7062,132 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Unit & Accent Color options */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                      {/* Default Unit */}
-                      <div className="space-y-2">
-                        <label className="block text-xs font-semibold text-gray-300">
-                          Výchozí jednotka měření
-                        </label>
-                        <div className="flex items-center gap-2">
-                          {(['px', '%', 'dp'] as const).map((unitOpt) => {
-                            const isSelected = (formData.donkeyTools?.screenRuler?.defaultUnit || 'px') === unitOpt;
-                            return (
-                              <button
-                                key={unitOpt}
-                                type="button"
-                                onClick={() => {
-                                  const updated = {
-                                    ...formData,
-                                    donkeyTools: {
-                                      ...formData.donkeyTools,
-                                      screenRuler: {
-                                        enabled: formData.donkeyTools?.screenRuler?.enabled ?? true,
-                                        hotkey: formData.donkeyTools?.screenRuler?.hotkey || '',
-                                        color: formData.donkeyTools?.screenRuler?.color || '#f43f5e',
-                                        defaultUnit: unitOpt,
-                                      },
-                                    },
-                                  };
-                                  setFormData(updated);
-                                  handleSave(updated);
-                                }}
-                                className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-semibold transition cursor-pointer ${
-                                  isSelected
-                                    ? 'bg-rose-600 text-white'
-                                    : 'bg-black/30 text-gray-400 hover:bg-white/10 hover:text-white'
-                                }`}
-                              >
-                                {unitOpt}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <p className="text-[11px] text-gray-500">
-                          Během měření lze jednotku okamžitě přepínat klávesou <kbd className="bg-white/10 px-2 py-0.5 rounded-full text-gray-300 font-mono">U</kbd>.
-                        </p>
-                      </div>
-
-                      {/* Accent Color */}
-                      <div className="space-y-2">
-                        <label className="block text-xs font-semibold text-gray-300">
-                          Barva vodítek a měřítka
-                        </label>
-                        {(() => {
-                          const effectiveColor = formData.donkeyTools?.screenRuler?.color || '#f43f5e';
-                          const currentPreset = APP_COLOR_PRESETS.find(
-                            (preset) => preset.hex.toLowerCase() === effectiveColor.toLowerCase()
-                          );
-                          const handleColorChange = (newColor: string) => {
-                            const updated = {
-                              ...formData,
-                              donkeyTools: {
-                                ...formData.donkeyTools,
-                                screenRuler: {
-                                  enabled: formData.donkeyTools?.screenRuler?.enabled ?? true,
-                                  hotkey: formData.donkeyTools?.screenRuler?.hotkey || '',
-                                  color: newColor,
-                                  defaultUnit: formData.donkeyTools?.screenRuler?.defaultUnit || 'px',
-                                },
-                              },
-                            };
-                            setFormData(updated);
-                            handleSave(updated);
-                          };
-
+                    {/* Default Unit */}
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                      <label className="block text-xs font-semibold text-gray-300">
+                        Výchozí jednotka měření
+                      </label>
+                      <div className="flex items-center gap-2">
+                        {(['px', '%', 'dp'] as const).map((unitOpt) => {
+                          const isSelected = (formData.donkeyTools?.screenRuler?.defaultUnit || 'px') === unitOpt;
                           return (
-                            <div className="flex flex-wrap items-center justify-between gap-4 bg-black/30 p-4 rounded-2xl shadow-sm">
-                              {/* Active color preview indicator (left) */}
-                              <div className="flex items-center gap-3">
-                                <div className="relative w-10 h-10 rounded-full overflow-hidden shadow-inner flex items-center justify-center ring-2 ring-white/20">
-                                  <div
-                                    className="w-full h-full"
-                                    style={{ backgroundColor: effectiveColor }}
-                                  />
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="font-mono text-sm text-white font-semibold">
-                                    {currentPreset?.name || effectiveColor.toUpperCase()}
-                                  </span>
-                                  <span className="text-xs text-gray-400">Vybraný odstín</span>
-                                </div>
-                              </div>
+                            <button
+                              key={unitOpt}
+                              type="button"
+                              onClick={() => {
+                                const updated = {
+                                  ...formData,
+                                  donkeyTools: {
+                                    ...formData.donkeyTools,
+                                    screenRuler: {
+                                      enabled: formData.donkeyTools?.screenRuler?.enabled ?? true,
+                                      hotkey: formData.donkeyTools?.screenRuler?.hotkey || '',
+                                      color: formData.donkeyTools?.screenRuler?.color || '#f43f5e',
+                                      defaultUnit: unitOpt,
+                                    },
+                                  },
+                                };
+                                setFormData(updated);
+                                handleSave(updated);
+                              }}
+                              className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-semibold transition cursor-pointer ${
+                                isSelected
+                                  ? 'bg-rose-600 text-white'
+                                  : 'bg-black/30 text-gray-400 hover:bg-white/10 hover:text-white'
+                              }`}
+                            >
+                              {unitOpt}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[11px] text-gray-500">
+                        Během měření lze jednotku okamžitě přepínat klávesou <kbd className="bg-white/10 px-2 py-0.5 rounded-full text-gray-300 font-mono">U</kbd>.
+                      </p>
+                    </div>
 
-                              {/* Preset quick colors (right) */}
-                              <div className="flex items-center gap-2 flex-wrap">
-                                {APP_COLOR_PRESETS.map((preset) => (
-                                  <button
-                                    key={preset.hex}
-                                    type="button"
-                                    onClick={() => handleColorChange(preset.hex)}
-                                    title={preset.name}
-                                    className={`w-7 h-7 rounded-full transition transform hover:scale-110 flex items-center justify-center cursor-pointer shadow-sm ${
-                                      effectiveColor.toLowerCase() === preset.hex.toLowerCase()
-                                        ? 'ring-2 ring-white ring-offset-2 ring-offset-[#181920]'
-                                        : 'opacity-70 hover:opacity-100'
-                                    }`}
-                                    style={{ backgroundColor: preset.hex }}
-                                  />
-                                ))}
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    try {
-                                      const picked = await pickScreenColor({ noClipboard: true, noSpotlight: true });
-                                      if (picked) {
-                                        handleColorChange(picked);
-                                      }
-                                    } catch (err) {
-                                      console.error('Eyedropper error in ScreenRuler color picker:', err);
-                                    }
-                                  }}
-                                  title="Nabrat barvu z obrazovky (Kapátko)"
-                                  className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition flex items-center justify-center cursor-pointer ml-1 shadow-sm"
-                                >
-                                  <span className="material-symbols-outlined text-sm">colorize</span>
-                                </button>
+                    {/* Accent Color */}
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                      <label className="block text-xs font-semibold text-gray-300">
+                        Barva vodítek a měřítka
+                      </label>
+                      {(() => {
+                        const effectiveColor = formData.donkeyTools?.screenRuler?.color || '#f43f5e';
+                        const currentPreset = APP_COLOR_PRESETS.find(
+                          (preset) => preset.hex.toLowerCase() === effectiveColor.toLowerCase()
+                        );
+                        const handleColorChange = (newColor: string) => {
+                          const updated = {
+                            ...formData,
+                            donkeyTools: {
+                              ...formData.donkeyTools,
+                              screenRuler: {
+                                enabled: formData.donkeyTools?.screenRuler?.enabled ?? true,
+                                hotkey: formData.donkeyTools?.screenRuler?.hotkey || '',
+                                color: newColor,
+                                defaultUnit: formData.donkeyTools?.screenRuler?.defaultUnit || 'px',
+                              },
+                            },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        };
+
+                        return (
+                          <div className="flex flex-wrap items-center justify-between gap-4 bg-black/30 p-4 rounded-2xl shadow-sm">
+                            {/* Active color preview indicator (left) */}
+                            <div className="flex items-center gap-3">
+                              <div className="relative w-10 h-10 rounded-full overflow-hidden shadow-inner flex items-center justify-center ring-2 ring-white/20">
+                                <div
+                                  className="w-full h-full"
+                                  style={{ backgroundColor: effectiveColor }}
+                                />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="font-mono text-sm text-white font-semibold">
+                                  {currentPreset?.name || effectiveColor.toUpperCase()}
+                                </span>
+                                <span className="text-xs text-gray-400">Vybraný odstín</span>
                               </div>
                             </div>
-                          );
-                        })()}
-                      </div>
+
+                            {/* Preset quick colors (right) */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {APP_COLOR_PRESETS.map((preset) => (
+                                <button
+                                  key={preset.hex}
+                                  type="button"
+                                  onClick={() => handleColorChange(preset.hex)}
+                                  title={preset.name}
+                                  className={`w-7 h-7 rounded-full transition transform hover:scale-110 flex items-center justify-center cursor-pointer shadow-sm ${
+                                    effectiveColor.toLowerCase() === preset.hex.toLowerCase()
+                                      ? 'ring-2 ring-white ring-offset-2 ring-offset-[#181920]'
+                                      : 'opacity-70 hover:opacity-100'
+                                  }`}
+                                  style={{ backgroundColor: preset.hex }}
+                                />
+                              ))}
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    const picked = await pickScreenColor({ noClipboard: true, noSpotlight: true });
+                                    if (picked) {
+                                      handleColorChange(picked);
+                                    }
+                                  } catch (err) {
+                                    console.error('Eyedropper error in ScreenRuler color picker:', err);
+                                  }
+                                }}
+                                title="Nabrat barvu z obrazovky (Kapátko)"
+                                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition flex items-center justify-center cursor-pointer ml-1 shadow-sm"
+                              >
+                                <span className="material-symbols-outlined text-sm">colorize</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Usage shortcuts banner */}
@@ -7705,7 +7857,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB 3: General & Updates */}
           {activeTab === 'general' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-fade-in max-w-4xl">
               {/* Hotkey Section */}
               <div className="space-y-3 bg-white/[0.03] p-4 rounded-2xl shadow-sm">
                 <div>
@@ -7719,7 +7871,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                    <div className="relative">
+                    <div className="relative w-fit">
                       <input
                         type="text"
                         readOnly
@@ -7743,6 +7895,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         }`}
                         placeholder="Klikněte pro nastavení zkratky"
                       />
+                      {formData.hotkey && !isRecordingHotkey && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const updated = { ...formData, hotkey: '' };
+                            setFormData(updated);
+                            handleSave(updated);
+                            setHotkeyError(null);
+                          }}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-400 hover:text-white transition cursor-pointer"
+                          title="Odstranit zkratku"
+                        >
+                          <span className="material-symbols-outlined text-xs">close</span>
+                        </button>
+                      )}
                     </div>
                     <span className="text-[13px] text-gray-400">
                       {isRecordingHotkey ? (
@@ -8162,7 +8330,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB: Dedicated System & Updates */}
           {(activeTab === 'system' || activeTab === 'updates') && (
-            <div className="space-y-6 animate-fade-in">
+            <div className="space-y-6 animate-fade-in max-w-4xl">
               <div>
                 <h3 className="font-semibold text-white text-base flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-indigo-400">dns</span>
@@ -8399,7 +8567,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB 4: Help & Shortcuts */}
           {activeTab === 'help' && (
-            <div className="space-y-6 animate-fade-in">
+            <div className="space-y-6 animate-fade-in max-w-4xl">
               {/* Top Banner / Button: Jak na zdroje dat */}
               <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
                 <div className="flex items-start gap-3.5">
@@ -8763,7 +8931,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB: Developer Mode */}
           {activeTab === 'develop' && isDevelop && (
-            <div className="space-y-6 animate-fade-in">
+            <div className="space-y-6 animate-fade-in max-w-4xl">
               {/* Header card with status & disable button */}
               <div className="p-5 bg-amber-500/10 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-3.5">
@@ -8860,6 +9028,246 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   >
                     <span className="material-symbols-outlined text-base text-indigo-400">auto_awesome</span>
                     <span>Zobrazit Release notes</span>
+                  </button>
+
+                  {/* GitHub clone simulation dropdown */}
+                  <div className="relative" data-sim-dropdown>
+                    <button
+                      type="button"
+                      onClick={() => setOpenSimDropdown((curr) => (curr === 'github' ? null : 'github'))}
+                      className={`px-4 py-2 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
+                        openSimDropdown === 'github' ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 hover:bg-white/10 text-white'
+                      }`}
+                      title="Otevře nabídku pro simulaci okna GitHub klonování"
+                    >
+                      <span className="material-symbols-outlined text-base text-indigo-400">folder_code</span>
+                      <span>Simulovat okno GitHub</span>
+                      <span className={`material-symbols-outlined text-sm text-gray-400 transition-transform duration-200 ${openSimDropdown === 'github' ? 'rotate-180 text-white' : ''}`}>
+                        expand_more
+                      </span>
+                    </button>
+
+                    {openSimDropdown === 'github' && (
+                      <div className="absolute left-0 top-full mt-1.5 w-64 bg-[#181926] border border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 flex flex-col gap-1 backdrop-blur-md animate-fade-in">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenSimDropdown(null);
+                            window.electronAPI?.openGitCloneWindow?.({
+                              repoName: 'Demo-Error-Repo',
+                              repoUrl: 'https://github.com/magicware/non-existent-repo-demo-error.git',
+                            });
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-xl hover:bg-rose-500/10 text-gray-200 hover:text-rose-200 transition flex items-center gap-2.5 group cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-base text-rose-400 group-hover:scale-110 transition-transform">
+                            error
+                          </span>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-xs font-medium text-rose-300">Simulace chyba</span>
+                            <span className="text-[10px] text-gray-400 truncate">Demo-Error-Repo</span>
+                          </div>
+                        </button>
+
+                        {firstGithubRepo && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenSimDropdown(null);
+                              window.electronAPI?.openGitCloneWindow?.({
+                                repoName: firstGithubRepo.repoName,
+                                repoUrl: firstGithubRepo.repoUrl,
+                              });
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-xl hover:bg-emerald-500/10 text-gray-200 hover:text-emerald-200 transition flex items-center gap-2.5 group cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-base text-emerald-400 group-hover:scale-110 transition-transform">
+                              check_circle
+                            </span>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-xs font-medium text-emerald-300">Simulace úspěchu</span>
+                              <span className="text-[10px] text-gray-400 truncate" title={firstGithubRepo.repoName}>
+                                {firstGithubRepo.repoName}
+                              </span>
+                            </div>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* MagicGate repo simulation dropdown */}
+                  <div className="relative" data-sim-dropdown>
+                    <button
+                      type="button"
+                      onClick={() => setOpenSimDropdown((curr) => (curr === 'magicgate' ? null : 'magicgate'))}
+                      className={`px-4 py-2 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
+                        openSimDropdown === 'magicgate' ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 hover:bg-white/10 text-white'
+                      }`}
+                      title="Otevře nabídku pro simulaci okna MagicGate klonování"
+                    >
+                      <span className="material-symbols-outlined text-base text-indigo-400">cloud_download</span>
+                      <span>Simulovat okno MagicGate repo</span>
+                      <span className={`material-symbols-outlined text-sm text-gray-400 transition-transform duration-200 ${openSimDropdown === 'magicgate' ? 'rotate-180 text-white' : ''}`}>
+                        expand_more
+                      </span>
+                    </button>
+
+                    {openSimDropdown === 'magicgate' && (
+                      <div className="absolute left-0 top-full mt-1.5 w-64 bg-[#181926] border border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 flex flex-col gap-1 backdrop-blur-md animate-fade-in">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenSimDropdown(null);
+                            window.electronAPI?.openGitCloneWindow?.({
+                              repoName: 'Demo-Error-Instance',
+                              adminUrl: 'https://non-existent-demo-error.magictour.cz',
+                              isInstanceMode: true,
+                            });
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-xl hover:bg-rose-500/10 text-gray-200 hover:text-rose-200 transition flex items-center gap-2.5 group cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-base text-rose-400 group-hover:scale-110 transition-transform">
+                            error
+                          </span>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-xs font-medium text-rose-300">Simulace chyba</span>
+                            <span className="text-[10px] text-gray-400 truncate">Demo-Error-Instance</span>
+                          </div>
+                        </button>
+
+                        {firstMagicGateInstance && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenSimDropdown(null);
+                              window.electronAPI?.openGitCloneWindow?.({
+                                repoName: firstMagicGateInstance.instanceName,
+                                adminUrl: firstMagicGateInstance.adminUrl,
+                                isInstanceMode: true,
+                              });
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-xl hover:bg-emerald-500/10 text-gray-200 hover:text-emerald-200 transition flex items-center gap-2.5 group cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-base text-emerald-400 group-hover:scale-110 transition-transform">
+                              check_circle
+                            </span>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-xs font-medium text-emerald-300">Simulace úspěchu</span>
+                              <span className="text-[10px] text-gray-400 truncate" title={firstMagicGateInstance.instanceName}>
+                                {firstMagicGateInstance.instanceName}
+                              </span>
+                            </div>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CMS source codes simulation dropdown */}
+                  <div className="relative" data-sim-dropdown>
+                    <button
+                      type="button"
+                      onClick={() => setOpenSimDropdown((curr) => (curr === 'cms' ? null : 'cms'))}
+                      className={`px-4 py-2 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
+                        openSimDropdown === 'cms' ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 hover:bg-white/10 text-white'
+                      }`}
+                      title="Otevře nabídku pro simulaci stažení CMS zdrojáků"
+                    >
+                      <span className="material-symbols-outlined text-base text-indigo-400">code</span>
+                      <span>Simulovat okno CMS zdrojáky</span>
+                      <span className={`material-symbols-outlined text-sm text-gray-400 transition-transform duration-200 ${openSimDropdown === 'cms' ? 'rotate-180 text-white' : ''}`}>
+                        expand_more
+                      </span>
+                    </button>
+
+                    {openSimDropdown === 'cms' && (
+                      <div className="absolute left-0 top-full mt-1.5 w-64 bg-[#181926] border border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 flex flex-col gap-1 backdrop-blur-md animate-fade-in">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenSimDropdown(null);
+                            window.electronAPI?.openCmsDownloadWindow?.({
+                              instanceName: 'Demo-Error-Instance',
+                              adminUrl: 'https://non-existent-demo-error.magictour.cz',
+                              targetDir: 'C:\\development\\CMSinFS\\Demo-Error-Instance',
+                            });
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-xl hover:bg-rose-500/10 text-gray-200 hover:text-rose-200 transition flex items-center gap-2.5 group cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-base text-rose-400 group-hover:scale-110 transition-transform">
+                            error
+                          </span>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-xs font-medium text-rose-300">Simulace chyba</span>
+                            <span className="text-[10px] text-gray-400 truncate">Demo-Error-Instance</span>
+                          </div>
+                        </button>
+
+                        {firstCmsInstance && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenSimDropdown(null);
+                              window.electronAPI?.openCmsDownloadWindow?.({
+                                instanceName: firstCmsInstance.instanceName,
+                                adminUrl: firstCmsInstance.adminUrl,
+                                targetDir: firstCmsInstance.targetDir,
+                              });
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-xl hover:bg-emerald-500/10 text-gray-200 hover:text-emerald-200 transition flex items-center gap-2.5 group cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-base text-emerald-400 group-hover:scale-110 transition-transform">
+                              check_circle
+                            </span>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-xs font-medium text-emerald-300">Simulace úspěchu</span>
+                              <span className="text-[10px] text-gray-400 truncate" title={firstCmsInstance.instanceName}>
+                                {firstCmsInstance.instanceName}
+                              </span>
+                            </div>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.electronAPI?.openTuneColorWindow?.({
+                        initialColor: formData.primaryColor || '#6366f1',
+                      });
+                    }}
+                    className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
+                    title="Otevře okno doladění barvy ColorMasteru s aktuální primární barvou"
+                  >
+                    <span className="material-symbols-outlined text-base text-indigo-400">palette</span>
+                    <span>Simulovat okno Ladění barvy</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.electronAPI?.showSplashScreen?.();
+                    }}
+                    className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
+                    title="Vyvolá úvodní obrazovku (Splash screen) se simulací načítání"
+                  >
+                    <span className="material-symbols-outlined text-base text-indigo-400">rocket_launch</span>
+                    <span>Simulovat Splash screen</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.electronAPI?.openPowerWindow?.();
+                    }}
+                    className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
+                    title="Otevře okno správy aplikace s možnostmi restartu a ukončení"
+                  >
+                    <span className="material-symbols-outlined text-base text-indigo-400">power_settings_new</span>
+                    <span>Simulovat Správu aplikace</span>
                   </button>
                 </div>
 

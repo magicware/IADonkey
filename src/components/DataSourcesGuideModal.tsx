@@ -157,7 +157,7 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
 }`;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 window-modal-overlay">
       <div className="m3-surface-main rounded-[28px] w-full max-w-4xl max-h-[88vh] p-6 shadow-2xl flex flex-col gap-4 text-gray-200 animate-in fade-in zoom-in-95 duration-150 select-none">
         
         {/* Header */}
@@ -620,9 +620,13 @@ export const DataSourcesGuideModal: React.FC<DataSourcesGuideModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 bg-white/10 hover:bg-white/15 text-white rounded-full text-xs font-semibold transition cursor-pointer"
+            className="px-5 py-2 bg-white/10 hover:bg-white/15 text-white rounded-full text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+            title="Zavřít průvodce (Esc)"
           >
-            Zavřít průvodce
+            <span>Zavřít průvodce</span>
+            <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[9px] leading-none select-none">
+              Esc
+            </kbd>
           </button>
         </div>
 

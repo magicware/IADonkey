@@ -177,11 +177,11 @@ export class WindowManager {
     if (this.mainWindow.isMinimized()) {
       this.mainWindow.restore();
     }
-    if (!this.mainWindow.isVisible()) {
-      this.mainWindow.show();
-    }
+    this.mainWindow.show();
     this.mainWindow.setAlwaysOnTop(true);
+    app.focus({ steal: true });
     this.mainWindow.focus();
+    this.mainWindow.webContents.focus();
 
     this.mainWindow.webContents.send('window-shown');
   }
@@ -261,7 +261,10 @@ export class WindowManager {
       title: 'IADonkey – Nastavení',
       icon: getAppIcon(),
       autoHideMenuBar: true,
-      backgroundColor: '#181920',
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      hasShadow: true,
       show: false,
       webPreferences: {
         preload: preloadPath,
@@ -269,6 +272,13 @@ export class WindowManager {
         contextIsolation: true,
         nodeIntegration: false,
       },
+    });
+
+    this.settingsWindow.on('maximize', () => {
+      this.settingsWindow?.webContents.send('window-maximize-changed', true);
+    });
+    this.settingsWindow.on('unmaximize', () => {
+      this.settingsWindow?.webContents.send('window-maximize-changed', false);
     });
 
     if (process.env.VITE_DEV_SERVER_URL) {
@@ -321,16 +331,19 @@ export class WindowManager {
 
     this.powerWindow = new BrowserWindow({
       width: 440,
-      height: 250,
+      height: 275,
       minWidth: 400,
-      minHeight: 230,
+      minHeight: 250,
       maxWidth: 480,
-      maxHeight: 280,
+      maxHeight: 320,
       resizable: false,
       title: 'IADonkey – Správa aplikace',
       icon: getAppIcon(),
       autoHideMenuBar: true,
-      backgroundColor: '#181920',
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      hasShadow: true,
       show: false,
       skipTaskbar: false,
       webPreferences: {
@@ -430,7 +443,10 @@ export class WindowManager {
         : `IADonkey – Klonovat repozitář${params.repoName ? ` (${params.repoName})` : ''}`,
       icon: getAppIcon(),
       autoHideMenuBar: true,
-      backgroundColor: '#181920',
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      hasShadow: true,
       show: false,
       webPreferences: {
         preload: preloadPath,
@@ -438,6 +454,13 @@ export class WindowManager {
         contextIsolation: true,
         nodeIntegration: false,
       },
+    });
+
+    this.gitCloneWindow.on('maximize', () => {
+      this.gitCloneWindow?.webContents.send('window-maximize-changed', true);
+    });
+    this.gitCloneWindow.on('unmaximize', () => {
+      this.gitCloneWindow?.webContents.send('window-maximize-changed', false);
     });
 
     this.shouldRestoreSpotlightOnCloneClose = true;
@@ -537,7 +560,10 @@ export class WindowManager {
       title: `IADonkey – Stažení CMSinFS zdrojáků (${params.instanceName})`,
       icon: getAppIcon(),
       autoHideMenuBar: true,
-      backgroundColor: '#181920',
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      hasShadow: true,
       show: false,
       webPreferences: {
         preload: preloadPath,
@@ -545,6 +571,13 @@ export class WindowManager {
         contextIsolation: true,
         nodeIntegration: false,
       },
+    });
+
+    this.cmsDownloadWindow.on('maximize', () => {
+      this.cmsDownloadWindow?.webContents.send('window-maximize-changed', true);
+    });
+    this.cmsDownloadWindow.on('unmaximize', () => {
+      this.cmsDownloadWindow?.webContents.send('window-maximize-changed', false);
     });
 
     this.shouldRestoreSpotlightOnCmsDownloadClose = true;
@@ -628,7 +661,10 @@ export class WindowManager {
       title: 'IADonkey – Doladění barvy',
       icon: getAppIcon(),
       autoHideMenuBar: true,
-      backgroundColor: '#181920',
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      hasShadow: true,
       show: false,
       skipTaskbar: false,
       webPreferences: {
@@ -637,6 +673,13 @@ export class WindowManager {
         contextIsolation: true,
         nodeIntegration: false,
       },
+    });
+
+    this.tuneColorWindow.on('maximize', () => {
+      this.tuneColorWindow?.webContents.send('window-maximize-changed', true);
+    });
+    this.tuneColorWindow.on('unmaximize', () => {
+      this.tuneColorWindow?.webContents.send('window-maximize-changed', false);
     });
 
     if (process.env.VITE_DEV_SERVER_URL) {
@@ -1084,8 +1127,8 @@ export class WindowManager {
     }
 
     this.splashWindow = new BrowserWindow({
-      width: 440,
-      height: 400,
+      width: 480,
+      height: 440,
       frame: false,
       transparent: true,
       backgroundColor: '#00000000',
@@ -1117,7 +1160,7 @@ export class WindowManager {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 16px;
+    padding: 36px;
     user-select: none;
     -webkit-user-select: none;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
@@ -1125,11 +1168,11 @@ export class WindowManager {
   .card {
     width: 100%;
     height: 100%;
-    background-color: #14151b;
+    background-color: #15161c;
     border-radius: 28px;
     border: none;
     outline: none;
-    box-shadow: 0 24px 64px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.35), 0 4px 12px -2px rgba(0, 0, 0, 0.2), 0 0 1px 0 rgba(255, 255, 255, 0.08);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -1179,7 +1222,7 @@ export class WindowManager {
     font-size: 12px;
     line-height: 1.55;
     color: #94a3b8;
-    margin-bottom: 18px;
+    margin-bottom: 34px;
   }
   .footer {
     display: flex;

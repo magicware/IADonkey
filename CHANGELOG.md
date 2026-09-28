@@ -4,6 +4,17 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [2.0.0] - 28. 9. 2026
+### Generace 2.0: Modernizace správy aplikace, servisní nástroje, vyladění DonkeyTools a sjednocený design
+- **Generace 2.0 – Oficiální ostré vydání**: Přechod na novou generaci aplikace IADonkey přinášející celkovou modernizaci rozhraní, ladicí a servisní vývojářské nástroje a pokročilou integraci systémových utilit.
+- **Správa aplikace s kruhovými ikonami**: Kompletně přepracované okno Správy aplikace s velkými centrálními kruhovými ikonami, čistou patičkou s klávesovou zkratkou Esc a plnou integrací do vývojářských i servisních nástrojů.
+- **DonkeyTools – ScreenRuler přehledné nastavení**: Nové rozvržení sekce ScreenRuler s oddělenými řádky pro výchozí jednotku (px, %, dp) i barvu vodítek a měřítka pro maximální přehlednost.
+- **ColorMaster – Spolehlivé předání systémového popředí**: Nativní řešení předání fokusu (Foreground Lock bypass) po nabrání barvy kapátkem pro okamžitou klávesovou navigaci v akcích a přirozené zavření přes Escape.
+- **Globální sjednocení klávesových zkratek**: Standardizovaný moderní vizuál klávesových zkratek Esc a Enter napříč všemi dialogovými tlačítky a modálními okny aplikace.
+- **Vývojářské servisní nástroje**: Rozšířené dropdown nabídky pro testování a simulaci chybových i reálných stavů (GitHub repozitáře, MagicGate instance a CMSinFS zdroje), plus rychlé spuštění úvodního SplashScreenu.
+- **Vyladění SplashScreenu a synchronizace**: Realistické stínování okna SplashScreenu, zvýšení odsazení úvodního textu od spodního okraje a nová synchronizační ikona rotující po směru hodinových ručiček.
+- **CMSinFS zdroje dat**: Tlačítko „Zkusit znovu“ v sekundární fialové barvě akcí a automatické vyvolání Spotlightu při zrušení dialogu.
+
 ## [1.1.26] - 24. 9. 2026
 ### EasyClip historie schránky, automatické vložení (auto-paste) do aplikací a okamžitý reset Spotlightu
 - **EasyClip – Pokročilá historie schránky v DonkeyTools**: Nové systémové rozšíření pro sledování a správu historie schránky (text i obrázky) s možností rychlého vyvolání globální zkratkou i příkazy `/easyclip`, `/clip`, `/schranka`, `/clipboard`.
