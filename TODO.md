@@ -28,6 +28,20 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
     - **Reprezentace zástupců**: Miniatury ikon s badge indikátorem, tooltip s plným názvem a akcí, rychlé spuštění přes klávesy (např. 1–9 nebo Alt+1–9).
     - **Datový model & Konfigurace**: Ukládání seznamu zástupců v konfiguraci aplikace (`pinnedShortcuts: { id, name, icon, action, location, settings }[]`).
 
+- [ ] **3. Analýza funkce „Odeslat zpětnou vazbu“ (Feedback / Hlášení problémů)**
+  - **Popis**: Návrh mechanismu pro jednoduché a rychlé odeslání uživatelské zpětné vazby, nápadů na vylepšení nebo nahlášení chyb přímo z aplikace IADonkey.
+  - **K zamyšlení & Technická / UX analýza**:
+    - **Uživatelské rozhraní**:
+      - Modální okno nebo dedikovaná sekce v Nastavení (záložka Nápověda / Systém) a rychlá volba v tray menu i Spotlightu (`/feedback`, `/zpetnavazba`).
+      - Typ zpětné vazby: výběr kategorie (Chyba / Nápad na vylepšení / Dotaz / Jiné).
+      - Textové pole pro popis + volitelné zadání kontaktního e-mailu / uživatele.
+    - **Přílohy a diagnostická data**:
+      - Možnost přiložit snímek obrazovky (přímé napojení na QuickCap snipper).
+      - Volitelné automatické připojení systémových diagnostických informací (verze IADonkey, verze Windows, anonymizovaný výpis posledních událostí z Action Logu / Crashlogu).
+    - **Backend & Způsob doručení**:
+      - Odeslání přes interní API / Helpdesk (např. MLog API jako požadavek Rxxxx), GitHub Issues REST API, nebo centrální webhook (Slack/Teams/e-mail).
+      - Ošetření offline stavu (uložení do fronty k odeslání po obnovení připojení).
+
 ---
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
