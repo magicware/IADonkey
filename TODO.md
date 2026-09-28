@@ -42,6 +42,12 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
       - Odeslání přes interní API / Helpdesk (např. MLog API jako požadavek Rxxxx), GitHub Issues REST API, nebo centrální webhook (Slack/Teams/e-mail).
       - Ošetření offline stavu (uložení do fronty k odeslání po obnovení připojení).
 
+- [ ] **4. ColorMaster: odstranění ohraničení (borderu) z plovoucího boxu lupy kapátka**
+  - **Popis**: Plovoucí okno lupy (eyedropper box), které následuje kurzor myši při nabírání barvy, má viditelný border / rámeček. Podle designového jazyka (borderless Material 3 Expressive) by měl být tento box zcela bez rámečku.
+  - **Technické body k realizaci**:
+    - Prověřit styl okna v `NativeColorPicker.cs` (`LoupeForm` – potlačení DWM rámečku / `WS_THICKFRAME` / kreslení vnější linky).
+    - Zachovat čistý stín DWM / drop-shadow a zaoblení bez tenkého rámečku po obvodu okna.
+
 ---
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
