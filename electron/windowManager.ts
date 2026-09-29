@@ -724,8 +724,8 @@ export class WindowManager {
   public openPaletteBarWindow(paletteId: string, paletteName: string): BrowserWindow {
     const primaryDisplay = screen.getPrimaryDisplay();
     const bounds = primaryDisplay.workArea;
-    const barWidth = 720;
-    const barHeight = 74;
+    const barWidth = 960;
+    const barHeight = 84;
     const x = Math.round(bounds.x + (bounds.width - barWidth) / 2);
     const y = Math.round(bounds.y + 20);
 

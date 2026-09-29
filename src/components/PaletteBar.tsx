@@ -257,13 +257,15 @@ export const PaletteBar: React.FC = () => {
                   }
                 }}
                 className={`relative w-8 h-8 rounded-full transition-all flex items-center justify-center cursor-pointer shrink-0 ${
-                  isActive
-                    ? 'ring-2 ring-rose-400 ring-offset-2 ring-offset-[#15161c] scale-110 shadow-lg'
-                    : 'hover:scale-105 opacity-80 hover:opacity-100'
+                  isActive ? 'scale-105 shadow-md' : 'hover:scale-105'
                 } ${
                   hasColor
-                    ? 'border border-white/20'
-                    : 'border-2 border-dashed border-white/25 bg-white/[0.04] hover:bg-white/[0.08]'
+                    ? isActive
+                      ? 'border-2 border-solid border-rose-500'
+                      : 'border-2 border-solid border-white/20 hover:border-white/50'
+                    : isActive
+                    ? 'border-2 border-solid border-rose-500 bg-rose-500/15'
+                    : 'border-2 border-dashed border-white/25 bg-white/[0.04] hover:border-white/40 hover:bg-white/[0.08]'
                 }`}
                 style={hasColor ? { backgroundColor: color! } : undefined}
                 title={
@@ -272,55 +274,70 @@ export const PaletteBar: React.FC = () => {
                     : `Pozice ${idx + 1}: Prázdné (${isActive ? 'aktivní, klik zruší výběr' : 'klik = vybrat'})`
                 }
               >
-                {!hasColor ? (
-                  <span className="text-[11px] font-mono font-bold text-gray-400">{idx + 1}</span>
-                ) : (
-                  isActive && (
-                    <span className="w-2 h-2 rounded-full bg-white shadow-sm ring-1 ring-black/40" />
-                  )
+                {!hasColor && (
+                  <span className={`text-[11px] font-mono font-bold ${isActive ? 'text-rose-300' : 'text-gray-400'}`}>
+                    {idx + 1}
+                  </span>
                 )}
               </button>
             );
           })}
         </div>
 
-        {/* Dynamic actions visible only when a slot is active */}
-        {activeSlot !== null && (
-          <div className="flex items-center gap-1.5 shrink-0 animate-fade-in">
-            {/* Action: Nabrat kapátkem (Eyedropper) */}
-            <button
-              type="button"
-              onClick={() => triggerPick(activeSlot)}
-              disabled={isPicking}
-              className={`h-8 flex items-center gap-1.5 px-3 rounded-full text-xs font-semibold transition-all active:scale-95 cursor-pointer shrink-0 shadow-sm ${
-                isPicking
-                  ? 'bg-rose-500/30 text-rose-300 animate-pulse'
-                  : 'bg-white/[0.06] hover:bg-white/[0.12] text-white'
-              }`}
-              title="Nabrat barvu z obrazovky pro vybranou pozici (C)"
-            >
-              <span className="material-symbols-outlined text-[16px] text-rose-400 shrink-0">
-                colorize
-              </span>
-              <span>Nabrat</span>
-            </button>
+        {/* Actions: Nabrat & Doladit (Always rendered, disabled with opacity 0.5 when nothing active) */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Action: Nabrat kapátkem (Eyedropper) */}
+          <button
+            type="button"
+            onClick={() => {
+              if (activeSlot !== null) {
+                triggerPick(activeSlot);
+              }
+            }}
+            disabled={isPicking || activeSlot === null}
+            className={`h-8 flex items-center gap-1.5 px-3 rounded-full text-xs font-semibold transition-all shrink-0 shadow-sm ${
+              activeSlot === null
+                ? 'bg-white/[0.04] text-gray-400 opacity-50 cursor-not-allowed'
+                : isPicking
+                ? 'bg-rose-500/30 text-rose-300 animate-pulse cursor-wait'
+                : 'bg-white/[0.06] hover:bg-white/[0.12] text-white active:scale-95 cursor-pointer'
+            }`}
+            title={activeSlot === null ? 'Nejprve vyberte pozici (1–5) pro nabrání barvy' : 'Nabrat barvu z obrazovky pro vybranou pozici (C)'}
+          >
+            <span className={`material-symbols-outlined text-[16px] shrink-0 ${activeSlot === null ? 'text-gray-400' : 'text-rose-400'}`}>
+              colorize
+            </span>
+            <span>Nabrat</span>
+          </button>
 
-            {/* Action: Doladit barvu (Tune color) if active slot has a color */}
-            {activeColor && (
-              <button
-                type="button"
-                onClick={() => handleTuneColor(activeSlot)}
-                className="h-8 flex items-center gap-1.5 px-3 bg-white/[0.06] hover:bg-white/[0.12] text-white rounded-full text-xs font-semibold transition-all active:scale-95 cursor-pointer shrink-0 shadow-sm"
-                title="Přesně doladit barvu vybrané pozice (T)"
-              >
-                <span className="material-symbols-outlined text-[16px] text-gray-300 shrink-0">
-                  tune
-                </span>
-                <span>Doladit</span>
-              </button>
-            )}
-          </div>
-        )}
+          {/* Action: Doladit barvu (Tune color) */}
+          <button
+            type="button"
+            onClick={() => {
+              if (activeSlot !== null && activeColor) {
+                handleTuneColor(activeSlot);
+              }
+            }}
+            disabled={activeSlot === null || !activeColor}
+            className={`h-8 flex items-center gap-1.5 px-3 rounded-full text-xs font-semibold transition-all shrink-0 shadow-sm ${
+              activeSlot === null || !activeColor
+                ? 'bg-white/[0.04] text-gray-400 opacity-50 cursor-not-allowed'
+                : 'bg-white/[0.06] hover:bg-white/[0.12] text-white active:scale-95 cursor-pointer'
+            }`}
+            title={
+              activeSlot === null
+                ? 'Nejprve vyberte pozici s barvou k doladění'
+                : !activeColor
+                ? 'Vybraná pozice je prázdná – nejprve naberte barvu'
+                : 'Přesně doladit barvu vybrané pozice (T)'
+            }
+          >
+            <span className={`material-symbols-outlined text-[16px] shrink-0 ${activeSlot === null || !activeColor ? 'text-gray-400' : 'text-rose-400'}`}>
+              tune
+            </span>
+            <span>Doladit</span>
+          </button>
+        </div>
 
         {/* Shortcuts pill (Spotlight kbd badges, Unified h-8) */}
         <div className="h-8 flex items-center gap-1.5 px-2 text-[11px] text-gray-400 font-sans shrink-0 border-l border-white/10">
