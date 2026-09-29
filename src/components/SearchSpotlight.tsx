@@ -2067,9 +2067,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           return;
         } else if (e.key === 'Escape') {
           e.preventDefault();
-          setIsCreatingPalette(false);
-          setQuery('');
-          setPaletteSelectedIndex(0);
+          exitPaletteMode();
+          handleClose();
           return;
         }
         return;
@@ -3290,11 +3289,6 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                 <span className="text-white">
                   {isCreatingPalette ? 'Nová paleta' : 'PaletteMaster – Barevné palety'}
                 </span>
-                {!isCreatingPalette && (
-                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-mono font-semibold">
-                    {filteredPalettes.length} {filteredPalettes.length === 1 ? 'paleta' : filteredPalettes.length >= 2 && filteredPalettes.length <= 4 ? 'palety' : 'palet'}
-                  </span>
-                )}
               </div>
             </div>
 
@@ -3314,19 +3308,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           </div>
 
           {/* PaletteMaster Content */}
-          {isCreatingPalette ? (
-            <div className="py-12 px-6 flex flex-col items-center justify-center text-center">
-              <div className="w-14 h-14 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-400 mb-3 shadow-md">
-                <span className="material-symbols-outlined text-3xl">palette</span>
-              </div>
-              <p className="text-sm font-semibold text-white">Zadejte název nové palety</p>
-              <p className="text-xs text-gray-400 mt-1 max-w-sm">
-                Napište název do vyhledávacího pole a stiskněte{' '}
-                <kbd className="px-1.5 py-0.5 bg-white/10 rounded font-mono text-white text-[10px]">Enter</kbd>.
-                Otevře se plovoucí lišta pro postupné nabrání 5 barev kapátkem.
-              </p>
-            </div>
-          ) : (
+          {isCreatingPalette ? null : (
             <div
               ref={listRef}
               className="max-h-[400px] overflow-y-auto space-y-1.5 px-2 py-1 focus:outline-none relative"
@@ -3341,8 +3323,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                 }}
                 className={`relative flex items-center px-3.5 py-3 rounded-2xl cursor-pointer transition-all duration-150 gap-3.5 overflow-hidden ${
                   paletteSelectedIndex === 0
-                    ? 'bg-rose-500/20 border border-rose-500/40 text-white shadow-sm'
-                    : 'm3-item-card text-gray-300 hover:border-white/20'
+                    ? 'bg-rose-500/20 text-white shadow-none'
+                    : 'm3-item-card text-gray-300'
                 }`}
               >
                 <div
@@ -3388,8 +3370,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                     }}
                     className={`relative flex items-center px-3.5 py-2.5 rounded-2xl cursor-pointer transition-all duration-150 gap-3.5 overflow-hidden ${
                       isSelected
-                        ? 'bg-rose-500/20 border border-rose-500/40 text-white shadow-sm'
-                        : 'm3-item-card text-gray-300 hover:border-white/20'
+                        ? 'bg-rose-500/20 text-white shadow-none'
+                        : 'm3-item-card text-gray-300'
                     }`}
                   >
                     <div

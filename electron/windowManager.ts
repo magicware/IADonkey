@@ -1227,11 +1227,20 @@ export class WindowManager {
 
       if (isColorMasterEnabled) {
         const cmHotkey = config?.donkeyTools?.colorMaster?.hotkey;
-        const cmLabel = cmHotkey ? `ColorMaster – Kapátko (${cmHotkey})` : 'ColorMaster – Kapátko (nabrat barvu)';
+        const cmLabel = cmHotkey ? `Eyedropper – Kapátko (${cmHotkey})` : 'Eyedropper – Kapátko (nabrat barvu)';
         template.push({
           label: cmLabel,
           click: () => {
             this.onColorPickerRequest?.();
+          },
+        });
+
+        const pmHotkey = config?.donkeyTools?.colorMaster?.paletteHotkey;
+        const pmLabel = pmHotkey ? `PaletteMaster – Barevné palety (${pmHotkey})` : 'PaletteMaster – Barevné palety';
+        template.push({
+          label: pmLabel,
+          click: () => {
+            this.showSpotlightWithMode('palette');
           },
         });
       }

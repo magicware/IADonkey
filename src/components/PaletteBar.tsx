@@ -215,14 +215,14 @@ export const PaletteBar: React.FC = () => {
     <div className="w-full h-full flex items-center justify-center p-1 select-none overflow-hidden bg-transparent">
       {/* Top Floating Bar (Unified style with QuickCap & ScreenRuler) */}
       <div
-        className="flex items-center gap-3 p-2 px-4 rounded-full transition-all pointer-events-auto bg-[#15161c] text-gray-100 select-none shadow-2xl border border-white/10 animate-fade-in"
+        className="flex items-center gap-2.5 p-2 px-4 rounded-full transition-all pointer-events-auto bg-[#15161c] text-gray-100 select-none animate-fade-in"
         style={{
-          boxShadow: '0 8px 28px -4px rgba(0, 0, 0, 0.65), 0 2px 10px -2px rgba(0, 0, 0, 0.35)',
+          boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.45), 0 2px 8px -2px rgba(0, 0, 0, 0.25)',
         }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* App Title / Icon (Unified h-8) */}
-        <div className="h-8 flex items-center gap-2 pr-2 shrink-0 border-r border-white/10">
+        <div className="h-8 flex items-center gap-2 pr-1 shrink-0">
           <div className="w-8 h-8 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-400 shadow-sm shrink-0">
             <span className="material-symbols-outlined text-[18px]">palette</span>
           </div>
@@ -319,15 +319,15 @@ export const PaletteBar: React.FC = () => {
         )}
 
         {/* Shortcuts pill (Spotlight kbd badges, Unified h-8) */}
-        <div className="h-8 flex items-center gap-1 px-1 text-[11px] text-gray-400 font-sans shrink-0 border-l border-white/10 pl-2">
+        <div className="h-8 flex items-center gap-1.5 px-2 text-[11px] text-gray-400 font-sans shrink-0 border-l border-white/10">
           <kbd className="h-[20px] px-2 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[10px] leading-none flex items-center justify-center">
             Enter
           </kbd>
-          <span className="hidden lg:inline text-[10px]">detail</span>
+          <span className="text-[11px] text-gray-300">otevřít detail</span>
           <kbd className="h-[20px] px-2 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[10px] leading-none flex items-center justify-center ml-1">
             Esc
           </kbd>
-          <span className="hidden lg:inline text-[10px]">konec</span>
+          <span className="text-[11px] text-gray-300">zavřít</span>
         </div>
 
         {/* Close Button (Unified h-8 w-8) */}

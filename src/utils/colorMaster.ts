@@ -352,35 +352,16 @@ export function getDonkeyToolsCommands(
       command.startsWith('paleta');
 
     if (isPaletteMatch) {
-      let paletteArg = '';
-      const palArgMatch = query.trim().match(/^\/(?:palette|paleta|palety)\s*(.*)$/i);
-      if (palArgMatch && palArgMatch[1].trim()) {
-        paletteArg = palArgMatch[1].trim();
-      }
-
-      if (paletteArg) {
-        list.push({
-          id: `donkeytools-palette-${paletteArg}`,
-          name: `Paleta: ${paletteArg}`,
-          location: paletteArg,
-          action: 'palette-bar',
-          icon: 'palette',
-          priority: -1.45,
-          sourceId: 'donkeytools',
-          shortcuts: paletteShortcuts,
-        });
-      } else {
-        list.push({
-          id: 'donkeytools-palettemaster',
-          name: 'PaletteMaster',
-          location: 'Správa a výběr barevných palet (DonkeyTools)',
-          action: 'palette-list',
-          icon: 'palette',
-          priority: -1.45,
-          sourceId: 'donkeytools',
-          shortcuts: paletteShortcuts,
-        });
-      }
+      list.push({
+        id: 'donkeytools-palettemaster',
+        name: 'PaletteMaster',
+        location: 'Správa a výběr barevných palet (DonkeyTools)',
+        action: 'palette-list',
+        icon: 'palette',
+        priority: -1.45,
+        sourceId: 'donkeytools',
+        shortcuts: paletteShortcuts,
+      });
     }
   }
 

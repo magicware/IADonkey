@@ -222,6 +222,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isRecordingColorMasterHotkey, setIsRecordingColorMasterHotkey] = useState(false);
   const [colorMasterRecordedModifiers, setColorMasterRecordedModifiers] = useState<string[]>([]);
   const [colorMasterHotkeyError, setColorMasterHotkeyError] = useState<string | null>(null);
+  const [isRecordingPaletteHotkey, setIsRecordingPaletteHotkey] = useState(false);
+  const [paletteRecordedModifiers, setPaletteRecordedModifiers] = useState<string[]>([]);
+  const [paletteHotkeyError, setPaletteHotkeyError] = useState<string | null>(null);
   const [isSharedDropdownOpen, setIsSharedDropdownOpen] = useState(false);
   const [openSimDropdown, setOpenSimDropdown] = useState<'github' | 'magicgate' | 'cms' | null>(null);
 
@@ -310,6 +313,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const colorMasterPressedKeysRef = useRef<Set<string>>(new Set());
   const colorMasterMaxComboRef = useRef<string[]>([]);
   const colorMasterOriginalHotkeyRef = useRef<string>(config.donkeyTools?.colorMaster?.hotkey || '');
+  const palettePressedKeysRef = useRef<Set<string>>(new Set());
+  const paletteMaxComboRef = useRef<string[]>([]);
+  const paletteOriginalHotkeyRef = useRef<string>(config.donkeyTools?.colorMaster?.paletteHotkey || '');
 
   // QuickCap (dříve FastSnap) state & refs
   const [isRecordingQuickCapHotkey, setIsRecordingQuickCapHotkey] = useState(false);
@@ -1869,6 +1875,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         return;
       }
 
+      // Check collision with PaletteMaster hotkey
+      const paletteHotkey = formData.donkeyTools?.colorMaster?.paletteHotkey || '';
+      if (paletteHotkey && finalHotkey.toLowerCase() === paletteHotkey.toLowerCase()) {
+        const fallback = colorMasterOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            colorMaster: {
+              enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
+              hotkey: fallback,
+              paletteHotkey: formData.donkeyTools?.colorMaster?.paletteHotkey || '',
+              defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
+            },
+          },
+        };
+        setFormData(updated);
+        setColorMasterHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou pro správu palet PaletteMaster.`);
+        setIsRecordingColorMasterHotkey(false);
+        colorMasterPressedKeysRef.current.clear();
+        colorMasterMaxComboRef.current = [];
+        setColorMasterRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+        return;
+      }
+
       setColorMasterHotkeyError(null);
       const updated = {
         ...formData,
@@ -1877,6 +1910,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           colorMaster: {
             enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
             hotkey: finalHotkey,
+            paletteHotkey: formData.donkeyTools?.colorMaster?.paletteHotkey || '',
             defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
           },
         },
@@ -1887,6 +1921,232 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       colorMasterPressedKeysRef.current.clear();
       colorMasterMaxComboRef.current = [];
       setColorMasterRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+  };
+
+  const handlePaletteHotkeyFocus = () => {
+    setIsRecordingPaletteHotkey(true);
+    setPaletteHotkeyError(null);
+    paletteOriginalHotkeyRef.current = formData.donkeyTools?.colorMaster?.paletteHotkey || '';
+    palettePressedKeysRef.current.clear();
+    paletteMaxComboRef.current = [];
+    setPaletteRecordedModifiers([]);
+    window.electronAPI?.pauseGlobalHotkey?.();
+  };
+
+  const handlePaletteHotkeyBlur = () => {
+    setIsRecordingPaletteHotkey(false);
+    palettePressedKeysRef.current.clear();
+    paletteMaxComboRef.current = [];
+    setPaletteRecordedModifiers([]);
+    window.electronAPI?.resumeGlobalHotkey?.();
+  };
+
+  const handlePaletteHotkeyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (e.key === 'Escape') {
+      const fallback = paletteOriginalHotkeyRef.current || '';
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          colorMaster: {
+            enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
+            hotkey: formData.donkeyTools?.colorMaster?.hotkey || '',
+            paletteHotkey: fallback,
+            defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
+          },
+        },
+      };
+      setFormData(updated);
+      setPaletteHotkeyError(null);
+      setIsRecordingPaletteHotkey(false);
+      palettePressedKeysRef.current.clear();
+      paletteMaxComboRef.current = [];
+      setPaletteRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+
+    if (e.key === 'Backspace' && palettePressedKeysRef.current.size === 0) {
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          colorMaster: {
+            enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
+            hotkey: formData.donkeyTools?.colorMaster?.hotkey || '',
+            paletteHotkey: '',
+            defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
+          },
+        },
+      };
+      setFormData(updated);
+      handleSave(updated);
+      setPaletteHotkeyError(null);
+      setIsRecordingPaletteHotkey(false);
+      palettePressedKeysRef.current.clear();
+      paletteMaxComboRef.current = [];
+      setPaletteRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+
+    let keyName = e.key;
+    if (keyName === 'Control') keyName = 'Ctrl';
+    else if (keyName === 'Alt') keyName = 'Alt';
+    else if (keyName === 'Shift') keyName = 'Shift';
+    else if (keyName === 'Meta') keyName = 'Super';
+    else if (keyName === ' ') keyName = 'Space';
+    else if (keyName === 'ArrowUp') keyName = 'Up';
+    else if (keyName === 'ArrowDown') keyName = 'Down';
+    else if (keyName === 'ArrowLeft') keyName = 'Left';
+    else if (keyName === 'ArrowRight') keyName = 'Right';
+    else if (/^[a-z]$/i.test(keyName)) keyName = keyName.toUpperCase();
+
+    palettePressedKeysRef.current.add(keyName);
+
+    const order = ['Ctrl', 'Alt', 'Shift', 'Super'];
+    const currentKeys = Array.from(palettePressedKeysRef.current);
+    currentKeys.sort((a, b) => {
+      const idxA = order.indexOf(a);
+      const idxB = order.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    paletteMaxComboRef.current = currentKeys;
+    setPaletteRecordedModifiers(currentKeys);
+    setPaletteHotkeyError(null);
+  };
+
+  const handlePaletteHotkeyKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const combo = paletteMaxComboRef.current;
+
+    if (combo.length === 1) {
+      const fallback = paletteOriginalHotkeyRef.current || '';
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          colorMaster: {
+            enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
+            hotkey: formData.donkeyTools?.colorMaster?.hotkey || '',
+            paletteHotkey: fallback,
+            defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
+          },
+        },
+      };
+      setFormData(updated);
+      setPaletteHotkeyError('Je potřeba minimálně dvojkombinace kláves');
+      setIsRecordingPaletteHotkey(false);
+      palettePressedKeysRef.current.clear();
+      paletteMaxComboRef.current = [];
+      setPaletteRecordedModifiers([]);
+      (e.target as HTMLInputElement).blur();
+      window.electronAPI?.resumeGlobalHotkey?.();
+      return;
+    }
+
+    if (combo.length >= 2) {
+      const finalHotkey = combo.join('+');
+      const conflictReason = getReservedHotkeyCollision(combo);
+
+      const rollback = () => {
+        const fallback = paletteOriginalHotkeyRef.current || '';
+        const updated = {
+          ...formData,
+          donkeyTools: {
+            ...formData.donkeyTools,
+            colorMaster: {
+              enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
+              hotkey: formData.donkeyTools?.colorMaster?.hotkey || '',
+              paletteHotkey: fallback,
+              defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
+            },
+          },
+        };
+        setFormData(updated);
+        setIsRecordingPaletteHotkey(false);
+        palettePressedKeysRef.current.clear();
+        paletteMaxComboRef.current = [];
+        setPaletteRecordedModifiers([]);
+        (e.target as HTMLInputElement).blur();
+        window.electronAPI?.resumeGlobalHotkey?.();
+      };
+
+      if (conflictReason) {
+        rollback();
+        setPaletteHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – ${conflictReason}. Byla zachována původní zkratka.`);
+        return;
+      }
+
+      const launcherHotkey = formData.hotkey || 'Ctrl+Alt+Space';
+      if (finalHotkey.toLowerCase() === launcherHotkey.toLowerCase()) {
+        rollback();
+        setPaletteHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje s globální zkratkou pro vyvolání launcheru.`);
+        return;
+      }
+
+      const eyedropperHotkey = formData.donkeyTools?.colorMaster?.hotkey || '';
+      if (eyedropperHotkey && finalHotkey.toLowerCase() === eyedropperHotkey.toLowerCase()) {
+        rollback();
+        setPaletteHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou pro kapátko Eyedropper.`);
+        return;
+      }
+
+      const qcHotkey = formData.donkeyTools?.quickCap?.hotkey || formData.donkeyTools?.fastSnap?.hotkey || '';
+      if (qcHotkey && finalHotkey.toLowerCase() === qcHotkey.toLowerCase()) {
+        rollback();
+        setPaletteHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou pro výstřižek QuickCap.`);
+        return;
+      }
+
+      const srHotkey = formData.donkeyTools?.screenRuler?.hotkey || '';
+      if (srHotkey && finalHotkey.toLowerCase() === srHotkey.toLowerCase()) {
+        rollback();
+        setPaletteHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou pro měřítko ScreenRuler.`);
+        return;
+      }
+
+      const ecHotkey = formData.donkeyTools?.easyClip?.hotkey || '';
+      if (ecHotkey && finalHotkey.toLowerCase() === ecHotkey.toLowerCase()) {
+        rollback();
+        setPaletteHotkeyError(`Zkratku „${finalHotkey}“ nelze nastavit – koliduje se zkratkou pro historii schránky EasyClip.`);
+        return;
+      }
+
+      setPaletteHotkeyError(null);
+      const updated = {
+        ...formData,
+        donkeyTools: {
+          ...formData.donkeyTools,
+          colorMaster: {
+            enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
+            hotkey: formData.donkeyTools?.colorMaster?.hotkey || '',
+            paletteHotkey: finalHotkey,
+            defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
+          },
+        },
+      };
+      setFormData(updated);
+      handleSave(updated);
+      setIsRecordingPaletteHotkey(false);
+      palettePressedKeysRef.current.clear();
+      paletteMaxComboRef.current = [];
+      setPaletteRecordedModifiers([]);
       (e.target as HTMLInputElement).blur();
       window.electronAPI?.resumeGlobalHotkey?.();
       return;
@@ -6615,6 +6875,86 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </div>
                     </div>
 
+                    {/* Hotkey configuration for PaletteMaster */}
+                    <div className="space-y-2 pt-2 border-t border-white/5">
+                      <label className="block text-xs font-semibold text-gray-300">
+                        Globální klávesová zkratka pro PaletteMaster – Správce palet (volitelné)
+                      </label>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              readOnly
+                              value={
+                                isRecordingPaletteHotkey
+                                  ? (paletteRecordedModifiers.length > 0
+                                      ? paletteRecordedModifiers.join(' + ')
+                                      : 'Stiskněte klávesy...')
+                                  : formData.donkeyTools?.colorMaster?.paletteHotkey || ''
+                              }
+                              onFocus={handlePaletteHotkeyFocus}
+                              onBlur={handlePaletteHotkeyBlur}
+                              onKeyDown={handlePaletteHotkeyKeyDown}
+                              onKeyUp={handlePaletteHotkeyKeyUp}
+                              className={`w-64 rounded-full px-4 py-2.5 text-sm font-mono cursor-pointer transition outline-none select-none text-center font-semibold shadow-sm ${
+                                paletteHotkeyError
+                                  ? 'bg-rose-950/40 text-rose-300 ring-2 ring-rose-500/50'
+                                  : isRecordingPaletteHotkey
+                                  ? 'm3-selected-card text-white ring-2 ring-white/50'
+                                  : 'bg-white/[0.06] text-white hover:bg-white/[0.1]'
+                              }`}
+                              placeholder="Klikněte pro nastavení zkratky"
+                            />
+                            {formData.donkeyTools?.colorMaster?.paletteHotkey && !isRecordingPaletteHotkey && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const updated = {
+                                    ...formData,
+                                    donkeyTools: {
+                                      ...formData.donkeyTools,
+                                      colorMaster: {
+                                        enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
+                                        hotkey: formData.donkeyTools?.colorMaster?.hotkey || '',
+                                        paletteHotkey: '',
+                                        defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
+                                      },
+                                    },
+                                  };
+                                  setFormData(updated);
+                                  handleSave(updated);
+                                  setPaletteHotkeyError(null);
+                                }}
+                                className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-gray-400 hover:text-white transition cursor-pointer"
+                                title="Odstranit zkratku"
+                              >
+                                <span className="material-symbols-outlined text-xs">close</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {paletteHotkeyError && (
+                          <div className="flex items-center gap-1.5 text-xs text-rose-400 font-semibold animate-fade-in">
+                            <span className="material-symbols-outlined text-sm">error</span>
+                            <span>{paletteHotkeyError}</span>
+                          </div>
+                        )}
+
+                        <span className="text-[12px] text-gray-400">
+                          {isRecordingPaletteHotkey ? (
+                            <span className="text-rose-400 font-medium animate-pulse">
+                              Stiskněte klávesovou kombinaci (např. Shift+Alt+P). Esc zruší, Backspace zkratku odstraní.
+                            </span>
+                          ) : (
+                            <span>Klikněte do pole a stiskněte kombinaci kláves (např. Shift+Alt+P). Zkratka nesmí kolidovat s ostatními zkratkami. Backspace zkratku vymaže.</span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
                     {/* Usage examples banner */}
                     <div className="p-4 bg-white/[0.03] rounded-2xl space-y-1 text-[11px] text-gray-400">
                       <span className="font-semibold text-rose-300 flex items-center gap-1.5">
@@ -6623,7 +6963,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </span>
                       <ul className="list-disc list-inside space-y-1 text-gray-400 pl-1">
                         <li><strong>Eyedropper (kapátko):</strong> Zadejte <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">/kapatko</code>, <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">/eyedropper</code>, použijte nastavenou klávesovou zkratku nebo klikněte na ikonku kapátka v nabídce DonkeyTools.</li>
-                        <li><strong>PaletteMaster (palety):</strong> Zadejte <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">/palette</code> nebo <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">/palette &#123;název&#125;</code> pro přímé založení a spuštění plovoucí lišty s výběrem 5 barev, případně klikněte na ikonku palety v nabídce DonkeyTools.</li>
+                        <li><strong>PaletteMaster (palety):</strong> Zadejte <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">/palette</code> pro otevření správce barevných palet, použijte nastavenou klávesovou zkratku nebo klikněte na položku v tray menu.</li>
                         <li><strong>Rozpoznávání barev:</strong> Zadejte kód barvy (např. <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">#ff8800</code>, <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">rgb(255, 128, 0)</code> nebo <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">hsl(32, 100%, 50%)</code>) – vyhledávač okamžitě zobrazí vzorník a převody formátů.</li>
                       </ul>
                     </div>
@@ -8689,6 +9029,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   )}
 
+                  {formData.extensions?.donkeyTools && formData.donkeyTools?.colorMaster?.enabled === true && !!formData.donkeyTools?.colorMaster?.paletteHotkey?.trim() && (
+                    <div className="py-3 flex items-center justify-between">
+                      <div>
+                        <span className="font-medium text-white">Správa barevných palet PaletteMaster (ColorMaster)</span>
+                        <p className="text-gray-400 text-xs mt-0.5">Otevře správce barevných palet ve Spotlightu odkudkoliv z Windows.</p>
+                      </div>
+                      <kbd className="px-3 py-1 bg-rose-500/20 text-rose-300 rounded-full font-mono font-semibold whitespace-nowrap">
+                        {formData.donkeyTools.colorMaster.paletteHotkey}
+                      </kbd>
+                    </div>
+                  )}
+
                   {formData.extensions?.donkeyTools && ((formData.donkeyTools?.quickCap?.enabled ?? formData.donkeyTools?.fastSnap?.enabled) === true) && !!(formData.donkeyTools?.quickCap?.hotkey || formData.donkeyTools?.fastSnap?.hotkey)?.trim() && (
                     <div className="py-3 flex items-center justify-between">
                       <div>
@@ -8852,7 +9204,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         ColorMaster – Eyedropper & PaletteMaster (DonkeyTools)
                       </div>
                       <p className="text-gray-400 text-xs leading-relaxed">
-                        Napište kód barvy přímo do vyhledávání (např. <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">#ff4400</code>, <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">rgb(255, 68, 0)</code> nebo <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">hsl(16, 100%, 50%)</code>) pro okamžitý náhled barvy. V nabídce akcí (<kbd className="bg-white/10 px-2 py-0.5 rounded-full font-mono text-[11px] whitespace-nowrap">Shift+Enter</kbd>) ji můžete zkopírovat v libovolném formátu nebo nastavit jako barvu motivu. Systémové kapátko spustíte zkratkou <kbd className="bg-white/10 px-2 py-0.5 rounded-full font-mono text-[11px] whitespace-nowrap">{formData.donkeyTools?.colorMaster?.hotkey || 'Shift+Alt+C'}</kbd> nebo příkazy <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">/kapatko</code> a <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">/eyedropper</code>. Správu barevných palet vyvoláte příkazem <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">/palette</code> nebo <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">/palette &#123;název&#125;</code>.
+                        Napište kód barvy přímo do vyhledávání (např. <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">#ff4400</code>, <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">rgb(255, 68, 0)</code> nebo <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">hsl(16, 100%, 50%)</code>) pro okamžitý náhled barvy. V nabídce akcí (<kbd className="bg-white/10 px-2 py-0.5 rounded-full font-mono text-[11px] whitespace-nowrap">Shift+Enter</kbd>) ji můžete zkopírovat v libovolném formátu nebo nastavit jako barvu motivu. Systémové kapátko spustíte zkratkou <kbd className="bg-white/10 px-2 py-0.5 rounded-full font-mono text-[11px] whitespace-nowrap">{formData.donkeyTools?.colorMaster?.hotkey || 'Shift+Alt+C'}</kbd> nebo příkazy <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">/kapatko</code> a <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">/eyedropper</code>. Správu barevných palet vyvoláte příkazem <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">/palette</code> nebo nastavenou klávesovou zkratkou.
                       </p>
                     </div>
                   )}
