@@ -9304,7 +9304,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {activeTab === 'develop' && isDevelop && (
             <div className="space-y-6 animate-fade-in max-w-4xl">
               {/* Header card with status & disable button */}
-              <div className="p-5 bg-amber-500/10 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
                 <div className="flex items-start gap-3.5">
                   <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
                     <span className="material-symbols-outlined text-2xl">bug_report</span>
@@ -9605,6 +9605,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                   <button
                     type="button"
+                    onClick={async () => {
+                      try {
+                        let targetPaletteId = 'demo-palette-developer';
+                        if (window.electronAPI?.getPalettes) {
+                          const palettes = await window.electronAPI.getPalettes();
+                          if (palettes && palettes.length > 0) {
+                            targetPaletteId = palettes[0].id;
+                          } else if (window.electronAPI?.savePalette) {
+                            await window.electronAPI.savePalette({
+                              id: targetPaletteId,
+                              name: 'Ukázková paleta (Dev)',
+                              createdAt: Date.now(),
+                              updatedAt: Date.now(),
+                              colors: ['#e11d48', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'],
+                            });
+                          }
+                        }
+                        window.electronAPI?.openPaletteDetail?.({ paletteId: targetPaletteId });
+                      } catch (err) {
+                        console.error('Error opening palette detail simulation:', err);
+                      }
+                    }}
+                    className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
+                    title="Otevře okno detailu palety PaletteMaster pro simulaci a kontrolu vzhledu"
+                  >
+                    <span className="material-symbols-outlined text-base text-rose-400">palette</span>
+                    <span>Simulovat okno Detail palety</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => {
                       window.electronAPI?.openTuneColorWindow?.({
                         initialColor: formData.primaryColor || '#6366f1',
@@ -9655,7 +9686,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                      <span className="material-symbols-outlined text-base text-indigo-400">receipt_long</span>
+                      <span className="material-symbols-outlined text-base text-amber-400">receipt_long</span>
                       Protokol prováděných akcí (Action Log)
                     </h4>
                     <p className="text-xs text-gray-400 mt-0.5">
