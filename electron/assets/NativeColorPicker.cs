@@ -431,19 +431,8 @@ namespace IADonkey.ColorPicker {
                     CreateParams cp = base.CreateParams;
                     // Class style CS_DROPSHADOW provides native diffused drop shadow
                     cp.ClassStyle |= CS_DROPSHADOW;
-                    // WS_THICKFRAME and WS_CAPTION tell Windows DWM to attach the full modern diffused window shadow
-                    cp.Style |= WS_THICKFRAME | WS_CAPTION;
                     return cp;
                 }
-            }
-
-            protected override void WndProc(ref Message m) {
-                if (m.Msg == WM_NCCALCSIZE && m.WParam != IntPtr.Zero) {
-                    // Suppress standard title bar and window frame, allowing custom full client rendering
-                    m.Result = IntPtr.Zero;
-                    return;
-                }
-                base.WndProc(ref m);
             }
 
             public LoupeForm(IntPtr hCur) {
@@ -464,7 +453,7 @@ namespace IADonkey.ColorPicker {
                 // Material 3 Expressive surface background: #181920
                 this.BackColor = Color.FromArgb(24, 25, 32);
 
-                // Enable modern DWM widely diffused drop shadow and smooth rounded corners without outer border (Windows 11)
+                // Enable modern DWM diffused drop shadow and smooth rounded corners without outer border (Windows 11)
                 try {
                     int policy = DWMNCRP_ENABLED;
                     DwmSetWindowAttribute(this.Handle, DWMWA_NCRENDERING_POLICY, ref policy, sizeof(int));
@@ -472,9 +461,6 @@ namespace IADonkey.ColorPicker {
                     DwmSetWindowAttribute(this.Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
                     int noBorder = DWMWA_COLOR_NONE;
                     DwmSetWindowAttribute(this.Handle, DWMWA_BORDER_COLOR, ref noBorder, sizeof(int));
-                    MARGINS margins = new MARGINS { leftWidth = 1, rightWidth = 1, topHeight = 1, bottomHeight = 1 };
-                    DwmExtendFrameIntoClientArea(this.Handle, ref margins);
-                    SetWindowPos(this.Handle, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
                 } catch { }
 
                 _gridBitmap = new Bitmap(GRID_COUNT, GRID_COUNT);
@@ -647,19 +633,35 @@ namespace IADonkey.ColorPicker {
                     g.DrawLine(divPen, 14, divY, this.Width - 14, divY);
                 }
 
-                // 6. Footer Shortcut Text (Inverted colors: text in white, shortcut keys in rose accent, no button boxes)
-                int footerY = divY + 7;
-                using (var keyFont = new Font("Segoe UI", 8f, FontStyle.Bold))
-                using (var labelFont = new Font("Segoe UI", 7.5f, FontStyle.Regular))
-                using (var keyBrush = new SolidBrush(Color.FromArgb(244, 63, 94)))
-                using (var labelBrush = new SolidBrush(Color.White)) {
-                    // Left: ↵ vybrat
-                    g.DrawString("↵", keyFont, keyBrush, 14, footerY - 1);
-                    g.DrawString("vybrat", labelFont, labelBrush, 28, footerY);
+                // 6. Footer Shortcut Badges (Unified M3 <kbd> style: rounded pill badge with bg-white/[0.08], 'Enter' & 'Esc')
+                int footerY = divY + 8;
+                Rectangle enterKbdRect = new Rectangle(14, footerY, 32, 16);
+                using (var path = CreateRoundedRectangle(enterKbdRect, 5))
+                using (var bgBrush = new SolidBrush(Color.FromArgb(22, 255, 255, 255)))
+                using (var borderPen = new Pen(Color.FromArgb(32, 255, 255, 255), 1f)) {
+                    g.FillPath(bgBrush, path);
+                    g.DrawPath(borderPen, path);
+                }
 
-                    // Right: Esc konec
-                    g.DrawString("Esc", keyFont, keyBrush, 86, footerY - 1);
-                    g.DrawString("konec", labelFont, labelBrush, 110, footerY);
+                Rectangle escKbdRect = new Rectangle(86, footerY, 24, 16);
+                using (var path = CreateRoundedRectangle(escKbdRect, 5))
+                using (var bgBrush = new SolidBrush(Color.FromArgb(22, 255, 255, 255)))
+                using (var borderPen = new Pen(Color.FromArgb(32, 255, 255, 255), 1f)) {
+                    g.FillPath(bgBrush, path);
+                    g.DrawPath(borderPen, path);
+                }
+
+                using (var kbdFont = new Font("Segoe UI", 7f, FontStyle.Bold))
+                using (var labelFont = new Font("Segoe UI", 7.5f, FontStyle.Regular))
+                using (var kbdTextBrush = new SolidBrush(Color.FromArgb(220, 225, 235)))
+                using (var labelBrush = new SolidBrush(Color.White)) {
+                    // Left: [Enter] vybrat
+                    g.DrawString("Enter", kbdFont, kbdTextBrush, 16.5f, footerY + 1.5f);
+                    g.DrawString("vybrat", labelFont, labelBrush, 50, footerY + 1.5f);
+
+                    // Right: [Esc] konec
+                    g.DrawString("Esc", kbdFont, kbdTextBrush, 88.5f, footerY + 1.5f);
+                    g.DrawString("konec", labelFont, labelBrush, 114, footerY + 1.5f);
                 }
 
                 // 7. Outer Card: borderless (clean M3 surface with CS_DROPSHADOW system window shadow)
