@@ -8,6 +8,12 @@ import {
   Check,
   X,
 } from 'lucide-react';
+import {
+  getActiveAspectLock,
+  calculateAspectBox,
+  formatAspectRatio,
+  AspectRatioType,
+} from '../utils/aspectRatio';
 
 export type RulerMode = 'box' | 'crosshair';
 export type RulerUnit = 'px' | '%' | 'dp';
@@ -45,6 +51,7 @@ export const ScreenRulerOverlay: React.FC = () => {
   const [box, setBox] = useState<RulerBox | null>(null);
   const [isLocked, setIsLocked] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [activeRatioLock, setActiveRatioLock] = useState<AspectRatioType | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
@@ -52,12 +59,16 @@ export const ScreenRulerOverlay: React.FC = () => {
   const isLockedRef = useRef(false);
   const boxRef = useRef<RulerBox | null>(null);
   const modeRef = useRef<RulerMode>('box');
+  const mousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const activeRatioLockRef = useRef<AspectRatioType | null>(null);
 
   isDraggingRef.current = isDragging;
   dragStartRef.current = dragStart;
   isLockedRef.current = isLocked;
   boxRef.current = box;
   modeRef.current = mode;
+  mousePosRef.current = mousePos;
+  activeRatioLockRef.current = activeRatioLock;
 
   // Sound effect / Audio beep if available
   const playCopyFeedback = () => {
@@ -118,22 +129,20 @@ export const ScreenRulerOverlay: React.FC = () => {
     [unit, initData.width, initData.height]
   );
 
-  // GCD for aspect ratio
-  const getAspectRatio = (w: number, h: number): string => {
-    if (w <= 0 || h <= 0) return '1:1';
-    const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
-    const divisor = gcd(Math.round(w), Math.round(h));
-    const rw = Math.round(w / divisor);
-    const rh = Math.round(h / divisor);
-    if (rw <= 21 && rh <= 21) {
-      return `${rw}:${rh}`;
-    }
-    return `${(w / h).toFixed(2)}:1`;
-  };
-
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Live modifier update while dragging (Shift = 16:9, Ctrl = 4:3, Alt = 1:1)
+      if (['Shift', 'Control', 'Alt'].includes(e.key) && isDraggingRef.current && dragStartRef.current && !isLockedRef.current && modeRef.current === 'box') {
+        const lock = getActiveAspectLock(e);
+        setActiveRatioLock(lock ? lock.label : null);
+        const newBox = calculateAspectBox(dragStartRef.current, mousePosRef.current, lock, {
+          width: initData.width || window.innerWidth,
+          height: initData.height || window.innerHeight,
+        });
+        setBox(newBox);
+      }
+
       if (e.key === 'Escape') {
         e.preventDefault();
         if (boxRef.current && (boxRef.current.width > 3 || boxRef.current.height > 3)) {
@@ -141,6 +150,7 @@ export const ScreenRulerOverlay: React.FC = () => {
           setIsDragging(false);
           setDragStart(null);
           setIsLocked(false);
+          setActiveRatioLock(null);
           return;
         }
         handleClose();
@@ -173,6 +183,7 @@ export const ScreenRulerOverlay: React.FC = () => {
             setBox(null);
             setIsDragging(false);
             setDragStart(null);
+            setActiveRatioLock(null);
           }
           return next;
         });
@@ -205,9 +216,26 @@ export const ScreenRulerOverlay: React.FC = () => {
       }
     };
 
+    const handleKeyUp = (e: KeyboardEvent) => {
+      // Live modifier update when releasing Shift / Ctrl / Alt while dragging
+      if (['Shift', 'Control', 'Alt'].includes(e.key) && isDraggingRef.current && dragStartRef.current && !isLockedRef.current && modeRef.current === 'box') {
+        const lock = getActiveAspectLock(e);
+        setActiveRatioLock(lock ? lock.label : null);
+        const newBox = calculateAspectBox(dragStartRef.current, mousePosRef.current, lock, {
+          width: initData.width || window.innerWidth,
+          height: initData.height || window.innerHeight,
+        });
+        setBox(newBox);
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleClose, copyToClipboard, initData.width, initData.height, mousePos.x, mousePos.y]);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [handleClose, copyToClipboard, initData.width, initData.height, mousePos.x, mousePos.y, mode]);
 
   // IPC Initial Data & Cleanup
   useEffect(() => {
@@ -267,6 +295,8 @@ export const ScreenRulerOverlay: React.FC = () => {
     const y = e.clientY;
     setIsDragging(true);
     setDragStart({ x, y });
+    const lock = getActiveAspectLock(e);
+    setActiveRatioLock(lock ? lock.label : null);
     setBox({ x, y, width: 0, height: 0 });
   };
 
@@ -276,13 +306,13 @@ export const ScreenRulerOverlay: React.FC = () => {
     setMousePos({ x, y });
 
     if (isDragging && dragStart && !isLocked && mode === 'box') {
-      const startX = dragStart.x;
-      const startY = dragStart.y;
-      const boxX = Math.min(startX, x);
-      const boxY = Math.min(startY, y);
-      const width = Math.abs(x - startX);
-      const height = Math.abs(y - startY);
-      setBox({ x: boxX, y: boxY, width, height });
+      const lock = getActiveAspectLock(e);
+      setActiveRatioLock(lock ? lock.label : null);
+      const newBox = calculateAspectBox(dragStart, { x, y }, lock, {
+        width: initData.width || window.innerWidth,
+        height: initData.height || window.innerHeight,
+      });
+      setBox(newBox);
     }
   };
 
@@ -290,6 +320,7 @@ export const ScreenRulerOverlay: React.FC = () => {
     if (isDragging) {
       setIsDragging(false);
       setDragStart(null);
+      setActiveRatioLock(null);
     }
   };
 
@@ -602,9 +633,16 @@ export const ScreenRulerOverlay: React.FC = () => {
               <span className="text-[10px] uppercase font-normal opacity-80">{unit}</span>
             </div>
             <div className="h-3.5 w-px bg-white/15" />
-            <div className="text-[11px] text-gray-300">
+            <div className="text-[11px] text-gray-300 flex items-center gap-1.5">
               <span className="text-gray-400">Ratio: </span>
-              {getAspectRatio(box.width, box.height)}
+              <span className={`font-mono ${activeRatioLock ? 'text-rose-400 font-semibold' : ''}`}>
+                {activeRatioLock || formatAspectRatio(box.width, box.height)}
+              </span>
+              {activeRatioLock && (
+                <span className="px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 text-[9px] font-mono leading-none">
+                  {activeRatioLock}
+                </span>
+              )}
             </div>
             <div className="h-3.5 w-px bg-white/15" />
             <div className="text-[11px] text-gray-300">
@@ -737,6 +775,20 @@ export const ScreenRulerOverlay: React.FC = () => {
           <span>zámek</span>
           <kbd className="h-5 px-2 bg-white/10 text-gray-300 rounded-full font-mono text-[10px] leading-none flex items-center justify-center ml-1">C</kbd>
           <span>kopírovat</span>
+          {mode === 'box' && (
+            <div className="hidden xl:flex items-center gap-1.5 pl-2 ml-1 border-l border-white/10 text-[10px]">
+              <span className="text-gray-400">Poměr:</span>
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-mono transition-colors ${activeRatioLock === '16:9' ? 'bg-rose-500/25 text-rose-300 font-semibold' : 'bg-white/[0.06] text-gray-300'}`}>
+                <kbd className="text-[9px]">Shift</kbd> 16:9
+              </span>
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-mono transition-colors ${activeRatioLock === '4:3' ? 'bg-rose-500/25 text-rose-300 font-semibold' : 'bg-white/[0.06] text-gray-300'}`}>
+                <kbd className="text-[9px]">Ctrl</kbd> 4:3
+              </span>
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-mono transition-colors ${activeRatioLock === '1:1' ? 'bg-rose-500/25 text-rose-300 font-semibold' : 'bg-white/[0.06] text-gray-300'}`}>
+                <kbd className="text-[9px]">Alt</kbd> 1:1
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Close Button */}

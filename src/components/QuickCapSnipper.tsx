@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Crop, Monitor, MousePointer, X } from 'lucide-react';
+import {
+  getActiveAspectLock,
+  calculateAspectBox,
+  AspectRatioType,
+} from '../utils/aspectRatio';
 
 interface QuickCapInitData {
   screenshotUrl: string;
@@ -14,6 +19,7 @@ export const QuickCapSnipper: React.FC = () => {
   const [startPos, setStartPos] = useState<{ x: number; y: number } | null>(null);
   const [currentPos, setCurrentPos] = useState<{ x: number; y: number } | null>(null);
   const [isFinished, setIsFinished] = useState(false);
+  const [activeRatioLock, setActiveRatioLock] = useState<AspectRatioType | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const isDraggingRef = useRef(isDragging);
@@ -24,6 +30,8 @@ export const QuickCapSnipper: React.FC = () => {
   currentPosRef.current = currentPos;
   const initDataRef = useRef(initData);
   initDataRef.current = initData;
+  const activeRatioLockRef = useRef<AspectRatioType | null>(null);
+  activeRatioLockRef.current = activeRatioLock;
 
   const resetState = () => {
     setInitData(null);
@@ -31,10 +39,12 @@ export const QuickCapSnipper: React.FC = () => {
     setIsDragging(false);
     setStartPos(null);
     setCurrentPos(null);
+    setActiveRatioLock(null);
     isDraggingRef.current = false;
     startPosRef.current = null;
     currentPosRef.current = null;
     initDataRef.current = null;
+    activeRatioLockRef.current = null;
   };
 
   const handleCancel = () => {
@@ -95,6 +105,12 @@ export const QuickCapSnipper: React.FC = () => {
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Live modifier update while dragging (Shift = 16:9, Ctrl = 4:3, Alt = 1:1)
+      if (['Shift', 'Control', 'Alt'].includes(e.key) && isDraggingRef.current) {
+        const lock = getActiveAspectLock(e);
+        setActiveRatioLock(lock ? lock.label : null);
+      }
+
       if (e.key === 'Escape') {
         e.preventDefault();
         // Pokud uživatel právě provádí výběr tažením, ESC pouze zruší rozpracovaný výběr
@@ -102,6 +118,7 @@ export const QuickCapSnipper: React.FC = () => {
           setIsDragging(false);
           setStartPos(null);
           setCurrentPos(null);
+          setActiveRatioLock(null);
           isDraggingRef.current = false;
           startPosRef.current = null;
           currentPosRef.current = null;
@@ -119,7 +136,15 @@ export const QuickCapSnipper: React.FC = () => {
       }
     };
 
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (['Shift', 'Control', 'Alt'].includes(e.key) && isDraggingRef.current) {
+        const lock = getActiveAspectLock(e);
+        setActiveRatioLock(lock ? lock.label : null);
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
 
     let unsubscribeInit: (() => void) | undefined;
     const listenInit = window.electronAPI?.onQuickCapInitData || window.electronAPI?.onFastSnapInitData;
@@ -139,6 +164,7 @@ export const QuickCapSnipper: React.FC = () => {
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
       if (unsubscribeInit) unsubscribeInit();
       if (unsubscribeCleanup) unsubscribeCleanup();
     };
@@ -147,36 +173,55 @@ export const QuickCapSnipper: React.FC = () => {
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0 || isFinished) return; // pouze levé tlačítko
     setIsDragging(true);
+    const lock = getActiveAspectLock(e);
+    setActiveRatioLock(lock ? lock.label : null);
     setStartPos({ x: e.clientX, y: e.clientY });
     setCurrentPos({ x: e.clientX, y: e.clientY });
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || !startPos || isFinished) return;
+    const lock = getActiveAspectLock(e);
+    setActiveRatioLock(lock ? lock.label : null);
     setCurrentPos({ x: e.clientX, y: e.clientY });
   };
 
-  const handleMouseUp = async () => {
+  const handleMouseUp = async (e?: React.MouseEvent) => {
     if (!isDragging || !startPos || !currentPos || isFinished) return;
     setIsDragging(false);
 
-    const x = Math.min(startPos.x, currentPos.x);
-    const y = Math.min(startPos.y, currentPos.y);
-    const width = Math.abs(currentPos.x - startPos.x);
-    const height = Math.abs(currentPos.y - startPos.y);
+    const lock = activeRatioLockRef.current
+      ? {
+          ratio:
+            activeRatioLockRef.current === '16:9'
+              ? 16 / 9
+              : activeRatioLockRef.current === '4:3'
+              ? 4 / 3
+              : 1.0,
+          label: activeRatioLockRef.current,
+        }
+      : e
+      ? getActiveAspectLock(e)
+      : null;
+
+    const box = calculateAspectBox(startPos, currentPos, lock, {
+      width: initDataRef.current?.width || window.innerWidth,
+      height: initDataRef.current?.height || window.innerHeight,
+    });
 
     // Pokud je výběr příliš malý (náhodný klik), ignorujeme nebo zrušíme
-    if (width < 8 || height < 8) {
+    if (box.width < 8 || box.height < 8) {
       setStartPos(null);
       setCurrentPos(null);
+      setActiveRatioLock(null);
       return;
     }
 
     const payload = {
-      x: Math.round(x),
-      y: Math.round(y),
-      width: Math.round(width),
-      height: Math.round(height),
+      x: box.x,
+      y: box.y,
+      width: box.width,
+      height: box.height,
       windowWidth: window.innerWidth,
       windowHeight: window.innerHeight,
     };
@@ -194,11 +239,17 @@ export const QuickCapSnipper: React.FC = () => {
   // Výpočet obdélníku výběru
   let selectionBox: { x: number; y: number; w: number; h: number } | null = null;
   if (startPos && currentPos) {
-    const x = Math.min(startPos.x, currentPos.x);
-    const y = Math.min(startPos.y, currentPos.y);
-    const w = Math.abs(currentPos.x - startPos.x);
-    const h = Math.abs(currentPos.y - startPos.y);
-    selectionBox = { x, y, w, h };
+    const lock = activeRatioLock
+      ? {
+          ratio: activeRatioLock === '16:9' ? 16 / 9 : activeRatioLock === '4:3' ? 4 / 3 : 1.0,
+          label: activeRatioLock,
+        }
+      : null;
+    const box = calculateAspectBox(startPos, currentPos, lock, {
+      width: initData?.width || window.innerWidth,
+      height: initData?.height || window.innerHeight,
+    });
+    selectionBox = { x: box.x, y: box.y, w: box.width, h: box.height };
   }
 
   if (!initData?.screenshotUrl) {
@@ -282,6 +333,18 @@ export const QuickCapSnipper: React.FC = () => {
               Esc
             </kbd>
             <span>konec</span>
+            <div className="hidden md:flex items-center gap-1.5 pl-2 ml-1 border-l border-white/10 text-[10px]">
+              <span className="text-gray-400">Poměr:</span>
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-mono transition-colors ${activeRatioLock === '16:9' ? 'bg-rose-500/25 text-rose-300 font-semibold' : 'bg-white/[0.06] text-gray-300'}`}>
+                <kbd className="text-[9px]">Shift</kbd> 16:9
+              </span>
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-mono transition-colors ${activeRatioLock === '4:3' ? 'bg-rose-500/25 text-rose-300 font-semibold' : 'bg-white/[0.06] text-gray-300'}`}>
+                <kbd className="text-[9px]">Ctrl</kbd> 4:3
+              </span>
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-mono transition-colors ${activeRatioLock === '1:1' ? 'bg-rose-500/25 text-rose-300 font-semibold' : 'bg-white/[0.06] text-gray-300'}`}>
+                <kbd className="text-[9px]">Alt</kbd> 1:1
+              </span>
+            </div>
           </div>
 
           {/* Close Button (Unified h-8 w-8) */}
@@ -325,6 +388,12 @@ export const QuickCapSnipper: React.FC = () => {
             <span className="text-gray-500 font-normal">×</span>
             <span className="font-semibold text-white">{Math.round(selectionBox.h)}</span>
             <span className="text-[10px] text-gray-400 uppercase font-sans ml-0.5">px</span>
+            {activeRatioLock && (
+              <>
+                <span className="text-gray-500 font-normal mx-0.5">•</span>
+                <span className="text-rose-400 font-semibold text-[11px]">{activeRatioLock}</span>
+              </>
+            )}
           </div>
         </div>
       )}
