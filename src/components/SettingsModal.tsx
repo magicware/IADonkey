@@ -9630,7 +9630,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
                     title="Otevře okno detailu palety PaletteMaster pro simulaci a kontrolu vzhledu"
                   >
-                    <span className="material-symbols-outlined text-base text-rose-400">palette</span>
+                    <span className="material-symbols-outlined text-base text-indigo-400">palette</span>
                     <span>Simulovat okno Detail palety</span>
                   </button>
 
