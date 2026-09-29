@@ -548,7 +548,7 @@ namespace IADonkey.ColorPicker {
 
                 using (var titleFont = new Font("Segoe UI", 8.5f, FontStyle.Bold))
                 using (var titleBrush = new SolidBrush(Color.White)) {
-                    g.DrawString("ColorMaster", titleFont, titleBrush, 43, headerY + 2.5f);
+                    g.DrawString("Eyedropper", titleFont, titleBrush, 43, headerY + 2.5f);
                 }
 
                 Point cur = Cursor.Position;

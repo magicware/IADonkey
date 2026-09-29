@@ -349,4 +349,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('open-spotlight-mode', handler);
     return () => ipcRenderer.removeListener('open-spotlight-mode', handler);
   },
+
+  // PaletteMaster API
+  getPalettes: (): Promise<any[]> => ipcRenderer.invoke('get-palettes'),
+  savePalette: (palette: any): Promise<any[]> => ipcRenderer.invoke('save-palette', palette),
+  deletePalette: (paletteId: string): Promise<any[]> => ipcRenderer.invoke('delete-palette', paletteId),
+  openPaletteBar: (params: { paletteId: string; paletteName: string }): Promise<void> =>
+    ipcRenderer.invoke('open-palette-bar', params),
+  closePaletteBar: (): Promise<void> => ipcRenderer.invoke('close-palette-bar'),
+  openPaletteDetail: (params: { paletteId: string }): Promise<void> =>
+    ipcRenderer.invoke('open-palette-detail', params),
+  closePaletteDetail: (): Promise<void> => ipcRenderer.invoke('close-palette-detail'),
+  onPalettesUpdated: (callback: (palettes: any[]) => void) => {
+    const handler = (_event: any, palettes: any[]) => callback(palettes);
+    ipcRenderer.on('palettes-updated', handler);
+    return () => ipcRenderer.removeListener('palettes-updated', handler);
+  },
+  onPaletteBarInit: (callback: (data: { paletteId: string; paletteName: string }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('palette-bar-init', handler);
+    return () => ipcRenderer.removeListener('palette-bar-init', handler);
+  },
+  onPaletteDetailInit: (callback: (data: { paletteId: string }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('palette-detail-init', handler);
+    return () => ipcRenderer.removeListener('palette-detail-init', handler);
+  },
 });

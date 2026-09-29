@@ -43,6 +43,8 @@ export class WindowManager {
   private gitCloneWindow: BrowserWindow | null = null;
   private cmsDownloadWindow: BrowserWindow | null = null;
   private tuneColorWindow: BrowserWindow | null = null;
+  private paletteBarWindow: BrowserWindow | null = null;
+  private paletteDetailWindow: BrowserWindow | null = null;
   private snipperWindow: BrowserWindow | null = null;
   private rulerWindow: BrowserWindow | null = null;
   private splashWindow: BrowserWindow | null = null;
@@ -706,6 +708,166 @@ export class WindowManager {
     });
 
     return this.tuneColorWindow;
+  }
+
+  public getPaletteBarWindow(): BrowserWindow | null {
+    return this.paletteBarWindow;
+  }
+
+  public closePaletteBarWindow(): void {
+    if (this.paletteBarWindow && !this.paletteBarWindow.isDestroyed()) {
+      this.paletteBarWindow.close();
+      this.paletteBarWindow = null;
+    }
+  }
+
+  public openPaletteBarWindow(paletteId: string, paletteName: string): BrowserWindow {
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const bounds = primaryDisplay.workArea;
+    const barWidth = 720;
+    const barHeight = 74;
+    const x = Math.round(bounds.x + (bounds.width - barWidth) / 2);
+    const y = Math.round(bounds.y + 20);
+
+    const query = new URLSearchParams({
+      window: 'palette-bar',
+      paletteId: paletteId || '',
+      paletteName: paletteName || '',
+    }).toString();
+
+    if (this.paletteBarWindow && !this.paletteBarWindow.isDestroyed()) {
+      this.paletteBarWindow.setBounds({ x, y, width: barWidth, height: barHeight });
+      if (this.paletteBarWindow.isMinimized()) this.paletteBarWindow.restore();
+      this.paletteBarWindow.show();
+      this.paletteBarWindow.focus();
+      this.paletteBarWindow.webContents.send('palette-bar-init', { paletteId, paletteName });
+      return this.paletteBarWindow;
+    }
+
+    const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
+      ? path.join(__dirname, 'preload.cjs')
+      : fs.existsSync(path.join(__dirname, 'preload.mjs'))
+      ? path.join(__dirname, 'preload.mjs')
+      : path.join(__dirname, 'preload.js');
+
+    this.paletteBarWindow = new BrowserWindow({
+      x,
+      y,
+      width: barWidth,
+      height: barHeight,
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      resizable: false,
+      movable: true,
+      hasShadow: false,
+      show: false,
+      webPreferences: {
+        preload: preloadPath,
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    this.paletteBarWindow.setAlwaysOnTop(true, 'screen-saver');
+
+    if (process.env.VITE_DEV_SERVER_URL) {
+      this.paletteBarWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}?${query}#palette-bar`);
+    } else {
+      this.paletteBarWindow.loadFile(path.join(__dirname, '../dist/index.html'), {
+        hash: 'palette-bar',
+        search: query,
+      });
+    }
+
+    this.paletteBarWindow.once('ready-to-show', () => {
+      this.paletteBarWindow?.show();
+      this.paletteBarWindow?.focus();
+    });
+
+    this.paletteBarWindow.on('closed', () => {
+      this.paletteBarWindow = null;
+    });
+
+    return this.paletteBarWindow;
+  }
+
+  public getPaletteDetailWindow(): BrowserWindow | null {
+    return this.paletteDetailWindow;
+  }
+
+  public closePaletteDetailWindow(): void {
+    if (this.paletteDetailWindow && !this.paletteDetailWindow.isDestroyed()) {
+      this.paletteDetailWindow.close();
+      this.paletteDetailWindow = null;
+    }
+  }
+
+  public openPaletteDetailWindow(paletteId: string): BrowserWindow {
+    const query = new URLSearchParams({
+      window: 'palette-detail',
+      paletteId: paletteId || '',
+    }).toString();
+
+    if (this.paletteDetailWindow && !this.paletteDetailWindow.isDestroyed()) {
+      if (this.paletteDetailWindow.isMinimized()) this.paletteDetailWindow.restore();
+      this.paletteDetailWindow.show();
+      this.paletteDetailWindow.focus();
+      this.paletteDetailWindow.webContents.send('palette-detail-init', { paletteId });
+      return this.paletteDetailWindow;
+    }
+
+    const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
+      ? path.join(__dirname, 'preload.cjs')
+      : fs.existsSync(path.join(__dirname, 'preload.mjs'))
+      ? path.join(__dirname, 'preload.mjs')
+      : path.join(__dirname, 'preload.js');
+
+    this.paletteDetailWindow = new BrowserWindow({
+      width: 640,
+      height: 560,
+      minWidth: 540,
+      minHeight: 460,
+      resizable: true,
+      title: 'IADonkey – PaletteMaster',
+      icon: getAppIcon(),
+      autoHideMenuBar: true,
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      hasShadow: true,
+      show: false,
+      skipTaskbar: false,
+      webPreferences: {
+        preload: preloadPath,
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    if (process.env.VITE_DEV_SERVER_URL) {
+      this.paletteDetailWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}?${query}#palette-detail`);
+    } else {
+      this.paletteDetailWindow.loadFile(path.join(__dirname, '../dist/index.html'), {
+        hash: 'palette-detail',
+        search: query,
+      });
+    }
+
+    this.paletteDetailWindow.once('ready-to-show', () => {
+      this.paletteDetailWindow?.show();
+      this.paletteDetailWindow?.focus();
+    });
+
+    this.paletteDetailWindow.on('closed', () => {
+      this.paletteDetailWindow = null;
+    });
+
+    return this.paletteDetailWindow;
   }
 
   public getSnipperWindow(): BrowserWindow | null {

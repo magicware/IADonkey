@@ -101,9 +101,18 @@ export interface ExtensionsConfig {
   donkeyTools?: boolean;
 }
 
+export interface ColorPalette {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  colors: (string | null)[];
+}
+
 export interface ColorMasterSettings {
   enabled: boolean;
   hotkey?: string;
+  paletteHotkey?: string;
   defaultFormat?: 'hex' | 'hex-no-hash' | 'rgb' | 'rgba' | 'hsl';
 }
 
@@ -236,6 +245,7 @@ export interface AppConfig {
   searchGoogle?: boolean;
   defaultSearchEngine?: string;
   snippets?: SnippetsConfig;
+  colorPalettes?: ColorPalette[];
   iconsLastDownloadedAt?: string | null;
   iconsCount?: number;
 }

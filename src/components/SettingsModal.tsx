@@ -5178,7 +5178,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           )}
                         </div>
                         <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                          Sada vestavěných systémových nástrojů a utilit – ColorMaster pro rozpoznávání barev (#HEX, RGB, HSL), převody formátů, systémové kapátko s lupou a budoucí nástroje vyvolatelné zkratkou nebo lomítkem (/).
+                          Sada vestavěných systémových nástrojů a utilit – ColorMaster (Eyedropper kapátko s lupou a PaletteMaster pro tvorbu a správu barevných palet, rozpoznávání barev #HEX, RGB, HSL a převody formátů) a další nástroje vyvolatelné zkratkou nebo lomítkem (/).
                         </p>
                       </div>
                     </div>
@@ -6425,7 +6425,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </span>
                       </div>
                       <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                        Chytré rozpoznávání barevných kódů (#HEX, RGB, HSL) přímo ve Spotlight vyhledávači s okamžitým náhledem barvy a převodem formátů. Obsahuje systémové kapátko s lupou pro nabrání barvy z kteréhokoliv pixelu obrazovky.
+                        Sada nástrojů pro práci s barvami: <strong>Eyedropper</strong> (systémové kapátko s lupou pod kurzorem pro přesné nabrání barvy) a <strong>PaletteMaster</strong> (tvorba a správa 5místných barevných palet s plovoucí lištou a detailem). Podporuje rozpoznávání barev (#HEX, RGB, HSL) ve Spotlightu.
                       </p>
                     </div>
                   </div>
@@ -6462,7 +6462,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {/* Hotkey configuration & Eyedropper test */}
                     <div className="space-y-2">
                       <label className="block text-xs font-semibold text-gray-300">
-                        Globální klávesová zkratka pro kapátko (volitelné)
+                        Globální klávesová zkratka pro Eyedropper kapátko (volitelné)
                       </label>
                       <div className="flex flex-col gap-2">
                         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -6621,10 +6621,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <span className="material-symbols-outlined text-sm">info</span>
                         Jak ColorMaster používat ve vyhledávači
                       </span>
-                      <ul className="list-disc list-inside space-y-0.5 text-gray-400 pl-1">
-                        <li>Zadejte <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">/color</code>, použijte klávesovou zkratku nebo ve Spotlightu klikněte na ikonku nástrojů.</li>
-                        <li>Zadejte kód barvy (např. <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">#ff8800</code>, <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">rgb(255, 128, 0)</code> nebo <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">hsl(32, 100%, 50%)</code>) – vyhledávač okamžitě zobrazí živý barevný vzorník a převody formátů.</li>
-                        <li>Stiskem <kbd className="bg-white/10 px-2 py-0.5 rounded-full font-mono text-[10px]">Shift+Enter</kbd> na barvě otevřete akce: kopírování jednotlivých formátů nebo přímé nastavení barvy jako motivu IADonkey!</li>
+                      <ul className="list-disc list-inside space-y-1 text-gray-400 pl-1">
+                        <li><strong>Eyedropper (kapátko):</strong> Zadejte <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">/kapatko</code>, <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">/eyedropper</code>, použijte nastavenou klávesovou zkratku nebo klikněte na ikonku kapátka v nabídce DonkeyTools.</li>
+                        <li><strong>PaletteMaster (palety):</strong> Zadejte <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">/palette</code> nebo <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">/palette &#123;název&#125;</code> pro přímé založení a spuštění plovoucí lišty s výběrem 5 barev, případně klikněte na ikonku palety v nabídce DonkeyTools.</li>
+                        <li><strong>Rozpoznávání barev:</strong> Zadejte kód barvy (např. <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">#ff8800</code>, <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">rgb(255, 128, 0)</code> nebo <code className="bg-white/10 px-2 py-0.5 rounded-full text-white font-mono">hsl(32, 100%, 50%)</code>) – vyhledávač okamžitě zobrazí vzorník a převody formátů.</li>
                       </ul>
                     </div>
                   </div>
@@ -8139,7 +8139,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div className="flex items-center gap-3">
                         <span className="material-symbols-outlined text-base text-indigo-400">colorize</span>
                         <div>
-                          <span className="text-xs font-medium text-gray-200 block">Kapátko ColorMaster</span>
+                          <span className="text-xs font-medium text-gray-200 block">Kapátko Eyedropper (ColorMaster)</span>
                           <span className="text-[11px] text-gray-400">Upozornění s kódem nabrané barvy zkopírované do schránky</span>
                         </div>
                       </div>
@@ -8680,7 +8680,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   {formData.extensions?.donkeyTools && formData.donkeyTools?.colorMaster?.enabled === true && !!formData.donkeyTools?.colorMaster?.hotkey?.trim() && (
                     <div className="py-3 flex items-center justify-between">
                       <div>
-                        <span className="font-medium text-white">Vyvolání kapátka (ColorMaster)</span>
+                        <span className="font-medium text-white">Vyvolání kapátka Eyedropper (ColorMaster)</span>
                         <p className="text-gray-400 text-xs mt-0.5">Spustí systémové kapátko s lupou a nabere barvu do schránky odkudkoliv z Windows.</p>
                       </div>
                       <kbd className="px-3 py-1 bg-rose-500/20 text-rose-300 rounded-full font-mono font-semibold whitespace-nowrap">
@@ -8849,10 +8849,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div className="p-4 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl space-y-1.5 transition-colors">
                       <div className="flex items-center gap-2 text-rose-400 font-semibold">
                         <span className="material-symbols-outlined text-base">palette</span>
-                        ColorMaster (DonkeyTools)
+                        ColorMaster – Eyedropper & PaletteMaster (DonkeyTools)
                       </div>
                       <p className="text-gray-400 text-xs leading-relaxed">
-                        Napište kód barvy přímo do vyhledávání (např. <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">#ff4400</code>, <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">rgb(255, 68, 0)</code> nebo <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">hsl(16, 100%, 50%)</code>) pro okamžitý náhled barvy. V nabídce akcí (<kbd className="bg-white/10 px-2 py-0.5 rounded-full font-mono text-[11px] whitespace-nowrap">Shift+Enter</kbd>) ji můžete zkopírovat v libovolném formátu nebo nastavit jako barvu motivu. Systémové kapátko spustíte zkratkou <kbd className="bg-white/10 px-2 py-0.5 rounded-full font-mono text-[11px] whitespace-nowrap">{formData.donkeyTools?.colorMaster?.hotkey || 'Shift+Alt+C'}</kbd> nebo příkazem <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">/kapatko</code>.
+                        Napište kód barvy přímo do vyhledávání (např. <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">#ff4400</code>, <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">rgb(255, 68, 0)</code> nebo <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">hsl(16, 100%, 50%)</code>) pro okamžitý náhled barvy. V nabídce akcí (<kbd className="bg-white/10 px-2 py-0.5 rounded-full font-mono text-[11px] whitespace-nowrap">Shift+Enter</kbd>) ji můžete zkopírovat v libovolném formátu nebo nastavit jako barvu motivu. Systémové kapátko spustíte zkratkou <kbd className="bg-white/10 px-2 py-0.5 rounded-full font-mono text-[11px] whitespace-nowrap">{formData.donkeyTools?.colorMaster?.hotkey || 'Shift+Alt+C'}</kbd> nebo příkazy <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">/kapatko</code> a <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">/eyedropper</code>. Správu barevných palet vyvoláte příkazem <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">/palette</code> nebo <code className="bg-white/10 px-1.5 py-0.5 rounded-full text-[11px]">/palette &#123;název&#125;</code>.
                       </p>
                     </div>
                   )}

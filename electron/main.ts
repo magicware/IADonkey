@@ -570,6 +570,50 @@ function registerEasyClipHotkey(hotkey?: string) {
   }
 }
 
+let currentPaletteMasterHotkey: string | null = null;
+
+function registerPaletteMasterHotkey(hotkey?: string) {
+  if (currentPaletteMasterHotkey) {
+    try {
+      globalShortcut.unregister(currentPaletteMasterHotkey);
+      currentPaletteMasterHotkey = null;
+    } catch {}
+  }
+  const config = store?.getConfig();
+  const isEnabled = Boolean(config?.extensions?.donkeyTools && config?.donkeyTools?.colorMaster?.enabled === true);
+  if (!isEnabled) return;
+  const targetHotkey = hotkey || config?.donkeyTools?.colorMaster?.paletteHotkey;
+  if (!targetHotkey || !targetHotkey.trim()) return;
+  const cleanHotkey = targetHotkey.trim();
+
+  try {
+    const registered = globalShortcut.register(cleanHotkey, async () => {
+      try {
+        diagnosticsService.logAction({
+          type: 'shortcut',
+          title: `Zkratka PaletteMaster: ${cleanHotkey}`,
+          details: 'Spuštění správce palet přes klávesovou zkratku',
+          status: 'info',
+        });
+        windowManager.showSpotlightWithMode('palette');
+      } catch (err) {
+        console.error('[Main] Error in PaletteMaster hotkey callback:', err);
+        diagnosticsService.recordCrash('Volání PaletteMaster z klávesové zkratky', err, { hotkey: cleanHotkey });
+      }
+    });
+
+    if (!registered) {
+      console.warn(`[Main] Failed to register PaletteMaster shortcut: ${cleanHotkey}`);
+    } else {
+      currentPaletteMasterHotkey = cleanHotkey;
+      console.log(`[Main] Successfully registered PaletteMaster shortcut: ${cleanHotkey}`);
+    }
+  } catch (err) {
+    console.error(`[Main] Error registering PaletteMaster shortcut ${hotkey}:`, err);
+    diagnosticsService.recordCrash('Registrace zkratky PaletteMaster', err, { hotkey });
+  }
+}
+
 let currentCapturedScreenImage: Electron.NativeImage | null = null;
 let currentCapturedBounds: { x: number; y: number; width: number; height: number; scaleFactor: number } | null = null;
 let currentQuickCapInitData: { screenshotUrl: string; width: number; height: number; scaleFactor: number } | null = null;
@@ -812,16 +856,93 @@ function setupIpcHandlers() {
     if (win && !win.isDestroyed()) {
       win.webContents.send('tune-color-applied', { color });
     }
+    const barWin = windowManager.getPaletteBarWindow();
+    if (barWin && !barWin.isDestroyed()) {
+      barWin.webContents.send('tune-color-applied', { color });
+    }
+    const detailWin = windowManager.getPaletteDetailWindow();
+    if (detailWin && !detailWin.isDestroyed()) {
+      detailWin.webContents.send('tune-color-applied', { color });
+    }
     windowManager.closeTuneColorWindow();
-    windowManager.showSpotlight();
+    if (!barWin && !detailWin) {
+      windowManager.showSpotlight();
+    }
   });
 
   ipcMain.handle('close-tune-color-window', () => {
     windowManager.closeTuneColorWindow();
+    const barWin = windowManager.getPaletteBarWindow();
+    const detailWin = windowManager.getPaletteDetailWindow();
     const win = windowManager.getMainWindow();
-    if (win && !win.isDestroyed()) {
+    if (!barWin && !detailWin && win && !win.isDestroyed()) {
       windowManager.showSpotlight();
     }
+  });
+
+  // PaletteMaster IPC Handlers
+  ipcMain.handle('get-palettes', () => {
+    return store.getConfig().colorPalettes || [];
+  });
+
+  ipcMain.handle('save-palette', (_event, palette: any) => {
+    const cfg = store.getConfig();
+    const existing = cfg.colorPalettes || [];
+    const idx = existing.findIndex((p: any) => p.id === palette.id);
+    let updated: any[];
+    if (idx >= 0) {
+      updated = [...existing];
+      updated[idx] = { ...palette, updatedAt: Date.now() };
+    } else {
+      updated = [
+        ...existing,
+        {
+          ...palette,
+          createdAt: palette.createdAt || Date.now(),
+          updatedAt: Date.now(),
+        },
+      ];
+    }
+    const newConfig = { ...cfg, colorPalettes: updated };
+    store.saveConfig(newConfig);
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) {
+        win.webContents.send('palettes-updated', updated);
+      }
+    });
+    return updated;
+  });
+
+  ipcMain.handle('delete-palette', (_event, paletteId: string) => {
+    const cfg = store.getConfig();
+    const existing = cfg.colorPalettes || [];
+    const updated = existing.filter((p: any) => p.id !== paletteId);
+    const newConfig = { ...cfg, colorPalettes: updated };
+    store.saveConfig(newConfig);
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) {
+        win.webContents.send('palettes-updated', updated);
+      }
+    });
+    return updated;
+  });
+
+  ipcMain.handle('open-palette-bar', (_event, params: { paletteId: string; paletteName: string }) => {
+    windowManager.hideSpotlight();
+    windowManager.openPaletteBarWindow(params.paletteId, params.paletteName);
+  });
+
+  ipcMain.handle('close-palette-bar', () => {
+    windowManager.closePaletteBarWindow();
+  });
+
+  ipcMain.handle('open-palette-detail', (_event, params: { paletteId: string }) => {
+    windowManager.closePaletteBarWindow();
+    windowManager.openPaletteDetailWindow(params.paletteId);
+  });
+
+  ipcMain.handle('close-palette-detail', () => {
+    windowManager.closePaletteDetailWindow();
   });
 
   // QuickCap (dříve FastSnap) IPC Handlers
@@ -1157,8 +1278,8 @@ function setupIpcHandlers() {
       registerGlobalHotkey(newConfig.hotkey);
     }
 
-    // If ColorMaster hotkey or DonkeyTools settings changed, re-register
     registerColorMasterHotkey(newConfig.donkeyTools?.colorMaster?.hotkey);
+    registerPaletteMasterHotkey(newConfig.donkeyTools?.colorMaster?.paletteHotkey);
     registerQuickCapHotkey(newConfig.donkeyTools?.quickCap?.hotkey || newConfig.donkeyTools?.fastSnap?.hotkey);
     registerScreenRulerHotkey(newConfig.donkeyTools?.screenRuler?.hotkey);
     registerEasyClipHotkey(newConfig.donkeyTools?.easyClip?.hotkey);
@@ -1372,6 +1493,10 @@ function setupIpcHandlers() {
       globalShortcut.unregister(currentEasyClipHotkey);
       console.log(`[Main] EasyClip hotkey paused for input recording: ${currentEasyClipHotkey}`);
     }
+    if (currentPaletteMasterHotkey) {
+      globalShortcut.unregister(currentPaletteMasterHotkey);
+      console.log(`[Main] PaletteMaster hotkey paused for input recording: ${currentPaletteMasterHotkey}`);
+    }
   });
 
   ipcMain.handle('resume-global-hotkey', () => {
@@ -1382,6 +1507,7 @@ function setupIpcHandlers() {
       console.log(`[Main] Global hotkey resumed: ${hotkey}`);
     }
     registerColorMasterHotkey(cfg.donkeyTools?.colorMaster?.hotkey);
+    registerPaletteMasterHotkey(cfg.donkeyTools?.colorMaster?.paletteHotkey);
     registerQuickCapHotkey(cfg.donkeyTools?.quickCap?.hotkey || cfg.donkeyTools?.fastSnap?.hotkey);
     registerScreenRulerHotkey(cfg.donkeyTools?.screenRuler?.hotkey);
     registerEasyClipHotkey(cfg.donkeyTools?.easyClip?.hotkey);
@@ -2439,6 +2565,7 @@ app.whenReady().then(async () => {
   windowManager.createTray(currentHotkey);
   registerGlobalHotkey(currentHotkey);
   registerColorMasterHotkey(initialConfig.donkeyTools?.colorMaster?.hotkey);
+  registerPaletteMasterHotkey(initialConfig.donkeyTools?.colorMaster?.paletteHotkey);
   registerQuickCapHotkey(initialConfig.donkeyTools?.quickCap?.hotkey || initialConfig.donkeyTools?.fastSnap?.hotkey);
   registerScreenRulerHotkey(initialConfig.donkeyTools?.screenRuler?.hotkey);
   registerEasyClipHotkey(initialConfig.donkeyTools?.easyClip?.hotkey);

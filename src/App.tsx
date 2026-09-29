@@ -13,6 +13,8 @@ import { SplashScreen } from './components/SplashScreen';
 import { TuneColorModal } from './components/TuneColorModal';
 import { QuickCapSnipper } from './components/QuickCapSnipper';
 import { ScreenRulerOverlay } from './components/ScreenRulerOverlay';
+import { PaletteBar } from './components/PaletteBar';
+import { PaletteDetailModal } from './components/PaletteDetailModal';
 import { WindowFrame } from './components/WindowFrame';
 import { PowerManagementModal } from './components/PowerManagementModal';
 import { CURRENT_APP_VERSION, getLatestRelease } from './changelog';
@@ -112,6 +114,20 @@ export const App: React.FC = () => {
       window.location.hash.startsWith('#screenruler') ||
       window.location.search.includes('window=ruler') ||
       window.location.search.includes('window=screenruler')
+    );
+  });
+
+  const [isPaletteBarView] = useState(() => {
+    return (
+      window.location.hash.startsWith('#palette-bar') ||
+      window.location.search.includes('window=palette-bar')
+    );
+  });
+
+  const [isPaletteDetailView] = useState(() => {
+    return (
+      window.location.hash.startsWith('#palette-detail') ||
+      window.location.search.includes('window=palette-detail')
     );
   });
 
@@ -588,6 +604,31 @@ export const App: React.FC = () => {
   // ScreenRuler Screen Overlay mode
   if (isScreenRulerView) {
     return <ScreenRulerOverlay />;
+  }
+
+  // PaletteBar top floating bar
+  if (isPaletteBarView) {
+    return <PaletteBar />;
+  }
+
+  // PaletteDetail modal window
+  if (isPaletteDetailView) {
+    return (
+      <WindowFrame
+        title="IADonkey – PaletteMaster"
+        allowMinimize={true}
+        allowMaximize={true}
+        onClose={() => {
+          if (window.electronAPI?.closePaletteDetail) {
+            window.electronAPI.closePaletteDetail();
+          } else {
+            window.close();
+          }
+        }}
+      >
+        <PaletteDetailModal />
+      </WindowFrame>
+    );
   }
 
   // Filter items by enabled extensions

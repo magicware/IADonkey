@@ -227,6 +227,18 @@ declare global {
       onEasyClipItemsUpdated?: (callback: (items: import('./index').EasyClipItem[]) => void) => () => void;
       onOpenSpotlightMode?: (callback: (data: { mode: string; options?: any }) => void) => () => void;
 
+      // PaletteMaster API
+      getPalettes?: () => Promise<import('./index').ColorPalette[]>;
+      savePalette?: (palette: import('./index').ColorPalette) => Promise<import('./index').ColorPalette[]>;
+      deletePalette?: (paletteId: string) => Promise<import('./index').ColorPalette[]>;
+      openPaletteBar?: (params: { paletteId: string; paletteName: string }) => Promise<void>;
+      closePaletteBar?: () => Promise<void>;
+      openPaletteDetail?: (params: { paletteId: string }) => Promise<void>;
+      closePaletteDetail?: () => Promise<void>;
+      onPalettesUpdated?: (callback: (palettes: import('./index').ColorPalette[]) => void) => () => void;
+      onPaletteBarInit?: (callback: (data: { paletteId: string; paletteName: string }) => void) => () => void;
+      onPaletteDetailInit?: (callback: (data: { paletteId: string }) => void) => () => void;
+
       // Zpětná kompatibilita pro FastSnap
       startFastSnap?: () => Promise<void>;
       finishFastSnap?: (cropArea: { x: number; y: number; width: number; height: number; windowWidth?: number; windowHeight?: number }) => Promise<{ success: boolean; filePath?: string; error?: string }>;

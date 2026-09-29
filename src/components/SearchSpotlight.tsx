@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LauncherItem, LauncherAction, SyncProgress, SnippetsConfig, ColorMasterSettings, QuickCapSettings, FastSnapSettings, ScreenRulerSettings, EasyClipSettings, EasyClipItem, AppConfig } from '../types';
+import { LauncherItem, LauncherAction, SyncProgress, SnippetsConfig, ColorMasterSettings, QuickCapSettings, FastSnapSettings, ScreenRulerSettings, EasyClipSettings, EasyClipItem, ColorPalette, AppConfig } from '../types';
 import { MaterialIcon } from './MaterialIcon';
 import { evaluateExpression } from '../utils/calculator';
 import { detectUrl } from '../utils/urlHelper';
@@ -99,6 +99,11 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   const [selectedEasyClipIds, setSelectedEasyClipIds] = useState<Set<string>>(new Set());
   const easyClipAnchorRef = useRef<number>(0);
   const isEyedropperRef = useRef<boolean>(false);
+
+  const [isPaletteMode, setIsPaletteMode] = useState(false);
+  const [isCreatingPalette, setIsCreatingPalette] = useState(false);
+  const [palettes, setPalettes] = useState<ColorPalette[]>([]);
+  const [paletteSelectedIndex, setPaletteSelectedIndex] = useState<number>(0);
 
   const isColorMasterActive = Boolean(donkeyToolsEnabled && colorMasterConfig?.enabled === true);
   const isQuickCapActive = Boolean(donkeyToolsEnabled && (quickCapConfig?.enabled === true || fastSnapConfig?.enabled === true));
@@ -241,6 +246,59 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     }, 50);
   };
 
+  const loadPalettes = async () => {
+    if (window.electronAPI?.getPalettes) {
+      try {
+        const list = await window.electronAPI.getPalettes();
+        if (Array.isArray(list)) {
+          setPalettes(list);
+        }
+      } catch (err) {
+        console.error('Failed to load palettes:', err);
+      }
+    }
+  };
+
+  const enterPaletteMode = async () => {
+    setIsDonkeyToolsOpen(false);
+    setActionsParentItem(null);
+    setParentItem(null);
+    setIsEasyClipMode(false);
+    setIsCreatingPalette(false);
+    await loadPalettes();
+    setQuery('');
+    setPaletteSelectedIndex(0);
+    setIsPaletteMode(true);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  };
+
+  const exitPaletteMode = () => {
+    setIsDonkeyToolsOpen(false);
+    setParentItem(null);
+    setActionsParentItem(null);
+    setIsPaletteMode(false);
+    setIsCreatingPalette(false);
+    setQuery('');
+    setSelectedIndex(0);
+    setPaletteSelectedIndex(0);
+    setIsRevealed(true);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  };
+
+  const handleDeletePalette = async (paletteId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (window.electronAPI?.deletePalette) {
+      const updated = await window.electronAPI.deletePalette(paletteId);
+      if (Array.isArray(updated)) {
+        setPalettes(updated);
+      }
+    }
+  };
+
   const handleCopyEasyClipItem = async (item: EasyClipItem, shouldPaste: boolean = true) => {
     if (!item) return;
     resetSpotlightState();
@@ -362,17 +420,39 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       }
     });
 
+    const unsubPalettes = window.electronAPI?.onPalettesUpdated?.((updatedPalettes: ColorPalette[]) => {
+      if (Array.isArray(updatedPalettes)) {
+        setPalettes(updatedPalettes);
+      }
+    });
+
     const unsubMode = window.electronAPI?.onOpenSpotlightMode?.((data) => {
       if (data?.mode === 'easyclip') {
         enterEasyClip();
+      } else if (data?.mode === 'palette') {
+        enterPaletteMode();
       }
     });
 
     return () => {
       unsubUpdated?.();
+      unsubPalettes?.();
       unsubMode?.();
     };
   }, []);
+
+  const filteredPalettes = useMemo(() => {
+    if (!isPaletteMode) return [];
+    const q = query.trim().toLowerCase();
+    if (!q) return palettes;
+    return palettes.filter((p) => p.name.toLowerCase().includes(q));
+  }, [isPaletteMode, query, palettes]);
+
+  useEffect(() => {
+    if (isPaletteMode) {
+      setPaletteSelectedIndex(0);
+    }
+  }, [isPaletteMode, query]);
 
   const filteredEasyClipItems = useMemo(() => {
     if (!isEasyClipMode) return [];
@@ -1518,6 +1598,22 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       return;
     }
 
+    if (item.action === 'palette-bar') {
+      const paletteName = item.location || 'Nová paleta';
+      const paletteId = `palette-${Date.now()}`;
+      setIsRevealed(false);
+      await window.electronAPI?.resetAndHideSpotlight?.();
+      if (window.electronAPI?.openPaletteBar) {
+        await window.electronAPI.openPaletteBar({ paletteId, paletteName });
+      }
+      return;
+    }
+
+    if (item.action === 'palette-list') {
+      enterPaletteMode();
+      return;
+    }
+
     if (item.id === 'colormaster-detected-color' && item.colorPreview) {
       const format = colorMasterConfig?.defaultFormat || 'hex';
       const parsed = parseColorQuery(item.colorPreview);
@@ -1943,6 +2039,88 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       return;
     }
 
+    // If in PaletteMaster mode
+    if (isPaletteMode) {
+      if (isCreatingPalette) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const pName = query.trim();
+          if (pName) {
+            const pId = `palette-${Date.now()}`;
+            const newPal: ColorPalette = {
+              id: pId,
+              name: pName,
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              colors: [null, null, null, null, null],
+            };
+            if (window.electronAPI?.savePalette) {
+              window.electronAPI.savePalette(newPal);
+            }
+            setIsRevealed(false);
+            window.electronAPI?.resetAndHideSpotlight?.();
+            if (window.electronAPI?.openPaletteBar) {
+              window.electronAPI.openPaletteBar({ paletteId: pId, paletteName: pName });
+            }
+            exitPaletteMode();
+          }
+          return;
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          setIsCreatingPalette(false);
+          setQuery('');
+          setPaletteSelectedIndex(0);
+          return;
+        }
+        return;
+      }
+
+      // Palette list navigation
+      const totalPaletteItems = 1 + filteredPalettes.length;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setPaletteSelectedIndex((prev) => (totalPaletteItems > 0 ? (prev + 1) % totalPaletteItems : 0));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setPaletteSelectedIndex((prev) => (totalPaletteItems > 0 ? (prev - 1 + totalPaletteItems) % totalPaletteItems : 0));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (paletteSelectedIndex === 0) {
+          setIsCreatingPalette(true);
+          setQuery('');
+        } else {
+          const chosen = filteredPalettes[paletteSelectedIndex - 1];
+          if (chosen) {
+            setIsRevealed(false);
+            window.electronAPI?.resetAndHideSpotlight?.();
+            if (window.electronAPI?.openPaletteDetail) {
+              window.electronAPI.openPaletteDetail({ paletteId: chosen.id });
+            }
+            exitPaletteMode();
+          }
+        }
+        return;
+      } else if (e.key === 'Delete') {
+        e.preventDefault();
+        if (paletteSelectedIndex > 0) {
+          const chosen = filteredPalettes[paletteSelectedIndex - 1];
+          if (chosen) {
+            handleDeletePalette(chosen.id);
+            if (paletteSelectedIndex >= totalPaletteItems - 1) {
+              setPaletteSelectedIndex(Math.max(0, paletteSelectedIndex - 1));
+            }
+          }
+        }
+        return;
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        exitPaletteMode();
+        handleClose();
+        return;
+      }
+      return;
+    }
+
     // Ctrl+Backspace or Alt+Backspace -> completely clear search query string
     if (e.key === 'Backspace' && (e.ctrlKey || e.metaKey || e.altKey)) {
       e.preventDefault();
@@ -2210,7 +2388,9 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
         <div className="w-9 h-9 rounded-full bg-white/[0.05] shadow-sm flex items-center justify-center shrink-0">
           <span
             className={`material-symbols-outlined select-none text-[20px] transition-colors duration-150 ${
-              isEasyClipMode
+              isPaletteMode
+                ? 'text-rose-400'
+                : isEasyClipMode
                 ? 'text-rose-400'
                 : actionsParentItem
                 ? 'm3-actions-text'
@@ -2225,7 +2405,9 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                 : 'text-gray-400'
             }`}
           >
-            {isEasyClipMode
+            {isPaletteMode
+              ? 'palette'
+              : isEasyClipMode
               ? 'content_paste'
               : actionsParentItem
               ? 'bolt'
@@ -2250,7 +2432,11 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           }}
           onKeyDown={handleKeyDown}
           placeholder={
-            isEasyClipMode
+            isPaletteMode
+              ? isCreatingPalette
+                ? 'Název nové palety (Enter vytvoří a spustí lištu výběru)...'
+                : 'Hledat v barevných paletách...'
+              : isEasyClipMode
               ? 'Hledat v historii schránky (EasyClip)...'
               : actionsParentItem
               ? `Akce položky: „${actionsParentItem.name}“`
@@ -2331,10 +2517,27 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       handlePickColor();
                     }}
                     className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.14] text-gray-200 hover:text-white shadow-md hover:scale-105 active:scale-95"
-                    title="ColorMaster – Kapátko (nabrat barvu z obrazovky)"
+                    title="Eyedropper – Kapátko (nabrat barvu z obrazovky)"
                   >
                     <span className="material-symbols-outlined text-[19px] leading-none select-none">
                       colorize
+                    </span>
+                  </button>
+                )}
+
+                {/* PaletteMaster Subextension - Color Palettes */}
+                {isColorMasterActive && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDonkeyToolsOpen(false);
+                      enterPaletteMode();
+                    }}
+                    className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.14] text-gray-200 hover:text-white shadow-md hover:scale-105 active:scale-95"
+                    title="PaletteMaster – Správa barevných palet"
+                  >
+                    <span className="material-symbols-outlined text-[19px] leading-none select-none">
+                      palette
                     </span>
                   </button>
                 )}
@@ -3065,6 +3268,216 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             <div className="flex items-center gap-2">
               <span className="rounded-full px-2.5 py-0.5 bg-white/[0.04] text-gray-400 font-mono text-[11px]">
                 {filteredEasyClipItems.length} {filteredEasyClipItems.length === 1 ? 'položka' : filteredEasyClipItems.length >= 2 && filteredEasyClipItems.length <= 4 ? 'položky' : 'položek'}
+              </span>
+            </div>
+          </div>
+        </>
+      ) : isPaletteMode ? (
+        <>
+          {/* PaletteMaster Header Banner */}
+          <div className="m-2 p-2 px-4 flex items-center justify-between text-xs text-gray-300 select-none">
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={isCreatingPalette ? () => { setIsCreatingPalette(false); setQuery(''); } : exitPaletteMode}
+                className="flex items-center justify-center text-white hover:opacity-80 transition cursor-pointer"
+                title="Zpět"
+              >
+                <span className="material-symbols-outlined text-base text-white">arrow_back</span>
+              </button>
+              <div className="flex items-center gap-2 font-medium">
+                <span className="material-symbols-outlined text-rose-400 text-base">palette</span>
+                <span className="text-white">
+                  {isCreatingPalette ? 'Nová paleta' : 'PaletteMaster – Barevné palety'}
+                </span>
+                {!isCreatingPalette && (
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-mono font-semibold">
+                    {filteredPalettes.length} {filteredPalettes.length === 1 ? 'paleta' : filteredPalettes.length >= 2 && filteredPalettes.length <= 4 ? 'palety' : 'palet'}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="flex items-center gap-1.5 text-[10px] text-gray-400 hover:text-white font-mono cursor-pointer transition select-none"
+                title="Zavřít okno (Esc)"
+              >
+                <kbd className="inline-flex items-center justify-center px-2 py-0.5 bg-white/[0.08] hover:bg-white/[0.14] text-gray-200 rounded-full font-mono text-[9px] font-bold leading-none whitespace-nowrap">
+                  Esc
+                </kbd>
+                <span className="text-gray-300">Zavřít</span>
+              </button>
+            </div>
+          </div>
+
+          {/* PaletteMaster Content */}
+          {isCreatingPalette ? (
+            <div className="py-12 px-6 flex flex-col items-center justify-center text-center">
+              <div className="w-14 h-14 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-400 mb-3 shadow-md">
+                <span className="material-symbols-outlined text-3xl">palette</span>
+              </div>
+              <p className="text-sm font-semibold text-white">Zadejte název nové palety</p>
+              <p className="text-xs text-gray-400 mt-1 max-w-sm">
+                Napište název do vyhledávacího pole a stiskněte{' '}
+                <kbd className="px-1.5 py-0.5 bg-white/10 rounded font-mono text-white text-[10px]">Enter</kbd>.
+                Otevře se plovoucí lišta pro postupné nabrání 5 barev kapátkem.
+              </p>
+            </div>
+          ) : (
+            <div
+              ref={listRef}
+              className="max-h-[400px] overflow-y-auto space-y-1.5 px-2 py-1 focus:outline-none relative"
+            >
+              {/* Item 0: + Přidat novou paletu */}
+              <div
+                data-selected={paletteSelectedIndex === 0}
+                onClick={() => {
+                  setIsCreatingPalette(true);
+                  setQuery('');
+                  inputRef.current?.focus();
+                }}
+                className={`relative flex items-center px-3.5 py-3 rounded-2xl cursor-pointer transition-all duration-150 gap-3.5 overflow-hidden ${
+                  paletteSelectedIndex === 0
+                    ? 'bg-rose-500/20 border border-rose-500/40 text-white shadow-sm'
+                    : 'm3-item-card text-gray-300 hover:border-white/20'
+                }`}
+              >
+                <div
+                  className={`w-[3px] h-7 rounded-full shrink-0 transition-all ${
+                    paletteSelectedIndex === 0 ? 'bg-rose-500 opacity-100 scale-y-100' : 'bg-transparent opacity-0 scale-y-50'
+                  }`}
+                />
+                <div
+                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${
+                    paletteSelectedIndex === 0 ? 'bg-rose-500 text-white shadow-md' : 'bg-white/[0.05] text-rose-400'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-lg">add</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-white">Přidat novou paletu</div>
+                  <div className="text-[11px] text-gray-400">Založit novou paletu a otevřít lištu pro výběr barev</div>
+                </div>
+                <div className="shrink-0 flex items-center gap-1.5">
+                  <kbd className="px-2 py-0.5 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[10px]">
+                    Enter
+                  </kbd>
+                </div>
+              </div>
+
+              {/* Items 1..n: Existing Palettes */}
+              {filteredPalettes.map((pal, idx) => {
+                const itemIndex = idx + 1;
+                const isSelected = paletteSelectedIndex === itemIndex;
+                const validColors = pal.colors ? pal.colors.filter(Boolean) : [];
+
+                return (
+                  <div
+                    key={pal.id}
+                    data-selected={isSelected}
+                    onClick={() => {
+                      setIsRevealed(false);
+                      window.electronAPI?.resetAndHideSpotlight?.();
+                      if (window.electronAPI?.openPaletteDetail) {
+                        window.electronAPI.openPaletteDetail({ paletteId: pal.id });
+                      }
+                      exitPaletteMode();
+                    }}
+                    className={`relative flex items-center px-3.5 py-2.5 rounded-2xl cursor-pointer transition-all duration-150 gap-3.5 overflow-hidden ${
+                      isSelected
+                        ? 'bg-rose-500/20 border border-rose-500/40 text-white shadow-sm'
+                        : 'm3-item-card text-gray-300 hover:border-white/20'
+                    }`}
+                  >
+                    <div
+                      className={`w-[3px] h-7 rounded-full shrink-0 transition-all ${
+                        isSelected ? 'bg-rose-500 opacity-100 scale-y-100' : 'bg-transparent opacity-0 scale-y-50'
+                      }`}
+                    />
+                    <div
+                      className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${
+                        isSelected ? 'bg-rose-500/25 text-rose-200' : 'bg-white/[0.05] text-rose-400'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-lg">palette</span>
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-white">{pal.name}</span>
+                        <span className="text-[10px] px-2 py-0.2 rounded-full bg-white/[0.06] text-gray-400 font-mono">
+                          {validColors.length}/5 barev
+                        </span>
+                      </div>
+
+                      {/* 5 Dots preview */}
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        {[0, 1, 2, 3, 4].map((slotIdx) => {
+                          const c = pal.colors && pal.colors[slotIdx] ? pal.colors[slotIdx] : null;
+                          return (
+                            <div
+                              key={slotIdx}
+                              className={`w-3.5 h-3.5 rounded-full border ${
+                                c
+                                  ? 'border-white/30 shadow-inner'
+                                  : 'border-dashed border-white/20 bg-white/[0.04]'
+                              }`}
+                              style={c ? { backgroundColor: c } : undefined}
+                              title={c || `Pozice ${slotIdx + 1} prázdná`}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Actions: Delete button & Enter hint */}
+                    <div className="shrink-0 flex items-center gap-2">
+                      {isSelected && (
+                        <span className="text-xs font-semibold text-rose-400 hidden sm:inline">
+                          Detail
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeletePalette(pal.id, e)}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"
+                        title="Smazat paletu (Del)"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* PaletteMaster Floating Footer */}
+          <div className="mx-2 my-2 px-4 py-2 flex items-center justify-between text-xs text-gray-400 select-none">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold flex items-center gap-1.5">
+                <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">
+                  Enter
+                </kbd>
+                <span className="text-white">
+                  {isCreatingPalette ? 'Vytvořit a spustit' : paletteSelectedIndex === 0 ? 'Vytvořit novou' : 'Otevřít detail'}
+                </span>
+              </span>
+              {!isCreatingPalette && paletteSelectedIndex > 0 && (
+                <span className="text-xs font-semibold flex items-center gap-1.5">
+                  <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">
+                    Del
+                  </kbd>
+                  <span className="text-white">Smazat</span>
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full px-2.5 py-0.5 bg-white/[0.04] text-gray-400 font-mono text-[11px]">
+                {palettes.length} {palettes.length === 1 ? 'paleta' : palettes.length >= 2 && palettes.length <= 4 ? 'palety' : 'palet'}
               </span>
             </div>
           </div>

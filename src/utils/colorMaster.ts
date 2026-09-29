@@ -315,26 +315,72 @@ export function getDonkeyToolsCommands(
   const isScreenRulerActive = options ? options.screenRulerEnabled === true : true;
   const isEasyClipActive = options ? options.easyClipEnabled === true : true;
 
-  // ColorMaster (kapátko / eyedropper / picker / barva)
+  // Eyedropper (kapátko / eyedropper / picker / barva)
   if (isColorMasterActive) {
     const shortcuts = ['/kapatko', '/picker', '/eyedropper', '/color', '/barva'];
-    const isColorMasterMatch =
+    const isEyedropperMatch =
       command === '' ||
+      'eyedropper'.includes(command) ||
+      'kapatko'.includes(command) ||
       'colormaster'.includes(command) ||
       shortcuts.some((s) => s.replace(/^\//, '').includes(command)) ||
       'nabrat barvu'.includes(command);
 
-    if (isColorMasterMatch) {
+    if (isEyedropperMatch) {
       list.push({
         id: 'donkeytools-kapatko',
-        name: 'ColorMaster',
-        location: 'Nabrat barvu z obrazovky (EyeDropper)',
+        name: 'Eyedropper',
+        location: 'Nabrat barvu z obrazovky (DonkeyTools)',
         action: 'pick-color',
         icon: 'colorize',
         priority: -1.5,
         sourceId: 'donkeytools',
         shortcuts,
       });
+    }
+
+    // PaletteMaster (/palette, /paleta, /palety)
+    const paletteShortcuts = ['/palette', '/paleta', '/palety'];
+    const isPaletteMatch =
+      command === '' ||
+      'palettemaster'.includes(command) ||
+      'palette'.includes(command) ||
+      'paleta'.includes(command) ||
+      'palety'.includes(command) ||
+      paletteShortcuts.some((s) => s.replace(/^\//, '').includes(command)) ||
+      command.startsWith('palette') ||
+      command.startsWith('paleta');
+
+    if (isPaletteMatch) {
+      let paletteArg = '';
+      const palArgMatch = query.trim().match(/^\/(?:palette|paleta|palety)\s*(.*)$/i);
+      if (palArgMatch && palArgMatch[1].trim()) {
+        paletteArg = palArgMatch[1].trim();
+      }
+
+      if (paletteArg) {
+        list.push({
+          id: `donkeytools-palette-${paletteArg}`,
+          name: `Paleta: ${paletteArg}`,
+          location: paletteArg,
+          action: 'palette-bar',
+          icon: 'palette',
+          priority: -1.45,
+          sourceId: 'donkeytools',
+          shortcuts: paletteShortcuts,
+        });
+      } else {
+        list.push({
+          id: 'donkeytools-palettemaster',
+          name: 'PaletteMaster',
+          location: 'Správa a výběr barevných palet (DonkeyTools)',
+          action: 'palette-list',
+          icon: 'palette',
+          priority: -1.45,
+          sourceId: 'donkeytools',
+          shortcuts: paletteShortcuts,
+        });
+      }
     }
   }
 
