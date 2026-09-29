@@ -447,8 +447,8 @@ namespace IADonkey.ColorPicker {
                 this.TopMost = true;
                 this.DoubleBuffered = true;
 
-                // Width: 126 grid + 28 padding = 154 px. Height: ~224 px
-                this.Size = new Size(GRID_PIXELS + 28, GRID_PIXELS + 98);
+                // Width: 126 grid + 28 padding = 154 px. Height: 126 grid + 128 = 254 px (includes header)
+                this.Size = new Size(GRID_PIXELS + 28, GRID_PIXELS + 128);
 
                 // Material 3 Expressive surface background: #181920
                 this.BackColor = Color.FromArgb(24, 25, 32);
@@ -517,6 +517,40 @@ namespace IADonkey.ColorPicker {
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
+                // 1. Header (ScreenRuler style: circular badge with rose background + eyedropper icon + "ColorMaster" text)
+                int headerY = 12;
+                Rectangle iconCircle = new Rectangle(14, headerY, 22, 22);
+                using (var bgBrush = new SolidBrush(Color.FromArgb(38, 244, 63, 94))) {
+                    g.FillEllipse(bgBrush, iconCircle);
+                }
+
+                // Draw vector eyedropper icon (colorize style) in rose-400
+                using (var pen = new Pen(Color.FromArgb(251, 113, 133), 1.6f)) {
+                    pen.StartCap = LineCap.Round;
+                    pen.EndCap = LineCap.Round;
+                    pen.LineJoin = LineJoin.Round;
+
+                    float cx = 14 + 11f;
+                    float cy = headerY + 11f;
+
+                    PointF pTip = new PointF(cx - 4.5f, cy + 4.5f);
+                    PointF p1 = new PointF(cx - 2.5f, cy + 1f);
+                    PointF p2 = new PointF(cx - 1f, cy + 2.5f);
+                    PointF p3 = new PointF(cx + 2.5f, cy - 1f);
+                    PointF p4 = new PointF(cx + 1f, cy - 2.5f);
+
+                    using (var path = new GraphicsPath()) {
+                        path.AddPolygon(new PointF[] { pTip, p1, p4, p3, p2 });
+                        g.DrawPath(pen, path);
+                    }
+                    g.DrawLine(pen, cx + 1.8f, cy - 1.8f, cx + 4.5f, cy - 4.5f);
+                }
+
+                using (var titleFont = new Font("Segoe UI", 8.5f, FontStyle.Bold))
+                using (var titleBrush = new SolidBrush(Color.White)) {
+                    g.DrawString("ColorMaster", titleFont, titleBrush, 43, headerY + 2.5f);
+                }
+
                 Point cur = Cursor.Position;
                 int half = GRID_COUNT / 2;
                 int srcX = cur.X - half;
@@ -546,9 +580,9 @@ namespace IADonkey.ColorPicker {
                 }
 
                 int startX = 14;
-                int startY = 14;
+                int startY = 44;
 
-                // 1. Lens Aperture (Circular Mag Lens)
+                // 2. Lens Aperture (Circular Mag Lens)
                 Rectangle lensRect = new Rectangle(startX, startY, GRID_PIXELS, GRID_PIXELS);
                 using (var lensPath = new GraphicsPath()) {
                     lensPath.AddEllipse(lensRect);
