@@ -1689,8 +1689,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         donkeyTools: {
           ...formData.donkeyTools,
           colorMaster: {
+            ...formData.donkeyTools?.colorMaster,
             enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
             hotkey: fallback,
+            paletteHotkey: formData.donkeyTools?.colorMaster?.paletteHotkey || '',
             defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
           },
         },
@@ -1713,8 +1715,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         donkeyTools: {
           ...formData.donkeyTools,
           colorMaster: {
+            ...formData.donkeyTools?.colorMaster,
             enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
             hotkey: '',
+            paletteHotkey: formData.donkeyTools?.colorMaster?.paletteHotkey || '',
             defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
           },
         },
@@ -1777,8 +1781,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         donkeyTools: {
           ...formData.donkeyTools,
           colorMaster: {
+            ...formData.donkeyTools?.colorMaster,
             enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
             hotkey: fallback,
+            paletteHotkey: formData.donkeyTools?.colorMaster?.paletteHotkey || '',
             defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
           },
         },
@@ -1806,8 +1812,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           donkeyTools: {
             ...formData.donkeyTools,
             colorMaster: {
+              ...formData.donkeyTools?.colorMaster,
               enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
               hotkey: fallback,
+              paletteHotkey: formData.donkeyTools?.colorMaster?.paletteHotkey || '',
               defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
             },
           },
@@ -1832,8 +1840,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           donkeyTools: {
             ...formData.donkeyTools,
             colorMaster: {
+              ...formData.donkeyTools?.colorMaster,
               enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
               hotkey: fallback,
+              paletteHotkey: formData.donkeyTools?.colorMaster?.paletteHotkey || '',
               defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
             },
           },
@@ -1858,8 +1868,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           donkeyTools: {
             ...formData.donkeyTools,
             colorMaster: {
+              ...formData.donkeyTools?.colorMaster,
               enabled: formData.donkeyTools?.colorMaster?.enabled ?? false,
               hotkey: fallback,
+              paletteHotkey: formData.donkeyTools?.colorMaster?.paletteHotkey || '',
               defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
             },
           },
@@ -6701,8 +6713,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             donkeyTools: {
                               ...formData.donkeyTools,
                               colorMaster: {
+                                ...formData.donkeyTools?.colorMaster,
                                 enabled: e.target.checked,
                                 hotkey: formData.donkeyTools?.colorMaster?.hotkey || '',
+                                paletteHotkey: formData.donkeyTools?.colorMaster?.paletteHotkey || '',
                                 defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
                               },
                             },
@@ -6748,7 +6762,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                   ? 'm3-selected-card text-white ring-2 ring-white/50'
                                   : 'bg-white/[0.06] text-white hover:bg-white/[0.1]'
                               }`}
-                              placeholder="Klikněte pro nastavení zkratky"
+                              placeholder="Klikněte"
                             />
                             {formData.donkeyTools?.colorMaster?.hotkey && !isRecordingColorMasterHotkey && (
                               <button
@@ -6760,8 +6774,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     donkeyTools: {
                                       ...formData.donkeyTools,
                                       colorMaster: {
+                                        ...formData.donkeyTools?.colorMaster,
                                         enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
                                         hotkey: '',
+                                        paletteHotkey: formData.donkeyTools?.colorMaster?.paletteHotkey || '',
                                         defaultFormat: formData.donkeyTools?.colorMaster?.defaultFormat || 'hex',
                                       },
                                     },
@@ -6851,8 +6867,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                   donkeyTools: {
                                     ...formData.donkeyTools,
                                     colorMaster: {
+                                      ...formData.donkeyTools?.colorMaster,
                                       enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
                                       hotkey: formData.donkeyTools?.colorMaster?.hotkey || '',
+                                      paletteHotkey: formData.donkeyTools?.colorMaster?.paletteHotkey || '',
                                       defaultFormat: fmt.id as any,
                                     },
                                   },
@@ -6904,7 +6922,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                   ? 'm3-selected-card text-white ring-2 ring-white/50'
                                   : 'bg-white/[0.06] text-white hover:bg-white/[0.1]'
                               }`}
-                              placeholder="Klikněte pro nastavení zkratky"
+                              placeholder="Klikněte"
                             />
                             {formData.donkeyTools?.colorMaster?.paletteHotkey && !isRecordingPaletteHotkey && (
                               <button
@@ -6916,6 +6934,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     donkeyTools: {
                                       ...formData.donkeyTools,
                                       colorMaster: {
+                                        ...formData.donkeyTools?.colorMaster,
                                         enabled: formData.donkeyTools?.colorMaster?.enabled ?? true,
                                         hotkey: formData.donkeyTools?.colorMaster?.hotkey || '',
                                         paletteHotkey: '',
@@ -7056,7 +7075,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                   ? 'm3-selected-card text-white ring-2 ring-white/50'
                                   : 'bg-white/[0.06] text-white hover:bg-white/[0.1]'
                               }`}
-                              placeholder="Klikněte pro nastavení zkratky"
+                              placeholder="Klikněte"
                             />
                             {(formData.donkeyTools?.quickCap?.hotkey || formData.donkeyTools?.fastSnap?.hotkey) && !isRecordingQuickCapHotkey && (
                               <button
@@ -7340,7 +7359,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                   ? 'm3-selected-card text-white ring-2 ring-white/50'
                                   : 'bg-white/[0.06] text-white hover:bg-white/[0.1]'
                               }`}
-                              placeholder="Klikněte pro nastavení zkratky"
+                              placeholder="Klikněte"
                             />
                             {formData.donkeyTools?.screenRuler?.hotkey && !isRecordingScreenRulerHotkey && (
                               <button
@@ -7634,7 +7653,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                       : 'Stiskněte kombinaci kláves...')
                                   : (formData.donkeyTools?.easyClip?.hotkey || '')
                               }
-                              placeholder="Klikněte pro záznam zkratky"
+                              placeholder="Klikněte"
                               onFocus={handleEasyClipHotkeyFocus}
                               onBlur={handleEasyClipHotkeyBlur}
                               onKeyDown={handleEasyClipHotkeyKeyDown}
@@ -8233,7 +8252,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             ? 'm3-selected-card text-white ring-2 ring-white/50'
                             : 'bg-white/[0.06] text-white hover:bg-white/[0.1]'
                         }`}
-                        placeholder="Klikněte pro nastavení zkratky"
+                        placeholder="Klikněte"
                       />
                       {formData.hotkey && !isRecordingHotkey && (
                         <button

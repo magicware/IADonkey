@@ -606,7 +606,7 @@ function registerPaletteMasterHotkey(hotkey?: string) {
   const config = store?.getConfig();
   const isEnabled = Boolean(config?.extensions?.donkeyTools && config?.donkeyTools?.colorMaster?.enabled === true);
   if (!isEnabled) return;
-  const targetHotkey = hotkey || config?.donkeyTools?.colorMaster?.paletteHotkey;
+  const targetHotkey = hotkey !== undefined ? hotkey : config?.donkeyTools?.colorMaster?.paletteHotkey;
   if (!targetHotkey || !targetHotkey.trim()) return;
   const cleanHotkey = targetHotkey.trim();
 
