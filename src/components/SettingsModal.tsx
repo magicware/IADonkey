@@ -9348,7 +9348,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <button
                     type="button"
                     onClick={handleOpenDevTools}
-                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white rounded-full text-xs font-medium transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white rounded-full text-xs font-medium transition flex items-center gap-2 cursor-pointer"
                     title="Otevře nebo zavře Chrome DevTools vývojářskou konzoli"
                   >
                     <span className="material-symbols-outlined text-base text-cyan-400">developer_mode</span>
@@ -9359,7 +9359,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     type="button"
                     onClick={handleSimulateCrash}
                     disabled={isSimulatingCrash}
-                    className="w-full px-4 py-2 bg-rose-500/15 hover:bg-rose-500/25 text-white rounded-full text-xs font-medium transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="w-full px-4 py-2 bg-rose-500/15 hover:bg-rose-500/25 text-white rounded-full text-xs font-medium transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
                     title="Vyvolá simulovanou výjimku pro ověření vytvoření souboru v crashlog/"
                   >
                     <span className={`material-symbols-outlined text-base ${isSimulatingCrash ? 'animate-spin text-rose-400' : 'text-rose-400'}`}>
@@ -9371,7 +9371,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <button
                     type="button"
                     onClick={onSimulateUpdate}
-                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white rounded-full text-xs font-medium transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white rounded-full text-xs font-medium transition flex items-center gap-2 cursor-pointer"
                     title="Vyvolá dialog nové verze se simulovaným průběhem stažení a tlačítkem restartu"
                   >
                     <span className="material-symbols-outlined text-base text-indigo-400">system_update</span>
@@ -9382,7 +9382,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     type="button"
                     onClick={loadDiagnostics}
                     disabled={isLoadingDiagnostics}
-                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white rounded-full text-xs font-medium transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white rounded-full text-xs font-medium transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
                     title="Znovu načte záznamy z diagnostické služby na pozadí"
                   >
                     <span className={`material-symbols-outlined text-base ${isLoadingDiagnostics ? 'animate-spin text-indigo-400' : 'text-indigo-400'}`}>
@@ -9394,7 +9394,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowWhatsNew(true)}
-                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-medium transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-medium transition flex items-center gap-2 cursor-pointer"
                     title="Otevře okno Co je nového s přehledem změn aktuální verze"
                   >
                     <span className="material-symbols-outlined text-base text-indigo-400">auto_awesome</span>
@@ -9406,14 +9406,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setOpenSimDropdown((curr) => (curr === 'github' ? null : 'github'))}
-                      className={`w-full px-4 py-2 rounded-full text-xs font-medium transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      className={`w-full px-4 py-2 rounded-full text-xs font-medium transition flex items-center gap-2 cursor-pointer ${
                         openSimDropdown === 'github' ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 hover:bg-white/10 text-white'
                       }`}
                       title="Otevře nabídku pro simulaci okna GitHub klonování"
                     >
                       <span className="material-symbols-outlined text-base text-indigo-400">folder_code</span>
                       <span>Simulovat okno GitHub</span>
-                      <span className={`material-symbols-outlined text-sm text-gray-400 transition-transform duration-200 ${openSimDropdown === 'github' ? 'rotate-180 text-white' : ''}`}>
+                      <span className={`ml-auto material-symbols-outlined text-sm text-gray-400 transition-transform duration-200 ${openSimDropdown === 'github' ? 'rotate-180 text-white' : ''}`}>
                         expand_more
                       </span>
                     </button>
@@ -9472,14 +9472,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setOpenSimDropdown((curr) => (curr === 'magicgate' ? null : 'magicgate'))}
-                      className={`w-full px-4 py-2 rounded-full text-xs font-medium transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      className={`w-full px-4 py-2 rounded-full text-xs font-medium transition flex items-center gap-2 cursor-pointer ${
                         openSimDropdown === 'magicgate' ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 hover:bg-white/10 text-white'
                       }`}
                       title="Otevře nabídku pro simulaci okna MagicGate klonování"
                     >
                       <span className="material-symbols-outlined text-base text-indigo-400">cloud_download</span>
                       <span>Simulovat okno MagicGate repo</span>
-                      <span className={`material-symbols-outlined text-sm text-gray-400 transition-transform duration-200 ${openSimDropdown === 'magicgate' ? 'rotate-180 text-white' : ''}`}>
+                      <span className={`ml-auto material-symbols-outlined text-sm text-gray-400 transition-transform duration-200 ${openSimDropdown === 'magicgate' ? 'rotate-180 text-white' : ''}`}>
                         expand_more
                       </span>
                     </button>
@@ -9540,14 +9540,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setOpenSimDropdown((curr) => (curr === 'cms' ? null : 'cms'))}
-                      className={`w-full px-4 py-2 rounded-full text-xs font-medium transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      className={`w-full px-4 py-2 rounded-full text-xs font-medium transition flex items-center gap-2 cursor-pointer ${
                         openSimDropdown === 'cms' ? 'bg-white/15 text-white ring-1 ring-white/20' : 'bg-white/5 hover:bg-white/10 text-white'
                       }`}
                       title="Otevře nabídku pro simulaci stažení CMS zdrojáků"
                     >
                       <span className="material-symbols-outlined text-base text-indigo-400">code</span>
                       <span>Simulovat okno CMS zdrojáky</span>
-                      <span className={`material-symbols-outlined text-sm text-gray-400 transition-transform duration-200 ${openSimDropdown === 'cms' ? 'rotate-180 text-white' : ''}`}>
+                      <span className={`ml-auto material-symbols-outlined text-sm text-gray-400 transition-transform duration-200 ${openSimDropdown === 'cms' ? 'rotate-180 text-white' : ''}`}>
                         expand_more
                       </span>
                     </button>
@@ -9627,7 +9627,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         console.error('Error opening palette detail simulation:', err);
                       }
                     }}
-                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-medium transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-medium transition flex items-center gap-2 cursor-pointer"
                     title="Otevře okno detailu palety PaletteMaster pro simulaci a kontrolu vzhledu"
                   >
                     <span className="material-symbols-outlined text-base text-indigo-400">palette</span>
@@ -9641,7 +9641,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         initialColor: formData.primaryColor || '#6366f1',
                       });
                     }}
-                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-medium transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-medium transition flex items-center gap-2 cursor-pointer"
                     title="Otevře okno doladění barvy ColorMasteru s aktuální primární barvou"
                   >
                     <span className="material-symbols-outlined text-base text-indigo-400">palette</span>
@@ -9653,7 +9653,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onClick={() => {
                       window.electronAPI?.showSplashScreen?.();
                     }}
-                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-medium transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-medium transition flex items-center gap-2 cursor-pointer"
                     title="Vyvolá úvodní obrazovku (Splash screen) se simulací načítání"
                   >
                     <span className="material-symbols-outlined text-base text-indigo-400">rocket_launch</span>
@@ -9665,7 +9665,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onClick={() => {
                       window.electronAPI?.openPowerWindow?.();
                     }}
-                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-medium transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-medium transition flex items-center gap-2 cursor-pointer"
                     title="Otevře okno správy aplikace s možnostmi restartu a ukončení"
                   >
                     <span className="material-symbols-outlined text-base text-indigo-400">power_settings_new</span>
