@@ -69,7 +69,7 @@ export const PowerManagementModal: React.FC<PowerManagementModalProps> = ({ onCl
       </div>
 
       {/* Footer: Zrušit right-aligned */}
-      <div className="flex items-center justify-end pt-2 border-t border-white/[0.04]">
+      <div className="flex items-center justify-end pt-2">
         <button
           type="button"
           onClick={onClose}

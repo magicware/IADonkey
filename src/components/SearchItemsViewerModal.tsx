@@ -884,7 +884,7 @@ export const SearchItemsViewerModal: React.FC<SearchItemsViewerModalProps> = ({
         )}
 
         {/* Footer info */}
-        <footer className="px-4 py-2.5 bg-black/30 flex items-center justify-between text-xs text-gray-400 shrink-0">
+        <footer className="px-5 py-3 flex items-center justify-between text-xs text-gray-400 shrink-0">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-sm text-gray-400">info</span>
             <span>Pořadí položek odpovídá přesně prioritě zobrazení výsledků ve Spotlight vyhledávání.</span>

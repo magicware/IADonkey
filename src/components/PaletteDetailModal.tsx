@@ -97,38 +97,40 @@ export const PaletteDetailModal: React.FC = () => {
 
   return (
     <div className="w-full h-full flex flex-col m3-surface-main text-gray-200 select-none overflow-hidden font-sans">
-      {/* Header */}
-      <div className="shrink-0 p-5 pb-3 border-b border-white/10 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
-            <span className="material-symbols-outlined text-2xl">palette</span>
+      {/* Main Content (scrollable if window height is small, includes Header) */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-5">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 pb-1">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+              <span className="material-symbols-outlined text-2xl">palette</span>
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
+                <span>{palette?.name || 'Barevná paleta'}</span>
+                <span className="text-[11px] font-normal px-2.5 py-0.5 rounded-full bg-white/[0.06] text-gray-300">
+                  {filledCount}/5 barev
+                </span>
+              </h2>
+              <p className="text-xs text-gray-400">Přehled a export barevných odstínů</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
-              <span>{palette?.name || 'Barevná paleta'}</span>
-              <span className="text-[11px] font-normal px-2.5 py-0.5 rounded-full bg-white/[0.06] text-gray-300">
-                {filledCount}/5 barev
-              </span>
-            </h2>
-            <p className="text-xs text-gray-400">Přehled a export barevných odstínů</p>
-          </div>
+
+          {/* Action: Upravit v liště */}
+          <button
+            type="button"
+            onClick={handleOpenBar}
+            className="px-4 py-2 rounded-full text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white shadow-sm"
+            title="Otevřít plovoucí lištu pro výběr a úpravu barev (Ctrl+Enter)"
+          >
+            <span className="material-symbols-outlined text-sm">tune</span>
+            <span>Upravit barvy v liště</span>
+          </button>
         </div>
 
-        {/* Action: Upravit v liště */}
-        <button
-          type="button"
-          onClick={handleOpenBar}
-          className="px-4 py-2 rounded-full text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white shadow-sm"
-          title="Otevřít plovoucí lištu pro výběr a úpravu barev (Ctrl+Enter)"
-        >
-          <span className="material-symbols-outlined text-sm">tune</span>
-          <span>Upravit barvy v liště</span>
-        </button>
-      </div>
-
-      {/* Main Content: 5 Color Cards */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-3">
-        {colors.map((color, idx) => {
+        {/* Color Cards List */}
+        <div className="space-y-3">
+          {colors.map((color, idx) => {
           if (!color) {
             return (
               <div
@@ -230,10 +232,11 @@ export const PaletteDetailModal: React.FC = () => {
             </div>
           );
         })}
+        </div>
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 p-4 border-t border-white/10 flex items-center justify-between">
+      <div className="shrink-0 p-5 flex items-center justify-between">
         <button
           type="button"
           onClick={() => {
