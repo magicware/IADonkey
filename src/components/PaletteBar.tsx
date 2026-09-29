@@ -110,6 +110,9 @@ export const PaletteBar: React.FC = () => {
       console.error('[PaletteBar] Eyedropper error:', err);
     } finally {
       setIsPicking(false);
+      setTimeout(() => {
+        window.focus();
+      }, 50);
     }
   };
 

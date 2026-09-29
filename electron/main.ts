@@ -212,7 +212,7 @@ async function pickScreenColorNative(
   return new Promise((resolve) => {
     try {
       const targetWin = options?.noSpotlight
-        ? (windowManager ? windowManager.getSettingsWindow() : null)
+        ? (windowManager ? (windowManager.getPaletteBarWindow() || windowManager.getSettingsWindow()) : null)
         : (windowManager ? windowManager.getMainWindow() : null);
 
       const nativeHwnd = targetWin && !targetWin.isDestroyed() ? targetWin.getNativeWindowHandle() : null;
@@ -250,6 +250,14 @@ async function pickScreenColorNative(
           windowManager.showSpotlight();
           app.focus({ steal: true });
         } else {
+          const palBarWin = windowManager ? windowManager.getPaletteBarWindow() : null;
+          if (palBarWin && !palBarWin.isDestroyed() && palBarWin.isVisible()) {
+            palBarWin.setAlwaysOnTop(true, 'screen-saver');
+            app.focus({ steal: true });
+            palBarWin.focus();
+            palBarWin.webContents.focus();
+            return;
+          }
           const settingsWin = windowManager ? windowManager.getSettingsWindow() : null;
           if (settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible()) {
             app.focus({ steal: true });
@@ -338,10 +346,18 @@ async function pickScreenColorNative(
               win.webContents.send('color-picked-global', { color: pickedColor, formatted });
             }
           } else {
-            const settingsWin = windowManager ? windowManager.getSettingsWindow() : null;
-            if (settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible()) {
+            const palBarWin = windowManager ? windowManager.getPaletteBarWindow() : null;
+            if (palBarWin && !palBarWin.isDestroyed() && palBarWin.isVisible()) {
+              palBarWin.setAlwaysOnTop(true, 'screen-saver');
               app.focus({ steal: true });
-              settingsWin.focus();
+              palBarWin.focus();
+              palBarWin.webContents.focus();
+            } else {
+              const settingsWin = windowManager ? windowManager.getSettingsWindow() : null;
+              if (settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible()) {
+                app.focus({ steal: true });
+                settingsWin.focus();
+              }
             }
           }
         } else {
@@ -372,10 +388,18 @@ async function pickScreenColorNative(
               win.webContents.focus();
             }
           } else {
-            const settingsWin = windowManager ? windowManager.getSettingsWindow() : null;
-            if (settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible()) {
+            const palBarWin = windowManager ? windowManager.getPaletteBarWindow() : null;
+            if (palBarWin && !palBarWin.isDestroyed() && palBarWin.isVisible()) {
+              palBarWin.setAlwaysOnTop(true, 'screen-saver');
               app.focus({ steal: true });
-              settingsWin.focus();
+              palBarWin.focus();
+              palBarWin.webContents.focus();
+            } else {
+              const settingsWin = windowManager ? windowManager.getSettingsWindow() : null;
+              if (settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible()) {
+                app.focus({ steal: true });
+                settingsWin.focus();
+              }
             }
           }
         }

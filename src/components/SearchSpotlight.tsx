@@ -2093,8 +2093,15 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           if (chosen) {
             setIsRevealed(false);
             window.electronAPI?.resetAndHideSpotlight?.();
-            if (window.electronAPI?.openPaletteDetail) {
-              window.electronAPI.openPaletteDetail({ paletteId: chosen.id });
+            const shouldOpenBar = e.ctrlKey || isCtrlDown;
+            if (shouldOpenBar) {
+              if (window.electronAPI?.openPaletteBar) {
+                window.electronAPI.openPaletteBar({ paletteId: chosen.id, paletteName: chosen.name });
+              }
+            } else {
+              if (window.electronAPI?.openPaletteDetail) {
+                window.electronAPI.openPaletteDetail({ paletteId: chosen.id });
+              }
             }
             exitPaletteMode();
           }
@@ -3361,11 +3368,18 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                   <div
                     key={pal.id}
                     data-selected={isSelected}
-                    onClick={() => {
+                    onClick={(e) => {
+                      const shouldOpenBar = e.ctrlKey || isCtrlDown;
                       setIsRevealed(false);
                       window.electronAPI?.resetAndHideSpotlight?.();
-                      if (window.electronAPI?.openPaletteDetail) {
-                        window.electronAPI.openPaletteDetail({ paletteId: pal.id });
+                      if (shouldOpenBar) {
+                        if (window.electronAPI?.openPaletteBar) {
+                          window.electronAPI.openPaletteBar({ paletteId: pal.id, paletteName: pal.name });
+                        }
+                      } else {
+                        if (window.electronAPI?.openPaletteDetail) {
+                          window.electronAPI.openPaletteDetail({ paletteId: pal.id });
+                        }
                       }
                       exitPaletteMode();
                     }}
@@ -3420,7 +3434,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                     <div className="shrink-0 flex items-center gap-2">
                       {isSelected && (
                         <span className="text-xs font-semibold text-rose-400 hidden sm:inline">
-                          Detail
+                          {isCtrlDown ? 'Spustit' : 'Detail'}
                         </span>
                       )}
                       <button
@@ -3443,10 +3457,16 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             <div className="flex items-center gap-3">
               <span className="text-xs font-semibold flex items-center gap-1.5">
                 <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">
-                  Enter
+                  {isCreatingPalette ? 'Enter' : paletteSelectedIndex > 0 && isCtrlDown ? 'Ctrl+Enter' : 'Enter'}
                 </kbd>
                 <span className="text-white">
-                  {isCreatingPalette ? 'Vytvořit a spustit' : paletteSelectedIndex === 0 ? 'Vytvořit novou' : 'Otevřít detail'}
+                  {isCreatingPalette
+                    ? 'Vytvořit a spustit'
+                    : paletteSelectedIndex === 0
+                    ? 'Vytvořit novou'
+                    : isCtrlDown
+                    ? 'Spustit lištu'
+                    : 'Otevřít detail'}
                 </span>
               </span>
               {!isCreatingPalette && paletteSelectedIndex > 0 && (
