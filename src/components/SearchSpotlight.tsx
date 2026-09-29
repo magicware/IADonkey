@@ -3454,28 +3454,42 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
           {/* PaletteMaster Floating Footer */}
           <div className="mx-2 my-2 px-4 py-2 flex items-center justify-between text-xs text-gray-400 select-none">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold flex items-center gap-1.5">
-                <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">
-                  {isCreatingPalette ? 'Enter' : paletteSelectedIndex > 0 && isCtrlDown ? 'Ctrl+Enter' : 'Enter'}
-                </kbd>
-                <span className="text-white">
-                  {isCreatingPalette
-                    ? 'Vytvořit a spustit'
-                    : paletteSelectedIndex === 0
-                    ? 'Vytvořit novou'
-                    : isCtrlDown
-                    ? 'Spustit lištu'
-                    : 'Otevřít detail'}
-                </span>
-              </span>
-              {!isCreatingPalette && paletteSelectedIndex > 0 && (
+            <div className="flex items-center gap-4 flex-wrap">
+              {isCreatingPalette ? (
                 <span className="text-xs font-semibold flex items-center gap-1.5">
                   <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">
-                    Del
+                    Enter
                   </kbd>
-                  <span className="text-white">Smazat</span>
+                  <span className="text-white">Vytvořit a spustit</span>
                 </span>
+              ) : paletteSelectedIndex === 0 ? (
+                <span className="text-xs font-semibold flex items-center gap-1.5">
+                  <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">
+                    Enter
+                  </kbd>
+                  <span className="text-white">Vytvořit novou</span>
+                </span>
+              ) : (
+                <>
+                  <span className="text-xs font-semibold flex items-center gap-1.5">
+                    <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">
+                      Enter
+                    </kbd>
+                    <span className="text-white">Detail</span>
+                  </span>
+                  <span className="text-xs font-semibold flex items-center gap-1.5">
+                    <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">
+                      Ctrl+Enter
+                    </kbd>
+                    <span className="text-white">Spustit lištu</span>
+                  </span>
+                  <span className="text-xs font-semibold flex items-center gap-1.5">
+                    <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">
+                      Del
+                    </kbd>
+                    <span className="text-white">Smazat</span>
+                  </span>
+                </>
               )}
             </div>
             <div className="flex items-center gap-2">

@@ -116,30 +116,6 @@ export const PaletteBar: React.FC = () => {
     }
   };
 
-  // Open TuneColorModal for a color slot
-  const handleTuneColor = (slotIndex: number) => {
-    const color = colors[slotIndex];
-    if (!color) return;
-    setActiveSlot(slotIndex);
-    if (window.electronAPI?.openTuneColorWindow) {
-      window.electronAPI.openTuneColorWindow({ initialColor: color });
-    }
-  };
-
-  // Listen for tuned color applied
-  useEffect(() => {
-    if (window.electronAPI?.onTuneColorApplied) {
-      return window.electronAPI.onTuneColorApplied((data) => {
-        if (data?.color && activeSlotRef.current !== null) {
-          const updated = [...colorsRef.current];
-          updated[activeSlotRef.current] = data.color;
-          setColors(updated);
-          persistPalette(updated);
-        }
-      });
-    }
-  }, [persistPalette]);
-
   // Finish and open detail (Save & Open)
   const handleOpenDetail = async () => {
     if (saveNameTimeoutRef.current) {
@@ -193,19 +169,12 @@ export const PaletteBar: React.FC = () => {
           e.preventDefault();
           triggerPick(activeSlotRef.current);
         }
-      } else if (e.key.toLowerCase() === 't') {
-        if (activeSlotRef.current !== null && colorsRef.current[activeSlotRef.current]) {
-          e.preventDefault();
-          handleTuneColor(activeSlotRef.current);
-        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
-  const activeColor = activeSlot !== null ? colors[activeSlot] : null;
 
   return (
     <div className="w-full h-full flex items-center justify-center p-1 select-none overflow-hidden bg-transparent">
@@ -287,9 +256,8 @@ export const PaletteBar: React.FC = () => {
           })}
         </div>
 
-        {/* Actions: Nabrat & Doladit (Always rendered, disabled with opacity 0.5 when nothing active) */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Action: Nabrat kapátkem (Eyedropper) */}
+        {/* Action: Nabrat kapátkem (Eyedropper) */}
+        <div className="flex items-center shrink-0">
           <button
             type="button"
             onClick={() => {
@@ -305,46 +273,22 @@ export const PaletteBar: React.FC = () => {
                 ? 'bg-rose-500/30 text-rose-300 animate-pulse cursor-wait'
                 : 'bg-white/[0.06] hover:bg-white/[0.12] text-white active:scale-95 cursor-pointer'
             }`}
-            title={activeSlot === null ? 'Nejprve vyberte pozici (1–5) pro nabrání barvy' : 'Nabrat barvu z obrazovky pro vybranou pozici (C)'}
+            title={activeSlot === null ? 'Nejprve vyberte pozici (1–5) pro nabrání barvy' : 'Nabrat barvu z obrazovky kapátkem (Space)'}
           >
             <span className={`material-symbols-outlined text-[16px] shrink-0 ${activeSlot === null ? 'text-gray-400' : 'text-rose-400'}`}>
               colorize
             </span>
             <span>Nabrat</span>
           </button>
-
-          {/* Action: Doladit barvu (Tune color) */}
-          <button
-            type="button"
-            onClick={() => {
-              if (activeSlot !== null && activeColor) {
-                handleTuneColor(activeSlot);
-              }
-            }}
-            disabled={activeSlot === null || !activeColor}
-            className={`h-8 flex items-center gap-1.5 px-3 rounded-full text-xs font-semibold transition-all shrink-0 shadow-sm ${
-              activeSlot === null || !activeColor
-                ? 'bg-white/[0.04] text-gray-400 opacity-50 cursor-not-allowed'
-                : 'bg-white/[0.06] hover:bg-white/[0.12] text-white active:scale-95 cursor-pointer'
-            }`}
-            title={
-              activeSlot === null
-                ? 'Nejprve vyberte pozici s barvou k doladění'
-                : !activeColor
-                ? 'Vybraná pozice je prázdná – nejprve naberte barvu'
-                : 'Přesně doladit barvu vybrané pozice (T)'
-            }
-          >
-            <span className={`material-symbols-outlined text-[16px] shrink-0 ${activeSlot === null || !activeColor ? 'text-gray-400' : 'text-rose-400'}`}>
-              tune
-            </span>
-            <span>Doladit</span>
-          </button>
         </div>
 
         {/* Shortcuts pill (Spotlight kbd badges, Unified h-8) */}
         <div className="h-8 flex items-center gap-1.5 px-2 text-[11px] text-gray-400 font-sans shrink-0 border-l border-white/10">
           <kbd className="h-[20px] px-2 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[10px] leading-none flex items-center justify-center">
+            Space
+          </kbd>
+          <span className="text-[11px] text-gray-300">nabrat</span>
+          <kbd className="h-[20px] px-2 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[10px] leading-none flex items-center justify-center ml-1">
             Enter
           </kbd>
           <span className="text-[11px] text-gray-300">uložit a otevřít</span>
