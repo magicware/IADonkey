@@ -2059,8 +2059,15 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             }
             setIsRevealed(false);
             window.electronAPI?.resetAndHideSpotlight?.();
-            if (window.electronAPI?.openPaletteBar) {
-              window.electronAPI.openPaletteBar({ paletteId: pId, paletteName: pName });
+            const shouldOpenDetail = e.ctrlKey || isCtrlDown;
+            if (shouldOpenDetail) {
+              if (window.electronAPI?.openPaletteDetail) {
+                window.electronAPI.openPaletteDetail({ paletteId: pId });
+              }
+            } else {
+              if (window.electronAPI?.openPaletteBar) {
+                window.electronAPI.openPaletteBar({ paletteId: pId, paletteName: pName });
+              }
             }
             exitPaletteMode();
           }
@@ -2441,7 +2448,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           placeholder={
             isPaletteMode
               ? isCreatingPalette
-                ? 'Název nové palety (Enter vytvoří a spustí lištu výběru)...'
+                ? 'Název nové palety (Enter spustí lištu, Ctrl+Enter otevře detail)...'
                 : 'Hledat v barevných paletách...'
               : isEasyClipMode
               ? 'Hledat v historii schránky (EasyClip)...'
@@ -3456,12 +3463,20 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           <div className="mx-2 my-2 px-4 py-2 flex items-center justify-between text-xs text-gray-400 select-none">
             <div className="flex items-center gap-4 flex-wrap">
               {isCreatingPalette ? (
-                <span className="text-xs font-semibold flex items-center gap-1.5">
-                  <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">
-                    Enter
-                  </kbd>
-                  <span className="text-white">Vytvořit a spustit</span>
-                </span>
+                <>
+                  <span className="text-xs font-semibold flex items-center gap-1.5">
+                    <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">
+                      Enter
+                    </kbd>
+                    <span className="text-white">Vytvořit a spustit</span>
+                  </span>
+                  <span className="text-xs font-semibold flex items-center gap-1.5">
+                    <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">
+                      Ctrl+Enter
+                    </kbd>
+                    <span className="text-white">Vytvořit a otevřít</span>
+                  </span>
+                </>
               ) : paletteSelectedIndex === 0 ? (
                 <span className="text-xs font-semibold flex items-center gap-1.5">
                   <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.08] text-rose-400 rounded-full font-mono text-[9px] leading-none select-none">
