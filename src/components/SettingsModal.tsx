@@ -4620,7 +4620,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="space-y-4 animate-fade-in max-w-4xl">
               {/* Alert banner for synchronization */}
               <div
-                className="p-4 rounded-2xl flex items-center justify-between gap-4 text-[13px] font-medium animate-fade-in min-h-[58px]"
+                className="mb-6 p-4 rounded-2xl flex items-center justify-between gap-4 text-[13px] font-medium animate-fade-in min-h-[58px]"
                 style={{
                   backgroundColor: `${formData.primaryColor || '#6366f1'}15`,
                   color: formData.primaryColor || '#6366f1',
@@ -8030,7 +8030,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {/* SECTION 2: Předdefinované osobní údaje */}
-              <div className="space-y-4 pt-6 border-t border-white/10">
+              <div className="space-y-4">
                 <div>
                   <h3 className="font-semibold text-white text-base flex items-center gap-2">
                     <span className="material-symbols-outlined text-lg text-indigo-400">badge</span>
@@ -8397,7 +8397,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {/* Windows System Notifications Section */}
-              <div className="space-y-4 pt-4 border-t border-white/10">
+              <div className="space-y-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h4 className="font-semibold text-sm text-white flex items-center gap-2">
@@ -8430,7 +8430,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 {formData.notifications?.enabled !== false && (
-                  <div className="pl-2 sm:pl-4 space-y-2 pt-1 border-l-2 border-white/10">
+                  <div className="space-y-2 pt-1">
                     {/* Tichý režim */}
                     <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors">
                       <div className="flex items-center gap-3">
