@@ -99,6 +99,63 @@ export interface ExtensionsConfig {
   vscode?: boolean;
   androidStudio?: boolean;
   donkeyTools?: boolean;
+  magicplan?: boolean;
+}
+
+export interface MagicPlanSettings {
+  enabled?: boolean;
+  url?: string;
+  userColumn?: string;
+  unassignedColumn?: string;
+  pollIntervalMinutes?: number;
+  notifyNewTasks?: boolean;
+  notifyCompletedTasks?: boolean;
+  notifyTaskChanges?: boolean;
+  notifyQueueTasks?: boolean;
+  linkWithTaskManager?: boolean;
+  timelineTimeMode?: 'real8h' | 'custom';
+  timelineCustomStart?: string;
+  timelineCustomEnd?: string;
+}
+
+export interface PlanDayInfo {
+  date: string;
+  dayLabel: string;
+  isWeekend: boolean;
+  isToday: boolean;
+}
+
+export interface PlanTaskItem {
+  taskId: string;
+  requirementId?: string; // e.g. "R134695"
+  taskIdentifier?: string; // e.g. "T789857"
+  title: string;
+  customName?: string;
+  project?: string;
+  userId: string;
+  userName: string;
+  totalHours: number;
+  isPinned: boolean;
+  isSolved?: boolean;
+  taskType: 'dev' | 'service' | 'other';
+  dates: string[];
+  url?: string;
+  author?: string; // Zadavatel / zkratka zadavatele (např. VM)
+  isCompleted?: boolean;
+  isNotAvailable?: boolean;
+  isCritical?: boolean; // priority-1 in planning HTML (critical priority)
+}
+
+export interface MagicPlanData {
+  planNumber?: string;
+  planRange?: string;
+  days?: PlanDayInfo[];
+  lastChecked: string;
+  myTasks: PlanTaskItem[];
+  unassignedTasks: PlanTaskItem[];
+  totalMyHours: number;
+  error?: string;
+  isOffline?: boolean;
 }
 
 export interface ColorPalette {
@@ -219,6 +276,7 @@ export interface NotificationSettings {
   updates?: boolean;
   clipboard?: boolean;
   errors?: boolean;
+  magicplan?: boolean;
 }
 
 export interface AppConfig {
@@ -231,6 +289,7 @@ export interface AppConfig {
   androidStudio?: AndroidStudioSettings;
   extensions?: ExtensionsConfig;
   donkeyTools?: DonkeyToolsSettings;
+  magicplan?: MagicPlanSettings;
   notifications?: NotificationSettings;
   banlist?: BannedItem[];
   updateUrl: string;

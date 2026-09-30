@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LauncherItem, LauncherAction, SyncProgress, SnippetsConfig, ColorMasterSettings, QuickCapSettings, FastSnapSettings, ScreenRulerSettings, EasyClipSettings, EasyClipItem, ColorPalette, AppConfig } from '../types';
+import { LauncherItem, LauncherAction, SyncProgress, SnippetsConfig, ColorMasterSettings, QuickCapSettings, FastSnapSettings, ScreenRulerSettings, EasyClipSettings, EasyClipItem, ColorPalette, AppConfig, MagicPlanSettings, MagicPlanData, PlanTaskItem } from '../types';
 import { MaterialIcon } from './MaterialIcon';
 import { evaluateExpression } from '../utils/calculator';
 import { detectUrl } from '../utils/urlHelper';
@@ -35,6 +35,8 @@ interface SearchSpotlightProps {
   fastSnapConfig?: FastSnapSettings;
   screenRulerConfig?: ScreenRulerSettings;
   easyClipConfig?: EasyClipSettings;
+  magicPlanEnabled?: boolean;
+  magicPlanConfig?: MagicPlanSettings;
   onSaveConfig?: (newConfig: AppConfig) => Promise<void>;
   onOpenSettings: () => void;
   onRefreshData: () => void;
@@ -61,6 +63,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   fastSnapConfig,
   screenRulerConfig,
   easyClipConfig,
+  magicPlanEnabled = false,
+  magicPlanConfig,
   onSaveConfig,
   onOpenSettings,
   onRefreshData,
@@ -105,11 +109,15 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   const [palettes, setPalettes] = useState<ColorPalette[]>([]);
   const [paletteSelectedIndex, setPaletteSelectedIndex] = useState<number>(0);
 
+  const [magicPlanData, setMagicPlanData] = useState<MagicPlanData | null>(null);
+  const [isOpeningMagicPlan, setIsOpeningMagicPlan] = useState(false);
+
   const isColorMasterActive = Boolean(donkeyToolsEnabled && colorMasterConfig?.enabled === true);
   const isQuickCapActive = Boolean(donkeyToolsEnabled && (quickCapConfig?.enabled === true || fastSnapConfig?.enabled === true));
   const isScreenRulerActive = Boolean(donkeyToolsEnabled && screenRulerConfig?.enabled === true);
   const isEasyClipActive = Boolean(donkeyToolsEnabled && easyClipConfig?.enabled === true);
-  const showDonkeyToolsIcon = Boolean(donkeyToolsEnabled && (isColorMasterActive || isQuickCapActive || isScreenRulerActive || isEasyClipActive));
+  const isMagicPlanActive = Boolean(magicPlanEnabled && magicPlanConfig?.enabled !== false);
+  const showDonkeyToolsIcon = Boolean(donkeyToolsEnabled && (isColorMasterActive || isQuickCapActive || isScreenRulerActive || isEasyClipActive || isMagicPlanActive));
 
   // Click outside to close DonkeyTools quick tools menu
   useEffect(() => {
@@ -196,6 +204,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     setParentItem(null);
     setActionsParentItem(null);
     setIsEasyClipMode(false);
+    setIsPaletteMode(false);
     setQuery('');
     setSelectedIndex(0);
     setEasyClipSelectedIndex(0);
@@ -209,6 +218,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     setIsDonkeyToolsOpen(false);
     setActionsParentItem(null);
     setParentItem(null);
+    setIsPaletteMode(false);
     if (window.electronAPI?.getEasyClipItems) {
       try {
         const items = await window.electronAPI.getEasyClipItems();
@@ -272,6 +282,23 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     setTimeout(() => {
       inputRef.current?.focus();
     }, 50);
+  };
+
+  const openMagicPlan = async () => {
+    if (isOpeningMagicPlan) return;
+    setIsOpeningMagicPlan(true);
+    try {
+      if (window.electronAPI?.openMagicPlanWindow) {
+        await window.electronAPI.openMagicPlanWindow();
+      }
+    } catch (err) {
+      console.error('Failed to open MagicPlan window:', err);
+    } finally {
+      setIsOpeningMagicPlan(false);
+      setIsDonkeyToolsOpen(false);
+      setIsRevealed(false);
+      await window.electronAPI?.resetAndHideSpotlight?.();
+    }
   };
 
   const exitPaletteMode = () => {
@@ -426,17 +453,30 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       }
     });
 
+    if (window.electronAPI?.getMagicPlanData) {
+      window.electronAPI.getMagicPlanData().then((data) => {
+        if (data) setMagicPlanData(data);
+      }).catch(() => {});
+    }
+
+    const unsubPlan = window.electronAPI?.onMagicPlanDataUpdated?.((data: MagicPlanData) => {
+      if (data) setMagicPlanData(data);
+    });
+
     const unsubMode = window.electronAPI?.onOpenSpotlightMode?.((data) => {
       if (data?.mode === 'easyclip') {
         enterEasyClip();
       } else if (data?.mode === 'palette') {
         enterPaletteMode();
+      } else if (data?.mode === 'plan' || data?.mode === 'magicplan') {
+        openMagicPlan();
       }
     });
 
     return () => {
       unsubUpdated?.();
       unsubPalettes?.();
+      unsubPlan?.();
       unsubMode?.();
     };
   }, []);
@@ -1074,20 +1114,44 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       return [...dynamicSnippets, ...customSnippets];
     }
 
-    // Special DonkeyTools commands prefix: "/" (e.g. /kapatko, /picker, /color)
-    // Commands are ONLY shown when query starts with a slash and DonkeyTools is enabled
-    if (trimmed.startsWith('/') && donkeyToolsEnabled) {
-      const dtCommands = getDonkeyToolsCommands(trimmed, {
-        colorMasterEnabled: isColorMasterActive,
-        quickCapEnabled: isQuickCapActive,
-        fastSnapEnabled: isQuickCapActive,
-        screenRulerEnabled: isScreenRulerActive,
-        easyClipEnabled: isEasyClipActive,
-      });
-      if (dtCommands.length > 0) {
-        return dtCommands;
+    // Special slash commands: DonkeyTools & MagicPlan
+    // Commands are ONLY shown when query starts with a slash and DonkeyTools or MagicPlan is enabled
+    if (trimmed.startsWith('/')) {
+      const dtCommands = donkeyToolsEnabled
+        ? getDonkeyToolsCommands(trimmed, {
+            colorMasterEnabled: isColorMasterActive,
+            quickCapEnabled: isQuickCapActive,
+            fastSnapEnabled: isQuickCapActive,
+            screenRulerEnabled: isScreenRulerActive,
+            easyClipEnabled: isEasyClipActive,
+          })
+        : [];
+
+      const planCommands: LauncherItem[] = [];
+      if (isMagicPlanActive) {
+        const cmd = trimmed.slice(1).trim().toLowerCase();
+        const shortcuts = ['/plan', '/magicplan'];
+        if (cmd === '' || 'magicplan'.includes(cmd) || 'plan'.includes(cmd) || shortcuts.some((s) => s.replace(/^\//, '').includes(cmd))) {
+          planCommands.push({
+            id: 'magicplan-command',
+            name: 'MagicPlan',
+            location: 'Sledování a přehled interního plánu úkolů a fronty',
+            action: 'magicplan',
+            icon: 'calendar_month',
+            priority: -1.15,
+            sourceId: 'magicplan',
+            shortcuts,
+          });
+        }
       }
-      return [];
+
+      const allSlash = [...dtCommands, ...planCommands];
+      if (allSlash.length > 0) {
+        return allSlash;
+      }
+      if (donkeyToolsEnabled || isMagicPlanActive) {
+        return [];
+      }
     }
 
     // Prefix "git:": searches exclusively in git repositories
@@ -1430,6 +1494,72 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       list.push(...matched);
     }
 
+    // 2.5. MagicPlan tasks search (matches task title, R-code, T-code, or project)
+    if (magicPlanEnabled && magicPlanData && trimmed.length >= 2) {
+      const q = removeDiacritics(trimmed.toLowerCase());
+      const allTasks = [...(magicPlanData.myTasks || []), ...(magicPlanData.unassignedTasks || [])];
+      const seenTaskIds = new Set<string>();
+      const matchingTasks = allTasks.filter((t: PlanTaskItem) => {
+        if (seenTaskIds.has(t.taskId)) return false;
+        const idMatch = (t.taskIdentifier || '').toLowerCase().includes(q);
+        const reqMatch = (t.requirementId || '').toLowerCase().includes(q);
+        const titleMatch = removeDiacritics(t.title || '').toLowerCase().includes(q);
+        const projMatch = removeDiacritics(t.project || '').toLowerCase().includes(q);
+        const digitsMatch = /^\d+$/.test(q) && ((t.taskIdentifier && t.taskIdentifier.includes(q)) || (t.requirementId && t.requirementId.includes(q)));
+        if (idMatch || reqMatch || titleMatch || projMatch || digitsMatch) {
+          seenTaskIds.add(t.taskId);
+          return true;
+        }
+        return false;
+      });
+
+      for (const t of matchingTasks.slice(0, 4)) {
+        const cleanBase = (mlogBaseUrl || '').trim().replace(/\/+$/, '');
+        const tPref = (mlogTaskPrefix || 'T').trim();
+        const rPref = (mlogRequestPrefix || 'R').trim();
+        const taskUrl = cleanBase
+          ? (t.taskIdentifier
+            ? `${cleanBase}/${tPref}${t.taskIdentifier.replace(/\D/g, '')}`
+            : t.requirementId
+            ? `${cleanBase}/${rPref}${t.requirementId.replace(/\D/g, '')}`
+            : t.url || magicPlanConfig?.url?.trim() || '')
+          : (t.url || magicPlanConfig?.url?.trim() || '');
+
+        const taskOptions: any[] = [];
+        if (taskUrl) {
+          taskOptions.push({
+            name: 'Otevřít úkol',
+            action: 'open',
+            location: taskUrl,
+            icon: 'support_agent',
+          });
+        }
+        taskOptions.push({
+          name: 'Kopírovat kód úlohy',
+          action: 'copy',
+          location: t.taskIdentifier || t.requirementId || t.taskId,
+          icon: 'content_copy',
+        });
+        taskOptions.push({
+          name: 'Otevřít plán úkolů',
+          action: 'magicplan',
+          icon: 'calendar_month',
+        });
+
+        list.push({
+          id: `magicplan-task-${t.taskId}`,
+          name: `${t.taskIdentifier ? `[${t.taskIdentifier}] ` : t.requirementId ? `[${t.requirementId}] ` : ''}${t.title}`,
+          location: `${t.totalHours}h • ${t.userName || 'Nezařazeno'} • ${t.project || 'Projekt'} (MagicPlan)`,
+          action: taskUrl ? 'open' : 'magicplan',
+          url: taskUrl || undefined,
+          icon: 'calendar_month',
+          priority: -0.9,
+          sourceId: 'magicplan',
+          options: taskOptions,
+        });
+      }
+    }
+
     // 3. URL match (priority 999)
     const urlItem = detectUrl(trimmed);
     if (urlItem) {
@@ -1465,7 +1595,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     }
 
     return list;
-  }, [query, items, parentItem, searchGoogle, defaultSearchEngine, mlogBaseUrl, mlogTaskPrefix, mlogRequestPrefix, engineFavicons]);
+  }, [query, items, parentItem, searchGoogle, defaultSearchEngine, mlogBaseUrl, mlogTaskPrefix, mlogRequestPrefix, engineFavicons, magicPlanEnabled, magicPlanData, magicPlanConfig]);
 
   // Keep selected index within bounds or restore saved index when returning from subitems
   useEffect(() => {
@@ -1595,6 +1725,11 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
     if (item.action === 'easyclip') {
       await enterEasyClip();
+      return;
+    }
+
+    if (item.action === 'magicplan') {
+      await openMagicPlan();
       return;
     }
 
@@ -2609,6 +2744,27 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
               </div>
             )}
           </div>
+        )}
+
+        {/* MagicPlan Standalone Extension Button */}
+        {isMagicPlanActive && (
+          <button
+            type="button"
+            onClick={openMagicPlan}
+            disabled={isOpeningMagicPlan}
+            className="relative w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.09] text-cyan-400 hover:text-white transition flex items-center justify-center cursor-pointer disabled:cursor-default shrink-0 self-center shadow-sm"
+            title="MagicPlan – Časová osa a přehled úkolů"
+          >
+            {isOpeningMagicPlan ? (
+              <span className="material-symbols-outlined text-[19px] leading-none select-none animate-spin text-cyan-400">
+                progress_activity
+              </span>
+            ) : (
+              <span className="material-symbols-outlined text-[19px] leading-none select-none">
+                calendar_month
+              </span>
+            )}
+          </button>
         )}
 
         <button

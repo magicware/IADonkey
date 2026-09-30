@@ -45,6 +45,7 @@ export class WindowManager {
   private tuneColorWindow: BrowserWindow | null = null;
   private paletteBarWindow: BrowserWindow | null = null;
   private paletteDetailWindow: BrowserWindow | null = null;
+  private magicPlanWindow: BrowserWindow | null = null;
   private snipperWindow: BrowserWindow | null = null;
   private rulerWindow: BrowserWindow | null = null;
   private splashWindow: BrowserWindow | null = null;
@@ -245,9 +246,13 @@ export class WindowManager {
     return this.settingsWindow;
   }
 
-  public openSettingsWindow(): BrowserWindow {
+  public openSettingsWindow(tab?: string): BrowserWindow {
+    const hash = tab ? `settings?tab=${tab}` : 'settings';
     if (this.settingsWindow && !this.settingsWindow.isDestroyed()) {
       if (this.settingsWindow.isMinimized()) this.settingsWindow.restore();
+      if (tab) {
+        this.settingsWindow.webContents.send('switch-settings-tab', tab);
+      }
       this.settingsWindow.show();
       this.settingsWindow.focus();
       return this.settingsWindow;
@@ -288,13 +293,16 @@ export class WindowManager {
     });
 
     if (process.env.VITE_DEV_SERVER_URL) {
-      this.settingsWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#settings`);
+      this.settingsWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}#${hash}`);
     } else {
-      this.settingsWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash: 'settings' });
+      this.settingsWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash });
     }
 
     this.settingsWindow.once('ready-to-show', () => {
       if (this.settingsWindow && !this.settingsWindow.isDestroyed()) {
+        if (tab) {
+          this.settingsWindow.webContents.send('switch-settings-tab', tab);
+        }
         this.settingsWindow.show();
         this.settingsWindow.focus();
       }
@@ -871,6 +879,98 @@ export class WindowManager {
     });
 
     return this.paletteDetailWindow;
+  }
+
+  public getMagicPlanWindow(): BrowserWindow | null {
+    return this.magicPlanWindow;
+  }
+
+  public closeMagicPlanWindow(): void {
+    if (this.magicPlanWindow && !this.magicPlanWindow.isDestroyed()) {
+      this.magicPlanWindow.hide();
+    }
+  }
+
+  public async openMagicPlanWindow(): Promise<BrowserWindow> {
+    const query = new URLSearchParams({
+      window: 'magicplan',
+    }).toString();
+
+    if (this.magicPlanWindow && !this.magicPlanWindow.isDestroyed()) {
+      if (this.magicPlanWindow.isMinimized()) this.magicPlanWindow.restore();
+      this.magicPlanWindow.show();
+      this.magicPlanWindow.focus();
+      return this.magicPlanWindow;
+    }
+
+    const preloadPath = fs.existsSync(path.join(__dirname, 'preload.cjs'))
+      ? path.join(__dirname, 'preload.cjs')
+      : fs.existsSync(path.join(__dirname, 'preload.mjs'))
+      ? path.join(__dirname, 'preload.mjs')
+      : path.join(__dirname, 'preload.js');
+
+    this.magicPlanWindow = new BrowserWindow({
+      width: 1080,
+      height: 740,
+      minWidth: 780,
+      minHeight: 520,
+      resizable: true,
+      title: 'IADonkey – MagicPlan',
+      icon: getAppIcon(),
+      autoHideMenuBar: true,
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      hasShadow: true,
+      show: false,
+      skipTaskbar: false,
+      webPreferences: {
+        preload: preloadPath,
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    if (process.env.VITE_DEV_SERVER_URL) {
+      this.magicPlanWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}?${query}#magicplan`);
+    } else {
+      this.magicPlanWindow.loadFile(path.join(__dirname, '../dist/index.html'), {
+        hash: 'magicplan',
+        search: query,
+      });
+    }
+
+    // Intercept close to hide window instead of destroying it (instant re-opening)
+    this.magicPlanWindow.on('close', (event) => {
+      if (!this.isQuitting) {
+        event.preventDefault();
+        this.magicPlanWindow?.hide();
+      }
+    });
+
+    this.magicPlanWindow.on('closed', () => {
+      this.magicPlanWindow = null;
+    });
+
+    return new Promise<BrowserWindow>((resolve) => {
+      let resolved = false;
+      const onReady = () => {
+        if (!resolved) {
+          resolved = true;
+          this.magicPlanWindow?.show();
+          this.magicPlanWindow?.focus();
+          resolve(this.magicPlanWindow!);
+        }
+      };
+
+      this.magicPlanWindow?.once('ready-to-show', onReady);
+
+      // Fallback safeguard in case ready-to-show was delayed
+      setTimeout(() => {
+        onReady();
+      }, 4000);
+    });
   }
 
   public getSnipperWindow(): BrowserWindow | null {
@@ -1555,6 +1655,13 @@ export class WindowManager {
       if (this.gitCloneWindow && !this.gitCloneWindow.isDestroyed()) {
         this.gitCloneWindow.destroy();
         this.gitCloneWindow = null;
+      }
+    } catch {}
+    try {
+      if (this.magicPlanWindow && !this.magicPlanWindow.isDestroyed()) {
+        this.magicPlanWindow.removeAllListeners('close');
+        this.magicPlanWindow.destroy();
+        this.magicPlanWindow = null;
       }
     } catch {}
     try {

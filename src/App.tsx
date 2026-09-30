@@ -17,6 +17,7 @@ import { PaletteBar } from './components/PaletteBar';
 import { PaletteDetailModal } from './components/PaletteDetailModal';
 import { WindowFrame } from './components/WindowFrame';
 import { PowerManagementModal } from './components/PowerManagementModal';
+import { MagicPlanWindow } from './components/MagicPlanWindow';
 import { CURRENT_APP_VERSION, getLatestRelease } from './changelog';
 import { applyPrimaryColor, applyActionsColor } from './utils/theme';
 
@@ -36,6 +37,22 @@ const DEFAULT_CONFIG: AppConfig = {
     github: false,
     vscode: false,
     donkeyTools: false,
+    magicplan: false,
+  },
+  magicplan: {
+    enabled: false,
+    url: '',
+    userColumn: '',
+    unassignedColumn: '',
+    pollIntervalMinutes: 2,
+    notifyNewTasks: true,
+    notifyCompletedTasks: true,
+    notifyTaskChanges: true,
+    notifyQueueTasks: false,
+    linkWithTaskManager: true,
+    timelineTimeMode: 'real8h',
+    timelineCustomStart: '09:00',
+    timelineCustomEnd: '17:00',
   },
   donkeyTools: {
     colorMaster: {
@@ -84,7 +101,7 @@ export const App: React.FC = () => {
   });
 
   const [isSettingsView, setIsSettingsView] = useState(() => {
-    return window.location.hash === '#settings' || window.location.search.includes('window=settings');
+    return window.location.hash.startsWith('#settings') || window.location.search.includes('window=settings');
   });
 
   const [isGitCloneView, setIsGitCloneView] = useState(() => {
@@ -128,6 +145,15 @@ export const App: React.FC = () => {
     return (
       window.location.hash.startsWith('#palette-detail') ||
       window.location.search.includes('window=palette-detail')
+    );
+  });
+
+  const [isMagicPlanView] = useState(() => {
+    return (
+      window.location.hash.startsWith('#magicplan') ||
+      window.location.hash.startsWith('#plan') ||
+      window.location.search.includes('window=magicplan') ||
+      window.location.search.includes('window=plan')
     );
   });
 
@@ -205,7 +231,7 @@ export const App: React.FC = () => {
   // Hash listener for hot-reload or navigation
   useEffect(() => {
     const handleHash = () => {
-      setIsSettingsView(window.location.hash === '#settings' || window.location.search.includes('window=settings'));
+      setIsSettingsView(window.location.hash.startsWith('#settings') || window.location.search.includes('window=settings'));
       setIsGitCloneView(window.location.hash.startsWith('#git-clone') || window.location.search.includes('window=git-clone'));
       setIsCmsDownloadView(window.location.hash.startsWith('#cms-download') || window.location.search.includes('window=cms-download'));
       setIsTuneColorView(window.location.hash.startsWith('#tune-color') || window.location.search.includes('window=tune-color'));
@@ -631,6 +657,36 @@ export const App: React.FC = () => {
     );
   }
 
+  // MagicPlan dedicated standalone window
+  if (isMagicPlanView) {
+    return (
+      <WindowFrame
+        title="IADonkey – MagicPlan"
+        subtitle="Interní plán práce a fronta"
+        allowMinimize={true}
+        allowMaximize={true}
+        onClose={() => {
+          if (window.electronAPI?.closeMagicPlanWindow) {
+            window.electronAPI.closeMagicPlanWindow();
+          } else {
+            window.close();
+          }
+        }}
+      >
+        <MagicPlanWindow
+          config={config}
+          onOpenSettings={() => {
+            if (window.electronAPI?.openSettingsWindow) {
+              window.electronAPI.openSettingsWindow();
+            } else {
+              setShowSettings(true);
+            }
+          }}
+        />
+      </WindowFrame>
+    );
+  }
+
   // Filter items by enabled extensions
   const visibleItems = useMemo(() => {
     return items.filter((item) => {
@@ -673,6 +729,8 @@ export const App: React.FC = () => {
           fastSnapConfig={config.donkeyTools?.quickCap || config.donkeyTools?.fastSnap}
           screenRulerConfig={config?.donkeyTools?.screenRuler}
           easyClipConfig={config?.donkeyTools?.easyClip}
+          magicPlanEnabled={config.extensions?.magicplan !== false}
+          magicPlanConfig={config?.magicplan}
           onSaveConfig={handleSaveConfig}
           onOpenSettings={() => {
             if (window.electronAPI?.openSettingsWindow) {

@@ -70,7 +70,7 @@ const getNotificationIco = (): string | undefined => {
   return undefined;
 };
 
-export type NotificationType = 'quickCap' | 'colorMaster' | 'screenRuler' | 'syncComplete' | 'update' | 'clipboard' | 'error' | 'test';
+export type NotificationType = 'quickCap' | 'colorMaster' | 'screenRuler' | 'syncComplete' | 'update' | 'clipboard' | 'error' | 'test' | 'magicPlan';
 
 export interface ShowNotificationOptions {
   type: NotificationType;
@@ -182,6 +182,7 @@ export class NotificationService {
       if (options.type === 'update' && notifConfig.updates === false) return false;
       if (options.type === 'clipboard' && notifConfig.clipboard === false) return false;
       if (options.type === 'error' && notifConfig.errors === false) return false;
+      if (options.type === 'magicPlan' && notifConfig.magicplan === false) return false;
     }
 
     // Tichý režim (z konfigurace nebo parametru)

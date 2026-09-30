@@ -74,6 +74,19 @@ const DEFAULT_CONFIG: AppConfig = {
     vscode: false,
     androidStudio: false,
     donkeyTools: false,
+    magicplan: false,
+  },
+  magicplan: {
+    enabled: false,
+    url: '',
+    userColumn: '',
+    unassignedColumn: '',
+    pollIntervalMinutes: 2,
+    notifyNewTasks: true,
+    notifyCompletedTasks: true,
+    notifyTaskChanges: true,
+    notifyQueueTasks: false,
+    linkWithTaskManager: true,
   },
   updateUrl: 'https://raw.githubusercontent.com/magicware/IADonkey/main/version.json',
   lastDeclinedVersion: null,
@@ -149,6 +162,10 @@ export class AppStore {
         }
         if (cfg.extensions.github === undefined) {
           cfg.extensions.github = !!(cfg.github?.token?.trim());
+          hasModifiedExtensions = true;
+        }
+        if (cfg.extensions.magicplan === undefined) {
+          cfg.extensions.magicplan = false;
           hasModifiedExtensions = true;
         }
       }

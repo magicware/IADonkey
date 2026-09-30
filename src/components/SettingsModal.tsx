@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { AppConfig, DataSource, FileSource, ApiSource, StaticSource, LauncherItem, SyncProgress, UpdateInfo, SourceFieldMapping, MappingTargetKey, BannedItem, CustomSnippet, ActionLogEntry, CrashLogEntry } from '../types';
 import { applyPrimaryColor, applyActionsColor, APP_COLOR_PRESETS } from '../utils/theme';
 import { formatLastSyncDate } from '../utils/dateHelper';
@@ -207,7 +207,42 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   updateInfo,
   onSimulateUpdate,
 }) => {
-  const [activeTab, setActiveTab] = useState<'sources' | 'extensions' | 'magicgate' | 'mlog' | 'github' | 'vscode' | 'android-studio' | 'donkey-tools' | 'snippets' | 'general' | 'notifications' | 'system' | 'updates' | 'help' | 'develop'>('sources');
+  const [activeTab, setActiveTab] = useState<'sources' | 'extensions' | 'magicgate' | 'mlog' | 'github' | 'vscode' | 'android-studio' | 'magicplan' | 'donkey-tools' | 'snippets' | 'general' | 'notifications' | 'system' | 'updates' | 'help' | 'develop'>(() => {
+    try {
+      const hash = window.location.hash;
+      const search = window.location.search;
+      let tabParam: string | null = null;
+      if (hash && hash.includes('tab=')) {
+        const parts = hash.split('tab=');
+        if (parts[1]) tabParam = parts[1].split('&')[0];
+      }
+      if (!tabParam && search && search.includes('tab=')) {
+        const urlParams = new URLSearchParams(search);
+        tabParam = urlParams.get('tab');
+      }
+      if (tabParam) {
+        const validTabs = ['sources', 'extensions', 'magicgate', 'mlog', 'github', 'vscode', 'android-studio', 'magicplan', 'donkey-tools', 'snippets', 'general', 'notifications', 'system', 'updates', 'help', 'develop'];
+        if (validTabs.includes(tabParam)) {
+          return tabParam as any;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return 'sources';
+  });
+
+  useEffect(() => {
+    const cleanup = window.electronAPI?.onSwitchSettingsTab?.((tab: string) => {
+      const validTabs = ['sources', 'extensions', 'magicgate', 'mlog', 'github', 'vscode', 'android-studio', 'magicplan', 'donkey-tools', 'snippets', 'general', 'notifications', 'system', 'updates', 'help', 'develop'];
+      if (validTabs.includes(tab)) {
+        setActiveTab(tab as any);
+      }
+    });
+    return () => {
+      if (typeof cleanup === 'function') cleanup();
+    };
+  }, []);
   const [activeDonkeyTool, setActiveDonkeyTool] = useState<'colorMaster' | 'quickCap' | 'screenRuler' | 'easyClip'>('colorMaster');
   const [formData, setFormData] = useState<AppConfig>(config);
   const [editingSource, setEditingSource] = useState<DataSource | null>(null);
@@ -388,6 +423,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setTimeout(() => {
         setTestNotificationFeedback(null);
       }, 4000);
+    }
+  };
+
+  // MagicPlan test state & handler
+  const [isTestingMagicPlan, setIsTestingMagicPlan] = useState(false);
+  const [magicPlanTestResult, setMagicPlanTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const handleTestMagicPlan = async () => {
+    setIsTestingMagicPlan(true);
+    setMagicPlanTestResult(null);
+    try {
+      if (window.electronAPI?.refreshMagicPlan) {
+        const result = await window.electronAPI.refreshMagicPlan();
+        if (result?.isOffline || result?.error) {
+          setMagicPlanTestResult({
+            ok: false,
+            message: result.error || 'Server plánu je nedostupný (zkontrolujte připojení k interní síti / VPN).',
+          });
+        } else {
+          setMagicPlanTestResult({
+            ok: true,
+            message: `Připojeno k plánu (${result?.planRange || 'akt. období'}). Načteno ${result?.myTasks?.length || 0} mých úkolů (${result?.totalMyHours || 0}h) a ${result?.unassignedTasks?.length || 0} ve frontě.`,
+          });
+        }
+      } else {
+        setMagicPlanTestResult({
+          ok: false,
+          message: 'API MagicPlan není v aplikaci k dispozici.',
+        });
+      }
+    } catch (err: any) {
+      setMagicPlanTestResult({
+        ok: false,
+        message: err?.message || 'Chyba při komunikaci se serverem plánu.',
+      });
+    } finally {
+      setIsTestingMagicPlan(false);
     }
   };
 
@@ -616,6 +688,71 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   }, [snippetFeedback]);
 
+  // MagicPlan Developer Diagnostics state
+  const [magicPlanDevLogs, setMagicPlanDevLogs] = useState<{
+    cachedData: any | null;
+    diskCache: { lastUpdated: string; tasks: Record<string, any> };
+    history: any[];
+  } | null>(null);
+  const [isRefreshingMagicPlanLogs, setIsRefreshingMagicPlanLogs] = useState(false);
+  const [magicPlanDevTab, setMagicPlanDevTab] = useState<'tasks' | 'history' | 'raw'>('tasks');
+  const [expandedQueryId, setExpandedQueryId] = useState<string | null>(null);
+  const [magicPlanCopied, setMagicPlanCopied] = useState(false);
+
+  const fetchMagicPlanDevLogs = useCallback(async () => {
+    if (!window.electronAPI?.getMagicPlanDevLogs) return;
+    try {
+      setIsRefreshingMagicPlanLogs(true);
+      const res = await window.electronAPI.getMagicPlanDevLogs();
+      setMagicPlanDevLogs(res);
+    } catch (err) {
+      console.error('[Settings] Failed to fetch MagicPlan dev logs:', err);
+    } finally {
+      setIsRefreshingMagicPlanLogs(false);
+    }
+  }, []);
+
+  const handleForceMagicPlanQuery = async () => {
+    if (!window.electronAPI?.refreshMagicPlan) return;
+    try {
+      setIsRefreshingMagicPlanLogs(true);
+      await window.electronAPI.refreshMagicPlan();
+      await fetchMagicPlanDevLogs();
+    } catch (err) {
+      console.error('[Settings] Failed to force refresh MagicPlan:', err);
+      setIsRefreshingMagicPlanLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'develop' && formData.extensions?.magicplan) {
+      fetchMagicPlanDevLogs();
+    }
+  }, [activeTab, formData.extensions?.magicplan, fetchMagicPlanDevLogs]);
+
+  useEffect(() => {
+    if (!window.electronAPI?.onMagicPlanDataUpdated) return;
+    const cleanup = window.electronAPI.onMagicPlanDataUpdated(() => {
+      if (activeTab === 'develop' && formData.extensions?.magicplan) {
+        fetchMagicPlanDevLogs();
+      }
+    });
+    return () => {
+      if (typeof cleanup === 'function') cleanup();
+    };
+  }, [activeTab, formData.extensions?.magicplan, fetchMagicPlanDevLogs]);
+
+  const handleCopyMagicPlanJson = () => {
+    if (!magicPlanDevLogs) return;
+    try {
+      navigator.clipboard.writeText(JSON.stringify(magicPlanDevLogs, null, 2));
+      setMagicPlanCopied(true);
+      setTimeout(() => setMagicPlanCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy MagicPlan JSON:', err);
+    }
+  };
+
   const activeExtensionsCount = useMemo(() => {
     let count = 0;
     if (formData.extensions?.magicgate) count++;
@@ -623,6 +760,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (formData.extensions?.github) count++;
     if (formData.extensions?.vscode) count++;
     if (formData.extensions?.androidStudio) count++;
+    if (formData.extensions?.magicplan) count++;
     if (formData.extensions?.donkeyTools) count++;
     return count;
   }, [formData.extensions]);
@@ -4393,6 +4531,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
           )}
 
+          {/* MagicPlan tab - visible only when extension is enabled */}
+          {Boolean(formData.extensions?.magicplan) && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('magicplan')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer pl-6 ${
+                activeTab === 'magicplan'
+                  ? 'bg-cyan-500/20 text-cyan-200 font-semibold shadow-sm'
+                  : 'text-gray-400 hover:text-cyan-200 hover:bg-white/[0.04]'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-lg text-cyan-400">calendar_month</span>
+                <span>MagicPlan</span>
+              </div>
+            </button>
+          )}
+
           {/* GitHub tab - visible only when extension is enabled */}
           {formData.extensions?.github && (
             <button
@@ -4597,6 +4753,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeTab === 'github' && 'GitHub'}
               {activeTab === 'vscode' && 'VS Code'}
               {activeTab === 'android-studio' && 'Android Studio'}
+              {activeTab === 'magicplan' && 'MagicPlan'}
               {activeTab === 'donkey-tools' && 'DonkeyTools'}
               {activeTab === 'snippets' && 'Snippety'}
               {activeTab === 'general' && 'Obecné'}
@@ -4613,6 +4770,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeTab === 'github' && 'Přístup k osobním i firemním repozitářům a rychlému klonování'}
               {activeTab === 'vscode' && 'Konfigurace cesty k editoru VS Code pro otevírání repozitářů a projektů'}
               {activeTab === 'android-studio' && 'Konfigurace cesty k Android Studiu pro otevírání mobilních a Kotlin/Java projektů'}
+              {activeTab === 'magicplan' && 'Sledování interního plánu práce a notifikace o změnách'}
               {activeTab === 'donkey-tools' && 'Správa vestavěných utilit, modulu ColorMaster a klávesových zkratek'}
               {activeTab === 'snippets' && 'Předem definované textové zkratky a osobní údaje pro rychlé vložení'}
               {activeTab === 'general' && 'Globální klávesová zkratka, barva motivu a vyhledávání programů'}
@@ -5231,7 +5389,75 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   )}
                 </div>
 
-                {/* 3. GitHub */}
+                {/* 3. MagicPlan */}
+                <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl flex flex-col justify-between gap-4 transition-colors">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3.5">
+                      <div className="w-10 h-10 rounded-full bg-cyan-500/15 flex items-center justify-center shrink-0 text-cyan-400">
+                        <span className="material-symbols-outlined text-2xl">calendar_month</span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-bold text-white tracking-wide">MagicPlan</h3>
+                          {Boolean(formData.extensions?.magicplan) ? (
+                            <span className="text-[10px] uppercase bg-cyan-500/20 text-cyan-300 px-2.5 py-0.5 rounded-full font-semibold">
+                              {formData.magicplan?.userColumn || 'Zapnuto'}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] uppercase bg-white/5 text-gray-400 px-2.5 py-0.5 rounded-full font-semibold">
+                              Vypnuto
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                          Sledování a synchronizace úkolů z interního plánu. Pravidelná kontrola změn v rozvrhu, toast notifikace na nově přiřazené a dokončené úkoly, podpora fronty nezařazených úkolů a časová osa úkolů.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={Boolean(formData.extensions?.magicplan)}
+                          onChange={(e) => {
+                            const updated = {
+                              ...formData,
+                              extensions: {
+                                ...formData.extensions,
+                                magicgate: formData.extensions?.magicgate ?? false,
+                                mlog: formData.extensions?.mlog ?? false,
+                                github: formData.extensions?.github ?? false,
+                                vscode: formData.extensions?.vscode ?? false,
+                                androidStudio: formData.extensions?.androidStudio ?? false,
+                                donkeyTools: formData.extensions?.donkeyTools ?? false,
+                                magicplan: e.target.checked,
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                        />
+                        <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600" />
+                      </label>
+                    </div>
+                  </div>
+                  {Boolean(formData.extensions?.magicplan) && (
+                    <div className="pt-3 border-t border-white/[0.04] flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Záložka je dostupná v levém menu</span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('magicplan')}
+                        className="px-4 py-2 rounded-full text-xs font-medium text-cyan-300 bg-cyan-500/15 hover:bg-cyan-500/25 transition flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span>Nastavení MagicPlan</span>
+                        <span className="material-symbols-outlined text-sm">navigate_next</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. GitHub */}
                 <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl flex flex-col justify-between gap-4 transition-colors">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3.5">
@@ -5297,7 +5523,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   )}
                 </div>
 
-                {/* 4. VS Code */}
+                {/* 5. VS Code */}
                 <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl flex flex-col justify-between gap-4 transition-colors">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3.5">
@@ -5363,7 +5589,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   )}
                 </div>
 
-                {/* 5. Android Studio */}
+                {/* 6. Android Studio */}
                 <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl flex flex-col justify-between gap-4 transition-colors">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3.5">
@@ -5429,7 +5655,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   )}
                 </div>
 
-                {/* 6. DonkeyTools */}
+                {/* 7. DonkeyTools */}
                 <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl flex flex-col justify-between gap-4 transition-colors">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3.5">
@@ -5675,7 +5901,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         handleSave(updated);
                       }}
                       className="h-[38px] flex-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-500 outline-none font-mono"
-                      placeholder="např. C:\inetpub\wwwroot\MW-M2G-02\FileSystem\CmsContent"
+                      placeholder="např. C:\inetpub\wwwroot\instance-name\FileSystem\CmsContent"
                     />
                     <button
                       type="button"
@@ -5960,7 +6186,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         setFormData(updated);
                         handleSave(updated);
                       }}
-                      placeholder="např. petrkulhanek"
+                      placeholder="např. octocat, username"
                       className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none font-mono"
                     />
                     <p className="text-xs text-gray-400 mt-1.5">
@@ -6680,6 +6906,405 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <p className="text-gray-300 leading-relaxed">
                       Aplikace se nabízí, pokud repozitář z GitHubu používá <strong>Kotlin</strong> nebo <strong>Java</strong>. Pro webové projekty a instance MagicGate se vždy nabízí VS Code (nabízí se buď VS Code, nebo Android Studio, nikdy obojí současně).
                     </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: MagicPlan */}
+          {activeTab === 'magicplan' && (
+            <div className="space-y-6 animate-fade-in max-w-4xl">
+              <div>
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg text-indigo-400">calendar_month</span>
+                  Interní plán práce (MagicPlan)
+                </h3>
+                <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
+                  Pravidelné sledování vašeho sloupce a fronty nezařazených úkolů z interního HTML plánu. Změny jsou automaticky hlídány a oznamovány Windows toast notifikacemi.
+                </p>
+              </div>
+
+              {/* Master toggle card */}
+              <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl space-y-4 transition-colors">
+                <div className="flex items-center justify-between gap-4 pb-1">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-full bg-indigo-500/15 flex items-center justify-center shrink-0 text-indigo-400">
+                      <span className="material-symbols-outlined text-2xl">calendar_month</span>
+                    </div>
+                    <div>
+                      <span className="text-sm font-semibold text-white block">Aktivovat sledování plánu</span>
+                      <span className="text-xs text-gray-400">Povolí periodické dotazování na pozadí každé 2 minuty a vyhledávání ve Spotlightu</span>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(formData.magicplan?.enabled)}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          magicplan: {
+                            ...formData.magicplan,
+                            enabled: e.target.checked,
+                          },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                  {/* URL plánu */}
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-xs font-medium text-gray-300">URL adresa plánu (interní síť / intranet)</label>
+                    <input
+                      type="text"
+                      value={formData.magicplan?.url ?? ''}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          magicplan: {
+                            ...formData.magicplan,
+                            url: e.target.value,
+                          },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      placeholder="https://intranet.company.local/plan/"
+                      className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:border-cyan-500 outline-none font-mono"
+                    />
+                    <span className="text-[11px] text-gray-400 block">
+                      Dotaz se provádí s výchozími přihlašovacími údaji Windows (NTLM Integrated Authentication).
+                    </span>
+                  </div>
+
+                  {/* Můj sloupec */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-gray-300">Identifikátor mého sloupce</label>
+                    <input
+                      type="text"
+                      value={formData.magicplan?.userColumn ?? ''}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          magicplan: {
+                            ...formData.magicplan,
+                            userColumn: e.target.value,
+                          },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      placeholder="např. Novák Jan (nebo JNO či 1042)"
+                      className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:border-cyan-500 outline-none"
+                    />
+                    <span className="text-[11px] text-gray-400 block">
+                      Text pro vyhledání sloupce v záhlaví plánu (např. <code>Novák Jan</code>, <code>JNO</code> nebo ID <code>1042</code>).
+                    </span>
+                  </div>
+
+                  {/* Sloupec nezařazených úkolů */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-gray-300">Sloupec nezařazených úkolů (Fronta)</label>
+                    <input
+                      type="text"
+                      value={formData.magicplan?.unassignedColumn ?? ''}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          magicplan: {
+                            ...formData.magicplan,
+                            unassignedColumn: e.target.value,
+                          },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      placeholder="např. Fronta úkolů (nebo FRONTA či 100)"
+                      className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:border-cyan-500 outline-none"
+                    />
+                    <span className="text-[11px] text-gray-400 block">
+                      Zásobník volných a nezařazených úkolů (např. <code>Fronta úkolů</code>, <code>FRONTA</code> nebo ID <code>100</code>).
+                    </span>
+                  </div>
+
+                  {/* Interval dotazování */}
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-xs font-medium text-gray-300">Interval kontroly změn na pozadí</label>
+                    <select
+                      value={formData.magicplan?.pollIntervalMinutes ?? 2}
+                      onChange={(e) => {
+                        const updated = {
+                          ...formData,
+                          magicplan: {
+                            ...formData.magicplan,
+                            pollIntervalMinutes: parseInt(e.target.value, 10),
+                          },
+                        };
+                        setFormData(updated);
+                        handleSave(updated);
+                      }}
+                      className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:border-cyan-500 outline-none cursor-pointer"
+                    >
+                      <option value={1} className="bg-[#181920] text-white">Každou 1 minutu</option>
+                      <option value={2} className="bg-[#181920] text-white">Každé 2 minuty (doporučeno)</option>
+                      <option value={5} className="bg-[#181920] text-white">Každých 5 minut</option>
+                      <option value={10} className="bg-[#181920] text-white">Každých 10 minut</option>
+                    </select>
+                  </div>
+
+                  {/* Propojení s rozšířením TaskManager (MLog) */}
+                  <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-white/[0.02] md:col-span-2">
+                    <div>
+                      <span className="text-xs font-semibold text-white block">Propojit s rozšířením TaskManager (MLog)</span>
+                      <span className="text-[11px] text-gray-400">
+                        Odkazy na R (požadavky) a T (úkoly) se budou generovat podle nastavené URL adresy v TaskManageru
+                      </span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={formData.magicplan?.linkWithTaskManager !== false}
+                        onChange={(e) => {
+                          const updated = {
+                            ...formData,
+                            magicplan: {
+                              ...formData.magicplan,
+                              linkWithTaskManager: e.target.checked,
+                            },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
+                    </label>
+                  </div>
+
+                  {/* Chování časového realtime posuvníku v časové ose */}
+                  <div className="p-4 rounded-2xl bg-white/[0.02] space-y-3 md:col-span-2">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <div>
+                        <span className="text-xs font-semibold text-white block">
+                          Chování časového realtime posuvníku
+                        </span>
+                        <span className="text-[11px] text-gray-400">
+                          Určuje, v jakém časovém rozmezí se posuvník a vodicí linka pohybují po časové ose
+                        </span>
+                      </div>
+
+                      {/* Mode Switcher: Reálná 8h vs Vlastní */}
+                      <div className="flex items-center gap-1 p-1 bg-white/[0.04] rounded-full w-fit shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = {
+                              ...formData,
+                              magicplan: {
+                                ...formData.magicplan,
+                                timelineTimeMode: 'real8h' as const,
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                          className={`px-3 py-1 rounded-full text-xs font-medium transition cursor-pointer ${
+                            (formData.magicplan?.timelineTimeMode || 'real8h') === 'real8h'
+                              ? 'bg-indigo-500/20 text-white font-semibold shadow-sm'
+                              : 'text-gray-400 hover:text-gray-200'
+                          }`}
+                        >
+                          Reálná 8h (09:00 – 17:00)
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = {
+                              ...formData,
+                              magicplan: {
+                                ...formData.magicplan,
+                                timelineTimeMode: 'custom' as const,
+                                timelineCustomStart: formData.magicplan?.timelineCustomStart || '09:00',
+                                timelineCustomEnd: formData.magicplan?.timelineCustomEnd || '17:00',
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                          className={`px-3 py-1 rounded-full text-xs font-medium transition cursor-pointer ${
+                            formData.magicplan?.timelineTimeMode === 'custom'
+                              ? 'bg-indigo-500/20 text-white font-semibold shadow-sm'
+                              : 'text-gray-400 hover:text-gray-200'
+                          }`}
+                        >
+                          Vlastní rozsah
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Custom range inputs when 'custom' is selected */}
+                    {formData.magicplan?.timelineTimeMode === 'custom' && (
+                      <div className="pt-2 flex items-center gap-4 flex-wrap animate-fade-in border-t border-white/[0.04]">
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs text-gray-400">Čas od:</label>
+                          <input
+                            type="time"
+                            value={formData.magicplan?.timelineCustomStart || '09:00'}
+                            onChange={(e) => {
+                              const updated = {
+                                ...formData,
+                                magicplan: {
+                                  ...formData.magicplan,
+                                  timelineCustomStart: e.target.value,
+                                },
+                              };
+                              setFormData(updated);
+                              handleSave(updated);
+                            }}
+                            className="bg-black/30 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-indigo-500 transition font-mono"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs text-gray-400">Čas do:</label>
+                          <input
+                            type="time"
+                            value={formData.magicplan?.timelineCustomEnd || '17:00'}
+                            onChange={(e) => {
+                              const updated = {
+                                ...formData,
+                                magicplan: {
+                                  ...formData.magicplan,
+                                  timelineCustomEnd: e.target.value,
+                                },
+                              };
+                              setFormData(updated);
+                              handleSave(updated);
+                            }}
+                            className="bg-black/30 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-indigo-500 transition font-mono"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Test button and feedback */}
+                <div className="pt-2 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleTestMagicPlan}
+                    disabled={isTestingMagicPlan}
+                    className="px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white text-xs font-semibold flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+                  >
+                    <span className={`material-symbols-outlined text-base ${isTestingMagicPlan ? 'animate-spin' : ''}`}>
+                      {isTestingMagicPlan ? 'sync' : 'network_check'}
+                    </span>
+                    <span>{isTestingMagicPlan ? 'Ověřuji připojení k plánu...' : 'Otestovat připojení k plánu'}</span>
+                  </button>
+
+                  {magicPlanTestResult && (
+                    <div className={`p-3 rounded-2xl text-xs flex items-center gap-2 animate-fade-in ${magicPlanTestResult.ok ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-500/10 text-rose-300'}`}>
+                      <span className="material-symbols-outlined text-sm shrink-0">
+                        {magicPlanTestResult.ok ? 'check_circle' : 'error'}
+                      </span>
+                      <span>{magicPlanTestResult.message}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Notification triggers card */}
+              <div className="p-5 bg-white/[0.03] rounded-2xl space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base text-cyan-400">notifications_active</span>
+                    Události a toast notifikace
+                  </h4>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Nastavení toho, na jaké události má systém zobrazit Windows toast notifikaci.
+                  </p>
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  {/* Nový úkol */}
+                  <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors">
+                    <div>
+                      <span className="text-xs font-medium text-gray-200 block">Nový požadavek v plánu</span>
+                      <span className="text-[11px] text-gray-400">Upozornění při přiřazení nového úkolu do vašeho sloupce</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={formData.magicplan?.notifyNewTasks !== false}
+                        onChange={(e) => {
+                          const updated = {
+                            ...formData,
+                            magicplan: { ...formData.magicplan, notifyNewTasks: e.target.checked },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
+                    </label>
+                  </div>
+
+                  {/* Dokončený úkol */}
+                  <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors">
+                    <div>
+                      <span className="text-xs font-medium text-gray-200 block">Úkol v plánu úspěšně zpracován</span>
+                      <span className="text-[11px] text-gray-400">Upozornění při odbavení nebo odebrání úkolu z vašeho sloupce</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={formData.magicplan?.notifyCompletedTasks !== false}
+                        onChange={(e) => {
+                          const updated = {
+                            ...formData,
+                            magicplan: { ...formData.magicplan, notifyCompletedTasks: e.target.checked },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
+                    </label>
+                  </div>
+
+                  {/* Změna hodin */}
+                  <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors">
+                    <div>
+                      <span className="text-xs font-medium text-gray-200 block">Změna v rozvrhu nebo hodinách</span>
+                      <span className="text-[11px] text-gray-400">Upozornění při úpravě alokace hodin nebo posunu termínu</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={formData.magicplan?.notifyTaskChanges !== false}
+                        onChange={(e) => {
+                          const updated = {
+                            ...formData,
+                            magicplan: { ...formData.magicplan, notifyTaskChanges: e.target.checked },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
+                    </label>
                   </div>
                 </div>
               </div>
@@ -8118,7 +8743,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     setFormData(updated);
                     handleSave(updated);
                   }}
-                  placeholder={`S pozdravem,\nPetr Kulhánek\ntel: +420 ...`}
+                  placeholder={`S pozdravem,\nJan Novák\ntel: +420 123 456 789`}
                   className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:border-indigo-500 outline-none font-mono resize-y leading-relaxed"
                 />
                 <p className="text-xs text-gray-400">
@@ -8709,7 +9334,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           }}
                           className="sr-only peer"
                         />
-                        <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-indigo-600" />
+                        <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-rose-600" />
+                      </label>
+                    </div>
+
+                    {/* MagicPlan */}
+                    <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors">
+                      <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-base text-cyan-400">calendar_month</span>
+                        <div>
+                          <span className="text-xs font-medium text-gray-200 block">Změny v interním plánu (MagicPlan)</span>
+                          <span className="text-[11px] text-gray-400">Upozornění na nový požadavek v plánu, změnu hodin nebo dokončení úkolu</span>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={formData.notifications?.magicplan !== false}
+                          onChange={(e) => {
+                            const updated = {
+                              ...formData,
+                              notifications: {
+                                ...formData.notifications,
+                                enabled: formData.notifications?.enabled ?? true,
+                                magicplan: e.target.checked,
+                              },
+                            };
+                            setFormData(updated);
+                            handleSave(updated);
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-500" />
                       </label>
                     </div>
                   </div>
@@ -9523,7 +10179,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             setOpenSimDropdown(null);
                             window.electronAPI?.openGitCloneWindow?.({
                               repoName: 'Demo-Error-Instance',
-                              adminUrl: 'https://non-existent-demo-error.magictour.cz',
+                              adminUrl: 'https://demo-error.example.com',
                               isInstanceMode: true,
                             });
                           }}
@@ -9591,7 +10247,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             setOpenSimDropdown(null);
                             window.electronAPI?.openCmsDownloadWindow?.({
                               instanceName: 'Demo-Error-Instance',
-                              adminUrl: 'https://non-existent-demo-error.magictour.cz',
+                              adminUrl: 'https://demo-error.example.com',
                               targetDir: 'C:\\development\\CMSinFS\\Demo-Error-Instance',
                             });
                           }}
@@ -9867,6 +10523,318 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* MagicPlan Dev Diagnostics Section */}
+              {Boolean(formData.extensions?.magicplan) && (
+                <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl space-y-4 transition-colors">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                        <span className="material-symbols-outlined text-base text-amber-400">calendar_month</span>
+                        <span>MagicPlan – Lokální mezipaměť a audit dotazů</span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-bold uppercase tracking-wider">
+                          EXTENZE
+                        </span>
+                      </h4>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Přehled lokálně uložených a interpretovaných dat úkolů a historie posledních 10 síťových dotazů pro porovnávání změn a odchylek.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleForceMagicPlanQuery}
+                        disabled={isRefreshingMagicPlanLogs}
+                        className="px-3.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        title="Okamžitě provede síťový dotaz a znovu interpretuje data plánu"
+                      >
+                        <span className={`material-symbols-outlined text-base ${isRefreshingMagicPlanLogs ? 'animate-spin' : ''}`}>
+                          sync
+                        </span>
+                        <span>{isRefreshingMagicPlanLogs ? 'Dotazuji...' : 'Vynutit dotaz nyní'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={fetchMagicPlanDevLogs}
+                        disabled={isRefreshingMagicPlanLogs}
+                        className="p-1.5 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-full transition flex items-center justify-center cursor-pointer disabled:opacity-50"
+                        title="Znovu načíst lokální záznamy mezipaměti"
+                      >
+                        <span className="material-symbols-outlined text-base">refresh</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Summary Metric Chips */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                    <div className="p-3 bg-white/[0.02] rounded-xl">
+                      <span className="text-[11px] text-gray-400 uppercase tracking-wider block font-medium">Moje úkoly</span>
+                      <div className="flex items-baseline gap-2 mt-1">
+                        <span className="text-xl font-bold font-mono text-amber-400">
+                          {magicPlanDevLogs?.cachedData?.myTasks?.length || 0}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          ({magicPlanDevLogs?.cachedData?.totalHours || 0} h)
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-white/[0.02] rounded-xl">
+                      <span className="text-[11px] text-gray-400 uppercase tracking-wider block font-medium">Nezařazené (Fronta)</span>
+                      <div className="flex items-baseline gap-2 mt-1">
+                        <span className="text-xl font-bold font-mono text-amber-400">
+                          {magicPlanDevLogs?.cachedData?.unassignedTasks?.length || 0}
+                        </span>
+                        <span className="text-xs text-gray-400">úkolů</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-white/[0.02] rounded-xl">
+                      <span className="text-[11px] text-gray-400 uppercase tracking-wider block font-medium">Disková mezipaměť</span>
+                      <div className="flex items-baseline gap-2 mt-1">
+                        <span className="text-xl font-bold font-mono text-amber-400">
+                          {Object.keys(magicPlanDevLogs?.diskCache?.tasks || {}).length}
+                        </span>
+                        <span className="text-xs text-gray-400">otisků</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-white/[0.02] rounded-xl">
+                      <span className="text-[11px] text-gray-400 uppercase tracking-wider block font-medium">Poslední synchronizace</span>
+                      <div className="mt-1 truncate">
+                        <span className="text-xs font-mono text-gray-300">
+                          {magicPlanDevLogs?.cachedData?.lastUpdated
+                            ? new Date(magicPlanDevLogs.cachedData.lastUpdated).toLocaleTimeString()
+                            : 'Zatím neproběhla'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Standard Tab Switcher */}
+                  <div className="flex items-center justify-between gap-3 pt-1 flex-wrap">
+                    <div className="flex items-center gap-1.5 p-1 bg-white/[0.04] rounded-full w-fit">
+                      {[
+                        { id: 'tasks', name: `Interpretované úkoly (${magicPlanDevLogs?.cachedData?.myTasks?.length || 0})`, icon: 'checklist' },
+                        { id: 'history', name: `Historie dotazů (${magicPlanDevLogs?.history?.length || 0}/10)`, icon: 'history' },
+                        { id: 'raw', name: 'Surový JSON', icon: 'data_object' },
+                      ].map((tab) => {
+                        const isActive = magicPlanDevTab === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setMagicPlanDevTab(tab.id as any)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition cursor-pointer ${
+                              isActive
+                                ? 'bg-amber-500/20 text-white shadow-sm'
+                                : 'text-gray-400 hover:text-gray-200'
+                            }`}
+                          >
+                            <span className={`material-symbols-outlined text-base ${isActive ? 'text-amber-400' : ''}`}>
+                              {tab.icon}
+                            </span>
+                            <span>{tab.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {magicPlanDevTab === 'raw' && (
+                      <button
+                        type="button"
+                        onClick={handleCopyMagicPlanJson}
+                        className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-sm">
+                          {magicPlanCopied ? 'check' : 'content_copy'}
+                        </span>
+                        <span>{magicPlanCopied ? 'Zkopírováno' : 'Kopírovat JSON'}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Panel Content */}
+                  {magicPlanDevTab === 'tasks' && (
+                    <div className="space-y-2">
+                      {(!magicPlanDevLogs?.cachedData?.myTasks || magicPlanDevLogs.cachedData.myTasks.length === 0) ? (
+                        <div className="p-6 text-center text-xs text-gray-500 bg-white/[0.02] rounded-xl">
+                          V mezipaměti nejsou uloženy žádné interpretované úkoly. Zkontrolujte nastavení adresy nebo spusťte dotaz.
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+                          {magicPlanDevLogs.cachedData.myTasks.map((task: any, idx: number) => (
+                            <div key={task.taskId || idx} className="p-3 bg-white/[0.02] hover:bg-white/[0.04] rounded-xl flex items-start justify-between gap-3 text-xs transition-colors">
+                              <div className="space-y-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {task.requirementId && (
+                                    <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-mono text-[11px] font-semibold">
+                                      {task.requirementId}
+                                    </span>
+                                  )}
+                                  {task.taskIdentifier && (
+                                    <span className="px-2 py-0.5 rounded-full bg-white/[0.06] text-gray-300 font-mono text-[11px] font-semibold">
+                                      {task.taskIdentifier}
+                                    </span>
+                                  )}
+                                  <span className="text-gray-200 font-medium truncate">{task.title}</span>
+                                </div>
+                                <div className="flex items-center gap-3 text-gray-400 text-[11px]">
+                                  {task.project && <span>Projekt: <strong className="text-gray-300">{task.project}</strong></span>}
+                                  {task.status && <span>Stav: <strong className="text-gray-300">{task.status}</strong></span>}
+                                  {task.assignedTo && <span>Přiřazeno: <strong className="text-gray-300">{task.assignedTo}</strong></span>}
+                                  {task.date && <span>Termín: <strong className="text-gray-300">{task.date}</strong></span>}
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="text-amber-400 font-mono font-bold text-xs bg-amber-500/10 px-2.5 py-0.5 rounded-full">
+                                  {task.hours} h
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {magicPlanDevTab === 'history' && (
+                    <div className="space-y-2">
+                      {(!magicPlanDevLogs?.history || magicPlanDevLogs.history.length === 0) ? (
+                        <div className="p-6 text-center text-xs text-gray-500 bg-white/[0.02] rounded-xl">
+                          Zatím neproběhl žádný síťový dotaz nebo služba ještě nezaznamenala běh. Klikněte na &quot;Vynutit dotaz nyní&quot;.
+                        </div>
+                      ) : (
+                        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                          {magicPlanDevLogs.history.map((query: any, qIdx: number) => {
+                            const isExpanded = expandedQueryId === query.id;
+                            const isSuccess = query.status === 'success';
+                            const hasDiffs = (query.newTasks?.length > 0) || (query.completedTasks?.length > 0) || (query.changedTasks?.length > 0);
+
+                            return (
+                              <div
+                                key={query.id || qIdx}
+                                className={`rounded-xl transition-colors ${
+                                  isSuccess
+                                    ? 'bg-white/[0.02] hover:bg-white/[0.04]'
+                                    : 'bg-rose-500/[0.06] hover:bg-rose-500/[0.09]'
+                                }`}
+                              >
+                                <div
+                                  onClick={() => setExpandedQueryId(isExpanded ? null : query.id)}
+                                  className="p-3 flex items-center justify-between gap-3 cursor-pointer select-none"
+                                >
+                                  <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+                                    <span
+                                      className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-bold uppercase tracking-wider ${
+                                        isSuccess
+                                          ? 'bg-emerald-500/20 text-emerald-300'
+                                          : 'bg-rose-500/20 text-rose-300'
+                                      }`}
+                                    >
+                                      {isSuccess ? '200 OK' : 'CHYBA'}
+                                    </span>
+
+                                    <span className="text-xs text-gray-300 font-mono">
+                                      {new Date(query.timestamp).toLocaleTimeString()}
+                                    </span>
+
+                                    <span className="text-[11px] text-gray-400 font-mono">
+                                      {query.durationMs} ms
+                                    </span>
+
+                                    <span className="text-[11px] text-gray-500 font-mono">
+                                      {(query.htmlLength / 1024).toFixed(1)} KB
+                                    </span>
+
+                                    {/* Diffs tags */}
+                                    <div className="flex items-center gap-1.5 ml-1">
+                                      {query.newTasks?.length > 0 && (
+                                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 text-[10px] font-semibold">
+                                          +{query.newTasks.length} nových
+                                        </span>
+                                      )}
+                                      {query.completedTasks?.length > 0 && (
+                                        <span className="px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 text-[10px] font-semibold">
+                                          -{query.completedTasks.length} dokončeno
+                                        </span>
+                                      )}
+                                      {query.changedTasks?.length > 0 && (
+                                        <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 text-[10px] font-semibold">
+                                          ~{query.changedTasks.length} upraveno
+                                        </span>
+                                      )}
+                                      {!hasDiffs && isSuccess && (
+                                        <span className="text-[10px] text-gray-500 font-mono">
+                                          0 změn
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-xs text-gray-400 font-mono">
+                                      {query.myTasksCount || 0} úkolů ({query.totalHours || 0} h)
+                                    </span>
+                                    <span className="material-symbols-outlined text-base text-gray-400">
+                                      {isExpanded ? 'expand_less' : 'expand_more'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {isExpanded && (
+                                  <div className="px-3 pb-3 pt-1 space-y-2.5 text-xs animate-fade-in">
+                                    {query.error && (
+                                      <div className="p-2.5 bg-rose-500/15 rounded-xl text-rose-300 font-mono text-[11px]">
+                                        Chyba: {query.error}
+                                      </div>
+                                    )}
+
+                                    <div className="text-[11px] text-gray-400">
+                                      <span>Dotazovaná adresa: </span>
+                                      <code className="text-gray-300 bg-white/5 px-2 py-0.5 rounded-full font-mono break-all">
+                                        {query.url || 'Výchozí konfigurace'}
+                                      </code>
+                                    </div>
+
+                                    {query.myTasks && query.myTasks.length > 0 && (
+                                      <div className="space-y-1">
+                                        <span className="text-[11px] text-gray-400 uppercase tracking-wider block font-medium">
+                                          Nalezené úkoly v tomto dotazu ({query.myTasks.length}):
+                                        </span>
+                                        <div className="max-h-48 overflow-y-auto space-y-1 bg-black/20 p-2.5 rounded-xl font-mono text-[11px]">
+                                          {query.myTasks.map((t: any, tidx: number) => (
+                                            <div key={tidx} className="flex items-center justify-between text-gray-300 py-0.5">
+                                              <span className="truncate pr-2">
+                                                <span className="text-amber-400 font-semibold">{t.requirementId || t.taskIdentifier || `#${tidx+1}`}</span>: {t.title}
+                                              </span>
+                                              <span className="shrink-0 text-amber-300">{t.hours} h</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {magicPlanDevTab === 'raw' && (
+                    <div className="bg-white/[0.02] rounded-xl p-3 max-h-80 overflow-y-auto font-mono text-[11px] text-gray-300 leading-relaxed">
+                      <pre className="whitespace-pre-wrap break-all">
+                        {JSON.stringify(magicPlanDevLogs || { status: 'žádná data' }, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

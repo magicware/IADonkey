@@ -17,7 +17,7 @@ declare global {
       openPath: (path: string) => Promise<void>;
       hideWindow: () => void;
       resetAndHideSpotlight: () => Promise<void>;
-      openSettingsWindow: () => Promise<void>;
+      openSettingsWindow: (tab?: string) => Promise<void>;
       openPowerWindow: () => Promise<void>;
       closePowerWindow: () => Promise<void>;
       restartApp: () => Promise<void>;
@@ -139,6 +139,7 @@ declare global {
       onDataUpdated: (callback: (items: LauncherItem[]) => void) => () => void;
       onConfigUpdated: (callback: (config: AppConfig) => void) => () => void;
       onOpenSettingsRequest: (callback: () => void) => () => void;
+      onSwitchSettingsTab?: (callback: (tab: string) => void) => () => void;
       onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void;
       onUpdateDownloadProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void) => () => void;
       onWindowShown: (callback: () => void) => () => void;
@@ -253,6 +254,15 @@ declare global {
       getFastSnapInitData?: () => Promise<{ screenshotUrl: string; width: number; height: number; scaleFactor: number } | null>;
       onFastSnapInitData?: (callback: (data: { screenshotUrl: string; width: number; height: number; scaleFactor: number }) => void) => () => void;
       onFastSnapCleanup?: (callback: () => void) => () => void;
+
+      // MagicPlan
+      openMagicPlanWindow?: () => Promise<void>;
+      closeMagicPlanWindow?: () => Promise<void>;
+      getMagicPlanData?: () => Promise<import('./index').MagicPlanData>;
+      refreshMagicPlan?: () => Promise<import('./index').MagicPlanData>;
+      getMagicPlanDevLogs?: () => Promise<any>;
+      clearMagicPlanData?: () => Promise<any>;
+      onMagicPlanDataUpdated?: (callback: (data: import('./index').MagicPlanData) => void) => () => void;
     };
   }
 }

@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openPath: (path: string): Promise<void> => ipcRenderer.invoke('open-path', path),
   hideWindow: (): Promise<void> => ipcRenderer.invoke('hide-window'),
   resetAndHideSpotlight: (): Promise<void> => ipcRenderer.invoke('reset-and-hide-spotlight'),
-  openSettingsWindow: (): Promise<void> => ipcRenderer.invoke('open-settings-window'),
+  openSettingsWindow: (tab?: string): Promise<void> => ipcRenderer.invoke('open-settings-window', tab),
   openPowerWindow: (): Promise<void> => ipcRenderer.invoke('open-power-window'),
   closePowerWindow: (): Promise<void> => ipcRenderer.invoke('close-power-window'),
   restartApp: (): Promise<void> => ipcRenderer.invoke('restart-app'),
@@ -96,6 +96,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = () => callback();
     ipcRenderer.on('open-settings', handler);
     return () => ipcRenderer.removeListener('open-settings', handler);
+  },
+
+  onSwitchSettingsTab: (callback: (tab: string) => void) => {
+    const handler = (_event: any, tab: string) => callback(tab);
+    ipcRenderer.on('switch-settings-tab', handler);
+    return () => ipcRenderer.removeListener('switch-settings-tab', handler);
   },
 
   onUpdateAvailable: (callback: (info: UpdateInfo) => void) => {
@@ -382,5 +388,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on('palette-detail-init', handler);
     return () => ipcRenderer.removeListener('palette-detail-init', handler);
+  },
+
+  // MagicPlan API
+  openMagicPlanWindow: (): Promise<void> => ipcRenderer.invoke('open-magicplan-window'),
+  closeMagicPlanWindow: (): Promise<void> => ipcRenderer.invoke('close-magicplan-window'),
+  getMagicPlanData: (): Promise<any> => ipcRenderer.invoke('magicplan-get-data'),
+  refreshMagicPlan: (): Promise<any> => ipcRenderer.invoke('magicplan-refresh'),
+  getMagicPlanDevLogs: (): Promise<any> => ipcRenderer.invoke('magicplan-get-dev-logs'),
+  clearMagicPlanData: (): Promise<any> => ipcRenderer.invoke('magicplan-clear-data'),
+  onMagicPlanDataUpdated: (callback: (data: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('magicplan:data-updated', handler);
+    return () => ipcRenderer.removeListener('magicplan:data-updated', handler);
   },
 });

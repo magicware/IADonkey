@@ -20,6 +20,7 @@ import { diagnosticsService } from './diagnosticsService';
 import { notificationService } from './notificationService';
 import { easyClipService } from './easyClipService';
 import { pasteService } from './pasteService';
+import { MagicPlanService } from './magicPlanService';
 
 app.name = 'IADonkey';
 if (process.platform === 'win32') {
@@ -66,6 +67,7 @@ let appScanner: AppScanner;
 let currentHotkey = 'Ctrl+Alt+Space';
 let syncIntervalTimer: NodeJS.Timeout | null = null;
 let updateIntervalTimer: NodeJS.Timeout | null = null;
+let magicPlanService: MagicPlanService;
 
 function getCombinedItems(): LauncherItem[] {
   const customItems = store ? store.getItems() : [];
@@ -1321,6 +1323,33 @@ function setupIpcHandlers() {
     windowManager.showSpotlightWithMode('easyclip');
   });
 
+  // MagicPlan IPC Handlers
+  ipcMain.handle('magicplan-get-data', async () => {
+    return magicPlanService?.getCachedData() || (await magicPlanService?.fetchAndDiff());
+  });
+
+  ipcMain.handle('magicplan-refresh', async () => {
+    return await magicPlanService?.manualRefresh();
+  });
+
+  ipcMain.handle('magicplan-get-dev-logs', async () => {
+    return magicPlanService?.getDevLogs();
+  });
+
+  ipcMain.handle('magicplan-clear-data', () => {
+    magicPlanService?.clearData();
+    return true;
+  });
+
+  ipcMain.handle('open-magicplan-window', async () => {
+    await windowManager.openMagicPlanWindow();
+    return true;
+  });
+
+  ipcMain.handle('close-magicplan-window', () => {
+    windowManager.closeMagicPlanWindow();
+  });
+
   ipcMain.handle('get-config', () => {
     return store.getConfig();
   });
@@ -1340,6 +1369,12 @@ function setupIpcHandlers() {
     registerScreenRulerHotkey(newConfig.donkeyTools?.screenRuler?.hotkey);
     registerEasyClipHotkey(newConfig.donkeyTools?.easyClip?.hotkey);
     easyClipService.updateConfig(newConfig);
+
+    if (newConfig.magicplan?.userColumn !== oldConfig.magicplan?.userColumn) {
+      magicPlanService?.onUserColumnChanged(newConfig.magicplan?.userColumn);
+    } else {
+      magicPlanService?.restart();
+    }
 
     // Update tray context menu to reflect enabled/disabled DonkeyTools
     windowManager?.updateTrayContextMenu(currentHotkey);
@@ -1378,6 +1413,7 @@ function setupIpcHandlers() {
 
     windowManager.getMainWindow()?.webContents.send('config-updated', newConfig);
     windowManager.getSettingsWindow()?.webContents.send('config-updated', newConfig);
+    windowManager.getMagicPlanWindow()?.webContents.send('config-updated', newConfig);
 
     return true;
   });
@@ -1403,8 +1439,8 @@ function setupIpcHandlers() {
     });
   });
 
-  ipcMain.handle('open-settings-window', () => {
-    const win = windowManager.openSettingsWindow();
+  ipcMain.handle('open-settings-window', (_event, tab?: string) => {
+    const win = windowManager.openSettingsWindow(tab);
     win.on('closed', () => {
       const cfg = store.getConfig();
       if (cfg.hotkey) {
@@ -1655,6 +1691,7 @@ function setupIpcHandlers() {
 
       windowManager.getMainWindow()?.webContents.send('config-updated', updatedConfig);
       windowManager.getSettingsWindow()?.webContents.send('config-updated', updatedConfig);
+      windowManager.getMagicPlanWindow()?.webContents.send('config-updated', updatedConfig);
 
       return {
         success: true,
@@ -1679,6 +1716,7 @@ function setupIpcHandlers() {
     const allItems = getCombinedItems();
     windowManager.getMainWindow()?.webContents.send('config-updated', updatedConfig);
     windowManager.getSettingsWindow()?.webContents.send('config-updated', updatedConfig);
+    windowManager.getMagicPlanWindow()?.webContents.send('config-updated', updatedConfig);
     windowManager.getMainWindow()?.webContents.send('data-updated', allItems);
     windowManager.getSettingsWindow()?.webContents.send('data-updated', allItems);
 
@@ -2631,6 +2669,9 @@ app.whenReady().then(async () => {
     windowManager?.getMainWindow()?.webContents.send('easyclip-items-updated', items);
     windowManager?.getSettingsWindow()?.webContents.send('easyclip-items-updated', items);
   });
+
+  magicPlanService = new MagicPlanService(store);
+  magicPlanService.start();
 
   const launchDeferredTasks = () => {
     startBackgroundTasks();
