@@ -182,10 +182,10 @@ export const PaletteDetailModal: React.FC = () => {
                 <div
                   key={idx}
                   onClick={handleOpenBar}
-                  className="p-3.5 bg-white/[0.02] hover:bg-white/[0.05] border border-dashed border-white/15 hover:border-rose-400/40 rounded-2xl flex items-center justify-between transition cursor-pointer group"
+                  className="p-3.5 bg-white/[0.03] hover:bg-white/[0.06] rounded-2xl flex items-center justify-between transition cursor-pointer group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl border border-dashed border-white/20 flex items-center justify-center text-gray-500 group-hover:text-rose-400 group-hover:border-rose-400 transition">
+                    <div className="w-12 h-12 rounded-xl bg-white/[0.04] flex items-center justify-center text-gray-500 group-hover:text-rose-400 group-hover:bg-rose-500/10 transition">
                       <span className="text-sm font-mono font-bold">{idx + 1}</span>
                     </div>
                     <div>
@@ -216,13 +216,13 @@ export const PaletteDetailModal: React.FC = () => {
             return (
               <div
                 key={idx}
-                className="p-3.5 bg-white/[0.03] border border-white/10 rounded-2xl space-y-2.5 transition shadow-sm hover:border-white/20"
+                className="p-3.5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl space-y-2.5 transition shadow-sm"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     {/* Large Swatch */}
                     <div
-                      className="w-12 h-12 rounded-xl border border-white/20 shadow-inner flex items-center justify-center shrink-0 cursor-pointer hover:scale-105 transition"
+                      className="w-12 h-12 rounded-xl shadow-inner flex items-center justify-center shrink-0 cursor-pointer hover:scale-105 transition"
                       style={{ backgroundColor: color }}
                       onClick={() => handleTuneColor(color, idx)}
                       title="Kliknutím doladit barvu"
@@ -246,7 +246,7 @@ export const PaletteDetailModal: React.FC = () => {
                             {copiedKey === `hex-${idx}` ? 'check' : 'content_copy'}
                           </span>
                         </button>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/20 font-mono">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 font-mono">
                           {role.name}
                         </span>
                         <span className="text-[11px] text-gray-400 hidden sm:inline">• {role.desc}</span>
@@ -288,56 +288,84 @@ export const PaletteDetailModal: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Derived Surface & Button Previews */}
-                <div className="pt-2 border-t border-white/[0.06]">
-                  <div className="flex items-center justify-between mb-1.5">
+                {/* Derived Surface & Button Previews (3 pairs: Světlý nahoře, Tmavý dole) */}
+                <div className="pt-2">
+                  <div className="flex items-center justify-between mb-2 px-0.5">
                     <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-                      Náhled tlačítek a povrchů ({role.name})
+                      Náhled komponent a povrchů ({role.name})
                     </span>
-                    <span className="text-[10px] text-gray-500">Kliknutím zkopírovat</span>
+                    <span className="text-[10px] text-gray-500">Kliknutím zkopírovat barvu</span>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-                    {derived.map((item) => (
-                      <div
-                        key={item.id}
-                        onClick={() => setActiveOptionsColor({ name: `${role.name} – ${item.name}`, token: item })}
-                        className="p-2 rounded-xl transition cursor-pointer border border-white/10 hover:border-white/30 group relative overflow-hidden flex flex-col justify-between shadow-sm"
-                        style={{ backgroundColor: item.bgPreview }}
-                        title={`${item.name} (${item.role}): ${item.hex} – Kliknutím zkopírovat`}
-                      >
-                        <div className="flex items-center justify-between gap-1 mb-1">
-                          <span
-                            className="text-[9px] font-semibold tracking-wide truncate"
-                            style={{ color: item.isDarkBg ? '#9CA3AF' : '#4B5563' }}
-                          >
-                            {item.name.split(' ')[0]}
-                          </span>
-                          <span
-                            className="text-[9px] font-mono font-bold"
-                            style={{ color: item.isDarkBg ? '#E5E7EB' : '#1F2937' }}
-                          >
-                            {item.hex}
-                          </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {[
+                      {
+                        title: 'Plné tlačítko',
+                        icon: 'smart_button',
+                        light: derived[0],
+                        dark: derived[1],
+                      },
+                      {
+                        title: 'Povrch / Surface',
+                        icon: 'layers',
+                        light: derived[2],
+                        dark: derived[3],
+                      },
+                      {
+                        title: 'Tónovaný kontejner',
+                        icon: 'crop_square',
+                        light: derived[4],
+                        dark: derived[5],
+                      },
+                    ].map((group, gIdx) => (
+                      <div key={gIdx} className="bg-white/[0.02] rounded-xl p-2 space-y-1.5 flex flex-col justify-between">
+                        <div className="flex items-center gap-1.5 px-0.5 text-[10px] font-semibold text-gray-400">
+                          <span className="material-symbols-outlined text-[13px] text-rose-400">{group.icon}</span>
+                          <span>{group.title}</span>
                         </div>
 
-                        <div className="flex items-center justify-center py-0.5">
-                          {item.previewType === 'surface' ? (
-                            <div
-                              className="w-full py-1 px-1.5 rounded-lg border border-black/10 flex items-center justify-center gap-1 text-[11px] font-semibold shadow-sm"
-                              style={{ backgroundColor: item.hex, color: item.fgText }}
-                            >
-                              <span className="material-symbols-outlined text-[12px]">layers</span>
-                              <span className="truncate">Povrch</span>
-                            </div>
-                          ) : (
-                            <div
-                              className="w-full py-1 px-1.5 rounded-lg flex items-center justify-center gap-1 text-[11px] font-semibold shadow-sm group-hover:scale-[1.02] transition"
-                              style={{ backgroundColor: item.hex, color: item.fgText }}
-                            >
-                              <span className="material-symbols-outlined text-[12px]">smart_button</span>
-                              <span className="truncate">{item.previewType === 'container' ? 'Kontejner' : 'Tlačítko'}</span>
-                            </div>
-                          )}
+                        {/* Světlý náhled (nahoře) */}
+                        <div
+                          onClick={() => setActiveOptionsColor({ name: `${role.name} – ${group.light.name}`, token: group.light })}
+                          className="p-1.5 rounded-lg transition cursor-pointer hover:opacity-90 active:scale-[0.98] group relative flex flex-col gap-1 shadow-sm"
+                          style={{ backgroundColor: group.light.bgPreview }}
+                          title={`Světlý režim: ${group.light.hex} – Kliknutím zkopírovat`}
+                        >
+                          <div className="flex items-center justify-between text-[9px] font-mono px-0.5">
+                            <span className="font-semibold text-gray-600">Světlý</span>
+                            <span className="font-bold text-gray-900">{group.light.hex}</span>
+                          </div>
+                          <div
+                            className="w-full py-1 px-2 rounded-md flex items-center justify-center gap-1 text-[11px] font-semibold shadow-sm"
+                            style={{ backgroundColor: group.light.hex, color: group.light.fgText }}
+                          >
+                            <span className="material-symbols-outlined text-[12px]">{group.icon}</span>
+                            <span className="truncate">
+                              {group.light.previewType === 'surface' ? 'Povrch' : group.light.previewType === 'container' ? 'Kontejner' : 'Tlačítko'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Tmavý náhled (dole) */}
+                        <div
+                          onClick={() => setActiveOptionsColor({ name: `${role.name} – ${group.dark.name}`, token: group.dark })}
+                          className="p-1.5 rounded-lg transition cursor-pointer hover:opacity-90 active:scale-[0.98] group relative flex flex-col gap-1 shadow-sm"
+                          style={{ backgroundColor: group.dark.bgPreview }}
+                          title={`Tmavý režim: ${group.dark.hex} – Kliknutím zkopírovat`}
+                        >
+                          <div className="flex items-center justify-between text-[9px] font-mono px-0.5">
+                            <span className="font-semibold text-gray-400">Tmavý</span>
+                            <span className="font-bold text-gray-100">{group.dark.hex}</span>
+                          </div>
+                          <div
+                            className="w-full py-1 px-2 rounded-md flex items-center justify-center gap-1 text-[11px] font-semibold shadow-sm"
+                            style={{ backgroundColor: group.dark.hex, color: group.dark.fgText }}
+                          >
+                            <span className="material-symbols-outlined text-[12px]">{group.icon}</span>
+                            <span className="truncate">
+                              {group.dark.previewType === 'surface' ? 'Povrch' : group.dark.previewType === 'container' ? 'Kontejner' : 'Tlačítko'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -350,7 +378,7 @@ export const PaletteDetailModal: React.FC = () => {
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 p-5 flex items-center justify-between gap-3 border-t border-white/10">
+      <div className="shrink-0 p-5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"

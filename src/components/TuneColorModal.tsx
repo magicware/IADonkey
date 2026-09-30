@@ -154,11 +154,11 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
         </div>
 
         {/* Swatches comparison */}
-        <div className="grid grid-cols-2 gap-3 p-3.5 bg-white/[0.03] border border-white/10 rounded-2xl">
+        <div className="grid grid-cols-2 gap-3 p-3.5 bg-white/[0.03] rounded-2xl">
           <div className="space-y-1.5">
             <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Původní</span>
             <div
-              className="h-14 rounded-2xl border border-white/10 shadow-inner flex items-center justify-center transition overflow-hidden"
+              className="h-14 rounded-2xl shadow-inner flex items-center justify-center transition overflow-hidden"
               style={{ backgroundColor: initialParsed.hex }}
             >
               <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-sm text-[11px] font-mono font-semibold text-white">
@@ -169,7 +169,7 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
           <div className="space-y-1.5">
             <span className="text-[11px] font-semibold text-rose-400 uppercase tracking-wider">Nová barva</span>
             <div
-              className="h-14 rounded-2xl border border-white/10 shadow-inner flex items-center justify-center transition overflow-hidden"
+              className="h-14 rounded-2xl shadow-inner flex items-center justify-center transition overflow-hidden"
               style={{ backgroundColor: rgbaString }}
             >
               <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-sm text-[11px] font-mono font-semibold text-white">
@@ -284,7 +284,7 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
                 <div
                   key={fmt.key}
                   onClick={() => handleCopyText(fmt.value, fmt.key)}
-                  className={`bg-white/[0.03] hover:bg-white/[0.08] active:bg-white/[0.12] border border-white/5 hover:border-rose-400/40 rounded-2xl p-3 flex items-center justify-between cursor-pointer transition group select-none ${
+                  className={`bg-white/[0.03] hover:bg-white/[0.07] active:bg-white/[0.12] rounded-2xl p-3 flex items-center justify-between cursor-pointer transition group select-none ${
                     fmt.spanCol ? 'col-span-2 sm:col-span-1' : ''
                   }`}
                   title={`Kliknutím zkopírovat ${fmt.label} (${fmt.value})`}
@@ -304,64 +304,91 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
           </div>
         </div>
 
-        {/* Derived Colors Section: 2 Columns strictly side-by-side (Původní vs Nová) */}
+        {/* Derived Colors Section: 2 Columns strictly side-by-side with 3 grouped pairs */}
         <div className="space-y-2 pt-1">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-              Náhled tlačítek a povrchů (světlý & tmavý režim)
+              Náhled komponent a povrchů (Původní vs Nová)
             </span>
             <span className="text-[10px] text-gray-500">Kliknutím zkopírovat barvu</span>
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
             {/* Column 1: Původní barva */}
-            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-2.5 space-y-2">
-              <div className="flex items-center justify-between pb-1.5 border-b border-white/5">
+            <div className="bg-white/[0.02] rounded-2xl p-2.5 space-y-2">
+              <div className="flex items-center justify-between pb-1">
                 <span className="text-xs font-bold text-gray-300">Původní barva</span>
                 <span className="text-[11px] font-mono text-gray-400">{initialParsed.hex}</span>
               </div>
               <div className="space-y-2">
-                {originalSurfaces.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => setActiveOptionsColor({ name: `Původní • ${item.name}`, token: item })}
-                    className="p-2 rounded-xl transition cursor-pointer border border-white/10 hover:border-white/30 group relative overflow-hidden flex flex-col justify-between shadow-sm"
-                    style={{ backgroundColor: item.bgPreview }}
-                    title={`Kliknout pro zkopírování (${item.name}: ${item.hex})`}
-                  >
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <span
-                        className="text-[10px] font-semibold tracking-wide truncate"
-                        style={{ color: item.isDarkBg ? '#9CA3AF' : '#4B5563' }}
-                      >
-                        {item.name}
-                      </span>
-                      <span
-                        className="text-[10px] font-mono font-bold"
-                        style={{ color: item.isDarkBg ? '#E5E7EB' : '#1F2937' }}
-                      >
-                        {item.hex}
-                      </span>
+                {[
+                  {
+                    title: 'Plné tlačítko',
+                    icon: 'smart_button',
+                    light: originalSurfaces[0],
+                    dark: originalSurfaces[1],
+                  },
+                  {
+                    title: 'Povrch / Surface',
+                    icon: 'layers',
+                    light: originalSurfaces[2],
+                    dark: originalSurfaces[3],
+                  },
+                  {
+                    title: 'Tónovaný kontejner',
+                    icon: 'crop_square',
+                    light: originalSurfaces[4],
+                    dark: originalSurfaces[5],
+                  },
+                ].map((group, gIdx) => (
+                  <div key={gIdx} className="bg-white/[0.02] rounded-xl p-2 space-y-1.5">
+                    <div className="flex items-center gap-1.5 px-0.5 text-[10px] font-semibold text-gray-400">
+                      <span className="material-symbols-outlined text-[12px] text-gray-400">{group.icon}</span>
+                      <span>{group.title}</span>
                     </div>
 
-                    <div className="flex items-center justify-center py-0.5">
-                      {item.previewType === 'surface' ? (
-                        <div
-                          className="w-full py-1.5 px-2 rounded-lg border border-black/10 flex items-center justify-center gap-1.5 text-xs font-semibold shadow-sm"
-                          style={{ backgroundColor: item.hex, color: item.fgText }}
-                        >
-                          <span className="material-symbols-outlined text-[13px]">layers</span>
-                          <span className="truncate">Povrch</span>
-                        </div>
-                      ) : (
-                        <div
-                          className="w-full py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 text-xs font-semibold shadow-sm group-hover:scale-[1.02] transition"
-                          style={{ backgroundColor: item.hex, color: item.fgText }}
-                        >
-                          <span className="material-symbols-outlined text-[13px]">smart_button</span>
-                          <span className="truncate">{item.previewType === 'container' ? 'Kontejner' : 'Tlačítko'}</span>
-                        </div>
-                      )}
+                    {/* Světlý (nahoře) */}
+                    <div
+                      onClick={() => setActiveOptionsColor({ name: `Původní • ${group.light.name}`, token: group.light })}
+                      className="p-1.5 rounded-lg transition cursor-pointer hover:opacity-90 active:scale-[0.98] group flex flex-col gap-1 shadow-sm"
+                      style={{ backgroundColor: group.light.bgPreview }}
+                      title={`Světlý režim: ${group.light.hex}`}
+                    >
+                      <div className="flex items-center justify-between text-[9px] font-mono px-0.5">
+                        <span className="font-semibold text-gray-600">Světlý</span>
+                        <span className="font-bold text-gray-900">{group.light.hex}</span>
+                      </div>
+                      <div
+                        className="w-full py-1 px-1.5 rounded-md flex items-center justify-center gap-1 text-[11px] font-semibold shadow-sm"
+                        style={{ backgroundColor: group.light.hex, color: group.light.fgText }}
+                      >
+                        <span className="material-symbols-outlined text-[12px]">{group.icon}</span>
+                        <span className="truncate">
+                          {group.light.previewType === 'surface' ? 'Povrch' : group.light.previewType === 'container' ? 'Kontejner' : 'Tlačítko'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Tmavý (dole) */}
+                    <div
+                      onClick={() => setActiveOptionsColor({ name: `Původní • ${group.dark.name}`, token: group.dark })}
+                      className="p-1.5 rounded-lg transition cursor-pointer hover:opacity-90 active:scale-[0.98] group flex flex-col gap-1 shadow-sm"
+                      style={{ backgroundColor: group.dark.bgPreview }}
+                      title={`Tmavý režim: ${group.dark.hex}`}
+                    >
+                      <div className="flex items-center justify-between text-[9px] font-mono px-0.5">
+                        <span className="font-semibold text-gray-400">Tmavý</span>
+                        <span className="font-bold text-gray-100">{group.dark.hex}</span>
+                      </div>
+                      <div
+                        className="w-full py-1 px-1.5 rounded-md flex items-center justify-center gap-1 text-[11px] font-semibold shadow-sm"
+                        style={{ backgroundColor: group.dark.hex, color: group.dark.fgText }}
+                      >
+                        <span className="material-symbols-outlined text-[12px]">{group.icon}</span>
+                        <span className="truncate">
+                          {group.dark.previewType === 'surface' ? 'Povrch' : group.dark.previewType === 'container' ? 'Kontejner' : 'Tlačítko'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -369,53 +396,80 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
             </div>
 
             {/* Column 2: Nová barva */}
-            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-2.5 space-y-2">
-              <div className="flex items-center justify-between pb-1.5 border-b border-white/5">
+            <div className="bg-white/[0.02] rounded-2xl p-2.5 space-y-2">
+              <div className="flex items-center justify-between pb-1">
                 <span className="text-xs font-bold text-rose-300">Nová barva</span>
                 <span className="text-[11px] font-mono text-rose-400">{hex}</span>
               </div>
               <div className="space-y-2">
-                {newSurfaces.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => setActiveOptionsColor({ name: `Nová • ${item.name}`, token: item })}
-                    className="p-2 rounded-xl transition cursor-pointer border border-white/10 hover:border-rose-400/40 group relative overflow-hidden flex flex-col justify-between shadow-sm"
-                    style={{ backgroundColor: item.bgPreview }}
-                    title={`Kliknout pro zkopírování (${item.name}: ${item.hex})`}
-                  >
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <span
-                        className="text-[10px] font-semibold tracking-wide truncate"
-                        style={{ color: item.isDarkBg ? '#9CA3AF' : '#4B5563' }}
-                      >
-                        {item.name}
-                      </span>
-                      <span
-                        className="text-[10px] font-mono font-bold"
-                        style={{ color: item.isDarkBg ? '#E5E7EB' : '#1F2937' }}
-                      >
-                        {item.hex}
-                      </span>
+                {[
+                  {
+                    title: 'Plné tlačítko',
+                    icon: 'smart_button',
+                    light: newSurfaces[0],
+                    dark: newSurfaces[1],
+                  },
+                  {
+                    title: 'Povrch / Surface',
+                    icon: 'layers',
+                    light: newSurfaces[2],
+                    dark: newSurfaces[3],
+                  },
+                  {
+                    title: 'Tónovaný kontejner',
+                    icon: 'crop_square',
+                    light: newSurfaces[4],
+                    dark: newSurfaces[5],
+                  },
+                ].map((group, gIdx) => (
+                  <div key={gIdx} className="bg-white/[0.02] rounded-xl p-2 space-y-1.5">
+                    <div className="flex items-center gap-1.5 px-0.5 text-[10px] font-semibold text-gray-400">
+                      <span className="material-symbols-outlined text-[12px] text-rose-400">{group.icon}</span>
+                      <span>{group.title}</span>
                     </div>
 
-                    <div className="flex items-center justify-center py-0.5">
-                      {item.previewType === 'surface' ? (
-                        <div
-                          className="w-full py-1.5 px-2 rounded-lg border border-black/10 flex items-center justify-center gap-1.5 text-xs font-semibold shadow-sm"
-                          style={{ backgroundColor: item.hex, color: item.fgText }}
-                        >
-                          <span className="material-symbols-outlined text-[13px]">layers</span>
-                          <span className="truncate">Povrch</span>
-                        </div>
-                      ) : (
-                        <div
-                          className="w-full py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 text-xs font-semibold shadow-sm group-hover:scale-[1.02] transition"
-                          style={{ backgroundColor: item.hex, color: item.fgText }}
-                        >
-                          <span className="material-symbols-outlined text-[13px]">smart_button</span>
-                          <span className="truncate">{item.previewType === 'container' ? 'Kontejner' : 'Tlačítko'}</span>
-                        </div>
-                      )}
+                    {/* Světlý (nahoře) */}
+                    <div
+                      onClick={() => setActiveOptionsColor({ name: `Nová • ${group.light.name}`, token: group.light })}
+                      className="p-1.5 rounded-lg transition cursor-pointer hover:opacity-90 active:scale-[0.98] group flex flex-col gap-1 shadow-sm"
+                      style={{ backgroundColor: group.light.bgPreview }}
+                      title={`Světlý režim: ${group.light.hex}`}
+                    >
+                      <div className="flex items-center justify-between text-[9px] font-mono px-0.5">
+                        <span className="font-semibold text-gray-600">Světlý</span>
+                        <span className="font-bold text-gray-900">{group.light.hex}</span>
+                      </div>
+                      <div
+                        className="w-full py-1 px-1.5 rounded-md flex items-center justify-center gap-1 text-[11px] font-semibold shadow-sm"
+                        style={{ backgroundColor: group.light.hex, color: group.light.fgText }}
+                      >
+                        <span className="material-symbols-outlined text-[12px]">{group.icon}</span>
+                        <span className="truncate">
+                          {group.light.previewType === 'surface' ? 'Povrch' : group.light.previewType === 'container' ? 'Kontejner' : 'Tlačítko'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Tmavý (dole) */}
+                    <div
+                      onClick={() => setActiveOptionsColor({ name: `Nová • ${group.dark.name}`, token: group.dark })}
+                      className="p-1.5 rounded-lg transition cursor-pointer hover:opacity-90 active:scale-[0.98] group flex flex-col gap-1 shadow-sm"
+                      style={{ backgroundColor: group.dark.bgPreview }}
+                      title={`Tmavý režim: ${group.dark.hex}`}
+                    >
+                      <div className="flex items-center justify-between text-[9px] font-mono px-0.5">
+                        <span className="font-semibold text-gray-400">Tmavý</span>
+                        <span className="font-bold text-gray-100">{group.dark.hex}</span>
+                      </div>
+                      <div
+                        className="w-full py-1 px-1.5 rounded-md flex items-center justify-center gap-1 text-[11px] font-semibold shadow-sm"
+                        style={{ backgroundColor: group.dark.hex, color: group.dark.fgText }}
+                      >
+                        <span className="material-symbols-outlined text-[12px]">{group.icon}</span>
+                        <span className="truncate">
+                          {group.dark.previewType === 'surface' ? 'Povrch' : group.dark.previewType === 'container' ? 'Kontejner' : 'Tlačítko'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
