@@ -553,10 +553,14 @@ export interface DerivedColorToken {
   rgba: string;
   hsl: string;
   isDark?: boolean;
+  bgPreview?: string;
+  fgText?: string;
+  previewType?: 'button' | 'surface' | 'container';
+  isDarkBg?: boolean;
 }
 
 /**
- * Derives surface and container colors from a single base color
+ * Derives button, surface and container preview colors from a single base color
  */
 export function deriveSingleColorSurfaces(baseHex: string): DerivedColorToken[] {
   const p = parseColorQuery(baseHex) || parseColorQuery('#6366F1')!;
@@ -564,46 +568,64 @@ export function deriveSingleColorSurfaces(baseHex: string): DerivedColorToken[] 
 
   const rawList = [
     {
+      id: 'btn-filled-light',
+      name: 'Plné tlačítko (světlé)',
+      role: 'Plná barva tlačítka na světlém pozadí',
+      hex: base,
+      bgPreview: '#F4F5F8',
+      fgText: getContrastColor(base),
+      previewType: 'button' as const,
+      isDarkBg: false,
+    },
+    {
+      id: 'btn-filled-dark',
+      name: 'Plné tlačítko (tmavé)',
+      role: 'Plná barva tlačítka na tmavém pozadí',
+      hex: base,
+      bgPreview: '#14151B',
+      fgText: getContrastColor(base),
+      previewType: 'button' as const,
+      isDarkBg: true,
+    },
+    {
       id: 'surface-light',
-      name: 'Světlý povrch',
-      role: 'Surface Light (5 % tón na bílé)',
-      hex: mixColors('#FFFFFF', base, 0.05),
-      isDark: false,
+      name: 'Světlý povrch (Surface)',
+      role: 'Jemně tónovaný světlý povrch',
+      hex: mixColors('#FFFFFF', base, 0.06),
+      bgPreview: '#E5E7EB',
+      fgText: '#111827',
+      previewType: 'surface' as const,
+      isDarkBg: false,
+    },
+    {
+      id: 'surface-dark',
+      name: 'Tmavý povrch (Surface)',
+      role: 'Jemně tónovaný tmavý povrch',
+      hex: mixColors('#121318', base, 0.08),
+      bgPreview: '#000000',
+      fgText: '#F9FAFB',
+      previewType: 'surface' as const,
+      isDarkBg: true,
     },
     {
       id: 'container-light',
       name: 'Světlý kontejner',
-      role: 'Container Light (16 % tón na bílé)',
-      hex: mixColors('#FFFFFF', base, 0.16),
-      isDark: false,
-    },
-    {
-      id: 'accent-tint',
-      name: 'Akcentní odstín',
-      role: 'Accent Tint (36 % tón na bílé)',
-      hex: mixColors('#FFFFFF', base, 0.36),
-      isDark: false,
-    },
-    {
-      id: 'surface-dark',
-      name: 'Tmavý povrch',
-      role: 'Surface Dark (8 % tón na tmavé)',
-      hex: mixColors('#121316', base, 0.08),
-      isDark: true,
+      role: 'Tónované tlačítko na světlém povrchu',
+      hex: mixColors('#FFFFFF', base, 0.20),
+      bgPreview: '#F8F9FA',
+      fgText: mixColors('#000000', base, 0.38),
+      previewType: 'container' as const,
+      isDarkBg: false,
     },
     {
       id: 'container-dark',
       name: 'Tmavý kontejner',
-      role: 'Container Dark (22 % tón na tmavé)',
-      hex: mixColors('#15171E', base, 0.22),
-      isDark: true,
-    },
-    {
-      id: 'on-color',
-      name: 'Kontrastní barva',
-      role: 'On-Color (vysoký kontrast textu)',
-      hex: getContrastColor(base),
-      isDark: getContrastColor(base) === '#000000',
+      role: 'Tónované tlačítko na tmavém povrchu',
+      hex: mixColors('#161822', base, 0.26),
+      bgPreview: '#0F1015',
+      fgText: mixColors('#FFFFFF', base, 0.15),
+      previewType: 'container' as const,
+      isDarkBg: true,
     },
   ];
 
@@ -618,7 +640,11 @@ export function deriveSingleColorSurfaces(baseHex: string): DerivedColorToken[] 
       rgb: parsed.rgb,
       rgba: parsed.rgba,
       hsl: parsed.hsl,
-      isDark: item.isDark,
+      isDark: item.fgText === '#FFFFFF' || item.isDarkBg,
+      bgPreview: item.bgPreview,
+      fgText: item.fgText,
+      previewType: item.previewType,
+      isDarkBg: item.isDarkBg,
     };
   });
 }
@@ -726,53 +752,35 @@ export function hexToAndroidStudioColor(hex: string): string {
 }
 
 /**
- * Exports Material 3 tokens to Kotlin syntax for Android Studio
+ * Exports only the colors currently configured by user in PaletteMaster to Kotlin syntax for Android Studio
  */
-export function exportToAndroidStudioKotlin(scheme: Material3Scheme): string {
-  return [
-    `val primaryLight = ${hexToAndroidStudioColor(scheme.primaryLight)}`,
-    `val onPrimaryLight = ${hexToAndroidStudioColor(scheme.onPrimaryLight)}`,
-    `val primaryContainerLight = ${hexToAndroidStudioColor(scheme.primaryContainerLight)}`,
-    `val onPrimaryContainerLight = ${hexToAndroidStudioColor(scheme.onPrimaryContainerLight)}`,
-    `val secondaryLight = ${hexToAndroidStudioColor(scheme.secondaryLight)}`,
-    `val onSecondaryLight = ${hexToAndroidStudioColor(scheme.onSecondaryLight)}`,
-    `val secondaryContainerLight = ${hexToAndroidStudioColor(scheme.secondaryContainerLight)}`,
-    `val onSecondaryContainerLight = ${hexToAndroidStudioColor(scheme.onSecondaryContainerLight)}`,
-    `val tertiaryLight = ${hexToAndroidStudioColor(scheme.tertiaryLight)}`,
-    `val onTertiaryLight = ${hexToAndroidStudioColor(scheme.onTertiaryLight)}`,
-    `val tertiaryContainerLight = ${hexToAndroidStudioColor(scheme.tertiaryContainerLight)}`,
-    `val onTertiaryContainerLight = ${hexToAndroidStudioColor(scheme.onTertiaryContainerLight)}`,
-    `val errorLight = ${hexToAndroidStudioColor(scheme.errorLight)}`,
-    `val onErrorLight = ${hexToAndroidStudioColor(scheme.onErrorLight)}`,
-    `val errorContainerLight = ${hexToAndroidStudioColor(scheme.errorContainerLight)}`,
-    `val onErrorContainerLight = ${hexToAndroidStudioColor(scheme.onErrorContainerLight)}`,
-    `val backgroundLight = ${hexToAndroidStudioColor(scheme.backgroundLight)}`,
-    `val onBackgroundLight = ${hexToAndroidStudioColor(scheme.onBackgroundLight)}`,
-    `val surfaceLight = ${hexToAndroidStudioColor(scheme.surfaceLight)}`,
-    `val onSurfaceLight = ${hexToAndroidStudioColor(scheme.onSurfaceLight)}`,
-    `val surfaceVariantLight = ${hexToAndroidStudioColor(scheme.surfaceVariantLight)}`,
-    `val onSurfaceVariantLight = ${hexToAndroidStudioColor(scheme.onSurfaceVariantLight)}`,
-    `val outlineLight = ${hexToAndroidStudioColor(scheme.outlineLight)}`,
-    `val outlineVariantLight = ${hexToAndroidStudioColor(scheme.outlineVariantLight)}`,
-    `val scrimLight = ${hexToAndroidStudioColor(scheme.scrimLight)}`,
-    `val inverseSurfaceLight = ${hexToAndroidStudioColor(scheme.inverseSurfaceLight)}`,
-    `val inverseOnSurfaceLight = ${hexToAndroidStudioColor(scheme.inverseOnSurfaceLight)}`,
-    `val inversePrimaryLight = ${hexToAndroidStudioColor(scheme.inversePrimaryLight)}`,
-    `val surfaceDimLight = ${hexToAndroidStudioColor(scheme.surfaceDimLight)}`,
-    `val surfaceBrightLight = ${hexToAndroidStudioColor(scheme.surfaceBrightLight)}`,
-    `val surfaceContainerLowestLight = ${hexToAndroidStudioColor(scheme.surfaceContainerLowestLight)}`,
-    `val surfaceContainerLowLight = ${hexToAndroidStudioColor(scheme.surfaceContainerLowLight)}`,
-    `val surfaceContainerLight = ${hexToAndroidStudioColor(scheme.surfaceContainerLight)}`,
-    `val surfaceContainerHighLight = ${hexToAndroidStudioColor(scheme.surfaceContainerHighLight)}`,
-    `val surfaceContainerHighestLight = ${hexToAndroidStudioColor(scheme.surfaceContainerHighestLight)}`,
-  ].join('\n');
+export function exportToAndroidStudioKotlin(paletteColors: (string | null)[]): string {
+  const roles = ['primary', 'secondary', 'tertiary', 'error', 'surface'];
+  const lines: string[] = [];
+
+  paletteColors.forEach((color, idx) => {
+    if (color && color.trim()) {
+      const roleName = roles[idx] || `color${idx + 1}`;
+      lines.push(`val ${roleName} = ${hexToAndroidStudioColor(color)}`);
+    }
+  });
+
+  return lines.join('\n');
 }
 
 /**
- * Exports Material 3 tokens to CSS Variables syntax
+ * Exports only the colors currently configured by user in PaletteMaster to CSS Variables syntax
  */
-export function exportToCssVariables(scheme: Material3Scheme): string {
-  const toKebab = (str: string) => str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
-  const lines = Object.entries(scheme).map(([key, val]) => `  --${toKebab(key)}: ${val};`);
+export function exportToCssVariables(paletteColors: (string | null)[]): string {
+  const roles = ['primary', 'secondary', 'tertiary', 'error', 'surface'];
+  const lines: string[] = [];
+
+  paletteColors.forEach((color, idx) => {
+    if (color && color.trim()) {
+      const roleName = roles[idx] || `color-${idx + 1}`;
+      lines.push(`  --${roleName}: ${color.toLowerCase()};`);
+    }
+  });
+
   return `:root {\n${lines.join('\n')}\n}`;
 }

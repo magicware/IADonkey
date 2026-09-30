@@ -288,31 +288,58 @@ export const PaletteDetailModal: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Derived Surface Swatches */}
+                {/* Derived Surface & Button Previews */}
                 <div className="pt-2 border-t border-white/[0.06]">
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-                      Odvozené povrchy a tóny
+                      Náhled tlačítek a povrchů ({role.name})
                     </span>
-                    <span className="text-[10px] text-gray-500">Kliknutím zobrazit formáty</span>
+                    <span className="text-[10px] text-gray-500">Kliknutím zkopírovat</span>
                   </div>
-                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
                     {derived.map((item) => (
-                      <button
+                      <div
                         key={item.id}
-                        type="button"
                         onClick={() => setActiveOptionsColor({ name: `${role.name} – ${item.name}`, token: item })}
-                        className="group relative h-8 rounded-lg border border-white/10 shadow-sm flex flex-col items-center justify-center transition hover:scale-105 active:scale-95 cursor-pointer overflow-hidden p-0.5"
-                        style={{ backgroundColor: item.hex }}
-                        title={`${item.name} (${item.role}): ${item.hex} – Kliknutím kopírovat`}
+                        className="p-2 rounded-xl transition cursor-pointer border border-white/10 hover:border-white/30 group relative overflow-hidden flex flex-col justify-between shadow-sm"
+                        style={{ backgroundColor: item.bgPreview }}
+                        title={`${item.name} (${item.role}): ${item.hex} – Kliknutím zkopírovat`}
                       >
-                        <span
-                          className="text-[9px] font-mono font-bold leading-tight truncate px-1 text-center"
-                          style={{ color: item.isDark ? '#FFF' : '#000' }}
-                        >
-                          {item.name.split(' ')[0]}
-                        </span>
-                      </button>
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span
+                            className="text-[9px] font-semibold tracking-wide truncate"
+                            style={{ color: item.isDarkBg ? '#9CA3AF' : '#4B5563' }}
+                          >
+                            {item.name.split(' ')[0]}
+                          </span>
+                          <span
+                            className="text-[9px] font-mono font-bold"
+                            style={{ color: item.isDarkBg ? '#E5E7EB' : '#1F2937' }}
+                          >
+                            {item.hex}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-center py-0.5">
+                          {item.previewType === 'surface' ? (
+                            <div
+                              className="w-full py-1 px-1.5 rounded-lg border border-black/10 flex items-center justify-center gap-1 text-[11px] font-semibold shadow-sm"
+                              style={{ backgroundColor: item.hex, color: item.fgText }}
+                            >
+                              <span className="material-symbols-outlined text-[12px]">layers</span>
+                              <span className="truncate">Povrch</span>
+                            </div>
+                          ) : (
+                            <div
+                              className="w-full py-1 px-1.5 rounded-lg flex items-center justify-center gap-1 text-[11px] font-semibold shadow-sm group-hover:scale-[1.02] transition"
+                              style={{ backgroundColor: item.hex, color: item.fgText }}
+                            >
+                              <span className="material-symbols-outlined text-[12px]">smart_button</span>
+                              <span className="truncate">{item.previewType === 'container' ? 'Kontejner' : 'Tlačítko'}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -328,12 +355,11 @@ export const PaletteDetailModal: React.FC = () => {
           <button
             type="button"
             onClick={() => {
-              const scheme = generateMaterial3Scheme(colors);
-              const text = exportToAndroidStudioKotlin(scheme);
+              const text = exportToAndroidStudioKotlin(colors);
               handleCopy(text, 'android-studio');
             }}
             className="px-3.5 py-2 bg-white/[0.05] hover:bg-white/[0.1] text-gray-300 hover:text-white rounded-full text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
-            title="Zkopírovat 34 Material 3 tokenů pro Android Studio (Kotlin Color tokeny)"
+            title="Zkopírovat barvy nastavené v paletě pro Android Studio (Kotlin Color tokeny)"
           >
             <span className="material-symbols-outlined text-sm text-emerald-400">android</span>
             <span>{copiedKey === 'android-studio' ? 'Zkopírováno v Kotlinu!' : 'Kopírovat pro Android Studio'}</span>
@@ -342,12 +368,11 @@ export const PaletteDetailModal: React.FC = () => {
           <button
             type="button"
             onClick={() => {
-              const scheme = generateMaterial3Scheme(colors);
-              const text = exportToCssVariables(scheme);
+              const text = exportToCssVariables(colors);
               handleCopy(text, 'all-css');
             }}
             className="px-3.5 py-2 bg-white/[0.05] hover:bg-white/[0.1] text-gray-300 hover:text-white rounded-full text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
-            title="Zkopírovat Material 3 paletu jako CSS proměnné"
+            title="Zkopírovat barvy nastavené v paletě jako CSS proměnné"
           >
             <span className="material-symbols-outlined text-sm text-rose-400">code</span>
             <span>{copiedKey === 'all-css' ? 'Zkopírováno v CSS!' : 'Kopírovat CSS proměnné'}</span>
@@ -377,8 +402,8 @@ export const PaletteDetailModal: React.FC = () => {
             className="w-full max-w-sm bg-[#181926] border border-white/15 rounded-3xl shadow-2xl p-5 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-1 border-b border-white/10">
+            {/* Modal Header without divider */}
+            <div className="flex items-center justify-between pb-1">
               <div className="flex items-center gap-3 min-w-0">
                 <div
                   className="w-9 h-9 rounded-2xl border border-white/20 shrink-0 shadow-inner flex items-center justify-center"

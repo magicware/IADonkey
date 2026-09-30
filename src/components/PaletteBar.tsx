@@ -306,16 +306,28 @@ export const PaletteBar: React.FC = () => {
           </button>
         </div>
 
+        {/* Action: Uložit a otevřít (Save Button with Enter kbd) */}
+        <div className="flex items-center shrink-0">
+          <button
+            type="button"
+            onClick={handleOpenDetail}
+            className="h-8 flex items-center gap-1.5 px-3 rounded-full text-xs font-semibold transition-all shrink-0 shadow-sm bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white active:scale-95 cursor-pointer"
+            title="Uložit paletu a otevřít detail (Enter)"
+          >
+            <span className="material-symbols-outlined text-[16px]">check</span>
+            <span>Uložit</span>
+            <kbd className="h-[18px] px-1.5 bg-black/25 text-white/90 rounded-full font-mono text-[9px] leading-none flex items-center justify-center">
+              Enter
+            </kbd>
+          </button>
+        </div>
+
         {/* Shortcuts pill (Spotlight kbd badges, Unified h-8) */}
         <div className="h-8 flex items-center gap-1.5 px-2 text-[11px] text-gray-400 font-sans shrink-0 border-l border-white/10">
           <kbd className="h-[20px] px-2 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[10px] leading-none flex items-center justify-center">
             Space
           </kbd>
           <span className="text-[11px] text-gray-300">nabrat</span>
-          <kbd className="h-[20px] px-2 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[10px] leading-none flex items-center justify-center ml-1">
-            Enter
-          </kbd>
-          <span className="text-[11px] text-gray-300">uložit a otevřít</span>
           <kbd className="h-[20px] px-2 bg-white/[0.08] text-gray-300 rounded-full font-mono text-[10px] leading-none flex items-center justify-center ml-1">
             Esc
           </kbd>
