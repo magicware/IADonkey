@@ -2129,7 +2129,6 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
       } else if (e.key === 'Escape') {
         e.preventDefault();
         exitPaletteMode();
-        handleClose();
         return;
       }
       return;
@@ -3310,14 +3309,14 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
-                onClick={isCreatingPalette ? () => { setIsCreatingPalette(false); setQuery(''); } : handleClose}
+                onClick={isCreatingPalette ? () => { setIsCreatingPalette(false); setQuery(''); } : exitPaletteMode}
                 className="flex items-center gap-1.5 text-[10px] text-gray-400 hover:text-white font-mono cursor-pointer transition select-none"
-                title={isCreatingPalette ? "Zpět (Esc)" : "Zavřít okno (Esc)"}
+                title="Zpět (Esc)"
               >
                 <kbd className="inline-flex items-center justify-center px-2 py-0.5 bg-white/[0.08] hover:bg-white/[0.14] text-gray-200 rounded-full font-mono text-[9px] font-bold leading-none whitespace-nowrap">
                   Esc
                 </kbd>
-                <span className="text-gray-300">{isCreatingPalette ? 'Zpět' : 'Zavřít'}</span>
+                <span className="text-gray-300">Zpět</span>
               </button>
             </div>
           </div>
