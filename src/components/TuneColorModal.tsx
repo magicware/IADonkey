@@ -88,8 +88,16 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
   const originalSurfaces = deriveSingleColorSurfaces(initialParsed.hex);
   const newSurfaces = deriveSingleColorSurfaces(hex);
 
-  const handleCopyText = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
+  const handleCopyText = async (text: string, key: string, notif?: { title?: string; body?: string }) => {
+    try {
+      if (window.electronAPI?.copyToClipboard) {
+        await window.electronAPI.copyToClipboard(text, notif);
+      } else {
+        await navigator.clipboard.writeText(text);
+      }
+    } catch {
+      await navigator.clipboard.writeText(text);
+    }
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 1800);
   };
@@ -283,7 +291,12 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
               return (
                 <div
                   key={fmt.key}
-                  onClick={() => handleCopyText(fmt.value, fmt.key)}
+                  onClick={() =>
+                    handleCopyText(fmt.value, fmt.key, {
+                      title: source === 'palette' ? 'PaletteMaster – Barva zkopírována' : 'ColorMaster – Barva zkopírována',
+                      body: `${fmt.label}: ${fmt.value} byl zkopírován do schránky.`,
+                    })
+                  }
                   className={`bg-white/[0.03] hover:bg-white/[0.07] active:bg-white/[0.12] rounded-2xl p-3 flex items-center justify-between cursor-pointer transition group select-none ${
                     fmt.spanCol ? 'col-span-2 sm:col-span-1' : ''
                   }`}
@@ -557,7 +570,12 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
                   <button
                     key={fmt.label}
                     type="button"
-                    onClick={() => handleCopyText(fmt.value, `opt-${fmt.label}`)}
+                    onClick={() =>
+                      handleCopyText(fmt.value, `opt-${fmt.label}`, {
+                        title: source === 'palette' ? 'PaletteMaster – Formát zkopírován' : 'ColorMaster – Formát zkopírován',
+                        body: `${fmt.label}: ${fmt.value} byl zkopírován do schránky.`,
+                      })
+                    }
                     className="w-full p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] active:bg-white/[0.12] transition flex items-center justify-between cursor-pointer border border-transparent hover:border-white/10 group text-left"
                   >
                     <div className="flex items-center gap-2 min-w-0">

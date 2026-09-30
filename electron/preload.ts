@@ -237,6 +237,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Systémové notifikace
   sendTestNotification: (variant?: 'success' | 'error'): Promise<boolean> => ipcRenderer.invoke('send-test-notification', variant),
+  copyToClipboard: (text: string, options?: { title?: string; body?: string }): Promise<boolean> =>
+    ipcRenderer.invoke('copy-to-clipboard', text, options),
 
   // QuickCap (dříve FastSnap) API
   startQuickCap: (): Promise<void> => ipcRenderer.invoke('quickcap-start'),

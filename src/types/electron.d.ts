@@ -194,6 +194,7 @@ declare global {
 
       // Systémové notifikace
       sendTestNotification?: (variant?: 'success' | 'error') => Promise<boolean>;
+      copyToClipboard?: (text: string, options?: { title?: string; body?: string }) => Promise<boolean>;
 
       // QuickCap (dříve FastSnap) API
       startQuickCap?: () => Promise<void>;

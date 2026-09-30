@@ -252,6 +252,19 @@ export const PaletteBar: React.FC = () => {
                     setActiveSlot(idx);
                   }
                 }}
+                onContextMenu={(e) => {
+                  if (hasColor && color) {
+                    e.preventDefault();
+                    if (window.electronAPI?.copyToClipboard) {
+                      window.electronAPI.copyToClipboard(color, {
+                        title: 'PaletteMaster – Barva zkopírována',
+                        body: `Barva pozice ${idx + 1} (${color}) byla zkopírována do schránky.`,
+                      });
+                    } else {
+                      navigator.clipboard.writeText(color);
+                    }
+                  }
+                }}
                 className={`relative w-8 h-8 rounded-full transition-all flex items-center justify-center cursor-pointer shrink-0 ${
                   isActive ? 'scale-105 shadow-md' : 'hover:scale-105'
                 } ${
@@ -266,7 +279,7 @@ export const PaletteBar: React.FC = () => {
                 style={hasColor ? { backgroundColor: color! } : undefined}
                 title={
                   hasColor
-                    ? `Pozice ${idx + 1} (${role.name} – ${role.desc}): ${color} (${isActive ? 'aktivní, klik zruší výběr' : 'klik = vybrat'})`
+                    ? `Pozice ${idx + 1} (${role.name} – ${role.desc}): ${color} (${isActive ? 'aktivní, klik zruší výběr' : 'klik = vybrat'}, pravý klik = zkopírovat)`
                     : `Pozice ${idx + 1} (${role.name} – ${role.desc}): Prázdné (${isActive ? 'aktivní, klik zruší výběr' : 'klik = vybrat'})`
                 }
               >

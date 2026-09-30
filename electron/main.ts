@@ -1256,6 +1256,25 @@ function setupIpcHandlers() {
     });
   });
 
+  ipcMain.handle('copy-to-clipboard', (_event, text: string, options?: { title?: string; body?: string }) => {
+    clipboard.writeText(text);
+    const title = options?.title || 'Zkopírováno do schránky';
+    diagnosticsService.logAction({
+      type: 'action',
+      title,
+      details: text,
+      status: 'success',
+    });
+    const truncated = text.length > 80 ? `${text.slice(0, 80)}...` : text;
+    const body = options?.body || `Hodnota "${truncated}" byla zkopírována do schránky.`;
+    notificationService.show({
+      type: 'clipboard',
+      title,
+      body,
+    });
+    return true;
+  });
+
   // EasyClip IPC Handlers
   ipcMain.handle('easyclip-get-items', () => {
     return easyClipService.getItems();

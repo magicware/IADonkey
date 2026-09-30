@@ -3429,7 +3429,21 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                                   : 'border-dashed border-white/20 bg-white/[0.04]'
                               }`}
                               style={c ? { backgroundColor: c } : undefined}
-                              title={c || `Pozice ${slotIdx + 1} prázdná`}
+                              title={c ? `${c} (pravý klik = zkopírovat)` : `Pozice ${slotIdx + 1} prázdná`}
+                              onContextMenu={(e) => {
+                                if (c) {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (window.electronAPI?.copyToClipboard) {
+                                    window.electronAPI.copyToClipboard(c, {
+                                      title: 'PaletteMaster – Barva zkopírována',
+                                      body: `Barva "${c}" z palety „${pal.name}“ byla zkopírována do schránky.`,
+                                    });
+                                  } else {
+                                    navigator.clipboard.writeText(c);
+                                  }
+                                }
+                              }}
                             />
                           );
                         })}

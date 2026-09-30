@@ -88,8 +88,16 @@ export const PaletteDetailModal: React.FC = () => {
     }
   }, [palette]);
 
-  const handleCopy = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
+  const handleCopy = async (text: string, key: string, notif?: { title?: string; body?: string }) => {
+    try {
+      if (window.electronAPI?.copyToClipboard) {
+        await window.electronAPI.copyToClipboard(text, notif);
+      } else {
+        await navigator.clipboard.writeText(text);
+      }
+    } catch {
+      await navigator.clipboard.writeText(text);
+    }
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 1800);
   };
@@ -266,7 +274,12 @@ export const PaletteDetailModal: React.FC = () => {
                         <span className="text-xs font-mono font-bold text-white select-all">{hex}</span>
                         <button
                           type="button"
-                          onClick={() => handleCopy(hex, `hex-${idx}`)}
+                          onClick={() =>
+                            handleCopy(hex, `hex-${idx}`, {
+                              title: 'PaletteMaster – Barva zkopírována',
+                              body: `Kód barvy ${hex} byl zkopírován do schránky.`,
+                            })
+                          }
                           className="p-0.5 text-gray-400 hover:text-white transition cursor-pointer"
                           title="Kopírovat HEX"
                         >
@@ -284,7 +297,12 @@ export const PaletteDetailModal: React.FC = () => {
                         <span className="select-all">{rgb}</span>
                         <button
                           type="button"
-                          onClick={() => handleCopy(rgb, `rgb-${idx}`)}
+                          onClick={() =>
+                            handleCopy(rgb, `rgb-${idx}`, {
+                              title: 'PaletteMaster – Barva zkopírována',
+                              body: `Odstín ${rgb} byl zkopírován do schránky.`,
+                            })
+                          }
                           className="p-0.5 text-gray-500 hover:text-white transition cursor-pointer"
                           title="Kopírovat RGB"
                         >
@@ -434,7 +452,10 @@ export const PaletteDetailModal: React.FC = () => {
             type="button"
             onClick={() => {
               const text = exportToAndroidStudioKotlin(colors);
-              handleCopy(text, 'android-studio');
+              handleCopy(text, 'android-studio', {
+                title: 'PaletteMaster – Android Studio kód',
+                body: 'Definice 35 barev motivu pro Android Studio byla zkopírována do schránky.',
+              });
             }}
             className="px-3.5 py-2 bg-white/[0.05] hover:bg-white/[0.1] text-gray-300 hover:text-white rounded-full text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
             title="Zkopírovat barvy nastavené v paletě pro Android Studio (Kotlin Color tokeny)"
@@ -447,7 +468,10 @@ export const PaletteDetailModal: React.FC = () => {
             type="button"
             onClick={() => {
               const text = exportToCssVariables(colors);
-              handleCopy(text, 'all-css');
+              handleCopy(text, 'all-css', {
+                title: 'PaletteMaster – CSS proměnné',
+                body: 'Definice 35 CSS proměnných motivu byla zkopírována do schránky.',
+              });
             }}
             className="px-3.5 py-2 bg-white/[0.05] hover:bg-white/[0.1] text-gray-300 hover:text-white rounded-full text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
             title="Zkopírovat barvy nastavené v paletě jako CSS proměnné"
@@ -520,7 +544,12 @@ export const PaletteDetailModal: React.FC = () => {
                   <button
                     key={fmt.label}
                     type="button"
-                    onClick={() => handleCopy(fmt.value, `opt-${fmt.label}`)}
+                    onClick={() =>
+                      handleCopy(fmt.value, `opt-${fmt.label}`, {
+                        title: 'PaletteMaster – Formát zkopírován',
+                        body: `${fmt.label}: ${fmt.value} byl zkopírován do schránky.`,
+                      })
+                    }
                     className="w-full p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] active:bg-white/[0.12] transition flex items-center justify-between cursor-pointer border border-transparent hover:border-white/10 group text-left"
                   >
                     <div className="flex items-center gap-2 min-w-0">
