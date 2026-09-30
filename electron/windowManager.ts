@@ -219,6 +219,10 @@ export class WindowManager {
     this.mainWindow.hide();
   }
 
+  public resetAndHideSpotlight(): void {
+    this.hideImmediately();
+  }
+
   public getMainWindowHandle(): number {
     if (!this.mainWindow || this.mainWindow.isDestroyed()) return 0;
     try {
@@ -634,15 +638,17 @@ export class WindowManager {
     }
   }
 
-  public openTuneColorWindow(params: { initialColor: string }): BrowserWindow {
+  public openTuneColorWindow(params: { initialColor: string; source?: string; slotIndex?: number }): BrowserWindow {
     const initialColor = params.initialColor || '#6366f1';
-    const query = new URLSearchParams({ color: initialColor }).toString();
+    const source = params.source || 'spotlight';
+    const slotStr = params.slotIndex !== undefined ? String(params.slotIndex) : '';
+    const query = new URLSearchParams({ color: initialColor, source, slotIndex: slotStr }).toString();
 
     if (this.tuneColorWindow && !this.tuneColorWindow.isDestroyed()) {
       if (this.tuneColorWindow.isMinimized()) this.tuneColorWindow.restore();
       this.tuneColorWindow.show();
       this.tuneColorWindow.focus();
-      this.tuneColorWindow.webContents.send('tune-color-init', { color: initialColor });
+      this.tuneColorWindow.webContents.send('tune-color-init', { color: initialColor, source, slotIndex: params.slotIndex });
       return this.tuneColorWindow;
     }
 
@@ -653,12 +659,12 @@ export class WindowManager {
       : path.join(__dirname, 'preload.js');
 
     this.tuneColorWindow = new BrowserWindow({
-      width: 520,
-      height: 480,
-      minWidth: 460,
-      minHeight: 420,
-      maxWidth: 640,
-      maxHeight: 600,
+      width: 540,
+      height: 640,
+      minWidth: 480,
+      minHeight: 460,
+      maxWidth: 720,
+      maxHeight: 850,
       resizable: true,
       title: 'IADonkey – Doladění barvy',
       icon: getAppIcon(),
@@ -702,9 +708,6 @@ export class WindowManager {
 
     this.tuneColorWindow.on('closed', () => {
       this.tuneColorWindow = null;
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        this.showSpotlight();
-      }
     });
 
     return this.tuneColorWindow;

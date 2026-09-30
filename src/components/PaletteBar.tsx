@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ColorPalette } from '../types';
 
+const PALETTE_ROLES = [
+  { name: 'Primary', desc: 'Hlavní barva' },
+  { name: 'Secondary', desc: 'Doplňková barva' },
+  { name: 'Tertiary', desc: 'Akcentní barva' },
+  { name: 'Error', desc: 'Chybová barva' },
+  { name: 'Surface', desc: 'Neutrální / Povrch' },
+];
+
 export const PaletteBar: React.FC = () => {
   const [paletteId, setPaletteId] = useState<string>('');
   const [paletteName, setPaletteName] = useState<string>('');
@@ -36,6 +44,21 @@ export const PaletteBar: React.FC = () => {
       await window.electronAPI.savePalette(payload);
     }
   }, []);
+
+  // Listen for direct tune color updates
+  useEffect(() => {
+    if (window.electronAPI?.onTuneColorApplied) {
+      return window.electronAPI.onTuneColorApplied(async ({ color, slotIndex }) => {
+        const targetSlot = slotIndex !== undefined ? slotIndex : activeSlotRef.current;
+        if (targetSlot !== null && targetSlot >= 0 && targetSlot < 5) {
+          const workingColors = [...colorsRef.current];
+          workingColors[targetSlot] = color;
+          setColors(workingColors);
+          await persistPalette(workingColors);
+        }
+      });
+    }
+  }, [persistPalette]);
 
   // Initialize from URL search or hash
   useEffect(() => {
@@ -214,6 +237,7 @@ export const PaletteBar: React.FC = () => {
           {colors.map((color, idx) => {
             const isActive = idx === activeSlot;
             const hasColor = Boolean(color);
+            const role = PALETTE_ROLES[idx] || { name: `Pozice ${idx + 1}`, desc: '' };
 
             return (
               <button
@@ -242,8 +266,8 @@ export const PaletteBar: React.FC = () => {
                 style={hasColor ? { backgroundColor: color! } : undefined}
                 title={
                   hasColor
-                    ? `Pozice ${idx + 1}: ${color} (${isActive ? 'aktivní, klik zruší výběr' : 'klik = vybrat'})`
-                    : `Pozice ${idx + 1}: Prázdné (${isActive ? 'aktivní, klik zruší výběr' : 'klik = vybrat'})`
+                    ? `Pozice ${idx + 1} (${role.name} – ${role.desc}): ${color} (${isActive ? 'aktivní, klik zruší výběr' : 'klik = vybrat'})`
+                    : `Pozice ${idx + 1} (${role.name} – ${role.desc}): Prázdné (${isActive ? 'aktivní, klik zruší výběr' : 'klik = vybrat'})`
                 }
               >
                 {!hasColor && (

@@ -2,6 +2,7 @@ import type { LauncherAction, LauncherItem } from '../types';
 
 export interface ParsedColor {
   hex: string;
+  hex8: string;
   hexNoHash: string;
   rgb: string;
   rgba: string;
@@ -26,6 +27,15 @@ function clamp(val: number, min: number, max: number): number {
 export function rgbToHex(r: number, g: number, b: number): string {
   const toHex = (n: number) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0');
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+}
+
+/**
+ * Converts RGBA numbers to 8-digit hex string with #
+ */
+export function rgbaToHex8(r: number, g: number, b: number, a: number = 1): string {
+  const toHex = (n: number) => clamp(Math.round(n), 0, 255).toString(16).padStart(2, '0');
+  const aHex = clamp(Math.round(a * 255), 0, 255).toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}${aHex}`.toUpperCase();
 }
 
 /**
@@ -133,10 +143,12 @@ export function parseColorQuery(query: string): ParsedColor | null {
     }
 
     const hexStandard = rgbToHex(r, g, b);
+    const hex8Standard = rgbaToHex8(r, g, b, a);
     const hsl = rgbToHsl(r, g, b);
 
     return {
       hex: hexStandard,
+      hex8: hex8Standard,
       hexNoHash: hexStandard.replace('#', ''),
       rgb: `rgb(${r}, ${g}, ${b})`,
       rgba: `rgba(${r}, ${g}, ${b}, ${a})`,
@@ -158,10 +170,12 @@ export function parseColorQuery(query: string): ParsedColor | null {
     const a = rgbMatch[4] !== undefined ? clamp(parseFloat(rgbMatch[4]), 0, 1) : 1;
 
     const hexStandard = rgbToHex(r, g, b);
+    const hex8Standard = rgbaToHex8(r, g, b, a);
     const hsl = rgbToHsl(r, g, b);
 
     return {
       hex: hexStandard,
+      hex8: hex8Standard,
       hexNoHash: hexStandard.replace('#', ''),
       rgb: `rgb(${r}, ${g}, ${b})`,
       rgba: `rgba(${r}, ${g}, ${b}, ${a})`,
@@ -184,9 +198,11 @@ export function parseColorQuery(query: string): ParsedColor | null {
 
     const rgb = hslToRgb(h, s, l);
     const hexStandard = rgbToHex(rgb.r, rgb.g, rgb.b);
+    const hex8Standard = rgbaToHex8(rgb.r, rgb.g, rgb.b, a);
 
     return {
       hex: hexStandard,
+      hex8: hex8Standard,
       hexNoHash: hexStandard.replace('#', ''),
       rgb: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`,
       rgba: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${a})`,
@@ -207,9 +223,11 @@ export function parseColorQuery(query: string): ParsedColor | null {
  */
 export function formatColorValue(
   color: ParsedColor,
-  format: 'hex' | 'hex-no-hash' | 'rgb' | 'rgba' | 'hsl' = 'hex'
+  format: 'hex' | 'hex8' | 'hex-no-hash' | 'rgb' | 'rgba' | 'hsl' = 'hex'
 ): string {
   switch (format) {
+    case 'hex8':
+      return color.hex8;
     case 'hex-no-hash':
       return color.hexNoHash;
     case 'rgb':
@@ -229,7 +247,7 @@ export function formatColorValue(
  */
 export function createColorLauncherItem(
   color: ParsedColor,
-  defaultFormat: 'hex' | 'hex-no-hash' | 'rgb' | 'rgba' | 'hsl' = 'hex'
+  defaultFormat: 'hex' | 'hex8' | 'hex-no-hash' | 'rgb' | 'rgba' | 'hsl' = 'hex'
 ): LauncherItem {
   const primaryCopyValue = formatColorValue(color, defaultFormat);
 
@@ -238,6 +256,12 @@ export function createColorLauncherItem(
       name: 'Zkopírovat HEX',
       action: 'copy',
       location: color.hex,
+      icon: 'content_copy',
+    },
+    {
+      name: 'Zkopírovat HEX8 (s průhledností)',
+      action: 'copy',
+      location: color.hex8,
       icon: 'content_copy',
     },
     {
@@ -293,7 +317,7 @@ export function createColorLauncherItem(
     colorPreview: color.hex,
     priority: -1.2,
     actions,
-    shortcuts: ['barva', 'color', color.rgb, color.rgba, color.hsl, color.hexNoHash],
+    shortcuts: ['barva', 'color', color.hex8, color.rgb, color.rgba, color.hsl, color.hexNoHash],
   };
 }
 
@@ -469,4 +493,286 @@ export async function pickScreenColor(options?: { noClipboard?: boolean; noSpotl
   }
 
   return null;
+}
+
+/**
+ * Calculates relative luminance of RGB components
+ */
+export function getLuminance(r: number, g: number, b: number): number {
+  const [lr, lg, lb] = [r, g, b].map((v) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
+}
+
+/**
+ * Returns black (#000000) or white (#FFFFFF) for optimal contrast on given background
+ */
+export function getContrastColor(hex: string): string {
+  const p = parseColorQuery(hex);
+  if (!p) return '#FFFFFF';
+  return getLuminance(p.r, p.g, p.b) > 0.4 ? '#000000' : '#FFFFFF';
+}
+
+/**
+ * Mixes two colors by given weight (0 = all color1, 1 = all color2)
+ */
+export function mixColors(color1: string, color2: string, weight: number): string {
+  const p1 = parseColorQuery(color1);
+  const p2 = parseColorQuery(color2);
+  if (!p1 || !p2) return color1;
+  const w = Math.min(1, Math.max(0, weight));
+  const r = Math.round(p1.r * (1 - w) + p2.r * w);
+  const g = Math.round(p1.g * (1 - w) + p2.g * w);
+  const b = Math.round(p1.b * (1 - w) + p2.b * w);
+  return rgbToHex(r, g, b);
+}
+
+/**
+ * Adjusts HSL channels of a color
+ */
+export function adjustHsl(color: string, deltaH: number, deltaS: number, deltaL: number): string {
+  const p = parseColorQuery(color);
+  if (!p) return color;
+  const hsl = rgbToHsl(p.r, p.g, p.b);
+  const newH = (hsl.h + deltaH + 360) % 360;
+  const newS = Math.min(100, Math.max(0, hsl.s + deltaS));
+  const newL = Math.min(100, Math.max(0, hsl.l + deltaL));
+  const rgb = hslToRgb(newH, newS, newL);
+  return rgbToHex(rgb.r, rgb.g, rgb.b);
+}
+
+export interface DerivedColorToken {
+  id: string;
+  name: string;
+  role: string;
+  hex: string;
+  hex8: string;
+  rgb: string;
+  rgba: string;
+  hsl: string;
+  isDark?: boolean;
+}
+
+/**
+ * Derives surface and container colors from a single base color
+ */
+export function deriveSingleColorSurfaces(baseHex: string): DerivedColorToken[] {
+  const p = parseColorQuery(baseHex) || parseColorQuery('#6366F1')!;
+  const base = p.hex;
+
+  const rawList = [
+    {
+      id: 'surface-light',
+      name: 'Světlý povrch',
+      role: 'Surface Light (5 % tón na bílé)',
+      hex: mixColors('#FFFFFF', base, 0.05),
+      isDark: false,
+    },
+    {
+      id: 'container-light',
+      name: 'Světlý kontejner',
+      role: 'Container Light (16 % tón na bílé)',
+      hex: mixColors('#FFFFFF', base, 0.16),
+      isDark: false,
+    },
+    {
+      id: 'accent-tint',
+      name: 'Akcentní odstín',
+      role: 'Accent Tint (36 % tón na bílé)',
+      hex: mixColors('#FFFFFF', base, 0.36),
+      isDark: false,
+    },
+    {
+      id: 'surface-dark',
+      name: 'Tmavý povrch',
+      role: 'Surface Dark (8 % tón na tmavé)',
+      hex: mixColors('#121316', base, 0.08),
+      isDark: true,
+    },
+    {
+      id: 'container-dark',
+      name: 'Tmavý kontejner',
+      role: 'Container Dark (22 % tón na tmavé)',
+      hex: mixColors('#15171E', base, 0.22),
+      isDark: true,
+    },
+    {
+      id: 'on-color',
+      name: 'Kontrastní barva',
+      role: 'On-Color (vysoký kontrast textu)',
+      hex: getContrastColor(base),
+      isDark: getContrastColor(base) === '#000000',
+    },
+  ];
+
+  return rawList.map((item) => {
+    const parsed = parseColorQuery(item.hex)!;
+    return {
+      id: item.id,
+      name: item.name,
+      role: item.role,
+      hex: parsed.hex,
+      hex8: parsed.hex8,
+      rgb: parsed.rgb,
+      rgba: parsed.rgba,
+      hsl: parsed.hsl,
+      isDark: item.isDark,
+    };
+  });
+}
+
+export interface Material3Scheme {
+  primaryLight: string;
+  onPrimaryLight: string;
+  primaryContainerLight: string;
+  onPrimaryContainerLight: string;
+  secondaryLight: string;
+  onSecondaryLight: string;
+  secondaryContainerLight: string;
+  onSecondaryContainerLight: string;
+  tertiaryLight: string;
+  onTertiaryLight: string;
+  tertiaryContainerLight: string;
+  onTertiaryContainerLight: string;
+  errorLight: string;
+  onErrorLight: string;
+  errorContainerLight: string;
+  onErrorContainerLight: string;
+  backgroundLight: string;
+  onBackgroundLight: string;
+  surfaceLight: string;
+  onSurfaceLight: string;
+  surfaceVariantLight: string;
+  onSurfaceVariantLight: string;
+  outlineLight: string;
+  outlineVariantLight: string;
+  scrimLight: string;
+  inverseSurfaceLight: string;
+  inverseOnSurfaceLight: string;
+  inversePrimaryLight: string;
+  surfaceDimLight: string;
+  surfaceBrightLight: string;
+  surfaceContainerLowestLight: string;
+  surfaceContainerLowLight: string;
+  surfaceContainerLight: string;
+  surfaceContainerHighLight: string;
+  surfaceContainerHighestLight: string;
+}
+
+/**
+ * Generates full Material 3 Color Scheme from 5 palette slots
+ */
+export function generateMaterial3Scheme(paletteColors: (string | null)[]): Material3Scheme {
+  const primary = paletteColors[0] || '#004E9F';
+  const secondary = paletteColors[1] || adjustHsl(primary, 0, -25, -12);
+  const tertiary = paletteColors[2] || adjustHsl(primary, 60, -15, 0);
+  const error = paletteColors[3] || '#BA1A1A';
+  const surfaceBase = paletteColors[4] || mixColors('#F9F9FF', primary, 0.05);
+
+  return {
+    primaryLight: primary,
+    onPrimaryLight: getContrastColor(primary),
+    primaryContainerLight: mixColors('#FFFFFF', primary, 0.22),
+    onPrimaryContainerLight: mixColors('#000000', primary, 0.35),
+
+    secondaryLight: secondary,
+    onSecondaryLight: getContrastColor(secondary),
+    secondaryContainerLight: mixColors('#FFFFFF', secondary, 0.22),
+    onSecondaryContainerLight: mixColors('#000000', secondary, 0.35),
+
+    tertiaryLight: tertiary,
+    onTertiaryLight: getContrastColor(tertiary),
+    tertiaryContainerLight: mixColors('#FFFFFF', tertiary, 0.22),
+    onTertiaryContainerLight: mixColors('#000000', tertiary, 0.35),
+
+    errorLight: error,
+    onErrorLight: getContrastColor(error),
+    errorContainerLight: mixColors('#FFFFFF', error, 0.16),
+    onErrorContainerLight: mixColors('#000000', error, 0.38),
+
+    backgroundLight: mixColors('#FFFFFF', surfaceBase, 0.03),
+    onBackgroundLight: mixColors('#000000', surfaceBase, 0.08),
+    surfaceLight: mixColors('#FFFFFF', surfaceBase, 0.03),
+    onSurfaceLight: mixColors('#000000', surfaceBase, 0.08),
+    surfaceVariantLight: mixColors('#FFFFFF', surfaceBase, 0.14),
+    onSurfaceVariantLight: mixColors('#000000', surfaceBase, 0.32),
+    outlineLight: mixColors('#808080', surfaceBase, 0.15),
+    outlineVariantLight: mixColors('#C0C0C0', surfaceBase, 0.12),
+    scrimLight: '#000000',
+    inverseSurfaceLight: mixColors('#1A1C20', surfaceBase, 0.06),
+    inverseOnSurfaceLight: mixColors('#F0F2F8', surfaceBase, 0.04),
+    inversePrimaryLight: adjustHsl(primary, 0, 15, 35),
+    surfaceDimLight: mixColors('#D0D2DC', surfaceBase, 0.08),
+    surfaceBrightLight: mixColors('#FFFFFF', surfaceBase, 0.02),
+    surfaceContainerLowestLight: '#FFFFFF',
+    surfaceContainerLowLight: mixColors('#FFFFFF', surfaceBase, 0.06),
+    surfaceContainerLight: mixColors('#FFFFFF', surfaceBase, 0.10),
+    surfaceContainerHighLight: mixColors('#FFFFFF', surfaceBase, 0.14),
+    surfaceContainerHighestLight: mixColors('#FFFFFF', surfaceBase, 0.18),
+  };
+}
+
+/**
+ * Converts a hex string into Android Studio Compose Color(0xFF...) format
+ */
+export function hexToAndroidStudioColor(hex: string): string {
+  const clean = hex.replace('#', '').toUpperCase();
+  if (clean.length === 8) {
+    return `Color(0x${clean.slice(6, 8)}${clean.slice(0, 6)})`;
+  }
+  return `Color(0xFF${clean.slice(0, 6)})`;
+}
+
+/**
+ * Exports Material 3 tokens to Kotlin syntax for Android Studio
+ */
+export function exportToAndroidStudioKotlin(scheme: Material3Scheme): string {
+  return [
+    `val primaryLight = ${hexToAndroidStudioColor(scheme.primaryLight)}`,
+    `val onPrimaryLight = ${hexToAndroidStudioColor(scheme.onPrimaryLight)}`,
+    `val primaryContainerLight = ${hexToAndroidStudioColor(scheme.primaryContainerLight)}`,
+    `val onPrimaryContainerLight = ${hexToAndroidStudioColor(scheme.onPrimaryContainerLight)}`,
+    `val secondaryLight = ${hexToAndroidStudioColor(scheme.secondaryLight)}`,
+    `val onSecondaryLight = ${hexToAndroidStudioColor(scheme.onSecondaryLight)}`,
+    `val secondaryContainerLight = ${hexToAndroidStudioColor(scheme.secondaryContainerLight)}`,
+    `val onSecondaryContainerLight = ${hexToAndroidStudioColor(scheme.onSecondaryContainerLight)}`,
+    `val tertiaryLight = ${hexToAndroidStudioColor(scheme.tertiaryLight)}`,
+    `val onTertiaryLight = ${hexToAndroidStudioColor(scheme.onTertiaryLight)}`,
+    `val tertiaryContainerLight = ${hexToAndroidStudioColor(scheme.tertiaryContainerLight)}`,
+    `val onTertiaryContainerLight = ${hexToAndroidStudioColor(scheme.onTertiaryContainerLight)}`,
+    `val errorLight = ${hexToAndroidStudioColor(scheme.errorLight)}`,
+    `val onErrorLight = ${hexToAndroidStudioColor(scheme.onErrorLight)}`,
+    `val errorContainerLight = ${hexToAndroidStudioColor(scheme.errorContainerLight)}`,
+    `val onErrorContainerLight = ${hexToAndroidStudioColor(scheme.onErrorContainerLight)}`,
+    `val backgroundLight = ${hexToAndroidStudioColor(scheme.backgroundLight)}`,
+    `val onBackgroundLight = ${hexToAndroidStudioColor(scheme.onBackgroundLight)}`,
+    `val surfaceLight = ${hexToAndroidStudioColor(scheme.surfaceLight)}`,
+    `val onSurfaceLight = ${hexToAndroidStudioColor(scheme.onSurfaceLight)}`,
+    `val surfaceVariantLight = ${hexToAndroidStudioColor(scheme.surfaceVariantLight)}`,
+    `val onSurfaceVariantLight = ${hexToAndroidStudioColor(scheme.onSurfaceVariantLight)}`,
+    `val outlineLight = ${hexToAndroidStudioColor(scheme.outlineLight)}`,
+    `val outlineVariantLight = ${hexToAndroidStudioColor(scheme.outlineVariantLight)}`,
+    `val scrimLight = ${hexToAndroidStudioColor(scheme.scrimLight)}`,
+    `val inverseSurfaceLight = ${hexToAndroidStudioColor(scheme.inverseSurfaceLight)}`,
+    `val inverseOnSurfaceLight = ${hexToAndroidStudioColor(scheme.inverseOnSurfaceLight)}`,
+    `val inversePrimaryLight = ${hexToAndroidStudioColor(scheme.inversePrimaryLight)}`,
+    `val surfaceDimLight = ${hexToAndroidStudioColor(scheme.surfaceDimLight)}`,
+    `val surfaceBrightLight = ${hexToAndroidStudioColor(scheme.surfaceBrightLight)}`,
+    `val surfaceContainerLowestLight = ${hexToAndroidStudioColor(scheme.surfaceContainerLowestLight)}`,
+    `val surfaceContainerLowLight = ${hexToAndroidStudioColor(scheme.surfaceContainerLowLight)}`,
+    `val surfaceContainerLight = ${hexToAndroidStudioColor(scheme.surfaceContainerLight)}`,
+    `val surfaceContainerHighLight = ${hexToAndroidStudioColor(scheme.surfaceContainerHighLight)}`,
+    `val surfaceContainerHighestLight = ${hexToAndroidStudioColor(scheme.surfaceContainerHighestLight)}`,
+  ].join('\n');
+}
+
+/**
+ * Exports Material 3 tokens to CSS Variables syntax
+ */
+export function exportToCssVariables(scheme: Material3Scheme): string {
+  const toKebab = (str: string) => str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+  const lines = Object.entries(scheme).map(([key, val]) => `  --${toKebab(key)}: ${val};`);
+  return `:root {\n${lines.join('\n')}\n}`;
 }

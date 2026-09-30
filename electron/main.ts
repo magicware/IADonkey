@@ -871,36 +871,49 @@ function setupIpcHandlers() {
     }
   });
 
-  ipcMain.handle('open-tune-color-window', (_event, params: { initialColor: string }) => {
+  let currentTuneColorSource: 'spotlight' | 'palette' | 'dev' = 'spotlight';
+  let currentTuneColorSlot: number | undefined = undefined;
+
+  ipcMain.handle('open-tune-color-window', (_event, params: { initialColor: string; source?: 'spotlight' | 'palette' | 'dev'; slotIndex?: number }) => {
+    currentTuneColorSource = params.source || 'spotlight';
+    currentTuneColorSlot = params.slotIndex;
     windowManager.openTuneColorWindow(params);
   });
 
   ipcMain.handle('save-tune-color', (_event, color: string) => {
+    if (currentTuneColorSource === 'palette') {
+      const barWin = windowManager.getPaletteBarWindow();
+      if (barWin && !barWin.isDestroyed()) {
+        barWin.webContents.send('tune-color-applied', { color, slotIndex: currentTuneColorSlot });
+      }
+      const detailWin = windowManager.getPaletteDetailWindow();
+      if (detailWin && !detailWin.isDestroyed()) {
+        detailWin.webContents.send('tune-color-applied', { color, slotIndex: currentTuneColorSlot });
+      }
+      windowManager.closeTuneColorWindow();
+      return;
+    }
+
     const win = windowManager.getMainWindow();
     if (win && !win.isDestroyed()) {
       win.webContents.send('tune-color-applied', { color });
     }
     const barWin = windowManager.getPaletteBarWindow();
     if (barWin && !barWin.isDestroyed()) {
-      barWin.webContents.send('tune-color-applied', { color });
+      barWin.webContents.send('tune-color-applied', { color, slotIndex: currentTuneColorSlot });
     }
     const detailWin = windowManager.getPaletteDetailWindow();
     if (detailWin && !detailWin.isDestroyed()) {
-      detailWin.webContents.send('tune-color-applied', { color });
+      detailWin.webContents.send('tune-color-applied', { color, slotIndex: currentTuneColorSlot });
     }
     windowManager.closeTuneColorWindow();
-    if (!barWin && !detailWin) {
-      windowManager.showSpotlight();
-    }
+    windowManager.showSpotlight();
   });
 
   ipcMain.handle('close-tune-color-window', () => {
     windowManager.closeTuneColorWindow();
-    const barWin = windowManager.getPaletteBarWindow();
-    const detailWin = windowManager.getPaletteDetailWindow();
-    const win = windowManager.getMainWindow();
-    if (!barWin && !detailWin && win && !win.isDestroyed()) {
-      windowManager.showSpotlight();
+    if (currentTuneColorSource === 'spotlight') {
+      windowManager.resetAndHideSpotlight();
     }
   });
 

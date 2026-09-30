@@ -168,7 +168,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('color-picked-global', handler);
   },
 
-  openTuneColorWindow: (params: { initialColor: string }): Promise<void> =>
+  openTuneColorWindow: (params: { initialColor: string; source?: 'spotlight' | 'palette' | 'dev'; slotIndex?: number }): Promise<void> =>
     ipcRenderer.invoke('open-tune-color-window', params),
 
   saveTuneColor: (color: string): Promise<void> =>
@@ -177,10 +177,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeTuneColorWindow: (): Promise<void> =>
     ipcRenderer.invoke('close-tune-color-window'),
 
-  onTuneColorApplied: (callback: (data: { color: string }) => void) => {
-    const handler = (_event: any, data: { color: string }) => callback(data);
+  onTuneColorApplied: (callback: (data: { color: string; slotIndex?: number }) => void) => {
+    const handler = (_event: any, data: { color: string; slotIndex?: number }) => callback(data);
     ipcRenderer.on('tune-color-applied', handler);
     return () => ipcRenderer.removeListener('tune-color-applied', handler);
+  },
+
+  onTuneColorInit: (callback: (data: { color: string; source?: 'spotlight' | 'palette' | 'dev'; slotIndex?: number }) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('tune-color-init', handler);
+    return () => ipcRenderer.removeListener('tune-color-init', handler);
   },
 
   // Installer API

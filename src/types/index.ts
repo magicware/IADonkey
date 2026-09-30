@@ -113,7 +113,7 @@ export interface ColorMasterSettings {
   enabled: boolean;
   hotkey?: string;
   paletteHotkey?: string;
-  defaultFormat?: 'hex' | 'hex-no-hash' | 'rgb' | 'rgba' | 'hsl';
+  defaultFormat?: 'hex' | 'hex8' | 'hex-no-hash' | 'rgb' | 'rgba' | 'hsl';
 }
 
 export interface QuickCapSettings {

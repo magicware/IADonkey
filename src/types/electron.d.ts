@@ -152,10 +152,11 @@ declare global {
       onTriggerEyedropper?: (callback: () => void) => () => void;
       pickScreenColor?: (options?: { noClipboard?: boolean; noSpotlight?: boolean }) => Promise<string | null>;
       onColorPickedGlobal?: (callback: (data: { color: string; formatted: string }) => void) => () => void;
-      openTuneColorWindow?: (params: { initialColor: string }) => Promise<void>;
+      openTuneColorWindow?: (params: { initialColor: string; source?: 'spotlight' | 'palette' | 'dev'; slotIndex?: number }) => Promise<void>;
       saveTuneColor?: (color: string) => Promise<void>;
       closeTuneColorWindow?: () => Promise<void>;
-      onTuneColorApplied?: (callback: (data: { color: string }) => void) => () => void;
+      onTuneColorApplied?: (callback: (data: { color: string; slotIndex?: number }) => void) => () => void;
+      onTuneColorInit?: (callback: (data: { color: string; source?: 'spotlight' | 'palette' | 'dev'; slotIndex?: number }) => void) => () => void;
 
       // Installer API
       installerGetDefaultPath?: () => Promise<string>;

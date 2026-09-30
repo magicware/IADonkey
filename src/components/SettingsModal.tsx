@@ -6851,6 +6851,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div className="flex items-center gap-2 flex-wrap">
                         {[
                           { id: 'hex', label: 'HEX', example: '#2563EB' },
+                          { id: 'hex8', label: 'HEX8', example: '#2563EBFF' },
                           { id: 'hex-no-hash', label: 'HEX bez #', example: '2563EB' },
                           { id: 'rgb', label: 'RGB', example: 'rgb(37, 99, 235)' },
                           { id: 'rgba', label: 'RGBA', example: 'rgba(37, 99, 235, 1)' },

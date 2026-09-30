@@ -1784,7 +1784,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
     if (actionType === 'tune-color') {
       const colorToTune = effectiveLocation || parent.colorPreview || parent.name || '#6366f1';
-      window.electronAPI?.openTuneColorWindow?.({ initialColor: colorToTune });
+      window.electronAPI?.openTuneColorWindow?.({ initialColor: colorToTune, source: 'spotlight' });
       window.electronAPI?.hideWindow?.();
       return;
     }

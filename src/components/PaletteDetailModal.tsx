@@ -1,11 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { ColorPalette } from '../types';
-import { parseColorQuery, rgbToHex, rgbToHsl } from '../utils/colorMaster';
+import {
+  parseColorQuery,
+  deriveSingleColorSurfaces,
+  DerivedColorToken,
+  generateMaterial3Scheme,
+  exportToAndroidStudioKotlin,
+  exportToCssVariables,
+} from '../utils/colorMaster';
+
+const PALETTE_ROLES = [
+  { name: 'Primary', desc: 'Hlavní barva' },
+  { name: 'Secondary', desc: 'Doplňková barva' },
+  { name: 'Tertiary', desc: 'Akcentní barva' },
+  { name: 'Error', desc: 'Chybová barva' },
+  { name: 'Surface', desc: 'Neutrální / Povrch' },
+];
 
 export const PaletteDetailModal: React.FC = () => {
   const [paletteId, setPaletteId] = useState<string>('');
   const [palette, setPalette] = useState<ColorPalette | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [activeOptionsColor, setActiveOptionsColor] = useState<{
+    name: string;
+    token: DerivedColorToken;
+  } | null>(null);
 
   // Load palette from URL search or IPC
   useEffect(() => {
@@ -46,6 +65,21 @@ export const PaletteDetailModal: React.FC = () => {
     }
   }, [paletteId]);
 
+  // Listen for direct tune color updates with slotIndex
+  useEffect(() => {
+    if (window.electronAPI?.onTuneColorApplied) {
+      return window.electronAPI.onTuneColorApplied(async ({ color, slotIndex }) => {
+        if (slotIndex !== undefined && palette) {
+          const newColors = [...palette.colors];
+          newColors[slotIndex] = color;
+          const updated = { ...palette, colors: newColors, updatedAt: Date.now() };
+          setPalette(updated);
+          await window.electronAPI?.savePalette?.(updated);
+        }
+      });
+    }
+  }, [palette]);
+
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
@@ -60,6 +94,8 @@ export const PaletteDetailModal: React.FC = () => {
         paletteName: palette.name,
       });
     }
+    // Automatically close detail window when opening bar
+    await handleClose();
   };
 
   const handleClose = async () => {
@@ -70,9 +106,13 @@ export const PaletteDetailModal: React.FC = () => {
     }
   };
 
-  const handleTuneColor = (initialColor: string) => {
+  const handleTuneColor = (initialColor: string, slotIndex: number) => {
     if (window.electronAPI?.openTuneColorWindow) {
-      window.electronAPI.openTuneColorWindow({ initialColor });
+      window.electronAPI.openTuneColorWindow({
+        initialColor,
+        source: 'palette',
+        slotIndex,
+      });
     }
   };
 
@@ -81,7 +121,11 @@ export const PaletteDetailModal: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        handleClose();
+        if (activeOptionsColor) {
+          setActiveOptionsColor(null);
+        } else {
+          handleClose();
+        }
       } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         handleOpenBar();
@@ -90,7 +134,7 @@ export const PaletteDetailModal: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [palette]);
+  }, [palette, activeOptionsColor]);
 
   const colors = palette?.colors || [null, null, null, null, null];
   const filledCount = colors.filter(Boolean).length;
@@ -131,130 +175,184 @@ export const PaletteDetailModal: React.FC = () => {
         {/* Color Cards List */}
         <div className="space-y-3">
           {colors.map((color, idx) => {
-          if (!color) {
+            const role = PALETTE_ROLES[idx] || { name: `Pozice ${idx + 1}`, desc: '' };
+
+            if (!color) {
+              return (
+                <div
+                  key={idx}
+                  onClick={handleOpenBar}
+                  className="p-3.5 bg-white/[0.02] hover:bg-white/[0.05] border border-dashed border-white/15 hover:border-rose-400/40 rounded-2xl flex items-center justify-between transition cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl border border-dashed border-white/20 flex items-center justify-center text-gray-500 group-hover:text-rose-400 group-hover:border-rose-400 transition">
+                      <span className="text-sm font-mono font-bold">{idx + 1}</span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-gray-300 group-hover:text-white transition">
+                          Pozice {idx + 1} ({role.name})
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.06] text-rose-300">
+                          {role.desc}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-500 mt-0.5">Kliknutím otevřete lištu a naberte barvu</p>
+                    </div>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-white/[0.04] group-hover:bg-rose-500/20 text-gray-400 group-hover:text-rose-300 flex items-center justify-center transition">
+                    <span className="material-symbols-outlined text-sm">colorize</span>
+                  </div>
+                </div>
+              );
+            }
+
+            const parsed = parseColorQuery(color);
+            const hex = parsed ? parsed.hex : color;
+            const rgb = parsed ? parsed.rgb : color;
+            const hsl = parsed ? parsed.hsl : '';
+            const derived = deriveSingleColorSurfaces(hex);
+
             return (
               <div
                 key={idx}
-                onClick={handleOpenBar}
-                className="p-3.5 bg-white/[0.02] hover:bg-white/[0.05] border border-dashed border-white/15 hover:border-rose-400/40 rounded-2xl flex items-center justify-between transition cursor-pointer group"
+                className="p-3.5 bg-white/[0.03] border border-white/10 rounded-2xl space-y-2.5 transition shadow-sm hover:border-white/20"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl border border-dashed border-white/20 flex items-center justify-center text-gray-500 group-hover:text-rose-400 group-hover:border-rose-400 transition">
-                    <span className="text-sm font-mono font-bold">{idx + 1}</span>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {/* Large Swatch */}
+                    <div
+                      className="w-12 h-12 rounded-xl border border-white/20 shadow-inner flex items-center justify-center shrink-0 cursor-pointer hover:scale-105 transition"
+                      style={{ backgroundColor: color }}
+                      onClick={() => handleTuneColor(color, idx)}
+                      title="Kliknutím doladit barvu"
+                    >
+                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-black/50 text-white backdrop-blur-sm">
+                        {idx + 1}
+                      </span>
+                    </div>
+
+                    {/* Values & Role */}
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-mono font-bold text-white select-all">{hex}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(hex, `hex-${idx}`)}
+                          className="p-0.5 text-gray-400 hover:text-white transition cursor-pointer"
+                          title="Kopírovat HEX"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">
+                            {copiedKey === `hex-${idx}` ? 'check' : 'content_copy'}
+                          </span>
+                        </button>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/20 font-mono">
+                          {role.name}
+                        </span>
+                        <span className="text-[11px] text-gray-400 hidden sm:inline">• {role.desc}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-[11px] text-gray-400 font-mono flex-wrap">
+                        <span className="select-all">{rgb}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(rgb, `rgb-${idx}`)}
+                          className="p-0.5 text-gray-500 hover:text-white transition cursor-pointer"
+                          title="Kopírovat RGB"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">
+                            {copiedKey === `rgb-${idx}` ? 'check' : 'content_copy'}
+                          </span>
+                        </button>
+                        {hsl && (
+                          <>
+                            <span className="text-gray-600">•</span>
+                            <span className="select-all text-gray-400">{hsl}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-xs font-semibold text-gray-400 group-hover:text-gray-200 transition">
-                      Pozice {idx + 1} – prázdné políčko
-                    </span>
-                    <p className="text-[11px] text-gray-500">Kliknutím otevřete lištu a naberte barvu</p>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleTuneColor(color, idx)}
+                      className="px-3 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-xs font-medium text-gray-200 hover:text-white transition flex items-center gap-1 cursor-pointer"
+                      title="Doladit odstín a složky barvy"
+                    >
+                      <span className="material-symbols-outlined text-[15px] text-rose-400">tune</span>
+                      <span>Doladit</span>
+                    </button>
                   </div>
                 </div>
-                <div className="w-8 h-8 rounded-full bg-white/[0.04] group-hover:bg-rose-500/20 text-gray-400 group-hover:text-rose-300 flex items-center justify-center transition">
-                  <span className="material-symbols-outlined text-sm">colorize</span>
+
+                {/* Derived Surface Swatches */}
+                <div className="pt-2 border-t border-white/[0.06]">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                      Odvozené povrchy a tóny
+                    </span>
+                    <span className="text-[10px] text-gray-500">Kliknutím zobrazit formáty</span>
+                  </div>
+                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                    {derived.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setActiveOptionsColor({ name: `${role.name} – ${item.name}`, token: item })}
+                        className="group relative h-8 rounded-lg border border-white/10 shadow-sm flex flex-col items-center justify-center transition hover:scale-105 active:scale-95 cursor-pointer overflow-hidden p-0.5"
+                        style={{ backgroundColor: item.hex }}
+                        title={`${item.name} (${item.role}): ${item.hex} – Kliknutím kopírovat`}
+                      >
+                        <span
+                          className="text-[9px] font-mono font-bold leading-tight truncate px-1 text-center"
+                          style={{ color: item.isDark ? '#FFF' : '#000' }}
+                        >
+                          {item.name.split(' ')[0]}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             );
-          }
-
-          const parsed = parseColorQuery(color);
-          const hex = parsed ? parsed.hex : color;
-          const rgb = parsed ? parsed.rgb : color;
-          const hsl = parsed ? parsed.hsl : '';
-
-          return (
-            <div
-              key={idx}
-              className="p-3.5 bg-white/[0.03] border border-white/10 rounded-2xl flex items-center justify-between transition shadow-sm hover:border-white/20"
-            >
-              <div className="flex items-center gap-3">
-                {/* Large Swatch */}
-                <div
-                  className="w-12 h-12 rounded-xl border border-white/20 shadow-inner flex items-center justify-center shrink-0 cursor-pointer hover:scale-105 transition"
-                  style={{ backgroundColor: color }}
-                  onClick={() => handleTuneColor(color)}
-                  title="Kliknutím doladit barvu"
-                >
-                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-black/50 text-white backdrop-blur-sm">
-                    {idx + 1}
-                  </span>
-                </div>
-
-                {/* Values */}
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-white select-all">{hex}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(hex, `hex-${idx}`)}
-                      className="p-1 text-gray-400 hover:text-white transition cursor-pointer"
-                      title="Kopírovat HEX"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">
-                        {copiedKey === `hex-${idx}` ? 'check' : 'content_copy'}
-                      </span>
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-[11px] text-gray-400 font-mono">
-                    <span className="select-all">{rgb}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(rgb, `rgb-${idx}`)}
-                      className="p-0.5 text-gray-500 hover:text-white transition cursor-pointer"
-                      title="Kopírovat RGB"
-                    >
-                      <span className="material-symbols-outlined text-[13px]">
-                        {copiedKey === `rgb-${idx}` ? 'check' : 'content_copy'}
-                      </span>
-                    </button>
-                    {hsl && (
-                      <>
-                        <span className="text-gray-600">•</span>
-                        <span className="select-all text-gray-400">{hsl}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleTuneColor(color)}
-                  className="px-3 py-1.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-xs font-medium text-gray-200 hover:text-white transition flex items-center gap-1 cursor-pointer"
-                  title="Doladit odstín a složky barvy"
-                >
-                  <span className="material-symbols-outlined text-[15px] text-rose-400">tune</span>
-                  <span>Doladit</span>
-                </button>
-              </div>
-            </div>
-          );
-        })}
+          })}
         </div>
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 p-5 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => {
-            const validColors = colors.filter(Boolean);
-            if (validColors.length > 0) {
-              const cssVars = validColors
-                .map((c, i) => `  --color-${palette?.name?.toLowerCase().replace(/\s+/g, '-') || 'palette'}-${i + 1}: ${c};`)
-                .join('\n');
-              const text = `:root {\n${cssVars}\n}`;
+      <div className="shrink-0 p-5 flex items-center justify-between gap-3 border-t border-white/10">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              const scheme = generateMaterial3Scheme(colors);
+              const text = exportToAndroidStudioKotlin(scheme);
+              handleCopy(text, 'android-studio');
+            }}
+            className="px-3.5 py-2 bg-white/[0.05] hover:bg-white/[0.1] text-gray-300 hover:text-white rounded-full text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
+            title="Zkopírovat 34 Material 3 tokenů pro Android Studio (Kotlin Color tokeny)"
+          >
+            <span className="material-symbols-outlined text-sm text-emerald-400">android</span>
+            <span>{copiedKey === 'android-studio' ? 'Zkopírováno v Kotlinu!' : 'Kopírovat pro Android Studio'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const scheme = generateMaterial3Scheme(colors);
+              const text = exportToCssVariables(scheme);
               handleCopy(text, 'all-css');
-            }
-          }}
-          className="px-4 py-2 bg-white/[0.05] hover:bg-white/[0.1] text-gray-300 hover:text-white rounded-full text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
-          title="Zkopírovat všechny barvy jako CSS proměnné"
-        >
-          <span className="material-symbols-outlined text-sm">code</span>
-          <span>{copiedKey === 'all-css' ? 'Zkopírováno v CSS!' : 'Kopírovat CSS proměnné'}</span>
-        </button>
+            }}
+            className="px-3.5 py-2 bg-white/[0.05] hover:bg-white/[0.1] text-gray-300 hover:text-white rounded-full text-xs font-medium transition cursor-pointer flex items-center gap-1.5"
+            title="Zkopírovat Material 3 paletu jako CSS proměnné"
+          >
+            <span className="material-symbols-outlined text-sm text-rose-400">code</span>
+            <span>{copiedKey === 'all-css' ? 'Zkopírováno v CSS!' : 'Kopírovat CSS proměnné'}</span>
+          </button>
+        </div>
 
         <button
           type="button"
@@ -268,6 +366,100 @@ export const PaletteDetailModal: React.FC = () => {
           </kbd>
         </button>
       </div>
+
+      {/* Options Modal Dialog for Derived Swatch */}
+      {activeOptionsColor && (
+        <div
+          className="absolute inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setActiveOptionsColor(null)}
+        >
+          <div
+            className="w-full max-w-sm bg-[#181926] border border-white/15 rounded-3xl shadow-2xl p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-1 border-b border-white/10">
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className="w-9 h-9 rounded-2xl border border-white/20 shrink-0 shadow-inner flex items-center justify-center"
+                  style={{ backgroundColor: activeOptionsColor.token.hex }}
+                >
+                  <span className="material-symbols-outlined text-sm" style={{ color: activeOptionsColor.token.isDark ? '#FFF' : '#000' }}>
+                    colorize
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-bold text-white truncate">{activeOptionsColor.name}</h4>
+                  <p className="text-[10px] text-gray-400 truncate">{activeOptionsColor.token.role}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveOptionsColor(null)}
+                className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center cursor-pointer transition"
+                title="Zavřít nabídku (Esc)"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            {/* List of formats to copy */}
+            <div className="space-y-1.5">
+              {[
+                { label: 'HEX', value: activeOptionsColor.token.hex },
+                { label: 'HEX8', value: activeOptionsColor.token.hex8 },
+                { label: 'RGB', value: activeOptionsColor.token.rgb },
+                { label: 'RGBA', value: activeOptionsColor.token.rgba },
+                { label: 'HSL', value: activeOptionsColor.token.hsl },
+              ].map((fmt) => {
+                const isCopied = copiedKey === `opt-${fmt.label}`;
+                return (
+                  <button
+                    key={fmt.label}
+                    type="button"
+                    onClick={() => handleCopy(fmt.value, `opt-${fmt.label}`)}
+                    className="w-full p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] active:bg-white/[0.12] transition flex items-center justify-between cursor-pointer border border-transparent hover:border-white/10 group text-left"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-white/[0.06] text-gray-300 w-12 text-center">
+                        {fmt.label}
+                      </span>
+                      <span className="text-xs font-mono text-white truncate">{fmt.value}</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0 text-gray-400 group-hover:text-rose-400 text-xs font-sans">
+                      {isCopied ? (
+                        <>
+                          <span className="material-symbols-outlined text-sm text-emerald-400">check</span>
+                          <span className="text-emerald-400 text-[11px] font-medium">Zkopírováno</span>
+                        </>
+                      ) : (
+                        <span className="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition">
+                          content_copy
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Modal Footer with Esc button */}
+            <div className="flex items-center justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setActiveOptionsColor(null)}
+                className="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                title="Zavřít (Esc)"
+              >
+                <span>Zavřít</span>
+                <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 bg-white/[0.1] text-gray-300 rounded-full font-mono text-[9px] leading-none select-none">
+                  Esc
+                </kbd>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
