@@ -718,10 +718,10 @@ export function generateMaterial3Scheme(paletteColors: (string | null)[]): Mater
     errorContainerLight: mixColors('#FFFFFF', error, 0.16),
     onErrorContainerLight: mixColors('#000000', error, 0.38),
 
-    backgroundLight: mixColors('#FFFFFF', surfaceBase, 0.03),
-    onBackgroundLight: mixColors('#000000', surfaceBase, 0.08),
-    surfaceLight: mixColors('#FFFFFF', surfaceBase, 0.03),
-    onSurfaceLight: mixColors('#000000', surfaceBase, 0.08),
+    backgroundLight: surfaceBase,
+    onBackgroundLight: getContrastColor(surfaceBase),
+    surfaceLight: surfaceBase,
+    onSurfaceLight: getContrastColor(surfaceBase),
     surfaceVariantLight: mixColors('#FFFFFF', surfaceBase, 0.14),
     onSurfaceVariantLight: mixColors('#000000', surfaceBase, 0.32),
     outlineLight: mixColors('#808080', surfaceBase, 0.15),
@@ -752,35 +752,56 @@ export function hexToAndroidStudioColor(hex: string): string {
 }
 
 /**
- * Exports only the colors currently configured by user in PaletteMaster to Kotlin syntax for Android Studio
+ * Exports Material 3 theme color tokens to Kotlin syntax for Android Studio (Jetpack Compose)
+ * exactly matching Google guideline template (without extra custom colors like success)
  */
 export function exportToAndroidStudioKotlin(paletteColors: (string | null)[]): string {
-  const roles = ['primary', 'secondary', 'tertiary', 'error', 'surface'];
-  const lines: string[] = [];
-
-  paletteColors.forEach((color, idx) => {
-    if (color && color.trim()) {
-      const roleName = roles[idx] || `color${idx + 1}`;
-      lines.push(`val ${roleName} = ${hexToAndroidStudioColor(color)}`);
-    }
-  });
-
-  return lines.join('\n');
+  const scheme = generateMaterial3Scheme(paletteColors);
+  return [
+    `val primaryLight = ${hexToAndroidStudioColor(scheme.primaryLight)}`,
+    `val onPrimaryLight = ${hexToAndroidStudioColor(scheme.onPrimaryLight)}`,
+    `val primaryContainerLight = ${hexToAndroidStudioColor(scheme.primaryContainerLight)}`,
+    `val onPrimaryContainerLight = ${hexToAndroidStudioColor(scheme.onPrimaryContainerLight)}`,
+    `val secondaryLight = ${hexToAndroidStudioColor(scheme.secondaryLight)}`,
+    `val onSecondaryLight = ${hexToAndroidStudioColor(scheme.onSecondaryLight)}`,
+    `val secondaryContainerLight = ${hexToAndroidStudioColor(scheme.secondaryContainerLight)}`,
+    `val onSecondaryContainerLight = ${hexToAndroidStudioColor(scheme.onSecondaryContainerLight)}`,
+    `val tertiaryLight = ${hexToAndroidStudioColor(scheme.tertiaryLight)}`,
+    `val onTertiaryLight = ${hexToAndroidStudioColor(scheme.onTertiaryLight)}`,
+    `val tertiaryContainerLight = ${hexToAndroidStudioColor(scheme.tertiaryContainerLight)}`,
+    `val onTertiaryContainerLight = ${hexToAndroidStudioColor(scheme.onTertiaryContainerLight)}`,
+    `val errorLight = ${hexToAndroidStudioColor(scheme.errorLight)}`,
+    `val onErrorLight = ${hexToAndroidStudioColor(scheme.onErrorLight)}`,
+    `val errorContainerLight = ${hexToAndroidStudioColor(scheme.errorContainerLight)}`,
+    `val onErrorContainerLight = ${hexToAndroidStudioColor(scheme.onErrorContainerLight)}`,
+    `val backgroundLight = ${hexToAndroidStudioColor(scheme.backgroundLight)}`,
+    `val onBackgroundLight = ${hexToAndroidStudioColor(scheme.onBackgroundLight)}`,
+    `val surfaceLight = ${hexToAndroidStudioColor(scheme.surfaceLight)}`,
+    `val onSurfaceLight = ${hexToAndroidStudioColor(scheme.onSurfaceLight)}`,
+    `val surfaceVariantLight = ${hexToAndroidStudioColor(scheme.surfaceVariantLight)}`,
+    `val onSurfaceVariantLight = ${hexToAndroidStudioColor(scheme.onSurfaceVariantLight)}`,
+    `val outlineLight = ${hexToAndroidStudioColor(scheme.outlineLight)}`,
+    `val outlineVariantLight = ${hexToAndroidStudioColor(scheme.outlineVariantLight)}`,
+    `val scrimLight = ${hexToAndroidStudioColor(scheme.scrimLight)}`,
+    `val inverseSurfaceLight = ${hexToAndroidStudioColor(scheme.inverseSurfaceLight)}`,
+    `val inverseOnSurfaceLight = ${hexToAndroidStudioColor(scheme.inverseOnSurfaceLight)}`,
+    `val inversePrimaryLight = ${hexToAndroidStudioColor(scheme.inversePrimaryLight)}`,
+    `val surfaceDimLight = ${hexToAndroidStudioColor(scheme.surfaceDimLight)}`,
+    `val surfaceBrightLight = ${hexToAndroidStudioColor(scheme.surfaceBrightLight)}`,
+    `val surfaceContainerLowestLight = ${hexToAndroidStudioColor(scheme.surfaceContainerLowestLight)}`,
+    `val surfaceContainerLowLight = ${hexToAndroidStudioColor(scheme.surfaceContainerLowLight)}`,
+    `val surfaceContainerLight = ${hexToAndroidStudioColor(scheme.surfaceContainerLight)}`,
+    `val surfaceContainerHighLight = ${hexToAndroidStudioColor(scheme.surfaceContainerHighLight)}`,
+    `val surfaceContainerHighestLight = ${hexToAndroidStudioColor(scheme.surfaceContainerHighestLight)}`,
+  ].join('\n');
 }
 
 /**
- * Exports only the colors currently configured by user in PaletteMaster to CSS Variables syntax
+ * Exports Material 3 theme color tokens to CSS Variables syntax
  */
 export function exportToCssVariables(paletteColors: (string | null)[]): string {
-  const roles = ['primary', 'secondary', 'tertiary', 'error', 'surface'];
-  const lines: string[] = [];
-
-  paletteColors.forEach((color, idx) => {
-    if (color && color.trim()) {
-      const roleName = roles[idx] || `color-${idx + 1}`;
-      lines.push(`  --${roleName}: ${color.toLowerCase()};`);
-    }
-  });
-
+  const scheme = generateMaterial3Scheme(paletteColors);
+  const toKebab = (str: string) => str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+  const lines = Object.entries(scheme).map(([key, val]) => `  --${toKebab(key)}: ${val};`);
   return `:root {\n${lines.join('\n')}\n}`;
 }
