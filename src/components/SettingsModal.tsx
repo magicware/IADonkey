@@ -9702,6 +9702,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span className="material-symbols-outlined text-base text-indigo-400">power_settings_new</span>
                     <span>Simulovat Správu aplikace</span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTestNotification('success')}
+                    disabled={testingNotificationVariant !== null}
+                    className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-xs font-medium transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                    title="Odešle testovací úspěšnou Windows toast notifikaci do oznamovacího centra"
+                  >
+                    <span className="material-symbols-outlined text-base text-indigo-400">
+                      {testingNotificationVariant === 'success' ? 'hourglass_top' : 'notifications_active'}
+                    </span>
+                    <span>{testingNotificationVariant === 'success' ? 'Odesílám...' : 'Otestovat úspěšnou notifikaci'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTestNotification('error')}
+                    disabled={testingNotificationVariant !== null}
+                    className="w-full px-4 py-2 bg-rose-500/15 hover:bg-rose-500/25 text-white rounded-full text-xs font-medium transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                    title="Odešle testovací chybovou Windows toast notifikaci do oznamovacího centra"
+                  >
+                    <span className="material-symbols-outlined text-base text-rose-400">
+                      {testingNotificationVariant === 'error' ? 'hourglass_top' : 'error'}
+                    </span>
+                    <span>{testingNotificationVariant === 'error' ? 'Odesílám...' : 'Otestovat neúspěšnou notifikaci'}</span>
+                  </button>
                 </div>
 
                 {simulatedCrashSuccess && (
@@ -9710,52 +9736,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span className="truncate">{simulatedCrashSuccess}</span>
                   </div>
                 )}
-              </div>
 
-              {/* Notification Test Section */}
-              <div className="p-5 bg-white/[0.03] rounded-2xl space-y-4">
-                <div>
-                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                    <span className="material-symbols-outlined text-base text-amber-400">notifications_active</span>
-                    Test systémových notifikací Windows
-                  </h4>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    Ověření doručení nativních Windows toast notifikací a funkčnosti oznamovacího centra.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => handleTestNotification('success')}
-                    disabled={testingNotificationVariant !== null}
-                    className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
-                  >
-                    <span className="material-symbols-outlined text-base text-indigo-400">
-                      {testingNotificationVariant === 'success' ? 'hourglass_top' : 'notifications_active'}
+                {testNotificationFeedback && (
+                  <div className={`p-3 rounded-2xl text-xs flex items-center gap-2 animate-fade-in font-mono ${testNotificationFeedback.type === 'error' ? 'bg-rose-500/10 text-rose-300' : 'bg-emerald-500/10 text-emerald-300'}`}>
+                    <span className="material-symbols-outlined text-sm shrink-0">
+                      {testNotificationFeedback.type === 'error' ? 'info' : 'check_circle'}
                     </span>
-                    <span>{testingNotificationVariant === 'success' ? 'Odesílám...' : 'Otestovat úspěšnou notifikaci'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleTestNotification('error')}
-                    disabled={testingNotificationVariant !== null}
-                    className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
-                  >
-                    <span className="material-symbols-outlined text-base text-rose-400">
-                      {testingNotificationVariant === 'error' ? 'hourglass_top' : 'error'}
-                    </span>
-                    <span>{testingNotificationVariant === 'error' ? 'Odesílám...' : 'Otestovat neúspěšnou notifikaci'}</span>
-                  </button>
-                  {testNotificationFeedback && (
-                    <span className={`text-xs font-medium animate-fade-in flex items-center gap-1 ${testNotificationFeedback.type === 'error' ? 'text-rose-400' : 'text-emerald-400'}`}>
-                      <span className="material-symbols-outlined text-sm">
-                        {testNotificationFeedback.type === 'error' ? 'info' : 'check'}
-                      </span>
-                      {testNotificationFeedback.message}
-                    </span>
-                  )}
-                </div>
+                    <span className="truncate">{testNotificationFeedback.message}</span>
+                  </div>
+                )}
               </div>
 
               {/* Action Log Section */}
