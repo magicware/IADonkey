@@ -25,6 +25,14 @@ export const PaletteDetailModal: React.FC = () => {
     name: string;
     token: DerivedColorToken;
   } | null>(null);
+  const [showPreviews, setShowPreviews] = useState<boolean>(false);
+  const [slotPreviews, setSlotPreviews] = useState<Record<number, boolean>>({});
+
+  const handleToggleAllPreviews = () => {
+    const next = !showPreviews;
+    setShowPreviews(next);
+    setSlotPreviews({});
+  };
 
   // Load palette from URL search or IPC
   useEffect(() => {
@@ -160,22 +168,42 @@ export const PaletteDetailModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Action: Upravit v liště */}
-          <button
-            type="button"
-            onClick={handleOpenBar}
-            className="px-4 py-2 rounded-full text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white shadow-sm"
-            title="Otevřít plovoucí lištu pro výběr a úpravu barev (Ctrl+Enter)"
-          >
-            <span className="material-symbols-outlined text-sm">tune</span>
-            <span>Upravit barvy v liště</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Toggle náhledů komponent */}
+            <button
+              type="button"
+              onClick={handleToggleAllPreviews}
+              className={`px-3 py-2 rounded-full text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+                showPreviews
+                  ? 'bg-rose-500/20 text-rose-300 hover:bg-rose-500/30'
+                  : 'bg-white/[0.06] hover:bg-white/[0.12] text-gray-300 hover:text-white'
+              }`}
+              title={showPreviews ? 'Skrýt všechny náhledy komponent' : 'Zobrazit všechny náhledy komponent'}
+            >
+              <span className="material-symbols-outlined text-sm">
+                {showPreviews ? 'visibility' : 'visibility_off'}
+              </span>
+              <span>{showPreviews ? 'Skrýt náhledy' : 'Zobrazit náhledy'}</span>
+            </button>
+
+            {/* Action: Upravit v liště */}
+            <button
+              type="button"
+              onClick={handleOpenBar}
+              className="px-4 py-2 rounded-full text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white shadow-sm"
+              title="Otevřít plovoucí lištu pro výběr a úpravu barev (Ctrl+Enter)"
+            >
+              <span className="material-symbols-outlined text-sm">tune</span>
+              <span>Upravit barvy v liště</span>
+            </button>
+          </div>
         </div>
 
         {/* Color Cards List */}
         <div className="space-y-3">
           {colors.map((color, idx) => {
             const role = PALETTE_ROLES[idx] || { name: `Pozice ${idx + 1}`, desc: '' };
+            const isSlotExpanded = slotPreviews[idx] !== undefined ? slotPreviews[idx] : showPreviews;
 
             if (!color) {
               return (
@@ -285,92 +313,114 @@ export const PaletteDetailModal: React.FC = () => {
                       <span className="material-symbols-outlined text-[15px] text-rose-400">tune</span>
                       <span>Doladit</span>
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSlotPreviews((prev) => ({
+                          ...prev,
+                          [idx]: !isSlotExpanded,
+                        }))
+                      }
+                      className={`p-1.5 rounded-full transition flex items-center justify-center cursor-pointer ${
+                        isSlotExpanded
+                          ? 'bg-rose-500/20 text-rose-300 hover:bg-rose-500/30'
+                          : 'bg-white/[0.06] hover:bg-white/[0.12] text-gray-400 hover:text-white'
+                      }`}
+                      title={isSlotExpanded ? 'Skrýt náhledy komponent' : 'Zobrazit náhledy komponent'}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">
+                        {isSlotExpanded ? 'expand_less' : 'expand_more'}
+                      </span>
+                    </button>
                   </div>
                 </div>
 
-                {/* Derived Surface & Button Previews (3 pairs side-by-side) */}
-                <div className="pt-2">
-                  <div className="flex items-center justify-between mb-2 px-0.5">
-                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-                      Náhled komponent a povrchů ({role.name})
-                    </span>
-                    <span className="text-[10px] text-gray-500">Kliknutím zkopírovat barvu</span>
-                  </div>
+                {/* Derived Surface & Button Previews (toggleable, default hidden) */}
+                {isSlotExpanded && (
+                  <div className="pt-2 animate-fade-in">
+                    <div className="flex items-center justify-between mb-2 px-0.5">
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                        Náhled komponent a povrchů ({role.name})
+                      </span>
+                      <span className="text-[10px] text-gray-500">Kliknutím zkopírovat barvu</span>
+                    </div>
 
-                  <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
-                    {[
-                      {
-                        title: 'Plné tlačítko',
-                        icon: 'smart_button',
-                        light: derived[0],
-                        dark: derived[1],
-                      },
-                      {
-                        title: 'Povrch / Surface',
-                        icon: 'layers',
-                        light: derived[2],
-                        dark: derived[3],
-                      },
-                      {
-                        title: 'Tónovaný kontejner',
-                        icon: 'crop_square',
-                        light: derived[4],
-                        dark: derived[5],
-                      },
-                    ].map((group, gIdx) => (
-                      <div key={gIdx} className="bg-white/[0.02] rounded-xl p-2 space-y-1.5 flex flex-col justify-between">
-                        <div className="flex items-center gap-1.5 px-0.5 text-[10px] font-semibold text-gray-400">
-                          <span className="material-symbols-outlined text-[13px] text-rose-400">{group.icon}</span>
-                          <span>{group.title}</span>
-                        </div>
-
-                        {/* Světlý náhled (nahoře) */}
-                        <div
-                          onClick={() => setActiveOptionsColor({ name: `${role.name} – ${group.light.name}`, token: group.light })}
-                          className="p-1.5 rounded-lg transition cursor-pointer hover:opacity-90 active:scale-[0.98] group relative flex flex-col gap-1 shadow-sm"
-                          style={{ backgroundColor: group.light.bgPreview }}
-                          title={`Světlý režim: ${group.light.hex} – Kliknutím zkopírovat`}
-                        >
-                          <div className="flex items-center justify-between text-[9px] font-mono px-0.5">
-                            <span className="font-semibold text-gray-600">Světlý</span>
-                            <span className="font-bold text-gray-900">{group.light.hex}</span>
+                    <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
+                      {[
+                        {
+                          title: 'Plné tlačítko',
+                          icon: 'smart_button',
+                          light: derived[0],
+                          dark: derived[1],
+                        },
+                        {
+                          title: 'Povrch / Surface',
+                          icon: 'layers',
+                          light: derived[2],
+                          dark: derived[3],
+                        },
+                        {
+                          title: 'Tónovaný kontejner',
+                          icon: 'crop_square',
+                          light: derived[4],
+                          dark: derived[5],
+                        },
+                      ].map((group, gIdx) => (
+                        <div key={gIdx} className="bg-white/[0.02] rounded-xl p-2 space-y-1.5 flex flex-col justify-between">
+                          <div className="flex items-center gap-1.5 px-0.5 text-[10px] font-semibold text-gray-400">
+                            <span className="material-symbols-outlined text-[13px] text-rose-400">{group.icon}</span>
+                            <span>{group.title}</span>
                           </div>
+
+                          {/* Světlý náhled (nahoře) */}
                           <div
-                            className="w-full py-1 px-2 rounded-md flex items-center justify-center gap-1 text-[11px] font-semibold shadow-sm"
-                            style={{ backgroundColor: group.light.hex, color: group.light.fgText }}
+                            onClick={() => setActiveOptionsColor({ name: `${role.name} – ${group.light.name}`, token: group.light })}
+                            className="p-1.5 rounded-lg transition cursor-pointer hover:opacity-90 active:scale-[0.98] group relative flex flex-col gap-1 shadow-sm"
+                            style={{ backgroundColor: group.light.bgPreview }}
+                            title={`Světlý režim: ${group.light.hex} – Kliknutím zkopírovat`}
                           >
-                            <span className="material-symbols-outlined text-[12px]">{group.icon}</span>
-                            <span className="truncate">
-                              {group.light.previewType === 'surface' ? 'Povrch' : group.light.previewType === 'container' ? 'Kontejner' : 'Tlačítko'}
-                            </span>
+                            <div className="flex items-center justify-between text-[9px] font-mono px-0.5">
+                              <span className="font-semibold text-gray-600">Světlý</span>
+                              <span className="font-bold text-gray-900">{group.light.hex}</span>
+                            </div>
+                            <div
+                              className="w-full py-1 px-2 rounded-md flex items-center justify-center gap-1 text-[11px] font-semibold shadow-sm"
+                              style={{ backgroundColor: group.light.hex, color: group.light.fgText }}
+                            >
+                              <span className="material-symbols-outlined text-[12px]">{group.icon}</span>
+                              <span className="truncate">
+                                {group.light.previewType === 'surface' ? 'Povrch' : group.light.previewType === 'container' ? 'Kontejner' : 'Tlačítko'}
+                              </span>
+                            </div>
                           </div>
-                        </div>
 
-                        {/* Tmavý náhled (dole) */}
-                        <div
-                          onClick={() => setActiveOptionsColor({ name: `${role.name} – ${group.dark.name}`, token: group.dark })}
-                          className="p-1.5 rounded-lg transition cursor-pointer hover:opacity-90 active:scale-[0.98] group relative flex flex-col gap-1 shadow-sm"
-                          style={{ backgroundColor: group.dark.bgPreview }}
-                          title={`Tmavý režim: ${group.dark.hex} – Kliknutím zkopírovat`}
-                        >
-                          <div className="flex items-center justify-between text-[9px] font-mono px-0.5">
-                            <span className="font-semibold text-gray-400">Tmavý</span>
-                            <span className="font-bold text-gray-100">{group.dark.hex}</span>
-                          </div>
+                          {/* Tmavý náhled (dole) */}
                           <div
-                            className="w-full py-1 px-2 rounded-md flex items-center justify-center gap-1 text-[11px] font-semibold shadow-sm"
-                            style={{ backgroundColor: group.dark.hex, color: group.dark.fgText }}
+                            onClick={() => setActiveOptionsColor({ name: `${role.name} – ${group.dark.name}`, token: group.dark })}
+                            className="p-1.5 rounded-lg transition cursor-pointer hover:opacity-90 active:scale-[0.98] group relative flex flex-col gap-1 shadow-sm"
+                            style={{ backgroundColor: group.dark.bgPreview }}
+                            title={`Tmavý režim: ${group.dark.hex} – Kliknutím zkopírovat`}
                           >
-                            <span className="material-symbols-outlined text-[12px]">{group.icon}</span>
-                            <span className="truncate">
-                              {group.dark.previewType === 'surface' ? 'Povrch' : group.dark.previewType === 'container' ? 'Kontejner' : 'Tlačítko'}
-                            </span>
+                            <div className="flex items-center justify-between text-[9px] font-mono px-0.5">
+                              <span className="font-semibold text-gray-400">Tmavý</span>
+                              <span className="font-bold text-gray-100">{group.dark.hex}</span>
+                            </div>
+                            <div
+                              className="w-full py-1 px-2 rounded-md flex items-center justify-center gap-1 text-[11px] font-semibold shadow-sm"
+                              style={{ backgroundColor: group.dark.hex, color: group.dark.fgText }}
+                            >
+                              <span className="material-symbols-outlined text-[12px]">{group.icon}</span>
+                              <span className="truncate">
+                                {group.dark.previewType === 'surface' ? 'Povrch' : group.dark.previewType === 'container' ? 'Kontejner' : 'Tlačítko'}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             );
           })}
