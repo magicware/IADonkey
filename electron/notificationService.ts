@@ -7,8 +7,12 @@ import { diagnosticsService } from './diagnosticsService';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+let cachedErrorIcon: string | undefined = undefined;
+let cachedDefaultIcon: string | undefined = undefined;
+let hasCachedIcons = false;
+
 const getNotificationIcon = (type?: NotificationType): string | undefined => {
-  if (type === 'error') {
+  if (!hasCachedIcons) {
     const errorCandidates = [
       path.join(__dirname, '../electron/assets/icon-error.png'),
       path.join(__dirname, 'assets/icon-error.png'),
@@ -19,26 +23,33 @@ const getNotificationIcon = (type?: NotificationType): string | undefined => {
     ];
     for (const c of errorCandidates) {
       if (fs.existsSync(c)) {
-        return c;
+        cachedErrorIcon = c;
+        break;
       }
     }
+
+    const candidates = [
+      path.join(__dirname, '../electron/assets/icon.png'),
+      path.join(__dirname, 'assets/icon.png'),
+      path.join(__dirname, '../dist/icon.png'),
+      path.join(__dirname, '../electron/assets/icon.ico'),
+      path.join(process.resourcesPath || '', 'app.asar/electron/assets/icon.png'),
+      path.join(process.resourcesPath || '', 'app.asar/dist/icon.png'),
+      path.join(process.cwd(), 'electron/assets/icon.png'),
+    ];
+    for (const c of candidates) {
+      if (fs.existsSync(c)) {
+        cachedDefaultIcon = c;
+        break;
+      }
+    }
+    hasCachedIcons = true;
   }
 
-  const candidates = [
-    path.join(__dirname, '../electron/assets/icon.png'),
-    path.join(__dirname, 'assets/icon.png'),
-    path.join(__dirname, '../dist/icon.png'),
-    path.join(__dirname, '../electron/assets/icon.ico'),
-    path.join(process.resourcesPath || '', 'app.asar/electron/assets/icon.png'),
-    path.join(process.resourcesPath || '', 'app.asar/dist/icon.png'),
-    path.join(process.cwd(), 'electron/assets/icon.png'),
-  ];
-  for (const c of candidates) {
-    if (fs.existsSync(c)) {
-      return c;
-    }
+  if (type === 'error' && cachedErrorIcon) {
+    return cachedErrorIcon;
   }
-  return undefined;
+  return cachedDefaultIcon;
 };
 
 const getNotificationIco = (): string | undefined => {
@@ -72,6 +83,7 @@ export interface ShowNotificationOptions {
 
 export class NotificationService {
   private config: any = null;
+  private currentNotification: Notification | null = null;
 
   private cleanupDevShortcut(): void {
     if (app.isPackaged) return;
@@ -180,6 +192,16 @@ export class NotificationService {
     // V dev módu před zobrazením odstraníme případný generický zástupce Electron.lnk
     this.cleanupDevShortcut();
 
+    // Pokud ještě visí předchozí notifikace, okamžitě ji zavřeme, aby systém Windows nezařazoval novou notifikaci do fronty se zpožděním
+    if (this.currentNotification) {
+      try {
+        this.currentNotification.close();
+      } catch {
+        // ignore
+      }
+      this.currentNotification = null;
+    }
+
     try {
       const iconPath = options.icon || getNotificationIcon(options.type);
       const notification = new Notification({
@@ -203,6 +225,13 @@ export class NotificationService {
         console.warn('[NotificationService] Notification failed:', error);
       });
 
+      notification.on('close', () => {
+        if (this.currentNotification === notification) {
+          this.currentNotification = null;
+        }
+      });
+
+      this.currentNotification = notification;
       notification.show();
 
       // Chromium ve vývojovém režimu vytváří zástupce asynchronně po zobrazení toastu

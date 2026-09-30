@@ -88,15 +88,16 @@ export const TuneColorModal: React.FC<TuneColorModalProps> = ({ initialColor = '
   const originalSurfaces = deriveSingleColorSurfaces(initialParsed.hex);
   const newSurfaces = deriveSingleColorSurfaces(hex);
 
-  const handleCopyText = async (text: string, key: string, notif?: { title?: string; body?: string }) => {
+  const handleCopyText = (text: string, key: string, notif?: { title?: string; body?: string }) => {
     try {
-      if (window.electronAPI?.copyToClipboard) {
-        await window.electronAPI.copyToClipboard(text, notif);
-      } else {
-        await navigator.clipboard.writeText(text);
-      }
-    } catch {
-      await navigator.clipboard.writeText(text);
+      navigator.clipboard.writeText(text);
+    } catch (e) {
+      console.warn('[TuneColor] navigator.clipboard error:', e);
+    }
+    if (window.electronAPI?.copyToClipboard) {
+      window.electronAPI.copyToClipboard(text, notif).catch((err) => {
+        console.error('[TuneColor] copyToClipboard IPC error:', err);
+      });
     }
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 1800);

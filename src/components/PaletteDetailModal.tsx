@@ -88,15 +88,16 @@ export const PaletteDetailModal: React.FC = () => {
     }
   }, [palette]);
 
-  const handleCopy = async (text: string, key: string, notif?: { title?: string; body?: string }) => {
+  const handleCopy = (text: string, key: string, notif?: { title?: string; body?: string }) => {
     try {
-      if (window.electronAPI?.copyToClipboard) {
-        await window.electronAPI.copyToClipboard(text, notif);
-      } else {
-        await navigator.clipboard.writeText(text);
-      }
-    } catch {
-      await navigator.clipboard.writeText(text);
+      navigator.clipboard.writeText(text);
+    } catch (e) {
+      console.warn('[PaletteDetail] navigator.clipboard error:', e);
+    }
+    if (window.electronAPI?.copyToClipboard) {
+      window.electronAPI.copyToClipboard(text, notif).catch((err) => {
+        console.error('[PaletteDetail] copyToClipboard IPC error:', err);
+      });
     }
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 1800);

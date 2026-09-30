@@ -2023,8 +2023,9 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           setSelectedEasyClipIds(new Set());
           easyClipAnchorRef.current = easyClipSelectedIndex;
         } else {
-          handleClose();
+          exitEasyClip();
         }
+        return;
       } else if (e.key === 'Delete') {
         e.preventDefault();
         if (selectedEasyClipIds.size > 1) {
@@ -3071,14 +3072,14 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
               )}
               <button
                 type="button"
-                onClick={handleClose}
+                onClick={selectedEasyClipIds.size > 1 ? () => { setSelectedEasyClipIds(new Set()); easyClipAnchorRef.current = easyClipSelectedIndex; } : exitEasyClip}
                 className="flex items-center gap-1.5 text-[10px] text-gray-400 hover:text-white font-mono cursor-pointer transition select-none"
-                title="Zavřít okno (Esc)"
+                title="Zpět (Esc)"
               >
                 <kbd className="inline-flex items-center justify-center px-2 py-0.5 bg-white/[0.08] hover:bg-white/[0.14] text-gray-200 rounded-full font-mono text-[9px] font-bold leading-none whitespace-nowrap">
                   Esc
                 </kbd>
-                <span className="text-gray-300">Zavřít</span>
+                <span className="text-gray-300">Zpět</span>
               </button>
             </div>
           </div>

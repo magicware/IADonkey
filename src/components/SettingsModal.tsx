@@ -207,7 +207,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   updateInfo,
   onSimulateUpdate,
 }) => {
-  const [activeTab, setActiveTab] = useState<'sources' | 'extensions' | 'magicgate' | 'mlog' | 'github' | 'vscode' | 'android-studio' | 'donkey-tools' | 'snippets' | 'general' | 'system' | 'updates' | 'help' | 'develop'>('sources');
+  const [activeTab, setActiveTab] = useState<'sources' | 'extensions' | 'magicgate' | 'mlog' | 'github' | 'vscode' | 'android-studio' | 'donkey-tools' | 'snippets' | 'general' | 'notifications' | 'system' | 'updates' | 'help' | 'develop'>('sources');
+  const [activeDonkeyTool, setActiveDonkeyTool] = useState<'colorMaster' | 'quickCap' | 'screenRuler' | 'easyClip'>('colorMaster');
   const [formData, setFormData] = useState<AppConfig>(config);
   const [editingSource, setEditingSource] = useState<DataSource | null>(null);
   const [isAddingSource, setIsAddingSource] = useState<'file' | 'api' | 'static' | null>(null);
@@ -4494,6 +4495,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <span>Obecné</span>
           </button>
 
+          {/* Notifications tab */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('notifications')}
+            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer ${
+              activeTab === 'notifications'
+                ? 'm3-selected-card text-white font-semibold'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
+            }`}
+          >
+            <span className={`material-symbols-outlined text-lg ${activeTab === 'notifications' ? 'text-white' : 'text-gray-400'}`}>notifications</span>
+            <span>Notifikace</span>
+          </button>
+
           {/* System tab */}
           <button
             type="button"
@@ -4585,6 +4600,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeTab === 'donkey-tools' && 'DonkeyTools'}
               {activeTab === 'snippets' && 'Snippety'}
               {activeTab === 'general' && 'Obecné'}
+              {activeTab === 'notifications' && 'Notifikace'}
               {(activeTab === 'system' || activeTab === 'updates') && 'Systém'}
               {activeTab === 'help' && 'Nápověda'}
               {activeTab === 'develop' && 'Vývojář'}
@@ -4600,6 +4616,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeTab === 'donkey-tools' && 'Správa vestavěných utilit, modulu ColorMaster a klávesových zkratek'}
               {activeTab === 'snippets' && 'Předem definované textové zkratky a osobní údaje pro rychlé vložení'}
               {activeTab === 'general' && 'Globální klávesová zkratka, barva motivu a vyhledávání programů'}
+              {activeTab === 'notifications' && 'Nastavení systémových oznámení Windows a upozornění na události'}
               {(activeTab === 'system' || activeTab === 'updates') && 'Správa verzí, aktualizace IADonkey a diagnostika chybových protokolů'}
               {activeTab === 'help' && 'Přehled všech klávesových zkratek a chytrých funkcí'}
               {activeTab === 'develop' && 'Ladicí nástroje, systémová konzole a auditní protokol prováděných akcí'}
@@ -6682,8 +6699,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </p>
               </div>
 
+              {/* DonkeyTools Sub-extensions Switch */}
+              <div className="flex items-center gap-1.5 p-1 bg-white/[0.04] rounded-full w-fit flex-wrap">
+                {[
+                  { id: 'colorMaster', name: 'ColorMaster', icon: 'colorize' },
+                  { id: 'quickCap', name: 'QuickCap', icon: 'crop' },
+                  { id: 'screenRuler', name: 'ScreenRuler', icon: 'straighten' },
+                  { id: 'easyClip', name: 'EasyClip', icon: 'content_paste' },
+                ].map((tool) => {
+                  const isActive = activeDonkeyTool === tool.id;
+                  return (
+                    <button
+                      key={tool.id}
+                      type="button"
+                      onClick={() => setActiveDonkeyTool(tool.id as any)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition cursor-pointer ${
+                        isActive
+                          ? 'bg-rose-500/20 text-white shadow-sm'
+                          : 'text-gray-400 hover:text-gray-200'
+                      }`}
+                    >
+                      <span className={`material-symbols-outlined text-base ${isActive ? 'text-rose-400' : ''}`}>
+                        {tool.icon}
+                      </span>
+                      <span>{tool.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
               {/* SECTION 1: ColorMaster */}
-              <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl space-y-4 transition-colors">
+              {activeDonkeyTool === 'colorMaster' && (
+              <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl space-y-4 transition-colors animate-fade-in">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3.5">
                     <div className="w-10 h-10 rounded-full bg-rose-500/15 flex items-center justify-center shrink-0 text-rose-400">
@@ -6990,9 +7037,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 )}
               </div>
+              )}
 
               {/* SUB-EXTENSION 2: QuickCap */}
-              <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl space-y-4 transition-colors">
+              {activeDonkeyTool === 'quickCap' && (
+              <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl space-y-4 transition-colors animate-fade-in">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3.5">
                     <div className="w-10 h-10 rounded-full bg-rose-500/15 flex items-center justify-center shrink-0 text-rose-400">
@@ -7280,9 +7329,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 )}
               </div>
+              )}
 
               {/* SECTION 3: ScreenRuler */}
-              <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl space-y-4 transition-colors">
+              {activeDonkeyTool === 'screenRuler' && (
+              <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl space-y-4 transition-colors animate-fade-in">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3.5">
                     <div className="w-10 h-10 rounded-full bg-rose-500/15 flex items-center justify-center shrink-0 text-rose-400">
@@ -7586,9 +7637,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 )}
               </div>
+              )}
 
               {/* SECTION 4: EasyClip */}
-              <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl space-y-4 transition-colors">
+              {activeDonkeyTool === 'easyClip' && (
+              <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl space-y-4 transition-colors animate-fade-in">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3.5">
                     <div className="w-10 h-10 rounded-full bg-rose-500/15 flex items-center justify-center shrink-0 text-rose-400">
@@ -7805,6 +7858,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 )}
               </div>
+              )}
             </div>
           )}
 
@@ -8397,19 +8451,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </div>
 
-              {/* Windows System Notifications Section */}
-              <div className="space-y-4">
-                <div className="flex items-start justify-between gap-4">
+            </div>
+          )}
+
+          {/* TAB: Dedicated Notifications */}
+          {activeTab === 'notifications' && (
+            <div className="space-y-6 animate-fade-in max-w-4xl">
+              <div>
+                <h3 className="font-semibold text-white text-base flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg text-indigo-400">notifications</span>
+                  Systémové notifikace Windows
+                </h3>
+                <p className="text-[13px] text-gray-400 mt-1 leading-relaxed">
+                  Zobrazování nativních toast notifikací v oznamovacím centru Windows při důležitých událostech (výstřižky, barvy, synchronizace a aktualizace).
+                </p>
+              </div>
+
+              <div className="p-5 bg-white/[0.03] rounded-2xl space-y-4">
+                <div className="flex items-center justify-between gap-4 pb-4 border-b border-white/5">
                   <div>
-                    <h4 className="font-semibold text-sm text-white flex items-center gap-2">
-                      <span className="material-symbols-outlined text-lg text-indigo-400">notifications</span>
-                      Systémové notifikace Windows
-                    </h4>
-                    <p className="text-[13px] text-gray-400 mt-1 max-w-xl leading-relaxed">
-                      Zobrazování nativních toast notifikací v oznamovacím centru Windows při důležitých událostech (výstřižky, barvy, synchronizace a aktualizace).
-                    </p>
+                    <span className="text-sm font-semibold text-white block">Povolit systémové notifikace</span>
+                    <span className="text-xs text-gray-400">Hlavní přepínač pro všechna vyskakovací oznámení Windows</span>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 mt-1">
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
                     <input
                       type="checkbox"
                       checked={formData.notifications?.enabled !== false}
@@ -8495,7 +8559,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
 
                     {/* ColorMaster */}
-                    <div className="flex items-center justify-between gap-4 p-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors">
+                    <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors">
                       <div className="flex items-center gap-3">
                         <span className="material-symbols-outlined text-base text-indigo-400">colorize</span>
                         <div>
@@ -8647,40 +8711,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         />
                         <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-indigo-600" />
                       </label>
-                    </div>
-
-                    {/* Test Buttons */}
-                    <div className="pt-2 flex flex-wrap items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => handleTestNotification('success')}
-                        disabled={testingNotificationVariant !== null}
-                        className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
-                      >
-                        <span className="material-symbols-outlined text-base text-indigo-400">
-                          {testingNotificationVariant === 'success' ? 'hourglass_top' : 'notifications_active'}
-                        </span>
-                        <span>{testingNotificationVariant === 'success' ? 'Odesílám...' : 'Otestovat úspěšnou notifikaci'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleTestNotification('error')}
-                        disabled={testingNotificationVariant !== null}
-                        className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
-                      >
-                        <span className="material-symbols-outlined text-base text-rose-400">
-                          {testingNotificationVariant === 'error' ? 'hourglass_top' : 'error'}
-                        </span>
-                        <span>{testingNotificationVariant === 'error' ? 'Odesílám...' : 'Otestovat neúspěšnou notifikaci'}</span>
-                      </button>
-                      {testNotificationFeedback && (
-                        <span className={`text-xs font-medium animate-fade-in flex items-center gap-1 ${testNotificationFeedback.type === 'error' ? 'text-rose-400' : 'text-emerald-400'}`}>
-                          <span className="material-symbols-outlined text-sm">
-                            {testNotificationFeedback.type === 'error' ? 'info' : 'check'}
-                          </span>
-                          {testNotificationFeedback.message}
-                        </span>
-                      )}
                     </div>
                   </div>
                 )}
@@ -9680,6 +9710,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span className="truncate">{simulatedCrashSuccess}</span>
                   </div>
                 )}
+              </div>
+
+              {/* Notification Test Section */}
+              <div className="p-5 bg-white/[0.03] rounded-2xl space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base text-amber-400">notifications_active</span>
+                    Test systémových notifikací Windows
+                  </h4>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Ověření doručení nativních Windows toast notifikací a funkčnosti oznamovacího centra.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleTestNotification('success')}
+                    disabled={testingNotificationVariant !== null}
+                    className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-base text-indigo-400">
+                      {testingNotificationVariant === 'success' ? 'hourglass_top' : 'notifications_active'}
+                    </span>
+                    <span>{testingNotificationVariant === 'success' ? 'Odesílám...' : 'Otestovat úspěšnou notifikaci'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTestNotification('error')}
+                    disabled={testingNotificationVariant !== null}
+                    className="px-4 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-semibold flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-base text-rose-400">
+                      {testingNotificationVariant === 'error' ? 'hourglass_top' : 'error'}
+                    </span>
+                    <span>{testingNotificationVariant === 'error' ? 'Odesílám...' : 'Otestovat neúspěšnou notifikaci'}</span>
+                  </button>
+                  {testNotificationFeedback && (
+                    <span className={`text-xs font-medium animate-fade-in flex items-center gap-1 ${testNotificationFeedback.type === 'error' ? 'text-rose-400' : 'text-emerald-400'}`}>
+                      <span className="material-symbols-outlined text-sm">
+                        {testNotificationFeedback.type === 'error' ? 'info' : 'check'}
+                      </span>
+                      {testNotificationFeedback.message}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Action Log Section */}
