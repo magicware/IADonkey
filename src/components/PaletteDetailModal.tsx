@@ -249,7 +249,7 @@ export const PaletteDetailModal: React.FC = () => {
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 font-mono">
                           {role.name}
                         </span>
-                        <span className="text-[11px] text-gray-400 hidden sm:inline">• {role.desc}</span>
+                        <span className="text-[11px] text-gray-400 inline">• {role.desc}</span>
                       </div>
 
                       <div className="flex items-center gap-2 text-[11px] text-gray-400 font-mono flex-wrap">
@@ -288,7 +288,7 @@ export const PaletteDetailModal: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Derived Surface & Button Previews (3 pairs: Světlý nahoře, Tmavý dole) */}
+                {/* Derived Surface & Button Previews (3 pairs side-by-side) */}
                 <div className="pt-2">
                   <div className="flex items-center justify-between mb-2 px-0.5">
                     <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
@@ -297,7 +297,7 @@ export const PaletteDetailModal: React.FC = () => {
                     <span className="text-[10px] text-gray-500">Kliknutím zkopírovat barvu</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
                     {[
                       {
                         title: 'Plné tlačítko',
