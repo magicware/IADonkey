@@ -59,11 +59,33 @@ export interface MagicPlanQueryLog {
  * Returns a stable unique business fingerprint for a plan task, independent of transient DOM IDs
  */
 export function getTaskFingerprint(task: PlanTaskItem): string {
+  const userPrefix = task.userName ? `${task.userName.trim().toLowerCase()}::` : (task.userId ? `${task.userId.trim().toLowerCase()}::` : '');
+  if (task.isNotAvailable) {
+    return `${userPrefix}NOTAVAILABLE::${task.dates?.[0] || task.taskId}`;
+  }
+  const codes: string[] = [];
+  if (task.requirementId && task.requirementId !== 'R0') codes.push(task.requirementId.toUpperCase().trim());
+  if (task.taskIdentifier) codes.push(task.taskIdentifier.toUpperCase().trim());
+  if (codes.length > 0) {
+    return `${userPrefix}${codes.sort().join('::')}`;
+  }
+  const normTitle = normalizeStr(task.customName || task.title || '');
+  const normProject = normalizeStr(task.project || '');
+  if (normTitle) {
+    return `${userPrefix}TITLE::${normProject}::${normTitle}`;
+  }
+  return `${userPrefix}RAW::${task.taskId}`;
+}
+
+/**
+ * Universal business key identifying the task entity across columns and assignees
+ */
+export function getTaskBusinessKey(task: PlanTaskItem): string {
   if (task.isNotAvailable) {
     return `NOTAVAILABLE::${task.dates?.[0] || task.taskId}`;
   }
   const codes: string[] = [];
-  if (task.requirementId) codes.push(task.requirementId.toUpperCase().trim());
+  if (task.requirementId && task.requirementId !== 'R0') codes.push(task.requirementId.toUpperCase().trim());
   if (task.taskIdentifier) codes.push(task.taskIdentifier.toUpperCase().trim());
   if (codes.length > 0) {
     return codes.sort().join('::');
@@ -76,25 +98,80 @@ export function getTaskFingerprint(task: PlanTaskItem): string {
   return `RAW::${task.taskId}`;
 }
 
+export interface TrackedTaskSnapshot {
+  key: string;
+  location: 'queue' | 'me' | 'other';
+  userName: string;
+  task: PlanTaskItem;
+  isSolved: boolean;
+  isCritical: boolean;
+  totalHours: number;
+}
+
 export class MagicPlanService {
   private store: AppStore;
   private timer: NodeJS.Timeout | null = null;
   private cachedData: MagicPlanData | null = null;
   private previousMyTasks: Map<string, PlanTaskItem> = new Map();
+  private previousUnassignedTasks: Map<string, PlanTaskItem> = new Map();
+  private previousSnapshot: Map<string, TrackedTaskSnapshot> = new Map();
   private queryHistory: MagicPlanQueryLog[] = [];
   private isFetching = false;
-  private currentUserColumn: string = '';
+  private currentUserConfigKey: string = '';
 
   constructor(store: AppStore) {
     this.store = store;
-    this.currentUserColumn = this.store.getConfig().magicplan?.userColumn?.trim() || '';
-    this.previousMyTasks = this.loadDiskCache();
-    if (this.previousMyTasks.size > 0) {
+    const cfg = this.store.getConfig().magicplan;
+    this.currentUserConfigKey = JSON.stringify({
+      urls: cfg?.urls || (cfg?.url ? [cfg.url] : []),
+      users: cfg?.userColumns || (cfg?.userColumn ? [cfg.userColumn] : []),
+    });
+    const { myTasks: loadedMyTasks, unassignedTasks: loadedUnassigned } = this.loadDiskCache();
+    this.previousMyTasks = loadedMyTasks;
+    this.previousUnassignedTasks = loadedUnassigned;
+
+    const uCols = (cfg?.userColumns && cfg.userColumns.length > 0)
+      ? cfg.userColumns.map((u: string) => u.trim()).filter(Boolean)
+      : (cfg?.userColumn?.trim() ? [cfg.userColumn.trim()] : []);
+    const curU = (cfg?.currentUserColumn?.trim() || uCols[0] || '').toLowerCase();
+    const qName = cfg?.unassignedColumn?.trim() || 'FK';
+
+    for (const t of loadedMyTasks.values()) {
+      const key = getTaskBusinessKey(t);
+      const tUser = (t.userName || t.userId || '').trim().toLowerCase();
+      const isMe = tUser === curU || (!tUser && uCols.length <= 1);
+      this.previousSnapshot.set(key, {
+        key,
+        location: isMe ? 'me' : 'other',
+        userName: t.userName?.trim() || (isMe ? 'Já' : 'Kolega'),
+        task: t,
+        isSolved: Boolean(t.isSolved || t.isCompleted),
+        isCritical: Boolean(t.isCritical),
+        totalHours: t.totalHours || 0,
+      });
+    }
+
+    for (const t of loadedUnassigned.values()) {
+      const key = getTaskBusinessKey(t);
+      this.previousSnapshot.set(key, {
+        key,
+        location: 'queue',
+        userName: qName,
+        task: t,
+        isSolved: Boolean(t.isSolved || t.isCompleted),
+        isCritical: Boolean(t.isCritical),
+        totalHours: t.totalHours || 0,
+      });
+    }
+
+    if (this.previousMyTasks.size > 0 || this.previousUnassignedTasks.size > 0) {
       const myTasks = Array.from(this.previousMyTasks.values());
+      const unassignedTasks = Array.from(this.previousUnassignedTasks.values());
       const totalMyHours = myTasks.reduce((sum, t) => sum + (t.totalHours || 0), 0);
       this.cachedData = {
+        lastChecked: new Date().toLocaleTimeString('cs-CZ'),
         myTasks,
-        unassignedTasks: [],
+        unassignedTasks,
         totalMyHours,
       };
     }
@@ -128,8 +205,9 @@ export class MagicPlanService {
     };
   }
 
-  private loadDiskCache(): Map<string, PlanTaskItem> {
-    const map = new Map<string, PlanTaskItem>();
+  private loadDiskCache(): { myTasks: Map<string, PlanTaskItem>; unassignedTasks: Map<string, PlanTaskItem> } {
+    const myTasks = new Map<string, PlanTaskItem>();
+    const unassignedTasks = new Map<string, PlanTaskItem>();
     try {
       if (fs.existsSync(CACHE_FILE)) {
         const raw = fs.readFileSync(CACHE_FILE, 'utf-8');
@@ -138,40 +216,68 @@ export class MagicPlanService {
           for (const [key, t] of Object.entries(parsed.tasks)) {
             const task = t as PlanTaskItem;
             const fp = getTaskFingerprint(task) || key;
-            map.set(fp, task);
+            myTasks.set(fp, task);
+          }
+        }
+        if (parsed?.unassignedTasks && typeof parsed.unassignedTasks === 'object') {
+          for (const [key, t] of Object.entries(parsed.unassignedTasks)) {
+            const task = t as PlanTaskItem;
+            const fp = getTaskFingerprint(task) || key;
+            unassignedTasks.set(fp, task);
           }
         }
       }
     } catch (err) {
       console.warn('[MagicPlan] Chyba načítání diskové mezipaměti:', err);
     }
-    return map;
+    return { myTasks, unassignedTasks };
   }
 
-  private saveDiskCache(tasks: PlanTaskItem[]): void {
+  private saveDiskCache(tasks: PlanTaskItem[], unassignedTasks: PlanTaskItem[] = []): void {
     try {
-      const obj: Record<string, any> = {};
+      const serializeTask = (t: PlanTaskItem) => ({
+        taskId: t.taskId,
+        requirementId: t.requirementId,
+        taskIdentifier: t.taskIdentifier,
+        title: t.title,
+        customName: t.customName,
+        totalHours: t.totalHours,
+        project: t.project,
+        taskType: t.taskType,
+        dates: t.dates,
+        author: t.author,
+        isCompleted: t.isCompleted,
+        isSolved: t.isSolved,
+        isGodday: t.isGodday,
+        userName: t.userName,
+        url: t.url,
+        isNotAvailable: t.isNotAvailable,
+        isCritical: t.isCritical,
+      });
+
+      const tasksObj: Record<string, any> = {};
       for (const t of tasks) {
         const fp = getTaskFingerprint(t);
-        obj[fp] = {
-          taskId: t.taskId,
-          requirementId: t.requirementId,
-          taskIdentifier: t.taskIdentifier,
-          title: t.title,
-          customName: t.customName,
-          totalHours: t.totalHours,
-          project: t.project,
-          taskType: t.taskType,
-          dates: t.dates,
-          author: t.author,
-          isCompleted: t.isCompleted,
-          isNotAvailable: t.isNotAvailable,
-          isCritical: t.isCritical,
-        };
+        tasksObj[fp] = serializeTask(t);
       }
+
+      const unassignedObj: Record<string, any> = {};
+      for (const t of unassignedTasks) {
+        const fp = getTaskFingerprint(t);
+        unassignedObj[fp] = serializeTask(t);
+      }
+
       fs.writeFileSync(
         CACHE_FILE,
-        JSON.stringify({ lastUpdated: new Date().toISOString(), tasks: obj }, null, 2),
+        JSON.stringify(
+          {
+            lastUpdated: new Date().toISOString(),
+            tasks: tasksObj,
+            unassignedTasks: unassignedObj,
+          },
+          null,
+          2
+        ),
         'utf-8'
       );
     } catch (err) {
@@ -182,6 +288,8 @@ export class MagicPlanService {
   public clearData(): void {
     this.cachedData = null;
     this.previousMyTasks.clear();
+    this.previousUnassignedTasks.clear();
+    this.previousSnapshot.clear();
     try {
       if (fs.existsSync(CACHE_FILE)) {
         fs.unlinkSync(CACHE_FILE);
@@ -200,11 +308,14 @@ export class MagicPlanService {
     this.broadcastData(emptyData);
   }
 
-  public onUserColumnChanged(newUserColumn?: string): void {
-    const trimmed = (newUserColumn || '').trim();
-    if (this.currentUserColumn !== trimmed) {
+  public onUserColumnChanged(newUserColumn?: string, newUserColumns?: string[], newUrls?: string[]): void {
+    const key = JSON.stringify({
+      urls: (newUrls && newUrls.length > 0) ? newUrls : (newUserColumn ? [newUserColumn] : []),
+      users: (newUserColumns && newUserColumns.length > 0) ? newUserColumns : (newUserColumn ? [newUserColumn] : []),
+    });
+    if (this.currentUserConfigKey !== key) {
       this.clearData();
-      this.currentUserColumn = trimmed;
+      this.currentUserConfigKey = key;
       this.restart();
     }
   }
@@ -213,17 +324,22 @@ export class MagicPlanService {
     this.stop();
     const config = this.store.getConfig();
     const isExtensionEnabled = config.extensions?.magicplan === true;
-    const isPlanEnabled = config.magicplan?.enabled === true;
-    const url = config.magicplan?.url?.trim();
-    const userColumn = config.magicplan?.userColumn?.trim() || '';
+    const isPlanEnabled = config.magicplan?.enabled !== false;
+    const urls = (config.magicplan?.urls && config.magicplan.urls.length > 0)
+      ? config.magicplan.urls.map((u) => u.trim()).filter(Boolean)
+      : (config.magicplan?.url?.trim() ? [config.magicplan.url.trim()] : []);
+    const userColumns = (config.magicplan?.userColumns && config.magicplan.userColumns.length > 0)
+      ? config.magicplan.userColumns.map((u) => u.trim()).filter(Boolean)
+      : (config.magicplan?.userColumn?.trim() ? [config.magicplan.userColumn.trim()] : []);
 
-    // If user column changed from what was previously stored, clear old user data
-    if (this.currentUserColumn && this.currentUserColumn !== userColumn) {
+    const currentKey = JSON.stringify({ urls, users: userColumns });
+    // If user configuration changed from what was previously stored, clear old user data
+    if (this.currentUserConfigKey && this.currentUserConfigKey !== currentKey) {
       this.clearData();
     }
-    this.currentUserColumn = userColumn;
+    this.currentUserConfigKey = currentKey;
 
-    if (!isExtensionEnabled || !isPlanEnabled || !url || !userColumn) {
+    if (!isExtensionEnabled || !isPlanEnabled || urls.length === 0 || userColumns.length === 0) {
       return;
     }
 
@@ -321,22 +437,26 @@ export class MagicPlanService {
     const startTime = Date.now();
     const config = this.store.getConfig();
     const planConfig: MagicPlanSettings = config.magicplan || {};
-    const url = planConfig.url?.trim();
-    const myColumnIdentifier = planConfig.userColumn?.trim();
+    const urls = (planConfig.urls && planConfig.urls.length > 0)
+      ? planConfig.urls.map((u) => u.trim()).filter(Boolean)
+      : (planConfig.url?.trim() ? [planConfig.url.trim()] : []);
+    const userColumns = (planConfig.userColumns && planConfig.userColumns.length > 0)
+      ? planConfig.userColumns.map((u) => u.trim()).filter(Boolean)
+      : (planConfig.userColumn?.trim() ? [planConfig.userColumn.trim()] : []);
     const queueColumnIdentifier = planConfig.unassignedColumn?.trim() || '';
     const linkWithTaskManager = planConfig.linkWithTaskManager !== false;
     const mlogBaseUrl = config.mlog?.baseUrl;
     const mlogTaskPrefix = config.mlog?.taskPrefix || 'T';
     const mlogRequestPrefix = config.mlog?.requestPrefix || 'R';
 
-    if (!url || !myColumnIdentifier) {
+    if (urls.length === 0 || userColumns.length === 0) {
       this.isFetching = false;
       const emptyData: MagicPlanData = {
         lastChecked: new Date().toLocaleTimeString('cs-CZ'),
         myTasks: [],
         unassignedTasks: [],
         totalMyHours: 0,
-        error: 'Nastavte URL adresu plánu a identifikátor sloupce v nastavení MagicPlan.',
+        error: 'Nastavte URL adresu plánu a alespoň jednu osobu v nastavení MagicPlan.',
         isOffline: true,
       };
       this.cachedData = emptyData;
@@ -344,31 +464,62 @@ export class MagicPlanService {
     }
 
     try {
-      const html = await this.fetchHtmlWithCredentials(url);
-      const parsed = this.parsePlanHtml(
-        html,
-        myColumnIdentifier,
-        queueColumnIdentifier,
-        linkWithTaskManager,
-        mlogBaseUrl,
-        mlogTaskPrefix,
-        mlogRequestPrefix
-      );
+      let allMyTasks: PlanTaskItem[] = [];
+      let allUnassignedTasks: PlanTaskItem[] = [];
+      let combinedDays: PlanDayInfo[] = [];
+      let planNumber: string | undefined;
+      let planRange: string | undefined;
+      let totalHtmlLen = 0;
+      let successfulUrls = 0;
+
+      for (const currentUrl of urls) {
+        try {
+          const html = await this.fetchHtmlWithCredentials(currentUrl);
+          totalHtmlLen += html.length;
+          const parsed = this.parsePlanHtml(
+            html,
+            userColumns,
+            queueColumnIdentifier,
+            linkWithTaskManager,
+            mlogBaseUrl,
+            mlogTaskPrefix,
+            mlogRequestPrefix
+          );
+          if (!planNumber && parsed.planNumber) planNumber = parsed.planNumber;
+          if (!planRange && parsed.planRange) planRange = parsed.planRange;
+          if (combinedDays.length === 0 && parsed.days && parsed.days.length > 0) {
+            combinedDays = parsed.days;
+          }
+          allMyTasks.push(...parsed.myTasks);
+          allUnassignedTasks.push(...parsed.unassignedTasks);
+          successfulUrls++;
+        } catch (fetchErr: any) {
+          console.warn(`[MagicPlan] Chyba načtení plánu z URL (${currentUrl}):`, fetchErr?.message || fetchErr);
+        }
+      }
+
+      if (successfulUrls === 0 && urls.length > 0) {
+        throw new Error('Nelze se připojit k žádné ze zadaných URL adres plánu.');
+      }
+
+      const myTasks = this.deduplicateTasks(allMyTasks);
+      const unassignedTasks = this.deduplicateTasks(allUnassignedTasks);
+      const totalMyHours = myTasks.reduce((sum, t) => sum + (t.totalHours || 0), 0);
 
       const nowIso = new Date().toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       const newData: MagicPlanData = {
-        planNumber: parsed.planNumber,
-        planRange: parsed.planRange,
-        days: parsed.days,
+        planNumber,
+        planRange,
+        days: combinedDays,
         lastChecked: nowIso,
-        myTasks: parsed.myTasks,
-        unassignedTasks: parsed.unassignedTasks,
-        totalMyHours: parsed.totalMyHours,
+        myTasks,
+        unassignedTasks,
+        totalMyHours,
         isOffline: false,
       };
 
       // Check diffs and show notifications
-      const diffResult = this.checkDiffsAndNotify(parsed.myTasks, planConfig);
+      const diffResult = this.checkDiffsAndNotify(myTasks, unassignedTasks, planConfig);
 
       this.cachedData = newData;
       this.broadcastData(newData);
@@ -378,23 +529,23 @@ export class MagicPlanService {
         id: `query-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         timestamp: new Date().toISOString(),
         status: 'success',
-        url,
+        url: urls.join(', '),
         durationMs: Date.now() - startTime,
-        htmlLength: html.length,
-        myTasksCount: parsed.myTasks.length,
-        unassignedTasksCount: parsed.unassignedTasks.length,
-        totalHours: parsed.totalMyHours,
+        htmlLength: totalHtmlLen,
+        myTasksCount: myTasks.length,
+        unassignedTasksCount: unassignedTasks.length,
+        totalHours: totalMyHours,
         newTasks: diffResult.newTasks,
         completedTasks: diffResult.completedTasks,
         changedTasks: diffResult.changedTasks,
-        myTasks: parsed.myTasks,
-        unassignedTasks: parsed.unassignedTasks,
+        myTasks,
+        unassignedTasks,
       });
 
       diagnosticsService.logAction({
         type: 'sync',
         title: 'MagicPlan: synchronizace plánu',
-        details: `Načteno ${parsed.myTasks.length} mých úkolů (${parsed.totalMyHours}h), ${parsed.unassignedTasks.length} ve frontě (${parsed.planRange || 'akt. období'})`,
+        details: `Načteno ${myTasks.length} mých úkolů (${totalMyHours}h), ${unassignedTasks.length} ve frontě (${planRange || 'akt. období'}) z ${urls.length} plánů`,
         status: 'success',
       });
 
@@ -418,7 +569,7 @@ export class MagicPlanService {
         id: `query-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         timestamp: new Date().toISOString(),
         status: 'error',
-        url: url || '',
+        url: urls.join(', ') || '',
         durationMs: Date.now() - startTime,
         htmlLength: 0,
         myTasksCount: 0,
@@ -489,7 +640,7 @@ export class MagicPlanService {
    */
   private parsePlanHtml(
     html: string,
-    myColumnIdentifier: string,
+    userColumnIdentifiers: string[],
     queueColumnIdentifier: string,
     linkWithTaskManager: boolean,
     mlogBaseUrl?: string,
@@ -553,7 +704,6 @@ export class MagicPlanService {
     };
 
     // 3. Extract user columns
-    const normMyId = normalizeStr(myColumnIdentifier);
     const normQueueId = normalizeStr(queueColumnIdentifier);
 
     const userRegex =
@@ -569,10 +719,11 @@ export class MagicPlanService {
       const normHeader = normalizeStr(headerText);
       const columnBody = match[2];
 
-      const isMyColumn = Boolean(
-        normMyId &&
-        (normHeader.includes(normMyId) || columnBody.includes(`data-user-id="${normMyId}"`))
-      );
+      const matchedUserId = userColumnIdentifiers.find((uId) => {
+        const normUId = normalizeStr(uId);
+        return normUId && (normHeader.includes(normUId) || columnBody.includes(`data-user-id="${normUId}"`));
+      });
+      const isMyColumn = Boolean(matchedUserId);
 
       const isQueueColumn = Boolean(
         normQueueId &&
@@ -580,17 +731,19 @@ export class MagicPlanService {
       );
 
       if (isMyColumn) {
-        myTasksRaw = this.extractTasksFromColumn(
+        const resolvedUserName = matchedUserId ? matchedUserId.trim() : headerText.trim();
+        const userTasks = this.extractTasksFromColumn(
           columnBody,
-          headerText,
+          resolvedUserName,
           getDateForTop,
           linkWithTaskManager,
           mlogBaseUrl,
           mlogTaskPrefix,
           mlogRequestPrefix
         );
+        myTasksRaw.push(...userTasks);
       } else if (isQueueColumn) {
-        unassignedTasksRaw = this.extractTasksFromColumn(
+        const queueTasks = this.extractTasksFromColumn(
           columnBody,
           headerText,
           getDateForTop,
@@ -599,6 +752,7 @@ export class MagicPlanService {
           mlogTaskPrefix,
           mlogRequestPrefix
         );
+        unassignedTasksRaw.push(...queueTasks);
       }
     }
 
@@ -665,13 +819,25 @@ export class MagicPlanService {
       const identMatch = attrs.match(/data-task-identifier="([^"]*)"/i);
       const taskIdentifier = identMatch ? identMatch[1] : '';
 
-      const hoursMatch = attrs.match(/data-task-total-hours="([^"]*)"/i);
-      let totalHours = parseFloat(hoursMatch ? hoursMatch[1] : '0') || 0;
-      if (totalHours <= 0) {
-        const innerHoursMatch = innerContent.match(/<span[^>]*class="hours"[^>]*>\s*([\d,\.]+)\s*h?<\/span>/i);
-        if (innerHoursMatch) {
-          totalHours = parseFloat(innerHoursMatch[1].replace(',', '.')) || 0;
-        }
+      // Extract hours from all possible sources (data attributes, inner hours span, title)
+      const attrHoursMatch =
+        attrs.match(/data-task-total-hours="([^"]*)"/i) ||
+        attrs.match(/data-task-hours="([^"]*)"/i) ||
+        attrs.match(/data-hours="([^"]*)"/i);
+      const attrHours = parseFloat(attrHoursMatch ? attrHoursMatch[1].replace(',', '.') : '0') || 0;
+
+      const innerHoursMatch = innerContent.match(/<span[^>]*class="[^"]*hours[^"]*"[^>]*>\s*([\d,\.]+)\s*h?<\/span>/i);
+      const spanHours = innerHoursMatch ? parseFloat(innerHoursMatch[1].replace(',', '.')) || 0 : 0;
+
+      const titleHoursMatch = rawTitle.match(/\b([\d,\.]+)\s*h(?:od)?\b/i);
+      const titleHours = titleHoursMatch ? parseFloat(titleHoursMatch[1].replace(',', '.')) || 0 : 0;
+
+      let totalHours = spanHours > 0 ? spanHours : (attrHours > 0 ? attrHours : titleHours);
+      if (spanHours > 0 && attrHours > 0) {
+        totalHours = Math.max(spanHours, attrHours);
+      }
+      if (titleHours > 0) {
+        totalHours = Math.max(totalHours, titleHours);
       }
 
       const customNameMatch = attrs.match(/data-task-custom-name="([^"]*)"/i);
@@ -762,7 +928,21 @@ export class MagicPlanService {
       const topPx = topMatch ? parseInt(topMatch[1], 10) : 0;
       const scheduledDate = getDateForTop(topPx);
 
-      const taskUrl = this.buildTaskUrl(
+      const directUrlMatch = innerContent.match(/href="([^"]+)"/i) || fullTaskHtml.match(/href="([^"]+)"/i);
+      let directUrl = directUrlMatch ? decodeHtmlEntities(directUrlMatch[1]).replace(/&amp;/g, '&') : undefined;
+      if (!directUrl) {
+        const urlInText = innerContent.match(/https?:\/\/[^\s"'<>]+/i) || rawTitle.match(/https?:\/\/[^\s"'<>]+/i);
+        if (urlInText) {
+          directUrl = urlInText[0];
+        }
+      }
+
+      const isGodday = Boolean(
+        requirementId === 'R0' ||
+        /godday/i.test(`${rawTitle} ${customName} ${project || ''} ${directUrl || ''} ${innerContent}`)
+      );
+
+      let taskUrl = this.buildTaskUrl(
         requirementId,
         taskIdentifier || undefined,
         linkWithTaskManager,
@@ -770,6 +950,10 @@ export class MagicPlanService {
         mlogTaskPrefix,
         mlogRequestPrefix
       );
+
+      if (isGodday && directUrl) {
+        taskUrl = directUrl;
+      }
 
       tasks.push({
         taskId,
@@ -789,6 +973,8 @@ export class MagicPlanService {
         author,
         isCompleted,
         isCritical,
+        isGodday,
+        topPx,
       });
     }
 
@@ -796,30 +982,31 @@ export class MagicPlanService {
     const naBlockRegex =
       /<div\s+class="[^"]*block[^"]*not-available[^"]*"[^>]*style="([^"]*)"[^>]*title="([^"]*)"[^>]*data-user-id="([^"]*)"[^>]*data-date="([^"]*)"/gi;
     let naMatch: RegExpExecArray | null;
-    const naByDate = new Map<string, { count: number; userId: string }>();
+    const naByDate = new Map<string, { count: number; userId: string; topPx: number }>();
 
     while ((naMatch = naBlockRegex.exec(columnHtml)) !== null) {
       const naStyle = naMatch[1] || '';
       const naUserId = naMatch[3] || '';
       const naDateRaw = naMatch[4] || ''; // e.g. "2026-09-28 00:00"
       const datePart = naDateRaw.split(' ')[0];
+      const parsedTop = parseInt((naStyle.match(/top:\s*(\d+)px/i) || [])[1] || '0', 10);
       const scheduledDate =
         datePart ||
-        getDateForTop(
-          parseInt((naStyle.match(/top:\s*(\d+)px/i) || [])[1] || '0', 10)
-        );
+        getDateForTop(parsedTop);
 
       if (scheduledDate) {
-        const prev = naByDate.get(scheduledDate) || { count: 0, userId: naUserId };
+        const prev = naByDate.get(scheduledDate) || { count: 0, userId: naUserId, topPx: parsedTop };
         prev.count += 1;
         if (!prev.userId && naUserId) prev.userId = naUserId;
+        if (parsedTop < prev.topPx) prev.topPx = parsedTop;
         naByDate.set(scheduledDate, prev);
       }
     }
 
     for (const [naDate, info] of naByDate.entries()) {
+      const userKey = (userName || info.userId || 'user').trim().replace(/\s+/g, '_');
       tasks.push({
-        taskId: `notavailable-${naDate}`,
+        taskId: `notavailable-${userKey}-${naDate}`,
         title: 'Nedostupný / Volno',
         customName: 'Nedostupný / Volno',
         project: 'Absence / Svátek',
@@ -831,8 +1018,20 @@ export class MagicPlanService {
         dates: [naDate],
         isCompleted: false,
         isNotAvailable: true,
+        topPx: info.topPx,
       });
     }
+
+    tasks.sort((a, b) => {
+      const aDate = a.dates && a.dates.length > 0 ? a.dates[0] : '';
+      const bDate = b.dates && b.dates.length > 0 ? b.dates[0] : '';
+      if (aDate && bDate && aDate !== bDate) {
+        return aDate.localeCompare(bDate);
+      }
+      if (aDate && !bDate) return -1;
+      if (!aDate && bDate) return 1;
+      return (a.topPx ?? 0) - (b.topPx ?? 0);
+    });
 
     return tasks;
   }
@@ -852,6 +1051,11 @@ export class MagicPlanService {
         if (t.totalHours > existing.totalHours) {
           existing.totalHours = t.totalHours;
         }
+        if (typeof t.topPx === 'number') {
+          if (typeof existing.topPx !== 'number' || t.topPx < existing.topPx) {
+            existing.topPx = t.topPx;
+          }
+        }
         if (!existing.requirementId && t.requirementId) {
           existing.requirementId = t.requirementId;
         }
@@ -867,11 +1071,20 @@ export class MagicPlanService {
         if (t.isCompleted) {
           existing.isCompleted = true;
         }
+        if (t.isSolved) {
+          existing.isSolved = true;
+        }
+        if (t.isGodday) {
+          existing.isGodday = true;
+        }
         if (t.isNotAvailable) {
           existing.isNotAvailable = true;
         }
         if (t.isCritical) {
           existing.isCritical = true;
+        }
+        if (!existing.userName && t.userName) {
+          existing.userName = t.userName;
         }
         if (!existing.url && t.url) {
           existing.url = t.url;
@@ -884,13 +1097,26 @@ export class MagicPlanService {
       }
     }
 
-    return Array.from(map.values());
+    return Array.from(map.values()).sort((a, b) => {
+      const aDate = a.dates && a.dates.length > 0 ? a.dates[0] : '';
+      const bDate = b.dates && b.dates.length > 0 ? b.dates[0] : '';
+      if (aDate && bDate && aDate !== bDate) {
+        return aDate.localeCompare(bDate);
+      }
+      if (aDate && !bDate) return -1;
+      if (!aDate && bDate) return 1;
+      return (a.topPx ?? 0) - (b.topPx ?? 0);
+    });
   }
 
   /**
    * Compares current tasks with previous snapshot using stable fingerprints and fires Windows toast notifications
    */
-  private checkDiffsAndNotify(currentTasks: PlanTaskItem[], planConfig: MagicPlanSettings): {
+  private checkDiffsAndNotify(
+    currentTasks: PlanTaskItem[],
+    currentUnassigned: PlanTaskItem[],
+    planConfig: MagicPlanSettings
+  ): {
     newTasks: string[];
     completedTasks: string[];
     changedTasks: string[];
@@ -904,82 +1130,291 @@ export class MagicPlanService {
       changedTasks: [] as string[],
     };
 
-    // Safety guard: if server returned 0 tasks (parsing issue or error), never wipe out known baseline
-    if (currentTasks.length === 0) {
+    // Safety guard: if server returned 0 tasks for both (parsing issue or error), never wipe out known baseline
+    if (currentTasks.length === 0 && currentUnassigned.length === 0) {
       return diffResult;
     }
 
+    const formatTaskDesc = (t: PlanTaskItem): string => {
+      const codePrefix = [t.requirementId, t.taskIdentifier].filter((c) => Boolean(c && c !== 'R0')).join(' / ');
+      const label = codePrefix ? `[${codePrefix}] ` : (t.isGodday ? '[godday] ' : '');
+      const hoursLabel = t.totalHours ? ` (${t.totalHours}h)` : '';
+      return `${label}${t.customName || t.title}${hoursLabel}`;
+    };
+
+    const formatTaskTitle = (t: PlanTaskItem): string => {
+      const codePrefix = [t.requirementId, t.taskIdentifier].filter((c) => Boolean(c && c !== 'R0')).join(' / ');
+      const label = codePrefix ? `[${codePrefix}] ` : (t.isGodday ? '[godday] ' : '');
+      return `${label}${t.customName || t.title}`;
+    };
+
+    const userColumns = (planConfig.userColumns && planConfig.userColumns.length > 0)
+      ? planConfig.userColumns.map((u) => u.trim()).filter(Boolean)
+      : (planConfig.userColumn?.trim() ? [planConfig.userColumn.trim()] : []);
+    const currentUserName = (planConfig.currentUserColumn?.trim() || userColumns[0] || '').toLowerCase();
+
+    const rawQueue = planConfig.unassignedColumn?.trim() || 'FK';
+    const queueName = rawQueue.toLowerCase().startsWith('nástěnk') || rawQueue.toLowerCase().startsWith('nasten')
+      ? rawQueue
+      : `Nástěnka ${rawQueue}`;
+
+    const currentSnapshot = new Map<string, TrackedTaskSnapshot>();
     const currentMap = new Map<string, PlanTaskItem>();
+    const currentUnassignedMap = new Map<string, PlanTaskItem>();
+
     for (const t of currentTasks) {
       const fp = getTaskFingerprint(t);
       currentMap.set(fp, t);
+
+      const key = getTaskBusinessKey(t);
+      const taskUser = (t.userName || t.userId || '').trim().toLowerCase();
+      const isMe = taskUser === currentUserName || (!taskUser && userColumns.length <= 1);
+      const location: 'me' | 'other' = isMe ? 'me' : 'other';
+      const userName = t.userName?.trim() || (isMe ? 'Já' : 'Kolega');
+
+      currentSnapshot.set(key, {
+        key,
+        location,
+        userName,
+        task: t,
+        isSolved: Boolean(t.isSolved || t.isCompleted),
+        isCritical: Boolean(t.isCritical),
+        totalHours: t.totalHours || 0,
+      });
+    }
+
+    for (const t of currentUnassigned) {
+      const fp = getTaskFingerprint(t);
+      currentUnassignedMap.set(fp, t);
+
+      const key = getTaskBusinessKey(t);
+      currentSnapshot.set(key, {
+        key,
+        location: 'queue',
+        userName: queueName,
+        task: t,
+        isSolved: Boolean(t.isSolved || t.isCompleted),
+        isCritical: Boolean(t.isCritical),
+        totalHours: t.totalHours || 0,
+      });
     }
 
     // On the very first run (no cache exists on disk), record baseline without spamming notifications
-    if (this.previousMyTasks.size === 0) {
+    if (this.previousSnapshot.size === 0) {
+      this.previousSnapshot = currentSnapshot;
       this.previousMyTasks = currentMap;
-      this.saveDiskCache(currentTasks);
+      this.previousUnassignedTasks = currentUnassignedMap;
+      this.saveDiskCache(currentTasks, currentUnassigned);
       return diffResult;
     }
 
-    // 1. New tasks added to plan
-    for (const [fp, task] of currentMap) {
-      if (!this.previousMyTasks.has(fp)) {
-        const codePrefix = [task.requirementId, task.taskIdentifier].filter(Boolean).join(' / ');
-        const label = codePrefix ? `[${codePrefix}] ` : '';
-        const hoursLabel = task.totalHours ? ` (${task.totalHours}h)` : '';
-        const taskDesc = `${label}${task.customName || task.title}${hoursLabel}`;
-        diffResult.newTasks.push(taskDesc);
+    // 1. Process tasks present in current snapshot
+    for (const [key, curr] of currentSnapshot) {
+      const prev = this.previousSnapshot.get(key);
+      const taskDesc = formatTaskDesc(curr.task);
+      const taskTitle = formatTaskTitle(curr.task);
 
-        if (notificationsEnabled && planConfig.notifyNewTasks !== false) {
-          notificationService.show({
-            type: 'magicPlan',
-            title: 'Nový požadavek v plánu',
-            body: taskDesc,
-          });
+      if (!prev) {
+        // Completely new task
+        if (curr.location === 'queue') {
+          diffResult.newTasks.push(`[${queueName}] ${taskDesc}`);
+          if (notificationsEnabled && planConfig.notifyNewTasks !== false && planConfig.notifyQueueTasks !== false) {
+            notificationService.show({
+              type: 'magicPlan',
+              subType: curr.isCritical ? 'critical' : 'queue',
+              title: `Nový úkol ve frontě (${queueName})`,
+              body: taskDesc,
+            });
+          }
+        } else if (curr.location === 'me') {
+          diffResult.newTasks.push(taskDesc);
+          if (notificationsEnabled && planConfig.notifyNewTasks !== false) {
+            notificationService.show({
+              type: 'magicPlan',
+              subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
+              title: 'Nový požadavek v plánu',
+              body: taskDesc,
+            });
+          }
+        } else {
+          // Other colleague
+          diffResult.newTasks.push(`[${curr.userName}] ${taskDesc}`);
+          if (notificationsEnabled && planConfig.notifyNewTasks !== false) {
+            notificationService.show({
+              type: 'magicPlan',
+              subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
+              title: `${curr.userName} byl přiřazen úkol`,
+              body: taskDesc,
+            });
+          }
+        }
+      } else {
+        // Existing task - check movements & state changes
+        const locationChanged = prev.location !== curr.location;
+
+        if (locationChanged) {
+          if (prev.location === 'queue' && curr.location === 'me') {
+            // Task assigned from queue to ME
+            diffResult.newTasks.push(taskDesc);
+            if (notificationsEnabled && planConfig.notifyNewTasks !== false) {
+              notificationService.show({
+                type: 'magicPlan',
+                subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
+                title: 'Přiřazení úkolu',
+                body: taskDesc,
+              });
+            }
+          } else if (prev.location === 'queue' && curr.location === 'other') {
+            // Task assigned from queue to colleague
+            diffResult.newTasks.push(`[${curr.userName}] ${taskDesc}`);
+            if (notificationsEnabled && planConfig.notifyNewTasks !== false) {
+              notificationService.show({
+                type: 'magicPlan',
+                subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
+                title: `${curr.userName} byl přiřazen úkol`,
+                body: taskDesc,
+              });
+            }
+          } else if (prev.location === 'me' && curr.location === 'queue') {
+            // Task moved back to unassigned queue from ME
+            diffResult.newTasks.push(`[${queueName}] ${taskDesc}`);
+            if (notificationsEnabled && planConfig.notifyQueueTasks !== false) {
+              notificationService.show({
+                type: 'magicPlan',
+                subType: curr.isCritical ? 'critical' : 'queue',
+                title: 'Úkol byl přesunut zpátky do nepřiřazených úkolů',
+                body: taskDesc,
+              });
+            }
+          } else if (prev.location === 'other' && curr.location === 'queue') {
+            // Task moved back to queue from colleague
+            diffResult.newTasks.push(`[${queueName}] ${taskDesc}`);
+            if (notificationsEnabled && planConfig.notifyQueueTasks !== false) {
+              notificationService.show({
+                type: 'magicPlan',
+                subType: curr.isCritical ? 'critical' : 'queue',
+                title: `Úkol od ${prev.userName} byl vrácen do fronty`,
+                body: taskDesc,
+              });
+            }
+          } else if (prev.location === 'other' && curr.location === 'me') {
+            // Task moved from colleague to ME
+            diffResult.newTasks.push(taskDesc);
+            if (notificationsEnabled && planConfig.notifyNewTasks !== false) {
+              notificationService.show({
+                type: 'magicPlan',
+                subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
+                title: `Úkol od ${prev.userName} byl přiřazen k vám`,
+                body: taskDesc,
+              });
+            }
+          } else if (prev.location === 'me' && curr.location === 'other') {
+            // Task moved from ME to colleague
+            if (notificationsEnabled && planConfig.notifyNewTasks !== false) {
+              notificationService.show({
+                type: 'magicPlan',
+                subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
+                title: `${curr.userName} převzal váš úkol`,
+                body: taskDesc,
+              });
+            }
+          }
+        }
+
+        // Change to critical
+        if (!prev.isCritical && curr.isCritical) {
+          diffResult.changedTasks.push(`[Kritický] ${taskDesc}`);
+          if (notificationsEnabled && planConfig.notifyTaskChanges !== false) {
+            notificationService.show({
+              type: 'magicPlan',
+              subType: 'critical',
+              title: 'Kritický úkol!',
+              body: `${curr.location === 'other' ? `[${curr.userName}] ` : ''}${taskDesc}`,
+            });
+          }
+        }
+
+        // Newly marked as solved while in place
+        if (!prev.isSolved && curr.isSolved) {
+          diffResult.completedTasks.push(taskTitle);
+          if (notificationsEnabled && planConfig.notifyCompletedTasks !== false) {
+            if (curr.location === 'me') {
+              notificationService.show({
+                type: 'magicPlan',
+                subType: 'completed',
+                title: 'Úkol v plánu splněn',
+                body: taskTitle,
+              });
+            } else if (curr.location === 'other') {
+              notificationService.show({
+                type: 'magicPlan',
+                subType: 'completed',
+                title: `${curr.userName} dokončil úkol`,
+                body: taskTitle,
+              });
+            }
+          }
+        }
+
+        // Hours changed (for my active tasks)
+        if (curr.location === 'me' && !curr.isSolved && prev.totalHours !== curr.totalHours) {
+          diffResult.changedTasks.push(`${taskTitle} (${prev.totalHours}h → ${curr.totalHours}h)`);
+          if (notificationsEnabled && planConfig.notifyTaskChanges !== false) {
+            notificationService.show({
+              type: 'magicPlan',
+              subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
+              title: 'Změna v plánu',
+              body: `${taskTitle} (hodiny: ${prev.totalHours}h → ${curr.totalHours}h)`,
+            });
+          }
         }
       }
     }
 
-    // 2. Tasks completed / removed from plan
-    for (const [fp, prevTask] of this.previousMyTasks) {
-      if (!currentMap.has(fp)) {
-        const codePrefix = [prevTask.requirementId, prevTask.taskIdentifier].filter(Boolean).join(' / ');
-        const label = codePrefix ? `[${codePrefix}] ` : '';
-        const taskDesc = `${label}${prevTask.customName || prevTask.title}`;
-        diffResult.completedTasks.push(taskDesc);
+    // 2. Process tasks that disappeared from the plan
+    for (const [key, prev] of this.previousSnapshot) {
+      if (!currentSnapshot.has(key)) {
+        const prevTaskTitle = formatTaskTitle(prev.task);
 
-        if (notificationsEnabled && planConfig.notifyCompletedTasks !== false) {
-          notificationService.show({
-            type: 'magicPlan',
-            title: 'Úkol v plánu úspěšně zpracován',
-            body: taskDesc,
-          });
+        if (prev.location === 'queue') {
+          // Disappeared from queue without being assigned to monitored columns: no notification
+          continue;
+        }
+
+        // If the task was ALREADY solved, its disappearance is expected and MUST NOT be notified
+        if (prev.isSolved) {
+          continue;
+        }
+
+        // An unsolved task disappeared from ME or OTHER without returning to queue: it was completed/solved!
+        if (prev.location === 'me') {
+          diffResult.completedTasks.push(prevTaskTitle);
+          if (notificationsEnabled && planConfig.notifyCompletedTasks !== false) {
+            notificationService.show({
+              type: 'magicPlan',
+              subType: 'completed',
+              title: 'Úkol v plánu splněn',
+              body: prevTaskTitle,
+            });
+          }
+        } else if (prev.location === 'other') {
+          diffResult.completedTasks.push(`[${prev.userName}] ${prevTaskTitle}`);
+          if (notificationsEnabled && planConfig.notifyCompletedTasks !== false) {
+            notificationService.show({
+              type: 'magicPlan',
+              subType: 'completed',
+              title: `${prev.userName} dokončil úkol`,
+              body: prevTaskTitle,
+            });
+          }
         }
       }
     }
 
-    // 3. Changed tasks (hours altered)
-    for (const [fp, task] of currentMap) {
-      const prev = this.previousMyTasks.get(fp);
-      if (prev && prev.totalHours !== task.totalHours) {
-        const codePrefix = [task.requirementId, task.taskIdentifier].filter(Boolean).join(' / ');
-        const label = codePrefix ? `[${codePrefix}] ` : '';
-        const taskDesc = `${label}${task.customName || task.title} (${prev.totalHours}h → ${task.totalHours}h)`;
-        diffResult.changedTasks.push(taskDesc);
-
-        if (notificationsEnabled && planConfig.notifyTaskChanges !== false) {
-          notificationService.show({
-            type: 'magicPlan',
-            title: 'Změna v plánu',
-            body: `${label}${task.customName || task.title} (hodiny: ${prev.totalHours}h → ${task.totalHours}h)`,
-          });
-        }
-      }
-    }
-
+    this.previousSnapshot = currentSnapshot;
     this.previousMyTasks = currentMap;
-    this.saveDiskCache(currentTasks);
+    this.previousUnassignedTasks = currentUnassignedMap;
+    this.saveDiskCache(currentTasks, currentUnassigned);
     return diffResult;
   }
 

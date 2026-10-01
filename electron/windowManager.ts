@@ -1459,9 +1459,8 @@ export class WindowManager {
     width: 60px;
     height: 60px;
     object-fit: contain;
-    border-radius: 18px;
     margin-bottom: 16px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.45));
   }
   .header-row {
     display: flex;

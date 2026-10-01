@@ -106,3 +106,47 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.35);
 }
+
+/* MagicPlan Timeline task cards (clean flat solid colors without gradients) */
+.timeline-task-card {
+  transition: filter 0.15s ease, opacity 0.2s ease;
+}
+.timeline-task-card:hover {
+  filter: brightness(1.22);
+}
+
+.timeline-task-dev {
+  background-color: rgba(var(--color-primary-rgb, 99, 102, 241), 0.70) !important;
+}
+.timeline-task-dev:hover {
+  background-color: rgba(var(--color-primary-rgb, 99, 102, 241), 0.85) !important;
+}
+
+.timeline-task-service {
+  background-color: rgba(var(--color-actions-rgb, 168, 85, 247), 0.70) !important;
+}
+.timeline-task-service:hover {
+  background-color: rgba(var(--color-actions-rgb, 168, 85, 247), 0.85) !important;
+}
+
+.timeline-task-completed {
+  background-color: rgba(16, 185, 129, 0.70) !important;
+}
+.timeline-task-completed:hover {
+  background-color: rgba(16, 185, 129, 0.85) !important;
+}
+
+.timeline-task-unavailable {
+  background-color: rgba(39, 39, 42, 0.80) !important;
+}
+.timeline-task-unavailable:hover {
+  background-color: rgba(63, 63, 70, 0.90) !important;
+}
+
+/* Globally eliminate browser outline on focus/scroll areas */
+*:focus,
+*:focus-visible {
+  outline: none !important;
+}
+
+

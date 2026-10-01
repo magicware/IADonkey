@@ -1370,8 +1370,18 @@ function setupIpcHandlers() {
     registerEasyClipHotkey(newConfig.donkeyTools?.easyClip?.hotkey);
     easyClipService.updateConfig(newConfig);
 
-    if (newConfig.magicplan?.userColumn !== oldConfig.magicplan?.userColumn) {
-      magicPlanService?.onUserColumnChanged(newConfig.magicplan?.userColumn);
+    const magicPlanConfigChanged =
+      newConfig.magicplan?.userColumn !== oldConfig.magicplan?.userColumn ||
+      JSON.stringify(newConfig.magicplan?.userColumns || []) !== JSON.stringify(oldConfig.magicplan?.userColumns || []) ||
+      JSON.stringify(newConfig.magicplan?.urls || []) !== JSON.stringify(oldConfig.magicplan?.urls || []) ||
+      newConfig.magicplan?.url !== oldConfig.magicplan?.url;
+
+    if (magicPlanConfigChanged) {
+      magicPlanService?.onUserColumnChanged(
+        newConfig.magicplan?.userColumn,
+        newConfig.magicplan?.userColumns,
+        newConfig.magicplan?.urls
+      );
     } else {
       magicPlanService?.restart();
     }
@@ -1411,33 +1421,113 @@ function setupIpcHandlers() {
     // Update notifications service config
     notificationService.updateConfig(newConfig);
 
-    windowManager.getMainWindow()?.webContents.send('config-updated', newConfig);
-    windowManager.getSettingsWindow()?.webContents.send('config-updated', newConfig);
-    windowManager.getMagicPlanWindow()?.webContents.send('config-updated', newConfig);
+    try {
+      BrowserWindow.getAllWindows().forEach((win) => {
+        if (!win.isDestroyed() && !win.webContents?.isDestroyed()) {
+          win.webContents.send('config-updated', newConfig);
+        }
+      });
+    } catch (err) {
+      console.error('Failed to broadcast config-updated:', err);
+    }
 
     return true;
   });
 
-  ipcMain.handle('send-test-notification', (_event, variant?: 'success' | 'error') => {
-    if (variant === 'error') {
+  ipcMain.handle(
+    'send-test-notification',
+    (_event, payload?: string | { type?: string; subType?: string; title?: string; body?: string }) => {
+      if (typeof payload === 'object' && payload !== null) {
+        const type = (payload.type as any) || 'test';
+        const subType = payload.subType as any;
+        const title = payload.title || 'Testovací notifikace';
+        const body = payload.body || 'Systémové notifikace fungují správně!';
+        return notificationService.show({
+          type,
+          subType,
+          title,
+          body,
+          onClick: () => {
+            if (type === 'error') {
+              diagnosticsService.openCrashLogFolder();
+            } else if (type === 'magicPlan') {
+              windowManager.openMagicPlanWindow();
+            } else {
+              windowManager.showSpotlight();
+            }
+          },
+        });
+      }
+
+      if (payload === 'error') {
+        return notificationService.show({
+          type: 'error',
+          title: 'Chyba aplikace (test)',
+          body: 'Toto je simulovaná chybová notifikace pro ověření funkčnosti.',
+          onClick: () => {
+            diagnosticsService.openCrashLogFolder();
+          },
+        });
+      }
+
+      if (payload === 'quickCap') {
+        return notificationService.show({
+          type: 'quickCap',
+          title: 'Snímek obrazovky (test)',
+          body: 'Výstřižek QuickCap byl uložen do schránky a do složky.',
+        });
+      }
+
+      if (payload === 'colorMaster') {
+        return notificationService.show({
+          type: 'colorMaster',
+          title: 'Nabraná barva (test)',
+          body: 'Barva #6366f1 (RGB: 99, 102, 241) byla zkopírována do schránky.',
+        });
+      }
+
+      if (payload === 'screenRuler') {
+        return notificationService.show({
+          type: 'screenRuler',
+          title: 'Pravítko na obrazovce (test)',
+          body: 'Měření dokončeno: 420 × 280 px (poměr 3:2).',
+        });
+      }
+
+      if (payload === 'syncComplete') {
+        return notificationService.show({
+          type: 'syncComplete',
+          title: 'Synchronizace dokončena (test)',
+          body: 'Data byla úspěšně stažena z MagicGate a MLog.',
+        });
+      }
+
+      if (payload === 'update') {
+        return notificationService.show({
+          type: 'update',
+          title: 'Dostupná aktualizace (test)',
+          body: 'Je k dispozici nová verze aplikace IADonkey.',
+        });
+      }
+
+      if (payload === 'clipboard') {
+        return notificationService.show({
+          type: 'clipboard',
+          title: 'Zkopírováno do schránky (test)',
+          body: 'Text byl úspěšně vložen do schránky Windows.',
+        });
+      }
+
       return notificationService.show({
-        type: 'error',
-        title: 'Chyba aplikace (test)',
-        body: 'Toto je simulovaná chybová notifikace pro ověření funkčnosti.',
+        type: 'test',
+        title: 'Testovací notifikace',
+        body: 'Systémové notifikace fungují správně! Budete dostávat upozornění o důležitých událostech.',
         onClick: () => {
-          diagnosticsService.openCrashLogFolder();
+          windowManager.showSpotlight();
         },
       });
     }
-    return notificationService.show({
-      type: 'test',
-      title: 'Testovací notifikace',
-      body: 'Systémové notifikace fungují správně! Budete dostávat upozornění o důležitých událostech.',
-      onClick: () => {
-        windowManager.showSpotlight();
-      },
-    });
-  });
+  );
 
   ipcMain.handle('open-settings-window', (_event, tab?: string) => {
     const win = windowManager.openSettingsWindow(tab);

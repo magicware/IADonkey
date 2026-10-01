@@ -7,51 +7,46 @@ import { diagnosticsService } from './diagnosticsService';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let cachedErrorIcon: string | undefined = undefined;
 let cachedDefaultIcon: string | undefined = undefined;
-let hasCachedIcons = false;
 
-const getNotificationIcon = (type?: NotificationType): string | undefined => {
-  if (!hasCachedIcons) {
-    const errorCandidates = [
-      path.join(__dirname, '../electron/assets/icon-error.png'),
-      path.join(__dirname, 'assets/icon-error.png'),
-      path.join(__dirname, '../build/icon-error.png'),
-      path.join(process.resourcesPath || '', 'app.asar/electron/assets/icon-error.png'),
-      path.join(process.resourcesPath || '', 'electron/assets/icon-error.png'),
-      path.join(process.cwd(), 'electron/assets/icon-error.png'),
-    ];
-    for (const c of errorCandidates) {
-      if (fs.existsSync(c)) {
-        cachedErrorIcon = c;
-        break;
-      }
+const resolveNotificationIconFile = (filename: string): string | undefined => {
+  const candidates = [
+    path.join(__dirname, 'assets/notifications', filename),
+    path.join(__dirname, '../electron/assets/notifications', filename),
+    path.join(__dirname, '../dist-electron/assets/notifications', filename),
+    path.join(process.resourcesPath || '', 'app.asar/electron/assets/notifications', filename),
+    path.join(process.resourcesPath || '', 'electron/assets/notifications', filename),
+    path.join(process.cwd(), 'electron/assets/notifications', filename),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) {
+      return c;
     }
-
-    const candidates = [
-      path.join(__dirname, '../electron/assets/icon.png'),
-      path.join(__dirname, 'assets/icon.png'),
-      path.join(__dirname, '../dist/icon.png'),
-      path.join(__dirname, '../electron/assets/icon.ico'),
-      path.join(process.resourcesPath || '', 'app.asar/electron/assets/icon.png'),
-      path.join(process.resourcesPath || '', 'app.asar/dist/icon.png'),
-      path.join(process.cwd(), 'electron/assets/icon.png'),
-    ];
-    for (const c of candidates) {
-      if (fs.existsSync(c)) {
-        cachedDefaultIcon = c;
-        break;
-      }
-    }
-    hasCachedIcons = true;
   }
-
-  if (type === 'error' && cachedErrorIcon) {
-    return cachedErrorIcon;
-  }
-  return cachedDefaultIcon;
+  return undefined;
 };
 
+const getDefaultIcon = (): string | undefined => {
+  if (cachedDefaultIcon && fs.existsSync(cachedDefaultIcon)) {
+    return cachedDefaultIcon;
+  }
+  const candidates = [
+    path.join(__dirname, '../electron/assets/icon.png'),
+    path.join(__dirname, 'assets/icon.png'),
+    path.join(__dirname, '../dist/icon.png'),
+    path.join(__dirname, '../electron/assets/icon.ico'),
+    path.join(process.resourcesPath || '', 'app.asar/electron/assets/icon.png'),
+    path.join(process.resourcesPath || '', 'app.asar/dist/icon.png'),
+    path.join(process.cwd(), 'electron/assets/icon.png'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) {
+      cachedDefaultIcon = c;
+      return c;
+    }
+  }
+  return undefined;
+};
 const getNotificationIco = (): string | undefined => {
   const candidates = [
     path.join(__dirname, '../electron/assets/icon.ico'),
@@ -70,16 +65,75 @@ const getNotificationIco = (): string | undefined => {
   return undefined;
 };
 
-export type NotificationType = 'quickCap' | 'colorMaster' | 'screenRuler' | 'syncComplete' | 'update' | 'clipboard' | 'error' | 'test' | 'magicPlan';
+export type NotificationType =
+  | 'quickCap'
+  | 'colorMaster'
+  | 'screenRuler'
+  | 'syncComplete'
+  | 'update'
+  | 'clipboard'
+  | 'error'
+  | 'test'
+  | 'magicPlan';
+
+export type NotificationSubType = 'dev' | 'service' | 'completed' | 'critical' | 'queue';
 
 export interface ShowNotificationOptions {
   type: NotificationType;
+  subType?: NotificationSubType;
   title: string;
   body: string;
   icon?: string;
   silent?: boolean;
   onClick?: () => void;
 }
+
+const getNotificationIcon = (type?: NotificationType, subType?: NotificationSubType): string | undefined => {
+  if (type === 'magicPlan') {
+    if (subType === 'critical') {
+      const p = resolveNotificationIconFile('plan-critical.png');
+      if (p) return p;
+    } else if (subType === 'completed') {
+      const p = resolveNotificationIconFile('plan-completed.png');
+      if (p) return p;
+    } else if (subType === 'service') {
+      const p = resolveNotificationIconFile('plan-service.png');
+      if (p) return p;
+    } else if (subType === 'queue') {
+      const p = resolveNotificationIconFile('plan-queue.png');
+      if (p) return p;
+    } else {
+      const p = resolveNotificationIconFile('plan-dev.png');
+      if (p) return p;
+    }
+  } else if (type === 'quickCap') {
+    const p = resolveNotificationIconFile('quickCap.png');
+    if (p) return p;
+  } else if (type === 'colorMaster') {
+    const p = resolveNotificationIconFile('colorMaster.png');
+    if (p) return p;
+  } else if (type === 'screenRuler') {
+    const p = resolveNotificationIconFile('screenRuler.png');
+    if (p) return p;
+  } else if (type === 'syncComplete') {
+    const p = resolveNotificationIconFile('syncComplete.png');
+    if (p) return p;
+  } else if (type === 'update') {
+    const p = resolveNotificationIconFile('update.png');
+    if (p) return p;
+  } else if (type === 'clipboard') {
+    const p = resolveNotificationIconFile('clipboard.png');
+    if (p) return p;
+  } else if (type === 'error') {
+    const p = resolveNotificationIconFile('error.png');
+    if (p) return p;
+  } else if (type === 'test') {
+    const p = resolveNotificationIconFile('test.png');
+    if (p) return p;
+  }
+
+  return getDefaultIcon();
+};
 
 export class NotificationService {
   private config: any = null;
@@ -204,7 +258,7 @@ export class NotificationService {
     }
 
     try {
-      const iconPath = options.icon || getNotificationIcon(options.type);
+      const iconPath = options.icon || getNotificationIcon(options.type, options.subType);
       const notification = new Notification({
         title: options.title,
         body: options.body,

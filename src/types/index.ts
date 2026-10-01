@@ -105,7 +105,10 @@ export interface ExtensionsConfig {
 export interface MagicPlanSettings {
   enabled?: boolean;
   url?: string;
+  urls?: string[];
   userColumn?: string;
+  userColumns?: string[];
+  currentUserColumn?: string;
   unassignedColumn?: string;
   pollIntervalMinutes?: number;
   notifyNewTasks?: boolean;
@@ -144,6 +147,8 @@ export interface PlanTaskItem {
   isCompleted?: boolean;
   isNotAvailable?: boolean;
   isCritical?: boolean; // priority-1 in planning HTML (critical priority)
+  isGodday?: boolean;
+  topPx?: number; // Svislá pozice v pixelovém rozvrhu HTML stránky
 }
 
 export interface MagicPlanData {

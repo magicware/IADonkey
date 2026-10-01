@@ -48,7 +48,7 @@ const DEFAULT_CONFIG: AppConfig = {
     notifyNewTasks: true,
     notifyCompletedTasks: true,
     notifyTaskChanges: true,
-    notifyQueueTasks: false,
+    notifyQueueTasks: true,
     linkWithTaskManager: true,
     timelineTimeMode: 'real8h',
     timelineCustomStart: '09:00',
@@ -662,7 +662,6 @@ export const App: React.FC = () => {
     return (
       <WindowFrame
         title="IADonkey – MagicPlan"
-        subtitle="Interní plán práce a fronta"
         allowMinimize={true}
         allowMaximize={true}
         onClose={() => {
@@ -675,6 +674,7 @@ export const App: React.FC = () => {
       >
         <MagicPlanWindow
           config={config}
+          onSaveConfig={handleSaveConfig}
           onOpenSettings={() => {
             if (window.electronAPI?.openSettingsWindow) {
               window.electronAPI.openSettingsWindow();

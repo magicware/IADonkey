@@ -14,7 +14,7 @@ export const SplashScreen: React.FC = () => {
           <img
             src={appLogo}
             alt="IADonkey"
-            className="w-[60px] h-[60px] object-contain rounded-[18px] mb-4 shadow-xl shadow-black/50"
+            className="w-[60px] h-[60px] object-contain mb-4 drop-shadow-xl"
           />
 
           {/* Title & Version */}

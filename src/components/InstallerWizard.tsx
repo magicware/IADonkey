@@ -114,7 +114,7 @@ export const InstallerWizard: React.FC = () => {
         style={{ WebkitAppRegion: 'drag' } as any}
       >
         <div className="flex items-center gap-2.5">
-          <img src={appLogo} alt="IADonkey" className="w-5 h-5 rounded-full object-contain" />
+          <img src={appLogo} alt="IADonkey" className="w-5 h-5 object-contain" />
           <span className="text-xs font-semibold text-gray-300 tracking-wide">
             IADonkey – Průvodce instalací
           </span>
@@ -152,7 +152,7 @@ export const InstallerWizard: React.FC = () => {
                 <img
                   src={appLogo}
                   alt="IADonkey"
-                  className="w-10 h-10 rounded-2xl object-contain bg-[#181926]"
+                  className="w-10 h-10 object-contain drop-shadow-md"
                 />
               </div>
               <div>

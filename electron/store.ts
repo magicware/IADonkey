@@ -85,7 +85,7 @@ const DEFAULT_CONFIG: AppConfig = {
     notifyNewTasks: true,
     notifyCompletedTasks: true,
     notifyTaskChanges: true,
-    notifyQueueTasks: false,
+    notifyQueueTasks: true,
     linkWithTaskManager: true,
   },
   updateUrl: 'https://raw.githubusercontent.com/magicware/IADonkey/main/version.json',

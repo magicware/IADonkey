@@ -1550,8 +1550,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
           id: `magicplan-task-${t.taskId}`,
           name: `${t.taskIdentifier ? `[${t.taskIdentifier}] ` : t.requirementId ? `[${t.requirementId}] ` : ''}${t.title}`,
           location: `${t.totalHours}h • ${t.userName || 'Nezařazeno'} • ${t.project || 'Projekt'} (MagicPlan)`,
-          action: taskUrl ? 'open' : 'magicplan',
-          url: taskUrl || undefined,
+          action: 'magicplan',
           icon: 'calendar_month',
           priority: -0.9,
           sourceId: 'magicplan',
@@ -2656,7 +2655,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
 
             {/* Subextensions vertical buttons list */}
             {isDonkeyToolsOpen && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 flex flex-col items-center gap-2 z-50 animate-in fade-in zoom-in-95 duration-100 p-2 bg-[#15161c] rounded-full shadow-2xl">
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 flex flex-col items-center gap-1 z-50 animate-in fade-in zoom-in-95 duration-100">
                 {/* ColorMaster Subextension - Eyedropper */}
                 {isColorMasterActive && (
                   <button
@@ -2665,7 +2664,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       setIsDonkeyToolsOpen(false);
                       handlePickColor();
                     }}
-                    className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.14] text-gray-200 hover:text-white shadow-md hover:scale-105 active:scale-95"
+                    className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all bg-[#1c1d27] hover:bg-[#282a38] text-gray-200 hover:text-white shadow-lg hover:scale-105 active:scale-95"
                     title="Eyedropper – Kapátko (nabrat barvu z obrazovky)"
                   >
                     <span className="material-symbols-outlined text-[19px] leading-none select-none">
@@ -2682,7 +2681,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       setIsDonkeyToolsOpen(false);
                       enterPaletteMode();
                     }}
-                    className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.14] text-gray-200 hover:text-white shadow-md hover:scale-105 active:scale-95"
+                    className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all bg-[#1c1d27] hover:bg-[#282a38] text-gray-200 hover:text-white shadow-lg hover:scale-105 active:scale-95"
                     title="PaletteMaster – Správa barevných palet"
                   >
                     <span className="material-symbols-outlined text-[19px] leading-none select-none">
@@ -2699,7 +2698,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       setIsDonkeyToolsOpen(false);
                       handleStartQuickCap();
                     }}
-                    className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.14] text-gray-200 hover:text-white shadow-md hover:scale-105 active:scale-95"
+                    className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all bg-[#1c1d27] hover:bg-[#282a38] text-gray-200 hover:text-white shadow-lg hover:scale-105 active:scale-95"
                     title="QuickCap – Výstřižek obrazovky"
                   >
                     <span className="material-symbols-outlined text-[19px] leading-none select-none">
@@ -2716,7 +2715,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       setIsDonkeyToolsOpen(false);
                       handleStartScreenRuler();
                     }}
-                    className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.14] text-gray-200 hover:text-white shadow-md hover:scale-105 active:scale-95"
+                    className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all bg-[#1c1d27] hover:bg-[#282a38] text-gray-200 hover:text-white shadow-lg hover:scale-105 active:scale-95"
                     title="ScreenRuler – Měřítko a pravítko obrazovky"
                   >
                     <span className="material-symbols-outlined text-[19px] leading-none select-none">
@@ -2733,7 +2732,7 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                       setIsDonkeyToolsOpen(false);
                       enterEasyClip();
                     }}
-                    className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all bg-white/[0.06] hover:bg-white/[0.14] text-gray-200 hover:text-white shadow-md hover:scale-105 active:scale-95"
+                    className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all bg-[#1c1d27] hover:bg-[#282a38] text-gray-200 hover:text-white shadow-lg hover:scale-105 active:scale-95"
                     title="EasyClip – Historie schránky"
                   >
                     <span className="material-symbols-outlined text-[19px] leading-none select-none">
@@ -2752,15 +2751,15 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
             type="button"
             onClick={openMagicPlan}
             disabled={isOpeningMagicPlan}
-            className="relative w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.09] text-cyan-400 hover:text-white transition flex items-center justify-center cursor-pointer disabled:cursor-default shrink-0 self-center shadow-sm"
+            className="relative w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.09] text-white hover:text-white transition flex items-center justify-center cursor-pointer disabled:cursor-default shrink-0 self-center shadow-sm"
             title="MagicPlan – Časová osa a přehled úkolů"
           >
             {isOpeningMagicPlan ? (
-              <span className="material-symbols-outlined text-[19px] leading-none select-none animate-spin text-cyan-400">
+              <span className="material-symbols-outlined text-[19px] leading-none select-none animate-spin m3-primary-text">
                 progress_activity
               </span>
             ) : (
-              <span className="material-symbols-outlined text-[19px] leading-none select-none">
+              <span className="material-symbols-outlined text-[19px] leading-none select-none text-white">
                 calendar_month
               </span>
             )}

@@ -1,25 +1,232 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import type { AppConfig, MagicPlanData, PlanTaskItem, PlanDayInfo } from '../types';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import type { AppConfig, MagicPlanData, PlanTaskItem, PlanDayInfo, MagicPlanSettings } from '../types';
+import { applyPrimaryColor, applyActionsColor } from '../utils/theme';
+
+export const getUserInitials = (name?: string): string => {
+  if (!name) return '??';
+  const clean = name.trim();
+  const parts = clean.split(/[\s,.-]+/).filter(Boolean);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 3).toUpperCase();
+  }
+  return parts.slice(0, 3).map((p) => p[0].toUpperCase()).join('');
+};
+
+export const formatPlanDate = (dStr?: string): string => {
+  if (!dStr) return '–';
+  const clean = dStr.trim();
+  const ymdMatch = clean.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (ymdMatch) {
+    const [, y, m, d] = ymdMatch;
+    return `${parseInt(d, 10)}. ${parseInt(m, 10)}. ${y}`;
+  }
+  const dmyMatch = clean.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (dmyMatch) {
+    const [, d, m, y] = dmyMatch;
+    return `${parseInt(d, 10)}. ${parseInt(m, 10)}. ${y}`;
+  }
+  const dmMatch = clean.match(/^(\d{1,2})\.(\d{1,2})\.?$/);
+  if (dmMatch) {
+    const [, d, m] = dmMatch;
+    const year = new Date().getFullYear();
+    return `${parseInt(d, 10)}. ${parseInt(m, 10)}. ${year}`;
+  }
+  return clean;
+};
+
+export const isTaskForUser = (taskUserName?: string, targetUser?: string): boolean => {
+  if (!targetUser) return true;
+  if (!taskUserName) return false;
+  const tNorm = taskUserName.trim().toLowerCase();
+  const uNorm = targetUser.trim().toLowerCase();
+  return tNorm === uNorm || tNorm.includes(uNorm) || uNorm.includes(tNorm);
+};
+
+export const comparePlanOrder = (a: PlanTaskItem, b: PlanTaskItem): number => {
+  const aDate = a.dates && a.dates.length > 0 ? a.dates[0] : '';
+  const bDate = b.dates && b.dates.length > 0 ? b.dates[0] : '';
+  if (aDate && bDate && aDate !== bDate) {
+    return aDate.localeCompare(bDate);
+  }
+  if (aDate && !bDate) return -1;
+  if (!aDate && bDate) return 1;
+
+  const aTop = typeof a.topPx === 'number' ? a.topPx : 0;
+  const bTop = typeof b.topPx === 'number' ? b.topPx : 0;
+  if (aTop !== bTop) {
+    return aTop - bTop;
+  }
+  return 0;
+};
+
+export const groupDeduplicateTasks = (tasksList: PlanTaskItem[]): PlanTaskItem[] => {
+  const map = new Map<string, PlanTaskItem>();
+  for (const t of tasksList) {
+    const key = t.taskId || `${t.taskIdentifier || ''}-${t.requirementId || ''}-${t.title}`;
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, { ...t, dates: t.dates ? [...t.dates] : [] });
+    } else {
+      if (t.userName && existing.userName && !existing.userName.includes(t.userName)) {
+        existing.userName = `${existing.userName}, ${t.userName}`;
+      } else if (t.userName && !existing.userName) {
+        existing.userName = t.userName;
+      }
+      if (t.totalHours > existing.totalHours) {
+        existing.totalHours = t.totalHours;
+      }
+      if (typeof t.topPx === 'number') {
+        if (typeof existing.topPx !== 'number' || t.topPx < existing.topPx) {
+          existing.topPx = t.topPx;
+        }
+      }
+      if (t.dates) {
+        for (const d of t.dates) {
+          if (!existing.dates.includes(d)) existing.dates.push(d);
+        }
+      }
+    }
+  }
+  return Array.from(map.values()).sort(comparePlanOrder);
+};
+
+export const isGoddayTask = (task: PlanTaskItem): boolean => {
+  return Boolean(
+    task.isGodday ||
+    task.requirementId === 'R0' ||
+    /godday/i.test(`${task.title} ${task.customName || ''} ${task.project || ''} ${task.url || ''}`)
+  );
+};
+
+function hexToRgba(hexColor: string | undefined, fallbackHex: string, alpha: number): string {
+  try {
+    const hex = (hexColor || fallbackHex).trim().replace('#', '');
+    let full = hex;
+    if (full.length === 3) {
+      full = full[0] + full[0] + full[1] + full[1] + full[2] + full[2];
+    }
+    if (full.length === 6) {
+      const r = parseInt(full.slice(0, 2), 16);
+      const g = parseInt(full.slice(2, 4), 16);
+      const b = parseInt(full.slice(4, 6), 16);
+      if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      }
+    }
+  } catch {}
+  return fallbackHex;
+}
 
 interface MagicPlanWindowProps {
   config: AppConfig;
+  onSaveConfig?: (newConfig: AppConfig) => void;
   onOpenSettings?: () => void;
 }
 
-export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onOpenSettings }) => {
+export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSaveConfig, onOpenSettings }) => {
+  const [currentConfig, setCurrentConfig] = useState<AppConfig>(config);
   const [data, setData] = useState<MagicPlanData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [localPlanSettings, setLocalPlanSettings] = useState<MagicPlanSettings | undefined>(config.magicplan);
+
+  useEffect(() => {
+    setCurrentConfig(config);
+  }, [config]);
+
+  useEffect(() => {
+    const cleanup = window.electronAPI?.onConfigUpdated?.((newConfig) => {
+      if (newConfig) {
+        setCurrentConfig(newConfig);
+        applyPrimaryColor(newConfig.primaryColor);
+        applyActionsColor(newConfig.actionsColor);
+      }
+    });
+    return cleanup;
+  }, []);
+
+  useEffect(() => {
+    setLocalPlanSettings(currentConfig.magicplan);
+  }, [currentConfig.magicplan]);
+
+  const handleUpdateWorkHours = useCallback(
+    async (newStart: string, newEnd: string) => {
+      setLocalPlanSettings((prev) => ({
+        ...prev,
+        timelineTimeMode: 'custom',
+        timelineCustomStart: newStart,
+        timelineCustomEnd: newEnd,
+      }));
+
+      let baseConfig = config;
+      if (window.electronAPI?.getConfig) {
+        try {
+          baseConfig = await window.electronAPI.getConfig();
+        } catch {
+          // fallback to props
+        }
+      }
+
+      const updatedConfig: AppConfig = {
+        ...baseConfig,
+        magicplan: {
+          ...baseConfig.magicplan,
+          timelineTimeMode: 'custom',
+          timelineCustomStart: newStart,
+          timelineCustomEnd: newEnd,
+        },
+      };
+
+      if (onSaveConfig) {
+        onSaveConfig(updatedConfig);
+      }
+      if (window.electronAPI?.saveConfig) {
+        await window.electronAPI.saveConfig(updatedConfig);
+      }
+    },
+    [config, onSaveConfig]
+  );
+
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<'nastenka' | 'timeline' | 'list'>('nastenka');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(() => new Date());
 
-  // Realtime clock ticker for timeline progress line (lightweight 10s interval)
+  // Auto-focus input when search overlay is opened
+  useEffect(() => {
+    if (isSearchOpen) {
+      searchInputRef.current?.focus();
+    }
+  }, [isSearchOpen]);
+
+  // Global Ctrl+F / Cmd+F to open search, and Escape to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      } else if (e.key === 'Escape' && isSearchOpen) {
+        setIsSearchOpen(false);
+        setSearchQuery('');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSearchOpen]);
+  
+  // Synchronize dynamic primary and actions colors from configuration
+  useEffect(() => {
+    applyPrimaryColor(config?.primaryColor);
+    applyActionsColor(config?.actionsColor);
+  }, [config?.primaryColor, config?.actionsColor]);
+
+  // Realtime clock ticker for timeline progress line (1s interval for smooth precision)
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 10000);
+    }, 1000);
     return () => clearInterval(timer);
   }, []);
 
@@ -99,7 +306,7 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onOpen
    * Builds TaskManager link for ticket code (R... or T...) respecting configured TaskManager prefixes
    */
   const getTaskManagerUrl = useCallback((code?: string): string | null => {
-    if (!code) return null;
+    if (!code || code === 'R0') return null;
     const isLinked = config.magicplan?.linkWithTaskManager !== false;
     if (!isLinked) return null;
     const baseUrl = config.mlog?.baseUrl?.trim().replace(/\/+$/, '');
@@ -108,7 +315,7 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onOpen
     const tPref = (config.mlog?.taskPrefix || 'T').trim();
     const rPref = (config.mlog?.requestPrefix || 'R').trim();
     const numOnly = code.replace(/\D/g, '');
-    if (!numOnly) return null;
+    if (!numOnly || numOnly === '0') return null;
 
     const upper = code.trim().toUpperCase();
     if (upper.startsWith(tPref.toUpperCase()) || upper.startsWith('T')) {
@@ -121,8 +328,11 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onOpen
   }, [config.magicplan?.linkWithTaskManager, config.mlog]);
 
   const handleOpenTask = useCallback((task: PlanTaskItem) => {
-    const tmUrl = getTaskManagerUrl(task.taskIdentifier) || getTaskManagerUrl(task.requirementId);
-    const url = tmUrl || task.url || config.magicplan?.url?.trim();
+    const isGodday = isGoddayTask(task);
+    const tmUrl = isGodday ? null : (getTaskManagerUrl(task.taskIdentifier) || getTaskManagerUrl(task.requirementId));
+    const url = isGodday
+      ? (task.url || config.magicplan?.url?.trim())
+      : (tmUrl || task.url || config.magicplan?.url?.trim());
     if (!url) return;
     if (window.electronAPI?.openExternal) {
       window.electronAPI.openExternal(url);
@@ -133,6 +343,10 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onOpen
 
   const handleOpenCodeLink = useCallback((code: string, task: PlanTaskItem, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    if (isGoddayTask(task)) {
+      handleOpenTask(task);
+      return;
+    }
     const tmUrl = getTaskManagerUrl(code);
     if (tmUrl) {
       if (window.electronAPI?.openExternal) {
@@ -152,7 +366,7 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onOpen
         });
       }
     }
-  }, [getTaskManagerUrl]);
+  }, [getTaskManagerUrl, handleOpenTask]);
 
   const myTasks = useMemo(() => data?.myTasks || [], [data]);
   const queueTasks = useMemo(() => data?.unassignedTasks || [], [data]);
@@ -194,11 +408,67 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onOpen
     return days;
   }, []);
 
-  // Filtering
+  const currentUser = config.magicplan?.currentUserColumn?.trim();
+  const [showOnlyMyTasks, setShowOnlyMyTasks] = useState<boolean>(() => Boolean(currentUser));
+
+  useEffect(() => {
+    if (currentUser) {
+      setShowOnlyMyTasks(true);
+    }
+  }, [currentUser]);
+
+  const distinctUsers = useMemo(() => {
+    const userConfigs: string[] = [];
+    if (config.magicplan?.userColumns && config.magicplan.userColumns.length > 0) {
+      for (const u of config.magicplan.userColumns) {
+        if (u.trim()) userConfigs.push(u.trim());
+      }
+    } else if (config.magicplan?.userColumn?.trim()) {
+      userConfigs.push(config.magicplan.userColumn.trim());
+    }
+
+    const canonical: string[] = [];
+    for (const name of userConfigs) {
+      const norm = name.trim().toLowerCase();
+      if (!norm) continue;
+      if (!canonical.some((c) => c.trim().toLowerCase() === norm)) {
+        canonical.push(name.trim());
+      }
+    }
+
+    if (canonical.length === 0) {
+      for (const t of myTasks) {
+        if (t.userName && t.userName.trim()) {
+          const norm = t.userName.trim().toLowerCase();
+          if (!canonical.some((c) => c.trim().toLowerCase() === norm)) {
+            canonical.push(t.userName.trim());
+          }
+        }
+      }
+    }
+
+    return canonical;
+  }, [config.magicplan, myTasks]);
+
+  const hasMultipleUsers = distinctUsers.length >= 2 && !(showOnlyMyTasks && currentUser);
+
+  // Filter tasks by active user toggle ("Pouze moje úkoly" vs "Všechny úkoly")
+  const userFilteredMyTasks = useMemo(() => {
+    let list = myTasks;
+    if (showOnlyMyTasks && currentUser) {
+      list = list.filter((t) => isTaskForUser(t.userName, currentUser));
+      list = [...list].sort(comparePlanOrder);
+    } else {
+      list = groupDeduplicateTasks(list);
+    }
+    return list;
+  }, [myTasks, showOnlyMyTasks, currentUser]);
+
+  // Filtering by search query
   const filteredMyTasks = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return myTasks;
-    return myTasks.filter((t) => {
+    if (!q) return userFilteredMyTasks;
+    return userFilteredMyTasks.filter((t) => {
       const titleMatch = (t.title || '').toLowerCase().includes(q);
       const customMatch = (t.customName || '').toLowerCase().includes(q);
       const reqMatch = (t.requirementId || '').toLowerCase().includes(q);
@@ -207,7 +477,7 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onOpen
       const authorMatch = (t.author || '').toLowerCase().includes(q);
       return titleMatch || customMatch || reqMatch || taskMatch || projMatch || authorMatch;
     });
-  }, [myTasks, searchQuery]);
+  }, [userFilteredMyTasks, searchQuery]);
 
   const filteredQueueTasks = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -227,74 +497,101 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onOpen
   const completedTasks = useMemo(() => {
     const list: PlanTaskItem[] = [];
     const seen = new Set<string>();
-    for (const t of [...myTasks, ...queueTasks]) {
+    const pool = showOnlyMyTasks && currentUser
+      ? myTasks.filter((t) => isTaskForUser(t.userName, currentUser))
+      : groupDeduplicateTasks([...myTasks, ...queueTasks]);
+
+    for (const t of pool) {
       if ((t.isCompleted || t.isSolved) && !seen.has(t.taskId)) {
         seen.add(t.taskId);
         list.push(t);
       }
     }
-    return list;
-  }, [myTasks, queueTasks]);
+    return list.sort(comparePlanOrder);
+  }, [myTasks, queueTasks, showOnlyMyTasks, currentUser]);
 
   // Active user tasks (excluding completed and notAvailable) for Nástěnka
   const activeMyTasks = useMemo(() => {
     return filteredMyTasks.filter((t) => !t.isCompleted && !t.isSolved && !t.isNotAvailable);
   }, [filteredMyTasks]);
 
-  // Tasks for Timeline: includes dev, service, notAvailable, AND completed/solved items
-  const timelineTasks = useMemo(() => {
-    return filteredMyTasks;
-  }, [filteredMyTasks]);
+  // Tasks for Timeline: always complete view across all tracked users
+  const timelineTasks = myTasks;
 
   // Task hour stats
   const devHours = useMemo(() => {
-    return myTasks.filter((t) => t.taskType === 'dev').reduce((sum, t) => sum + (t.totalHours || 0), 0);
-  }, [myTasks]);
+    return userFilteredMyTasks.filter((t) => t.taskType === 'dev').reduce((sum, t) => sum + (t.totalHours || 0), 0);
+  }, [userFilteredMyTasks]);
 
   const serviceHours = useMemo(() => {
-    return myTasks.filter((t) => t.taskType === 'service').reduce((sum, t) => sum + (t.totalHours || 0), 0);
-  }, [myTasks]);
+    return userFilteredMyTasks.filter((t) => t.taskType === 'service').reduce((sum, t) => sum + (t.totalHours || 0), 0);
+  }, [userFilteredMyTasks]);
+
+  // Dynamically recalculate plan hours based on 'showOnlyMyTasks' toggle
+  const totalDisplayPlanHours = useMemo(() => {
+    return userFilteredMyTasks.reduce((sum, t) => sum + (t.totalHours || 0), 0);
+  }, [userFilteredMyTasks]);
+
+  const totalBoardHours = useMemo(() => {
+    return devHours + serviceHours;
+  }, [devHours, serviceHours]);
+
+  const userDisplay = useMemo(() => {
+    if (showOnlyMyTasks && currentUser) {
+      return currentUser;
+    }
+    if (distinctUsers.length > 0) {
+      return distinctUsers.join(', ');
+    }
+    return config.magicplan?.userColumn || 'Plán';
+  }, [showOnlyMyTasks, currentUser, distinctUsers, config.magicplan]);
 
   const isConfigured = Boolean(
-    config.extensions?.magicplan && config.magicplan?.url && config.magicplan?.userColumn
+    config.extensions?.magicplan &&
+      ((config.magicplan?.urls && config.magicplan.urls.length > 0) || config.magicplan?.url) &&
+      ((config.magicplan?.userColumns && config.magicplan.userColumns.length > 0) || config.magicplan?.userColumn)
   );
 
+  const displayWeekRange = useMemo(() => {
+    if (workWeekDays.length >= 5) {
+      const mon = new Date(workWeekDays[0].date);
+      const fri = new Date(workWeekDays[4].date);
+      const formatD = (d: Date) => `${d.getDate()}. ${d.getMonth() + 1}.`;
+      return `${formatD(mon)} – ${formatD(fri)} ${fri.getFullYear()}`;
+    }
+    return data?.planRange || '';
+  }, [workWeekDays, data?.planRange]);
+
   return (
-    <div className="w-full h-full flex flex-col m3-surface-main text-gray-200 select-none overflow-hidden font-sans">
+    <div className="w-full h-full flex flex-col bg-[#0e0f12] text-gray-200 select-none overflow-hidden font-sans">
       {/* Scrollable Container with Integrated Non-Floating Header */}
       <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6">
         {/* Integrated Header (non-floating, scrolls with content) */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap">
-            {/* Left branding & summary */}
-            <div className="flex items-center gap-3.5">
+          <div className="relative flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap min-h-[44px]">
+            {/* Left branding & title */}
+            <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-indigo-500/15 text-indigo-400 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-2xl">calendar_month</span>
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-white tracking-wide">MagicPlan</h2>
-                  {data?.planRange && (
-                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-white/[0.06] text-gray-300 font-mono">
-                      {data.planRange}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
-                  <span>{config.magicplan?.userColumn || 'Plán'}</span>
-                  <span>•</span>
-                  <span className="text-gray-300 font-semibold">{data?.totalMyHours ?? 0}h celkem</span>
-                  {myTasks.length > 0 && (
-                    <span className="text-gray-500 font-mono text-[11px]">
-                      (Vývoj: {devHours}h, Servis: {serviceHours}h)
-                    </span>
-                  )}
-                </div>
-              </div>
+              <h2 className="text-base font-bold text-white tracking-wide">MagicPlan</h2>
             </div>
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(true)}
+                className={`w-[38px] h-[38px] rounded-full flex items-center justify-center transition cursor-pointer ${
+                  searchQuery
+                    ? 'bg-indigo-500/20 text-indigo-300'
+                    : 'bg-white/[0.04] hover:bg-white/[0.08] text-gray-300 hover:text-white'
+                }`}
+                title="Hledat v plánu (Ctrl+F)"
+              >
+                <span className="material-symbols-outlined text-base">search</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleRefresh}
@@ -331,10 +628,63 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onOpen
                 <span className="material-symbols-outlined text-base">settings</span>
               </button>
             </div>
+
+            {/* Search Overlay across entire top row */}
+            {isSearchOpen && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#0e0f12] px-1">
+                <div className="w-full max-w-lg mx-auto flex items-center gap-2.5">
+                  <div className="relative flex-1">
+                    <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-base pointer-events-none">
+                      search
+                    </span>
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          setIsSearchOpen(false);
+                          setSearchQuery('');
+                        }
+                      }}
+                      placeholder="Hledat (název, kód R/T, projekt, zadavatel)..."
+                      className="w-full h-[38px] bg-white/[0.06] hover:bg-white/[0.08] focus:bg-white/[0.1] rounded-full pl-9 pr-9 text-xs text-white placeholder-gray-400 outline-none transition border border-white/10 focus:border-indigo-500/50 shadow-sm"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('');
+                          searchInputRef.current?.focus();
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"
+                        title="Vymazat text"
+                      >
+                        <span className="material-symbols-outlined text-sm">close</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Close button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSearchOpen(false);
+                      setSearchQuery('');
+                    }}
+                    className="w-[38px] h-[38px] rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-gray-300 hover:text-white flex items-center justify-center transition cursor-pointer shrink-0"
+                    title="Zavřít hledání (Esc)"
+                  >
+                    <span className="material-symbols-outlined text-base">close</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Controls Bar: Search & 3-Tab Switcher */}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
+          {/* Controls Bar: Tabs & Slide Switch */}
+          <div className="flex items-center justify-between gap-3">
             {/* Unified 3-Tab Switcher (Nástěnka, Timeline, Seznam) */}
             <div className="flex items-center gap-1.5 p-1 bg-white/[0.04] rounded-full w-fit shrink-0">
               <button
@@ -342,12 +692,14 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onOpen
                 onClick={() => setActiveTab('nastenka')}
                 className={`px-4 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
                   activeTab === 'nastenka'
-                    ? 'bg-indigo-500/20 m3-primary-surface text-white shadow-sm font-semibold'
+                    ? 'bg-indigo-500/20 text-white shadow-sm font-semibold'
                     : 'text-gray-400 hover:text-gray-200'
                 }`}
               >
-                <span className="material-symbols-outlined text-sm">dashboard</span>
-                <span>Nástěnka</span>
+                <span className={`material-symbols-outlined text-sm ${activeTab === 'nastenka' ? 'text-indigo-400' : 'text-gray-400'}`}>
+                  dashboard
+                </span>
+                <span className={activeTab === 'nastenka' ? 'text-white' : ''}>Nástěnka</span>
               </button>
 
               <button
@@ -355,12 +707,14 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onOpen
                 onClick={() => setActiveTab('timeline')}
                 className={`px-4 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
                   activeTab === 'timeline'
-                    ? 'bg-indigo-500/20 m3-primary-surface text-white shadow-sm font-semibold'
+                    ? 'bg-indigo-500/20 text-white shadow-sm font-semibold'
                     : 'text-gray-400 hover:text-gray-200'
                 }`}
               >
-                <span className="material-symbols-outlined text-sm">calendar_view_week</span>
-                <span>Timeline</span>
+                <span className={`material-symbols-outlined text-sm ${activeTab === 'timeline' ? 'text-indigo-400' : 'text-gray-400'}`}>
+                  calendar_view_week
+                </span>
+                <span className={activeTab === 'timeline' ? 'text-white' : ''}>Timeline</span>
               </button>
 
               <button
@@ -368,36 +722,37 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onOpen
                 onClick={() => setActiveTab('list')}
                 className={`px-4 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
                   activeTab === 'list'
-                    ? 'bg-indigo-500/20 m3-primary-surface text-white shadow-sm font-semibold'
+                    ? 'bg-indigo-500/20 text-white shadow-sm font-semibold'
                     : 'text-gray-400 hover:text-gray-200'
                 }`}
               >
-                <span className="material-symbols-outlined text-sm">format_list_bulleted</span>
-                <span>Seznam</span>
+                <span className={`material-symbols-outlined text-sm ${activeTab === 'list' ? 'text-indigo-400' : 'text-gray-400'}`}>
+                  format_list_bulleted
+                </span>
+                <span className={activeTab === 'list' ? 'text-white' : ''}>Seznam</span>
               </button>
             </div>
 
-            {/* Search Input */}
-            <div className="relative flex-1 max-w-sm min-w-[200px]">
-              <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-base pointer-events-none">
-                search
-              </span>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Hledat (název, kód R/T, projekt, zadavatel)..."
-                className="w-full h-[38px] bg-white/[0.04] hover:bg-white/[0.06] focus:bg-white/[0.08] rounded-full pl-9 pr-8 text-xs text-white placeholder-gray-500 outline-none transition border-0"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-sm">close</span>
-                </button>
-              )}
-            </div>
+            {/* Classic Slide Switch for 'Všechny úkoly' (positioned on right) */}
+            {currentUser && (
+              <label
+                className="inline-flex items-center cursor-pointer select-none group shrink-0"
+                title={!showOnlyMyTasks ? 'Zobrazují se úkoly všech sledovaných osob' : `Zobrazují se pouze úkoly pro ${currentUser}`}
+              >
+                <span className="text-xs font-medium text-gray-300 group-hover:text-white transition mr-3">
+                  Všechny úkoly
+                </span>
+                <div className="relative inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={!showOnlyMyTasks}
+                    onChange={() => setShowOnlyMyTasks((prev) => !prev)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 group-hover:bg-white/15" />
+                </div>
+              </label>
+            )}
           </div>
         </div>
 
@@ -448,11 +803,16 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onOpen
             </button>
           </div>
         ) : activeTab === 'nastenka' ? (
-          /* TAB 1: NÁSTĚNKA (3 sloupce: Nepřiřazené, Úkoly na mě, Splněné) */
+          /* TAB 1: NÁSTĚNKA (4 sloupce: Nepřiřazené, Úkoly, Servis, Splněné) */
           <BoardView
             unassignedTasks={filteredQueueTasks}
             myTasks={activeMyTasks}
             completedTasks={completedTasks}
+            hasMultipleUsers={hasMultipleUsers}
+            userDisplay={userDisplay}
+            devHours={devHours}
+            serviceHours={serviceHours}
+            totalHours={totalBoardHours}
             unassignedColumnName={config.magicplan?.unassignedColumn || 'Nepřiřazené úkoly'}
             onOpenTask={handleOpenTask}
             onOpenCodeLink={handleOpenCodeLink}
@@ -467,16 +827,25 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onOpen
             timeProgressPercent={timeProgressPercent}
             currentTimeLabel={currentTimeLabel}
             currentTime={currentTime}
-            planSettings={config.magicplan}
+            planSettings={localPlanSettings || config.magicplan}
+            distinctUsers={distinctUsers}
+            currentUser={currentUser}
+            filterMyOverflow={showOnlyMyTasks && Boolean(currentUser)}
+            showOnlyMyTasks={showOnlyMyTasks}
+            searchQuery={searchQuery}
             onOpenTask={handleOpenTask}
             onOpenCodeLink={handleOpenCodeLink}
             getTaskManagerUrl={getTaskManagerUrl}
             copiedId={copiedId}
+            onUpdateWorkHours={handleUpdateWorkHours}
+            primaryColor={currentConfig?.primaryColor || config?.primaryColor}
+            actionsColor={currentConfig?.actionsColor || config?.actionsColor}
           />
         ) : (
           /* TAB 3: SEZNAM (Moderní borderless zobrazení) */
           <ListView
             tasks={filteredMyTasks}
+            hasMultipleUsers={hasMultipleUsers}
             onOpenTask={handleOpenTask}
             onOpenCodeLink={handleOpenCodeLink}
             getTaskManagerUrl={getTaskManagerUrl}
@@ -500,7 +869,7 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onOpen
           <span>•</span>
           <span>
             Celkem v plánu:{' '}
-            <strong className="text-indigo-300 font-mono">{data?.totalMyHours ?? 0}h</strong>
+            <strong className="text-indigo-300 font-mono">{totalDisplayPlanHours}h</strong>
           </span>
         </div>
 
@@ -520,6 +889,11 @@ interface BoardViewProps {
   unassignedTasks: PlanTaskItem[];
   myTasks: PlanTaskItem[];
   completedTasks: PlanTaskItem[];
+  hasMultipleUsers?: boolean;
+  userDisplay?: string;
+  devHours?: number;
+  serviceHours?: number;
+  totalHours?: number;
   unassignedColumnName: string;
   onOpenTask: (task: PlanTaskItem) => void;
   onOpenCodeLink: (code: string, task: PlanTaskItem, e?: React.MouseEvent) => void;
@@ -531,117 +905,201 @@ const BoardView: React.FC<BoardViewProps> = ({
   unassignedTasks,
   myTasks,
   completedTasks,
+  hasMultipleUsers,
+  userDisplay,
+  devHours,
+  serviceHours,
+  totalHours,
   unassignedColumnName,
   onOpenTask,
   onOpenCodeLink,
   getTaskManagerUrl,
   copiedId,
 }) => {
+  const devTasks = useMemo(() => {
+    const dev = myTasks.filter((t) => !isServiceTaskItem(t));
+    return [...dev].sort((a, b) => {
+      const aCrit = a.isCritical ? 1 : 0;
+      const bCrit = b.isCritical ? 1 : 0;
+      if (bCrit !== aCrit) return bCrit - aCrit;
+      return comparePlanOrder(a, b);
+    });
+  }, [myTasks]);
+
+  const sortedServiceTasks = useMemo(() => {
+    const srv = myTasks.filter((t) => isServiceTaskItem(t));
+    return [...srv].sort((a, b) => {
+      const aCrit = a.isCritical ? 1 : 0;
+      const bCrit = b.isCritical ? 1 : 0;
+      if (bCrit !== aCrit) return bCrit - aCrit;
+      return comparePlanOrder(a, b);
+    });
+  }, [myTasks]);
+
   const unassignedHours = useMemo(() => {
     return unassignedTasks.reduce((acc, t) => acc + (t.totalHours || 0), 0);
   }, [unassignedTasks]);
 
-  const myHours = useMemo(() => {
-    return myTasks.reduce((acc, t) => acc + (t.totalHours || 0), 0);
-  }, [myTasks]);
+  const computedDevHours = useMemo(() => {
+    return devTasks.reduce((acc, t) => acc + (t.totalHours || 0), 0);
+  }, [devTasks]);
+
+  const computedServiceHours = useMemo(() => {
+    return sortedServiceTasks.reduce((acc, t) => acc + (t.totalHours || 0), 0);
+  }, [sortedServiceTasks]);
+
+  const completedHours = useMemo(() => {
+    return completedTasks.reduce((acc, t) => acc + (t.totalHours || 0), 0);
+  }, [completedTasks]);
+
+  const effectiveTotalHours = computedDevHours + computedServiceHours;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-      {/* Sloupec 1: Nepřiřazené úkoly */}
-      <div className="p-4 bg-white/[0.02] rounded-2xl flex flex-col gap-3 min-h-[350px]">
-        <div className="flex items-center justify-between pb-1 select-none">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-base text-amber-400">hourglass_empty</span>
-            <span className="text-xs font-bold text-white tracking-wide">{unassignedColumnName}</span>
-          </div>
-          <span className="text-xs font-mono font-semibold text-gray-400">
-            {unassignedTasks.length} ({unassignedHours}h)
+    <div>
+      {/* Board Summary Info Bar: generous indentation and larger margin bottom */}
+      <div className="flex items-center gap-2.5 text-xs text-gray-400 select-none px-2 mb-7">
+        {userDisplay && <span className="text-gray-200 font-bold tracking-wide">{userDisplay}</span>}
+        {userDisplay && <span className="text-gray-600">•</span>}
+        <span className="text-gray-300 font-semibold">{effectiveTotalHours}h celkem</span>
+        {(computedDevHours > 0 || computedServiceHours > 0) && (
+          <span className="text-gray-400 font-mono text-[11px]">
+            (Vývoj: {computedDevHours}h, Servis: {computedServiceHours}h)
           </span>
-        </div>
-
-        <div className="space-y-2 flex-1">
-          {unassignedTasks.length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-xs text-gray-500 italic text-center">
-              Žádné nezařazené úkoly
-            </div>
-          ) : (
-            unassignedTasks.map((task) => (
-              <TaskCard
-                key={`board-unassigned-${task.taskId}`}
-                task={task}
-                onOpenTask={onOpenTask}
-                onOpenCodeLink={onOpenCodeLink}
-                getTaskManagerUrl={getTaskManagerUrl}
-                isCopied={copiedId === task.taskId}
-                showAssignee={true}
-              />
-            ))
-          )}
-        </div>
+        )}
       </div>
 
-      {/* Sloupec 2: Úkoly na mě za sebou */}
-      <div className="p-4 bg-white/[0.02] rounded-2xl flex flex-col gap-3 min-h-[350px]">
-        <div className="flex items-center justify-between pb-1 select-none">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-base text-indigo-400">person</span>
-            <span className="text-xs font-bold text-white tracking-wide">Úkoly na mně</span>
-          </div>
-          <span className="text-xs font-mono font-semibold text-indigo-300">
-            {myTasks.length} ({myHours}h)
-          </span>
-        </div>
-
-        <div className="space-y-2 flex-1">
-          {myTasks.length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-xs text-gray-500 italic text-center">
-              Nemáte žádné aktivní úkoly
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-7 xl:gap-8 items-start">
+        {/* Sloupec 1: Nepřiřazené úkoly */}
+        <div className="flex flex-col gap-3 min-h-[350px]">
+          <div className="flex items-center justify-between pb-1 select-none">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-base text-amber-400">hourglass_empty</span>
+              <span className="text-xs font-bold text-white tracking-wide">{unassignedColumnName}</span>
             </div>
-          ) : (
-            myTasks.map((task) => (
-              <TaskCard
-                key={`board-my-${task.taskId}`}
-                task={task}
-                onOpenTask={onOpenTask}
-                onOpenCodeLink={onOpenCodeLink}
-                getTaskManagerUrl={getTaskManagerUrl}
-                isCopied={copiedId === task.taskId}
-              />
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Sloupec 3: Splněné úkoly */}
-      <div className="p-4 bg-white/[0.02] rounded-2xl flex flex-col gap-3 min-h-[350px]">
-        <div className="flex items-center justify-between pb-1 select-none">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-base text-emerald-400">check_circle</span>
-            <span className="text-xs font-bold text-white tracking-wide">Splněné úkoly</span>
+            <span className="text-xs font-mono font-semibold text-gray-400">
+              {unassignedTasks.length} ({unassignedHours}h)
+            </span>
           </div>
-          <span className="text-xs font-mono font-semibold text-gray-400">
-            {completedTasks.length}
-          </span>
+
+          <div className="space-y-2 flex-1">
+            {unassignedTasks.length === 0 ? (
+              <div className="h-40 flex items-center justify-center text-xs text-gray-500 italic text-center">
+                Žádné nezařazené úkoly
+              </div>
+            ) : (
+              unassignedTasks.map((task) => (
+                <TaskCard
+                  key={`board-unassigned-${task.taskId}`}
+                  task={task}
+                  onOpenTask={onOpenTask}
+                  onOpenCodeLink={onOpenCodeLink}
+                  getTaskManagerUrl={getTaskManagerUrl}
+                  isCopied={copiedId === task.taskId}
+                  showAssignee={true}
+                />
+              ))
+            )}
+          </div>
         </div>
 
-        <div className="space-y-2 flex-1">
-          {completedTasks.length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-xs text-gray-500 italic text-center">
-              Zatím žádné splněné úkoly v rozvrhu
+        {/* Sloupec 2: Úkoly (Vývoj & obecné úkoly) */}
+        <div className="flex flex-col gap-3 min-h-[350px]">
+          <div className="flex items-center justify-between pb-1 select-none">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-base text-indigo-400">code</span>
+              <span className="text-xs font-bold text-white tracking-wide">Úkoly</span>
             </div>
-          ) : (
-            completedTasks.map((task) => (
-              <TaskCard
-                key={`board-completed-${task.taskId}`}
-                task={task}
-                onOpenTask={onOpenTask}
-                onOpenCodeLink={onOpenCodeLink}
-                getTaskManagerUrl={getTaskManagerUrl}
-                isCopied={copiedId === task.taskId}
-                isCompletedView={true}
-              />
-            ))
-          )}
+            <span className="text-xs font-mono font-semibold text-indigo-300">
+              {devTasks.length} ({computedDevHours}h)
+            </span>
+          </div>
+
+          <div className="space-y-2 flex-1">
+            {devTasks.length === 0 ? (
+              <div className="h-40 flex items-center justify-center text-xs text-gray-500 italic text-center">
+                Nemáte žádné aktivní úkoly
+              </div>
+            ) : (
+              devTasks.map((task) => (
+                <TaskCard
+                  key={`board-my-${task.taskId}`}
+                  task={task}
+                  onOpenTask={onOpenTask}
+                  onOpenCodeLink={onOpenCodeLink}
+                  getTaskManagerUrl={getTaskManagerUrl}
+                  isCopied={copiedId === task.taskId}
+                  showAssignee={hasMultipleUsers}
+                />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Sloupec 3: Servis (seřazený: nejdříve kritické a pak ostatní dle pořadí z plánu) */}
+        <div className="flex flex-col gap-3 min-h-[350px]">
+          <div className="flex items-center justify-between pb-1 select-none">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-base text-purple-400">build</span>
+              <span className="text-xs font-bold text-white tracking-wide">Servis</span>
+            </div>
+            <span className="text-xs font-mono font-semibold text-purple-300">
+              {sortedServiceTasks.length} ({computedServiceHours}h)
+            </span>
+          </div>
+
+          <div className="space-y-2 flex-1">
+            {sortedServiceTasks.length === 0 ? (
+              <div className="h-40 flex items-center justify-center text-xs text-gray-500 italic text-center">
+                Žádné servisní úkoly
+              </div>
+            ) : (
+              sortedServiceTasks.map((task) => (
+                <TaskCard
+                  key={`board-service-${task.taskId}`}
+                  task={task}
+                  onOpenTask={onOpenTask}
+                  onOpenCodeLink={onOpenCodeLink}
+                  getTaskManagerUrl={getTaskManagerUrl}
+                  isCopied={copiedId === task.taskId}
+                  showAssignee={hasMultipleUsers}
+                />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Sloupec 4: Splněné úkoly */}
+        <div className="flex flex-col gap-3 min-h-[350px]">
+          <div className="flex items-center justify-between pb-1 select-none">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-base text-emerald-400">check_circle</span>
+              <span className="text-xs font-bold text-white tracking-wide">Splněné úkoly</span>
+            </div>
+            <span className="text-xs font-mono font-semibold text-emerald-300">
+              {completedTasks.length} ({completedHours}h)
+            </span>
+          </div>
+
+          <div className="space-y-2 flex-1">
+            {completedTasks.length === 0 ? (
+              <div className="h-40 flex items-center justify-center text-xs text-gray-500 italic text-center">
+                Zatím žádné splněné úkoly v rozvrhu
+              </div>
+            ) : (
+              completedTasks.map((task) => (
+                <TaskCard
+                  key={`board-completed-${task.taskId}`}
+                  task={task}
+                  onOpenTask={onOpenTask}
+                  onOpenCodeLink={onOpenCodeLink}
+                  getTaskManagerUrl={getTaskManagerUrl}
+                  isCopied={copiedId === task.taskId}
+                  isCompletedView={true}
+                  showAssignee={hasMultipleUsers}
+                />
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -659,10 +1117,18 @@ interface TimelineGridViewProps {
   currentTimeLabel: string;
   currentTime: Date;
   planSettings?: MagicPlanSettings;
+  distinctUsers?: string[];
+  currentUser?: string;
+  filterMyOverflow?: boolean;
+  showOnlyMyTasks?: boolean;
+  searchQuery?: string;
   onOpenTask: (task: PlanTaskItem) => void;
   onOpenCodeLink: (code: string, task: PlanTaskItem, e?: React.MouseEvent) => void;
   getTaskManagerUrl: (code?: string) => string | null;
   copiedId: string | null;
+  onUpdateWorkHours?: (newStart: string, newEnd: string) => void;
+  primaryColor?: string;
+  actionsColor?: string;
 }
 
 interface TimelineScheduledBlock {
@@ -683,17 +1149,544 @@ interface TimelineScheduledBlock {
   isOverflowPart?: boolean;
 }
 
+interface UserScheduleResult {
+  userName: string;
+  initials: string;
+  scheduledBlocks: TimelineScheduledBlock[];
+  weekMergedBlocks: TimelineScheduledBlock[];
+  overflowTasks: { task: PlanTaskItem; remainingHours: number }[];
+  freeSlots: { dayIndex: number; startCol: number; spanCols: number; freeHours: number }[];
+  dayCapacities: {
+    dayIndex: number;
+    date: string;
+    dayLabel: string;
+    isToday: boolean;
+    naHours: number;
+    completedHours: number;
+    serviceHours: number;
+    availableDevHours: number;
+    totalCapacity: number;
+  }[];
+}
+
+const isServiceTaskItem = (t: PlanTaskItem): boolean => {
+  if (t.isNotAvailable) return false;
+  if (t.taskType === 'dev') return false;
+  if (t.taskType === 'service') return true;
+  const str = `${t.title} ${t.customName || ''} ${t.project || ''}`.toLowerCase();
+  return str.includes('servis') || str.includes('hd') || str.includes('support');
+};
+
+const calculateScheduleForTasks = (
+  userTasks: PlanTaskItem[],
+  days: PlanDayInfo[],
+  todayIdx: number,
+  totalDayHours: number
+) => {
+  const SLOTS_PER_HOUR = 2;
+  const totalDaySlots = totalDayHours * SLOTS_PER_HOUR;
+
+  // 1. Vyzobání všech požadavků a duplicit ve sloupci (rozkouskovaný úkol do jednoho záznamu)
+  const naTasks: PlanTaskItem[] = [];
+  const normalTasksMap = new Map<string, { task: PlanTaskItem; order: number }>();
+  let taskOrderCounter = 0;
+
+  for (const t of [...userTasks].sort(comparePlanOrder)) {
+    if (t.isNotAvailable) {
+      naTasks.push({ ...t, dates: t.dates ? [...t.dates] : [] });
+      continue;
+    }
+
+    const key = t.taskId || `${t.taskIdentifier || ''}-${t.requirementId || ''}-${t.title}`;
+    const existing = normalTasksMap.get(key);
+    if (!existing) {
+      normalTasksMap.set(key, {
+        task: {
+          ...t,
+          dates: t.dates ? [...t.dates] : [],
+        },
+        order: taskOrderCounter++,
+      });
+    } else {
+      const et = existing.task;
+      // Sjednotíme rozkouskovaný úkol do jednoho záznamu s plným počtem hodin
+      if (t.totalHours > et.totalHours) {
+        et.totalHours = t.totalHours;
+      }
+      if (typeof t.topPx === 'number') {
+        if (typeof et.topPx !== 'number' || t.topPx < et.topPx) {
+          et.topPx = t.topPx;
+        }
+      }
+      if (t.isCritical) et.isCritical = true;
+      if (t.isCompleted) et.isCompleted = true;
+      if (t.isSolved) et.isSolved = true;
+      if (t.isGodday) et.isGodday = true;
+      if (!et.requirementId && t.requirementId) et.requirementId = t.requirementId;
+      if (!et.taskIdentifier && t.taskIdentifier) et.taskIdentifier = t.taskIdentifier;
+      if (!et.project && t.project) et.project = t.project;
+      if (!et.author && t.author) et.author = t.author;
+      if (!et.customName && t.customName) et.customName = t.customName;
+      if (!et.url && t.url) et.url = t.url;
+      if (t.dates) {
+        for (const d of t.dates) {
+          if (!et.dates.includes(d)) et.dates.push(d);
+        }
+      }
+    }
+  }
+
+  const deduplicatedTasks = Array.from(normalTasksMap.values())
+    .map((item) => item.task)
+    .sort(comparePlanOrder);
+
+  // Rozdělení deduplikovaných úkolů:
+  const compTasks = deduplicatedTasks
+    .filter((t) => t.isCompleted || t.isSolved)
+    .sort(comparePlanOrder);
+
+  const activeDevTasks = deduplicatedTasks.filter(
+    (t) => !t.isCompleted && !t.isSolved && !isServiceTaskItem(t)
+  );
+  const activeServiceTasks = deduplicatedTasks.filter(
+    (t) => !t.isCompleted && !t.isSolved && isServiceTaskItem(t)
+  );
+
+  // Řazení: dle kritické závažnosti, pak podle přirozeného pořadí jak přišly z plánu (comparePlanOrder)
+  const critDevTasks = activeDevTasks.filter((t) => t.isCritical).sort(comparePlanOrder);
+  const normDevTasks = activeDevTasks.filter((t) => !t.isCritical).sort(comparePlanOrder);
+  const critServiceTasks = activeServiceTasks.filter((t) => t.isCritical).sort(comparePlanOrder);
+  const normServiceTasks = activeServiceTasks.filter((t) => !t.isCritical).sort(comparePlanOrder);
+
+  const sortedDevTasks = [...critDevTasks, ...normDevTasks];
+  const sortedServiceTasks = [...critServiceTasks, ...normServiceTasks];
+
+  // Mapování NA bloků na konkrétní dny
+  const dayNA = new Map<number, PlanTaskItem[]>();
+  for (let i = 0; i < 5; i++) dayNA.set(i, []);
+  for (const na of naTasks) {
+    if (na.dates && na.dates.length > 0) {
+      for (const dStr of na.dates) {
+        const idx = days.findIndex((d) => d.date === dStr);
+        if (idx !== -1 && idx < 5) {
+          dayNA.get(idx)?.push(na);
+        }
+      }
+    }
+  }
+
+  const blocks: TimelineScheduledBlock[] = [];
+
+  // Alokace NA bloků na jejich dny (pevně dané na začátek dne)
+  for (let d = 0; d < 5; d++) {
+    const naList = dayNA.get(d) || [];
+    let slotInDay = 0;
+    for (const na of naList) {
+      let naH = na.totalHours > 0 ? na.totalHours : totalDayHours;
+      if (naH > 4) {
+        naH = totalDayHours;
+      }
+      const spanCols = Math.min(totalDaySlots - slotInDay, Math.max(1, Math.round(naH * SLOTS_PER_HOUR)));
+      const chunkHours = spanCols / SLOTS_PER_HOUR;
+      if (spanCols > 0) {
+        blocks.push({
+          id: `na-${na.taskId}-d${d}`,
+          task: na,
+          isService: false,
+          isNotAvailable: true,
+          isCompleted: false,
+          isCritical: false,
+          dayIndex: d,
+          startCol: d * totalDaySlots + slotInDay + 1,
+          spanCols,
+          chunkHours,
+          totalHours: naH,
+          partIndex: 1,
+          totalParts: 1,
+          isSplit: false,
+        });
+        slotInDay += spanCols;
+      }
+    }
+  }
+
+  // 2. Předchozí dny: za sebou plní zpracované požadavky do aktuálního dne
+  const maxCompDay = todayIdx !== -1 ? todayIdx - 1 : -1;
+  let compDay = 0;
+  for (const comp of compTasks) {
+    if (compDay > maxCompDay) break;
+    let compHoursRemaining = comp.totalHours > 0 ? comp.totalHours : 1;
+    let compPart = 1;
+
+    while (compHoursRemaining > 0 && compDay <= maxCompDay) {
+      const usedOnTarget = blocks
+        .filter((b) => b.dayIndex === compDay)
+        .reduce((s, b) => s + b.spanCols, 0);
+      const availableOnTarget = totalDaySlots - usedOnTarget;
+      if (availableOnTarget <= 0) {
+        compDay++;
+        continue;
+      }
+      const remainingSlots = Math.round(compHoursRemaining * SLOTS_PER_HOUR);
+      const spanCols = Math.min(availableOnTarget, remainingSlots);
+      const chunkHours = spanCols / SLOTS_PER_HOUR;
+      const startCol = compDay * totalDaySlots + usedOnTarget + 1;
+      blocks.push({
+        id: `comp-${comp.taskId}-d${compDay}-p${compPart}`,
+        task: comp,
+        isService: false,
+        isNotAvailable: false,
+        isCompleted: true,
+        isCritical: comp.isCritical,
+        dayIndex: compDay,
+        startCol,
+        spanCols,
+        chunkHours,
+        totalHours: comp.totalHours > 0 ? comp.totalHours : chunkHours,
+        partIndex: compPart,
+        totalParts: 1,
+        isSplit: false,
+        isOverflowPart: compPart > 1,
+      });
+      compHoursRemaining = Math.max(0, Math.round((compHoursRemaining - chunkHours) * 10) / 10);
+      compPart++;
+      if (compHoursRemaining > 0) {
+        compDay++;
+      }
+    }
+  }
+
+  // Příprava front pro aktivní úkoly
+  interface TaskQueueItem {
+    task: PlanTaskItem;
+    remainingHours: number;
+    part: number;
+  }
+
+  const devQueue: TaskQueueItem[] = sortedDevTasks.map((t) => ({
+    task: t,
+    remainingHours: t.totalHours > 0 ? t.totalHours : 1,
+    part: 1,
+  }));
+
+  const serviceQueue: TaskQueueItem[] = sortedServiceTasks.map((t) => ({
+    task: t,
+    remainingHours: t.totalHours > 0 ? t.totalHours : 1,
+    part: 1,
+  }));
+
+  // 3. & 4. Aktuální den (todayIdx)
+  if (todayIdx >= 0 && todayIdx < 5) {
+    const usedNaSlots = blocks
+      .filter((b) => b.dayIndex === todayIdx)
+      .reduce((s, b) => s + b.spanCols, 0);
+    const availableTotalSlots = Math.max(0, totalDaySlots - usedNaSlots);
+    const availableTotalHours = availableTotalSlots / SLOTS_PER_HOUR;
+
+    // 3. Aktualni den: Vezmu 3h prvnich servisu (dle kriticke zavaznosti, pak poradi z planu) a dam je jako posledni
+    const totalServiceNeeded = serviceQueue.reduce((s, q) => s + q.remainingHours, 0);
+    const targetServiceHours = Math.min(3, availableTotalHours, totalServiceNeeded);
+    const targetServiceSlots = Math.round(targetServiceHours * SLOTS_PER_HOUR);
+
+    if (targetServiceSlots > 0) {
+      let srvSlotInDay = totalDaySlots - targetServiceSlots;
+      for (const q of serviceQueue) {
+        if (srvSlotInDay >= totalDaySlots) break;
+        if (q.remainingHours <= 0) continue;
+
+        const slotsLeft = totalDaySlots - srvSlotInDay;
+        const maxH = slotsLeft / SLOTS_PER_HOUR;
+        const chunkH = Math.min(maxH, q.remainingHours);
+        const spanCols = Math.round(chunkH * SLOTS_PER_HOUR);
+        const actualChunkH = spanCols / SLOTS_PER_HOUR;
+
+        blocks.push({
+          id: `service-${q.task.taskId}-d${todayIdx}-p${q.part}`,
+          task: q.task,
+          isService: true,
+          isCritical: q.task.isCritical,
+          dayIndex: todayIdx,
+          startCol: todayIdx * totalDaySlots + srvSlotInDay + 1,
+          spanCols,
+          chunkHours: actualChunkH,
+          totalHours: q.task.totalHours || actualChunkH,
+          partIndex: q.part,
+          totalParts: 1,
+          isSplit: false,
+          isOverflowPart: q.part > 1,
+        });
+
+        srvSlotInDay += spanCols;
+        q.remainingHours = Math.max(0, Math.round((q.remainingHours - actualChunkH) * 10) / 10);
+        q.part++;
+      }
+    }
+
+    // 4. Aktualni den: Ze zbyleho casu odecteni servisu vlozim vyvojove ukoly
+    let devSlotInDay = usedNaSlots;
+    const devMaxSlotInDay = totalDaySlots - targetServiceSlots;
+
+    for (const q of devQueue) {
+      if (devSlotInDay >= devMaxSlotInDay) break;
+      if (q.remainingHours <= 0) continue;
+
+      const slotsLeft = devMaxSlotInDay - devSlotInDay;
+      const maxH = slotsLeft / SLOTS_PER_HOUR;
+      const chunkH = Math.min(maxH, q.remainingHours);
+      const spanCols = Math.round(chunkH * SLOTS_PER_HOUR);
+      const actualChunkH = spanCols / SLOTS_PER_HOUR;
+
+      blocks.push({
+        id: `${q.task.taskId}-d${todayIdx}-p${q.part}`,
+        task: q.task,
+        isService: false,
+        isCritical: q.task.isCritical,
+        dayIndex: todayIdx,
+        startCol: todayIdx * totalDaySlots + devSlotInDay + 1,
+        spanCols,
+        chunkHours: actualChunkH,
+        totalHours: q.task.totalHours || actualChunkH,
+        partIndex: q.part,
+        totalParts: 1,
+        isSplit: false,
+        isOverflowPart: q.part > 1,
+      });
+
+      devSlotInDay += spanCols;
+      q.remainingHours = Math.max(0, Math.round((q.remainingHours - actualChunkH) * 10) / 10);
+      q.part++;
+    }
+  }
+
+  // 5. Následující dny:
+  // Do zbylých dnů vkládáme od rána do odpoledne v pořadí:
+  // 1) kritické vývojové
+  // 2) kritické servisní
+  // 3) nekritické vývojové
+  // 4) nekritické servisní
+  // vždy dle pořadí jak přišly z plánu
+  const subsequentQueue: TaskQueueItem[] = [
+    ...devQueue.filter((q) => q.task.isCritical && q.remainingHours > 0),
+    ...serviceQueue.filter((q) => q.task.isCritical && q.remainingHours > 0),
+    ...devQueue.filter((q) => !q.task.isCritical && q.remainingHours > 0),
+    ...serviceQueue.filter((q) => !q.task.isCritical && q.remainingHours > 0),
+  ];
+
+  const firstSubsequentDay = todayIdx !== -1 ? todayIdx + 1 : 0;
+  for (let d = firstSubsequentDay; d < 5; d++) {
+    const usedNa = blocks
+      .filter((b) => b.dayIndex === d)
+      .reduce((s, b) => s + b.spanCols, 0);
+    let slotInDay = usedNa;
+
+    for (const q of subsequentQueue) {
+      if (slotInDay >= totalDaySlots) break;
+      if (q.remainingHours <= 0) continue;
+
+      const slotsLeft = totalDaySlots - slotInDay;
+      const maxH = slotsLeft / SLOTS_PER_HOUR;
+      const chunkH = Math.min(maxH, q.remainingHours);
+      const spanCols = Math.round(chunkH * SLOTS_PER_HOUR);
+      const actualChunkH = spanCols / SLOTS_PER_HOUR;
+      const isSrv = isServiceTaskItem(q.task);
+
+      blocks.push({
+        id: `${isSrv ? 'service-' : ''}${q.task.taskId}-d${d}-p${q.part}`,
+        task: q.task,
+        isService: isSrv,
+        isCritical: q.task.isCritical,
+        dayIndex: d,
+        startCol: d * totalDaySlots + slotInDay + 1,
+        spanCols,
+        chunkHours: actualChunkH,
+        totalHours: q.task.totalHours || actualChunkH,
+        partIndex: q.part,
+        totalParts: 1,
+        isSplit: false,
+        isOverflowPart: q.part > 1,
+      });
+
+      slotInDay += spanCols;
+      q.remainingHours = Math.max(0, Math.round((q.remainingHours - actualChunkH) * 10) / 10);
+      q.part++;
+    }
+  }
+
+  // Overflow tasks (zbylé úkoly, které se nevešly do týdne)
+  const overflowTasks: { task: PlanTaskItem; remainingHours: number }[] = [];
+  for (const q of subsequentQueue) {
+    if (q.remainingHours > 0) {
+      overflowTasks.push({
+        task: q.task,
+        remainingHours: q.remainingHours,
+      });
+    }
+  }
+
+  // Určení celkového počtu částí (totalParts) a isSplit pro každý úkol
+  const taskPartsCount = new Map<string, number>();
+  for (const b of blocks) {
+    taskPartsCount.set(b.task.taskId, (taskPartsCount.get(b.task.taskId) || 0) + 1);
+  }
+  for (const b of blocks) {
+    const partsTotal = taskPartsCount.get(b.task.taskId) || 1;
+    const hasOverflow = overflowTasks.some((o) => o.task.taskId === b.task.taskId);
+    if (partsTotal > 1 || hasOverflow) {
+      b.isSplit = true;
+      b.totalParts = partsTotal + (hasOverflow ? 1 : 0);
+    }
+  }
+
+  // Free capacity slots (přesné určení mezer v mřížce pro každý den)
+  const freeSlots: { dayIndex: number; startCol: number; spanCols: number; freeHours: number }[] = [];
+  for (let d = 0; d < 5; d++) {
+    const occupied = new Array(totalDaySlots).fill(false);
+    for (const b of blocks) {
+      if (b.dayIndex === d) {
+        const localStart = b.startCol - 1 - d * totalDaySlots;
+        for (let s = localStart; s < localStart + b.spanCols && s < totalDaySlots; s++) {
+          occupied[s] = true;
+        }
+      }
+    }
+
+    let gapStart = -1;
+    for (let s = 0; s < totalDaySlots; s++) {
+      if (!occupied[s]) {
+        if (gapStart === -1) gapStart = s;
+      } else {
+        if (gapStart !== -1) {
+          const spanCols = s - gapStart;
+          freeSlots.push({
+            dayIndex: d,
+            startCol: d * totalDaySlots + gapStart + 1,
+            spanCols,
+            freeHours: spanCols / SLOTS_PER_HOUR,
+          });
+          gapStart = -1;
+        }
+      }
+    }
+    if (gapStart !== -1) {
+      const spanCols = totalDaySlots - gapStart;
+      freeSlots.push({
+        dayIndex: d,
+        startCol: d * totalDaySlots + gapStart + 1,
+        spanCols,
+        freeHours: spanCols / SLOTS_PER_HOUR,
+      });
+    }
+  }
+
+  // Merged contiguous blocks of the same task for week view
+  const weekMergedBlocks: TimelineScheduledBlock[] = [];
+  const sortedBlocks = [...blocks].sort((a, b) => a.startCol - b.startCol);
+  for (const block of sortedBlocks) {
+    const prev = weekMergedBlocks[weekMergedBlocks.length - 1];
+    if (
+      prev &&
+      prev.task.taskId === block.task.taskId &&
+      prev.isService === block.isService &&
+      !prev.isNotAvailable &&
+      !block.isNotAvailable &&
+      Boolean(prev.isCompleted) === Boolean(block.isCompleted) &&
+      Boolean(prev.isCritical) === Boolean(block.isCritical) &&
+      prev.startCol + prev.spanCols === block.startCol
+    ) {
+      prev.spanCols += block.spanCols;
+      prev.chunkHours += block.chunkHours;
+      prev.isSplit = block.totalHours > prev.chunkHours;
+    } else {
+      weekMergedBlocks.push({ ...block });
+    }
+  }
+
+  // Určení partIndex, totalParts a isSplit pro týdenní bloky (včetně přetečení do dalšího týdne či rozdělení servisem)
+  const weekTaskBlocksMap = new Map<string, TimelineScheduledBlock[]>();
+  for (const wb of weekMergedBlocks) {
+    if (!wb.isNotAvailable) {
+      const list = weekTaskBlocksMap.get(wb.task.taskId) || [];
+      list.push(wb);
+      weekTaskBlocksMap.set(wb.task.taskId, list);
+    }
+  }
+
+  for (const [taskId, tBlocks] of weekTaskBlocksMap.entries()) {
+    const hasOverflow = overflowTasks.some((o) => o.task.taskId === taskId);
+    const totalParts = tBlocks.length + (hasOverflow ? 1 : 0);
+    const isSplit = totalParts > 1;
+    tBlocks.forEach((tb, idx) => {
+      tb.partIndex = idx + 1;
+      tb.totalParts = totalParts;
+      tb.isSplit = isSplit;
+    });
+  }
+
+  const dayCapacities = days.slice(0, 5).map((day, dIdx) => {
+    const dayBlocks = blocks.filter((b) => b.dayIndex === dIdx);
+    const naHours = dayBlocks.filter((b) => b.isNotAvailable).reduce((s, b) => s + b.chunkHours, 0);
+    const compHours = dayBlocks.filter((b) => b.isCompleted).reduce((s, b) => s + b.chunkHours, 0);
+    const srvHours = dayBlocks.filter((b) => b.isService).reduce((s, b) => s + b.chunkHours, 0);
+    const devH = dayBlocks
+      .filter((b) => !b.isNotAvailable && !b.isCompleted && !b.isService)
+      .reduce((s, b) => s + b.chunkHours, 0);
+
+    return {
+      dayIndex: dIdx,
+      date: day.date,
+      dayLabel: day.dayLabel,
+      isToday: day.isToday,
+      naHours,
+      completedHours: compHours,
+      serviceHours: srvHours,
+      availableDevHours: devH,
+      totalCapacity: totalDayHours,
+    };
+  });
+
+  return {
+    scheduledBlocks: blocks,
+    weekMergedBlocks,
+    overflowTasks,
+    freeSlots,
+    dayCapacities,
+  };
+};
+
+const isTaskMatchingQuery = (t: PlanTaskItem, query: string): boolean => {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const titleMatch = (t.title || '').toLowerCase().includes(q);
+  const customMatch = (t.customName || '').toLowerCase().includes(q);
+  const reqMatch = (t.requirementId || '').toLowerCase().includes(q);
+  const taskMatch = (t.taskIdentifier || '').toLowerCase().includes(q);
+  const projMatch = (t.project || '').toLowerCase().includes(q);
+  const authorMatch = (t.author || '').toLowerCase().includes(q);
+  const userMatch = (t.userName || '').toLowerCase().includes(q);
+  return Boolean(titleMatch || customMatch || reqMatch || taskMatch || projMatch || authorMatch || userMatch);
+};
+
 const TimelineGridView: React.FC<TimelineGridViewProps> = ({
   days,
   tasks,
   currentTimeLabel,
   currentTime,
   planSettings,
+  distinctUsers,
+  currentUser,
+  filterMyOverflow,
+  showOnlyMyTasks,
+  searchQuery,
   onOpenTask,
   onOpenCodeLink,
   getTaskManagerUrl,
   copiedId,
+  onUpdateWorkHours,
+  primaryColor,
+  actionsColor,
 }) => {
+  const devColor = hexToRgba(primaryColor, '#6366f1', 0.7);
+  const serviceColor = hexToRgba(actionsColor, '#a855f7', 0.7);
   // Mode switcher: 'day' (výsek na vybraný den na celou šířku) vs 'week' (celý týden)
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
 
@@ -709,12 +1702,43 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
     rect: DOMRect;
   } | null>(null);
 
+  // Safe viewport positioning for the week view tooltip
+  const tooltipPosition = useMemo(() => {
+    if (!hoveredTask) return null;
+    const padding = 16;
+    const approxWidth = 280;
+    const approxHeight = 160;
+    const winW = typeof window !== 'undefined' ? window.innerWidth : 1200;
+    const winH = typeof window !== 'undefined' ? window.innerHeight : 800;
+
+    // Center horizontally around the hovered block
+    const targetCenter = hoveredTask.rect.left + hoveredTask.rect.width / 2;
+    // Clamp center so the tooltip width doesn't exceed screen left or right boundaries
+    const clampedX = Math.max(
+      approxWidth / 2 + padding,
+      Math.min(winW - approxWidth / 2 - padding, targetCenter)
+    );
+
+    // If showing below target exceeds viewport height, show above target
+    const showAbove =
+      hoveredTask.rect.bottom + approxHeight + padding > winH &&
+      hoveredTask.rect.top - approxHeight - padding > 0;
+    const y = showAbove ? hoveredTask.rect.top - 10 : hoveredTask.rect.bottom + 10;
+    const translateY = showAbove ? '-100%' : '0%';
+
+    return {
+      left: clampedX,
+      top: y,
+      translateY,
+    };
+  }, [hoveredTask]);
+
   // Parse start and end hour for workday (standard: 09:00 to 17:00, or user custom from settings)
   const { startHour, endHour, startTimeLabel, endTimeLabel } = useMemo(() => {
     const mode = planSettings?.timelineTimeMode || 'real8h';
     if (mode === 'custom' && planSettings?.timelineCustomStart && planSettings?.timelineCustomEnd) {
-      const [sH, sM] = planSettings.timelineCustomStart.split(':').map((x) => parseInt(x, 10) || 0);
-      const [eH, eM] = planSettings.timelineCustomEnd.split(':').map((x) => parseInt(x, 10) || 0);
+      const [sH, sM] = planSettings.timelineCustomStart.split(':').map((x: string) => parseInt(x, 10) || 0);
+      const [eH, eM] = planSettings.timelineCustomEnd.split(':').map((x: string) => parseInt(x, 10) || 0);
       const s = sH + sM / 60;
       const e = eH + eM / 60;
       if (e > s) {
@@ -726,7 +1750,6 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
         };
       }
     }
-    // Default 8h workday starting at 09:00: 09:00 – 17:00
     return {
       startHour: 9,
       endHour: 17,
@@ -737,906 +1760,999 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
 
   // The timeline ALWAYS has 8 dílků (each dílek = 1h from item, 8h capacity total per day)
   const totalDayHours = 8;
+  const SLOTS_PER_HOUR = 2;
+  const totalDaySlots = totalDayHours * SLOTS_PER_HOUR;
   const totalWeekColumns = 40;
+  const totalWeekSlots = totalDaySlots * 5;
 
-  // 8 slot markers for the day:
-  // "U dilku tedy nezobrazujeme cas. Jen u prvniho dilku cas od a posledniho dilku cas do"
+  // 8 slot markers for the day
   const daySlotMarkers = useMemo(() => {
     return [
-      `${startTimeLabel} (1h)`,
+      `${startTimeLabel} 1h`,
       '2h',
       '3h',
       '4h',
       '5h',
       '6h',
       '7h',
-      `8h (${endTimeLabel})`,
+      `8h ${endTimeLabel}`,
     ];
   }, [startTimeLabel, endTimeLabel]);
 
+  // Inline work hours editing (Day view header)
+  const [isEditingStart, setIsEditingStart] = useState(false);
+  const [tempStart, setTempStart] = useState(startTimeLabel);
+  const [isEditingEnd, setIsEditingEnd] = useState(false);
+  const [tempEnd, setTempEnd] = useState(endTimeLabel);
+
+  useEffect(() => {
+    if (!isEditingStart) setTempStart(startTimeLabel);
+  }, [startTimeLabel, isEditingStart]);
+
+  useEffect(() => {
+    if (!isEditingEnd) setTempEnd(endTimeLabel);
+  }, [endTimeLabel, isEditingEnd]);
+
+  const handleCommitStart = useCallback(
+    (valueToCommit?: string) => {
+      setIsEditingStart(false);
+      const val = (valueToCommit ?? tempStart).trim();
+      if (!val || !/^\d{1,2}:\d{2}$/.test(val)) {
+        setTempStart(startTimeLabel);
+        return;
+      }
+      const [h, m] = val.split(':').map((x) => parseInt(x, 10) || 0);
+      const formattedStart = `${String(Math.min(23, Math.max(0, h))).padStart(2, '0')}:${String(Math.min(59, Math.max(0, m))).padStart(2, '0')}`;
+
+      const [eH, eM] = endTimeLabel.split(':').map((x) => parseInt(x, 10) || 0);
+      const startDec = h + m / 60;
+      const endDec = eH + eM / 60;
+      let formattedEnd = endTimeLabel;
+      if (startDec >= endDec) {
+        const newEndH = Math.min(23, h + 8);
+        formattedEnd = `${String(newEndH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      }
+
+      onUpdateWorkHours?.(formattedStart, formattedEnd);
+    },
+    [tempStart, startTimeLabel, endTimeLabel, onUpdateWorkHours]
+  );
+
+  const handleCommitEnd = useCallback(
+    (valueToCommit?: string) => {
+      setIsEditingEnd(false);
+      const val = (valueToCommit ?? tempEnd).trim();
+      if (!val || !/^\d{1,2}:\d{2}$/.test(val)) {
+        setTempEnd(endTimeLabel);
+        return;
+      }
+      const [h, m] = val.split(':').map((x) => parseInt(x, 10) || 0);
+      const formattedEnd = `${String(Math.min(23, Math.max(0, h))).padStart(2, '0')}:${String(Math.min(59, Math.max(0, m))).padStart(2, '0')}`;
+
+      const [sH, sM] = startTimeLabel.split(':').map((x) => parseInt(x, 10) || 0);
+      const startDec = sH + sM / 60;
+      const endDec = h + m / 60;
+      let formattedStart = startTimeLabel;
+      if (endDec <= startDec) {
+        const newStartH = Math.max(0, h - 8);
+        formattedStart = `${String(newStartH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      }
+
+      onUpdateWorkHours?.(formattedStart, formattedEnd);
+    },
+    [tempEnd, startTimeLabel, endTimeLabel, onUpdateWorkHours]
+  );
+
   // Realtime progress fraction according to custom start & end time
-  // Example: 10:00 - 20:00 (span = 10h). At 15:00, elapsed = 5h -> fraction = 0.5 (end of 4th dílek)
   const timeProgressFraction = useMemo(() => {
-    const currentHourDec = currentTime.getHours() + currentTime.getMinutes() / 60;
-    const span = Math.max(0.1, endHour - startHour);
+    const currentHourDec =
+      currentTime.getHours() +
+      currentTime.getMinutes() / 60 +
+      currentTime.getSeconds() / 3600;
+    const span = Math.max(0.0001, endHour - startHour);
     return Math.max(0, Math.min(1, (currentHourDec - startHour) / span));
   }, [currentTime, startHour, endHour]);
 
   const weekTimeIndicatorPercent = useMemo(() => {
     if (todayIdx === -1) return null;
     const colPosition = todayIdx * 8 + timeProgressFraction * 8;
-    return Math.max(0.5, Math.min(99.5, (colPosition / 40) * 100));
+    return Math.max(0, Math.min(100, (colPosition / 40) * 100));
   }, [todayIdx, timeProgressFraction]);
 
   const dayTimeIndicatorPercent = useMemo(() => {
     if (todayIdx === -1 || selectedDayIndex !== todayIdx) return null;
-    return Math.max(0.5, Math.min(99.5, timeProgressFraction * 100));
+    return Math.max(0, Math.min(100, timeProgressFraction * 100));
   }, [todayIdx, selectedDayIndex, timeProgressFraction]);
 
-  // 1. Identify service tasks vs dev tasks vs notAvailable
-  const isServiceTask = useCallback((t: PlanTaskItem): boolean => {
-    if (t.isNotAvailable) return false;
-    if (t.taskType === 'service') return true;
-    const str = `${t.title} ${t.customName || ''} ${t.project || ''}`.toLowerCase();
-    return str.includes('servis') || str.includes('hd') || str.includes('support');
-  }, []);
+  const currentIndicatorPercent = viewMode === 'day' ? dayTimeIndicatorPercent : weekTimeIndicatorPercent;
 
-  const completedTasks = useMemo(
-    () => tasks.filter((t) => (t.isCompleted || t.isSolved) && !t.isNotAvailable),
-    [tasks]
-  );
-  const notAvailableTasks = useMemo(
-    () => tasks.filter((t) => t.isNotAvailable),
-    [tasks]
-  );
-  const serviceTasks = useMemo(
-    () => tasks.filter((t) => isServiceTask(t) && !t.isNotAvailable && !t.isCompleted && !t.isSolved),
-    [tasks, isServiceTask]
-  );
-  const devTasks = useMemo(
-    () => tasks.filter((t) => !isServiceTask(t) && !t.isNotAvailable && !t.isCompleted && !t.isSolved),
-    [tasks, isServiceTask]
-  );
+  const pillAlignment = useMemo((): 'start' | 'end' | 'center' => {
+    if (currentIndicatorPercent === null) return 'center';
+    if (currentIndicatorPercent <= 0.5) return 'start';
+    if (currentIndicatorPercent >= 99.5) return 'end';
+    return 'center';
+  }, [currentIndicatorPercent]);
 
-  // 2. Map unavailable tasks to days (0..4 for Po..Pá)
-  const dayNA = useMemo(() => {
-    const map = new Map<number, PlanTaskItem[]>();
-    for (let i = 0; i < 5; i++) map.set(i, []);
-    for (const na of notAvailableTasks) {
-      if (na.dates && na.dates.length > 0) {
-        for (const dStr of na.dates) {
-          const idx = days.findIndex((d) => d.date === dStr);
-          if (idx !== -1 && idx < 5) {
-            map.get(idx)?.push(na);
-          }
-        }
-      }
+  // Multi-user schedules: ALWAYS keep complete view of all tracked users
+  const activeUsers = useMemo(() => {
+    if (distinctUsers && distinctUsers.length > 0) return distinctUsers;
+    const set = new Set<string>();
+    for (const t of tasks) {
+      if (t.userName?.trim()) set.add(t.userName.trim());
     }
-    return map;
-  }, [days, notAvailableTasks]);
+    return Array.from(set);
+  }, [distinctUsers, tasks]);
 
-  // Map completed tasks to days (if assigned day is fully NotAvailable like a state holiday, move to next work day)
-  const dayCompleted = useMemo(() => {
-    const map = new Map<number, PlanTaskItem[]>();
-    for (let i = 0; i < 5; i++) map.set(i, []);
+  const hasMultipleUsers = activeUsers.length >= 2;
 
-    const fallbackDayIndex = todayIdx !== -1 ? todayIdx : 2;
+  const userSchedules = useMemo((): UserScheduleResult[] => {
+    const usersToSchedule = hasMultipleUsers ? activeUsers : [activeUsers[0] || ''];
 
-    for (const c of completedTasks) {
-      let assignedDay = -1;
-      if (c.dates && c.dates.length > 0) {
-        for (const dStr of c.dates) {
-          const idx = days.findIndex((d) => d.date === dStr);
-          if (idx !== -1 && idx < 5) {
-            assignedDay = idx;
-            break;
-          }
-        }
-        if (assignedDay === -1) {
-          continue; // from another week
-        }
-      } else {
-        assignedDay = fallbackDayIndex;
-      }
-
-      // If assigned day is completely full of NotAvailable (e.g. Monday holiday), push to next available work day
-      const naHoursInDay = (dayNA.get(assignedDay) || []).reduce(
-        (sum, na) => sum + (na.totalHours > 0 ? na.totalHours : totalDayHours),
-        0
-      );
-      if (naHoursInDay >= totalDayHours && assignedDay + 1 < 5) {
-        assignedDay = assignedDay + 1;
-      }
-
-      map.get(assignedDay)?.push(c);
-    }
-
-    return map;
-  }, [days, completedTasks, dayNA, todayIdx, totalDayHours]);
-
-  const dayServices = useMemo(() => {
-    const map = new Map<number, PlanTaskItem[]>();
-    for (let i = 0; i < 5; i++) map.set(i, []);
-
-    const fallbackDayIndex = todayIdx !== -1 ? todayIdx : 2; // Default to Wednesday if undated
-
-    for (const s of serviceTasks) {
-      let assignedDay = -1;
-      if (s.dates && s.dates.length > 0) {
-        for (const dStr of s.dates) {
-          const idx = days.findIndex((d) => d.date === dStr);
-          if (idx !== -1 && idx < 5) {
-            assignedDay = idx;
-            break;
-          }
-        }
-        // If service task has specific dates, but none match this work week,
-        // it belongs to another week - do not squeeze it into this week!
-        if (assignedDay === -1) {
-          continue;
-        }
-      } else {
-        // Only undated service tasks fall back to current active day
-        assignedDay = fallbackDayIndex;
-      }
-      map.get(assignedDay)?.push(s);
-    }
-
-    return map;
-  }, [days, serviceTasks, todayIdx]);
-
-  // 3. Calculate day capacities (NotAvailable has absolute top priority, then completed, then services, then dev)
-  const dayCapacities = useMemo(() => {
-    return days.slice(0, 5).map((day, dIdx) => {
-      const naItems = dayNA.get(dIdx) || [];
-      const naHours = naItems.reduce((sum, na) => sum + (na.totalHours > 0 ? na.totalHours : totalDayHours), 0);
-      const cappedNAHours = Math.min(totalDayHours, naHours);
-
-      const remainingAfterNA = Math.max(0, totalDayHours - cappedNAHours);
-
-      const compItems = dayCompleted.get(dIdx) || [];
-      const compHours = compItems.reduce((sum, c) => sum + (c.totalHours > 0 ? c.totalHours : 1), 0);
-      const cappedCompHours = Math.min(remainingAfterNA, compHours);
-
-      const remainingAfterComp = Math.max(0, remainingAfterNA - cappedCompHours);
-
-      const services = dayServices.get(dIdx) || [];
-      const serviceHours = services.reduce(
-        (sum, s) => sum + (s.totalHours > 0 ? s.totalHours : 1),
-        0
-      );
-      const cappedServiceHours = Math.min(remainingAfterComp, serviceHours);
-      const availableDevHours = Math.max(0, remainingAfterComp - cappedServiceHours);
+    return usersToSchedule.map((user) => {
+      const userTasks = hasMultipleUsers
+        ? tasks.filter((t) => !t.userName || isTaskForUser(t.userName, user))
+        : tasks;
 
       return {
-        dayIndex: dIdx,
-        date: day.date,
-        dayLabel: day.dayLabel,
-        isToday: day.isToday,
-        naHours: cappedNAHours,
-        completedHours: cappedCompHours,
-        serviceHours: cappedServiceHours,
-        availableDevHours,
-        totalCapacity: totalDayHours,
+        userName: user,
+        initials: getUserInitials(user),
+        ...calculateScheduleForTasks(userTasks, days, todayIdx, totalDayHours),
       };
     });
-  }, [days, dayNA, dayCompleted, dayServices, totalDayHours]);
+  }, [hasMultipleUsers, activeUsers, tasks, days, todayIdx, totalDayHours]);
 
-  // 4. Sequentially schedule dev tasks across days ("za sebou"), interleaving services, completed, and NA
-  const { scheduledBlocks, overflowTasks, freeSlots } = useMemo(() => {
-    const blocks: TimelineScheduledBlock[] = [];
-    const overflow: { task: PlanTaskItem; remainingHours: number }[] = [];
-    const free: { dayIndex: number; startCol: number; spanCols: number; freeHours: number }[] = [];
-
-    let devIdx = 0;
-    let devTaskRemaining = devTasks[0] ? devTasks[0].totalHours || 1 : 0;
-    let devPart = 1;
-
-    for (let d = 0; d < 5; d++) {
-      const cap = dayCapacities[d];
-      let slotInDay = 0;
-
-      // A) Allocate NotAvailable items first (e.g. state holiday, absence - takes full priority)
-      const naItems = dayNA.get(d) || [];
-      for (const na of naItems) {
-        const naH = na.totalHours > 0 ? na.totalHours : totalDayHours;
-        const spanCols = Math.min(totalDayHours - slotInDay, Math.max(1, Math.round(naH)));
-        if (spanCols > 0) {
-          const startCol = d * totalDayHours + slotInDay + 1;
-          blocks.push({
-            id: `na-${na.taskId}-d${d}`,
-            task: na,
-            isService: false,
-            isNotAvailable: true,
-            isCompleted: false,
-            dayIndex: d,
-            startCol,
-            spanCols,
-            chunkHours: spanCols,
-            totalHours: naH,
-            partIndex: 1,
-            totalParts: 1,
-            isSplit: false,
-          });
-          slotInDay += spanCols;
-        }
-      }
-
-      // B) Allocate Completed items next (work already done on this day)
-      const compItems = dayCompleted.get(d) || [];
-      for (const comp of compItems) {
-        const compH = comp.totalHours > 0 ? comp.totalHours : 1;
-        const spanCols = Math.min(totalDayHours - slotInDay, Math.max(1, Math.round(compH)));
-        if (spanCols > 0) {
-          const startCol = d * totalDayHours + slotInDay + 1;
-          blocks.push({
-            id: `comp-${comp.taskId}-d${d}`,
-            task: comp,
-            isService: false,
-            isNotAvailable: false,
-            isCompleted: true,
-            isCritical: comp.isCritical,
-            dayIndex: d,
-            startCol,
-            spanCols,
-            chunkHours: spanCols,
-            totalHours: compH,
-            partIndex: 1,
-            totalParts: 1,
-            isSplit: false,
-          });
-          slotInDay += spanCols;
-        }
-      }
-
-      // C) Allocate dev tasks for this day up to availableDevHours
-      let availableDevLeft = cap.availableDevHours;
-
-      while (availableDevLeft > 0 && devIdx < devTasks.length) {
-        const currentTask = devTasks[devIdx];
-        const taskTotal = currentTask.totalHours > 0 ? currentTask.totalHours : 1;
-        const chunk = Math.min(availableDevLeft, devTaskRemaining);
-        const isSplit = taskTotal > chunk || devTaskRemaining < taskTotal;
-        const totalPartsEst = Math.max(1, Math.ceil(taskTotal / totalDayHours));
-
-        const spanCols = Math.max(1, Math.round(chunk));
-        const startCol = d * totalDayHours + slotInDay + 1;
-
-        blocks.push({
-          id: `${currentTask.taskId}-d${d}-p${devPart}`,
-          task: currentTask,
-          isService: false,
-          isCritical: currentTask.isCritical,
-          dayIndex: d,
-          startCol,
-          spanCols,
-          chunkHours: chunk,
-          totalHours: taskTotal,
-          partIndex: devPart,
-          totalParts: totalPartsEst,
-          isSplit,
-          isOverflowPart: devPart > 1,
-        });
-
-        slotInDay += spanCols;
-        availableDevLeft -= chunk;
-        devTaskRemaining -= chunk;
-
-        if (devTaskRemaining <= 0) {
-          devIdx++;
-          devPart = 1;
-          if (devIdx < devTasks.length) {
-            devTaskRemaining = devTasks[devIdx].totalHours > 0 ? devTasks[devIdx].totalHours : 1;
-          }
-        } else {
-          devPart++;
-        }
-      }
-
-      // D) Allocate services for this day right after dev tasks ("mezi ně")
-      const services = dayServices.get(d) || [];
-      for (const s of services) {
-        const sHours = s.totalHours > 0 ? s.totalHours : 1;
-        const spanCols = Math.min(totalDayHours - slotInDay, Math.max(1, Math.round(sHours)));
-        if (spanCols > 0) {
-          const startCol = d * totalDayHours + slotInDay + 1;
-          blocks.push({
-            id: `service-${s.taskId}-d${d}`,
-            task: s,
-            isService: true,
-            isCritical: s.isCritical,
-            dayIndex: d,
-            startCol,
-            spanCols,
-            chunkHours: sHours,
-            totalHours: sHours,
-            partIndex: 1,
-            totalParts: 1,
-            isSplit: false,
-          });
-          slotInDay += spanCols;
-        }
-      }
-
-      // E) Free capacity slot if day is under totalDayHours
-      if (slotInDay < totalDayHours) {
-        const freeH = totalDayHours - slotInDay;
-        free.push({
-          dayIndex: d,
-          startCol: d * totalDayHours + slotInDay + 1,
-          spanCols: freeH,
-          freeHours: freeH,
-        });
-      }
+  const relevantSchedulesForStats = useMemo(() => {
+    if (showOnlyMyTasks && currentUser) {
+      const mine = userSchedules.filter((u) => isTaskForUser(u.userName, currentUser));
+      return mine.length > 0 ? mine : userSchedules;
     }
+    return userSchedules;
+  }, [userSchedules, showOnlyMyTasks, currentUser]);
 
-    // Dev tasks overflowing past Friday's hours
-    if (devIdx < devTasks.length) {
-      if (devTaskRemaining > 0) {
-        overflow.push({ task: devTasks[devIdx], remainingHours: devTaskRemaining });
-        devIdx++;
-      }
-      while (devIdx < devTasks.length) {
-        overflow.push({ task: devTasks[devIdx], remainingHours: devTasks[devIdx].totalHours || 1 });
-        devIdx++;
-      }
-    }
-
-    return { scheduledBlocks: blocks, overflowTasks: overflow, freeSlots: free };
-  }, [dayCapacities, devTasks, dayServices, dayCompleted, dayNA, totalDayHours]);
-
-  // 5. In Week view: MERGE contiguous blocks of the same task across days into one continuous element
-  const weekMergedBlocks = useMemo(() => {
-    const merged: TimelineScheduledBlock[] = [];
-    for (const block of scheduledBlocks) {
-      const prev = merged[merged.length - 1];
-      if (
-        prev &&
-        prev.task.taskId === block.task.taskId &&
-        !prev.isService &&
-        !block.isService &&
-        !prev.isNotAvailable &&
-        !block.isNotAvailable &&
-        Boolean(prev.isCompleted) === Boolean(block.isCompleted) &&
-        Boolean(prev.isCritical) === Boolean(block.isCritical) &&
-        prev.startCol + prev.spanCols === block.startCol
-      ) {
-        prev.spanCols += block.spanCols;
-        prev.chunkHours += block.chunkHours;
-        prev.isSplit = block.totalHours > prev.chunkHours;
-      } else {
-        merged.push({ ...block });
-      }
-    }
-    return merged;
-  }, [scheduledBlocks]);
-
-  // Total scheduled hours
   const totalWeekScheduledHours = useMemo(() => {
-    return scheduledBlocks.reduce((sum, b) => sum + b.chunkHours, 0);
-  }, [scheduledBlocks]);
+    return relevantSchedulesForStats.reduce(
+      (sum, u) => sum + u.scheduledBlocks.reduce((bSum, b) => bSum + b.chunkHours, 0),
+      0
+    );
+  }, [relevantSchedulesForStats]);
 
-  // Current day data in 'day' view
-  const currentSelectedDay = dayCapacities[selectedDayIndex] || dayCapacities[0];
-  const dayItems = useMemo(() => {
-    return scheduledBlocks.filter((b) => b.dayIndex === selectedDayIndex);
-  }, [scheduledBlocks, selectedDayIndex]);
+  const statsCapacityHours = useMemo(() => {
+    return totalWeekColumns * relevantSchedulesForStats.length;
+  }, [totalWeekColumns, relevantSchedulesForStats.length]);
 
-  const currentDayFree = useMemo(() => {
-    return freeSlots.find((f) => f.dayIndex === selectedDayIndex);
-  }, [freeSlots, selectedDayIndex]);
+  // Overflow tasks: filtered by toggle [Moje úkoly / Všechny úkoly]
+  const allOverflowTasks = useMemo(() => {
+    const list: { task: PlanTaskItem; remainingHours: number }[] = [];
+    const schedules = (filterMyOverflow && currentUser)
+      ? userSchedules.filter((u) => isTaskForUser(u.userName, currentUser))
+      : userSchedules;
+    for (const u of schedules) {
+      list.push(...u.overflowTasks);
+    }
+    return list;
+  }, [userSchedules, filterMyOverflow, currentUser]);
+
+  const currentSelectedDay = useMemo(() => {
+    return days[selectedDayIndex] || days[0];
+  }, [days, selectedDayIndex]);
 
   return (
     <div className="space-y-6">
-      {/* View Mode Switcher (Den vs Týden) + Day Navigation */}
-      <div className="flex items-center justify-between gap-4 flex-wrap select-none">
-        {/* View Mode Pills (Den vs Týden) */}
-        <div className="flex items-center gap-1.5 p-1 bg-white/[0.04] rounded-full w-fit">
-          <button
-            type="button"
-            onClick={() => setViewMode('day')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
-              viewMode === 'day'
-                ? 'bg-indigo-500/20 text-white font-semibold shadow-sm'
-                : 'text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            <span className="material-symbols-outlined text-sm">calendar_today</span>
-            <span>Den (Detail)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setViewMode('week')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
-              viewMode === 'week'
-                ? 'bg-indigo-500/20 text-white font-semibold shadow-sm'
-                : 'text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            <span className="material-symbols-outlined text-sm">calendar_view_week</span>
-            <span>Týden (40h přehled)</span>
-          </button>
-        </div>
-
-        {/* Day Navigator (Active in 'day' view) */}
-        {viewMode === 'day' && (
-          <div className="flex items-center gap-2">
+      {/* Unified Plan Box */}
+      <div className="w-full rounded-3xl bg-[#13141a] p-5 shadow-xl">
+        {/* Top Header Row inside the plan box: Mode Switcher on the left + Day Navigation on the right */}
+        <div className="flex items-center justify-between gap-4 mb-4 select-none">
+          {/* Mode Switcher (Den vs Týden) on the left */}
+          <div className="flex items-center gap-1.5 p-1 bg-white/[0.04] rounded-full shrink-0">
             <button
               type="button"
-              disabled={selectedDayIndex === 0}
-              onClick={() => setSelectedDayIndex((i) => Math.max(0, i - 1))}
-              className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:pointer-events-none text-gray-300 hover:text-white flex items-center justify-center transition cursor-pointer"
-              title="Předchozí den"
+              onClick={() => {
+                setViewMode('day');
+                setSelectedDayIndex(todayIdx !== -1 ? todayIdx : 0);
+              }}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer outline-none focus:outline-none focus-visible:outline-none ${
+                viewMode === 'day'
+                  ? 'bg-indigo-500/20 text-white font-semibold shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
             >
-              <span className="material-symbols-outlined text-sm">chevron_left</span>
+              <span className={`material-symbols-outlined text-sm ${viewMode === 'day' ? 'text-indigo-400' : 'text-gray-400'}`}>
+                calendar_today
+              </span>
+              <span className={viewMode === 'day' ? 'text-white' : ''}>Den</span>
             </button>
-
-            <div className="px-4 py-1.5 rounded-full bg-white/[0.05] text-xs font-bold text-gray-200 flex items-center gap-2">
-              <span>{currentSelectedDay?.dayLabel}</span>
-              {currentSelectedDay?.isToday && (
-                <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-extrabold uppercase tracking-wider">
-                  Dnes
-                </span>
-              )}
-            </div>
 
             <button
               type="button"
-              disabled={selectedDayIndex === 4}
-              onClick={() => setSelectedDayIndex((i) => Math.min(4, i + 1))}
-              className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:pointer-events-none text-gray-300 hover:text-white flex items-center justify-center transition cursor-pointer"
-              title="Následující den"
+              onClick={() => setViewMode('week')}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer outline-none focus:outline-none focus-visible:outline-none ${
+                viewMode === 'week'
+                  ? 'bg-indigo-500/20 text-white font-semibold shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
             >
-              <span className="material-symbols-outlined text-sm">chevron_right</span>
+              <span className={`material-symbols-outlined text-sm ${viewMode === 'week' ? 'text-indigo-400' : 'text-gray-400'}`}>
+                calendar_view_week
+              </span>
+              <span className={viewMode === 'week' ? 'text-white' : ''}>Týden</span>
             </button>
+          </div>
 
-            {todayIdx !== -1 && selectedDayIndex !== todayIdx && (
+          {/* Right: Day Navigator (Active in 'day' view) */}
+          {viewMode === 'day' && (
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setSelectedDayIndex(todayIdx)}
-                className="ml-1 px-3 py-1.5 rounded-full bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 text-xs font-semibold transition cursor-pointer"
+                disabled={selectedDayIndex === 0}
+                onClick={() => setSelectedDayIndex((i) => Math.max(0, i - 1))}
+                className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:pointer-events-none text-gray-300 hover:text-white flex items-center justify-center transition cursor-pointer"
+                title="Předchozí den"
               >
-                Přejít na Dnes
+                <span className="material-symbols-outlined text-sm">chevron_left</span>
               </button>
-            )}
-          </div>
-        )}
-      </div>
 
-      {/* VIEW 1: DENNÍ VÝSEK (1 den na celou šířku okna, 8 širokých sloupců od 09:00 do 17:00) */}
-      {viewMode === 'day' ? (
-        <div className="w-full rounded-3xl bg-[#0d0f17]/80 border border-white/[0.04] p-5 shadow-2xl backdrop-blur-md">
-          <div className="relative select-none">
-            {/* Realtime Moving Time Indicator Line (ON TOP of tasks, z-40, pointer-events-none) */}
-            {dayTimeIndicatorPercent !== null && (
-              <div
-                className="absolute top-0 bottom-0 pointer-events-none z-40 flex flex-col items-center -translate-x-1/2 transition-all duration-300"
-                style={{ left: `${dayTimeIndicatorPercent}%` }}
-              >
-                {/* Floating Time Pill Indicator at top (dedicated lane) */}
-                <div className="px-2.5 py-0.5 rounded-full bg-[#161a26] border border-indigo-400/80 text-indigo-300 font-mono text-[10px] font-bold shadow-[0_0_15px_rgba(99,102,241,0.5)] flex items-center gap-1.5 shrink-0 z-50 select-none">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
-                  <span>{currentTimeLabel}</span>
-                </div>
-                {/* Vertical Guideline extending continuously down OVER all tasks */}
-                <div className="w-[2px] flex-1 bg-indigo-400/80 shadow-[0_0_12px_rgba(99,102,241,0.9)] z-40" />
+              {/* Fixed-width day display text without background */}
+              <div className="w-[145px] py-1.5 text-xs font-bold text-gray-200 flex items-center justify-center text-center select-none">
+                <span>{currentSelectedDay?.dayLabel}</span>
               </div>
-            )}
 
-            {/* Top Dedicated Time Cursor Track (32px lane so chip doesn't cover headers) */}
-            <div className="h-8 w-full mb-1" />
+              <button
+                type="button"
+                disabled={selectedDayIndex === 4}
+                onClick={() => setSelectedDayIndex((i) => Math.min(4, i + 1))}
+                className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 disabled:pointer-events-none text-gray-300 hover:text-white flex items-center justify-center transition cursor-pointer"
+                title="Následující den"
+              >
+                <span className="material-symbols-outlined text-sm">chevron_right</span>
+              </button>
 
-            {/* Column Hour Sub-Markers (Dynamic according to startHour and totalDayHours) */}
-            <div
-              className="grid gap-1 pb-3 mb-2 border-b border-white/[0.06] text-xs text-gray-400 font-mono text-center"
-              style={{ gridTemplateColumns: `repeat(${totalDayHours}, minmax(0, 1fr))` }}
-            >
-              {daySlotMarkers.map((slot, i) => (
-                <div key={i} className="py-1 bg-white/[0.02] rounded-lg truncate px-1">
-                  {slot}
-                </div>
-              ))}
+              {/* Always visible 'Přejít na Dnes' button */}
+              {todayIdx !== -1 && (
+                <button
+                  type="button"
+                  disabled={selectedDayIndex === todayIdx}
+                  onClick={() => setSelectedDayIndex(todayIdx)}
+                  className="ml-1 px-3 py-1.5 rounded-full bg-indigo-500/15 hover:bg-indigo-500/25 disabled:opacity-30 disabled:pointer-events-none text-indigo-300 text-xs font-semibold transition cursor-pointer"
+                  title="Přejít na dnešní den"
+                >
+                  Přejít na Dnes
+                </button>
+              )}
             </div>
-
-            {/* Day Column Grid Track */}
-            <div className="relative w-full rounded-2xl overflow-hidden py-2 min-h-[140px]">
-              {/* Background Column Lines */}
-              <div
-                className="absolute inset-0 pointer-events-none z-0"
-                style={{ display: 'grid', gridTemplateColumns: `repeat(${totalDayHours}, minmax(0, 1fr))` }}
-              >
-                {Array.from({ length: totalDayHours }).map((_, colIdx) => (
-                  <div
-                    key={colIdx}
-                    className="h-full border-r border-dashed border-white/[0.04] last:border-r-0"
-                  />
-                ))}
-              </div>
-
-              {/* Day Scheduled Tasks (Primary indigo for DEV, Secondary purple for SERVIS, Muted for NA) */}
-              <div
-                className="relative z-10 gap-2 items-stretch"
-                style={{ display: 'grid', gridTemplateColumns: `repeat(${totalDayHours}, minmax(0, 1fr))` }}
-              >
-                {dayItems.length === 0 ? (
-                  <div
-                    style={{ gridColumn: `1 / span ${totalDayHours}`, gridRow: 1 }}
-                    className="rounded-2xl p-8 border border-dashed border-white/10 bg-white/[0.015] text-gray-500 text-xs flex flex-col items-center justify-center gap-2 select-none min-h-[120px]"
-                  >
-                    <span className="material-symbols-outlined text-2xl opacity-40">weekend</span>
-                    <span>Žádné úkoly pro tento den</span>
-                    <span className="text-[11px] text-gray-600">{totalDayHours} hodin volné kapacity</span>
-                  </div>
-                ) : (
-                  dayItems.map((block) => {
-                    const { task, chunkHours, totalHours, isService, isNotAvailable, isCompleted, isCritical, isSplit, partIndex, totalParts } = block;
-                    const isCrit = Boolean(isCritical || task.isCritical);
-                    const dayColStart = ((block.startCol - 1) % totalDayHours) + 1;
-                    const spanCols = Math.min(totalDayHours - dayColStart + 1, block.spanCols);
-                    const reqCode = task.requirementId;
-                    const taskCode = task.taskIdentifier;
-                    const displayCode = taskCode || reqCode;
-
-                    return (
-                      <div
-                        key={block.id}
-                        style={{ gridColumn: `${dayColStart} / span ${spanCols}`, gridRow: 1 }}
-                        onClick={() => onOpenTask(task)}
-                        className={`rounded-2xl p-2.5 flex flex-col justify-between gap-1.5 transition-all cursor-pointer shadow-md select-none overflow-hidden min-w-0 ${
-                          isCrit
-                            ? 'outline outline-2 outline-red-500 ring-2 ring-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.45)] '
-                            : ''
-                        }${
-                          isCompleted
-                            ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white border border-emerald-400/30 shadow-emerald-950/30'
-                            : isNotAvailable
-                            ? 'bg-zinc-800/80 hover:bg-zinc-800 text-zinc-200 border border-zinc-700/60 shadow-black/20'
-                            : isService
-                            ? 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white border border-purple-400/30 shadow-purple-950/30'
-                            : 'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white border border-indigo-400/30 shadow-indigo-950/30'
-                        }`}
-                      >
-                        {/* Content area: Title, Project, and Part/Hours row */}
-                        <div className="min-w-0 flex flex-col gap-0.5">
-                          {/* Row 1: Task Title */}
-                          <div className="font-bold text-xs text-white truncate leading-tight">
-                            {task.customName || task.title}
-                          </div>
-
-                          {/* Row 2: Project name */}
-                          {task.project && (
-                            <div className="text-[10px] text-white/70 truncate leading-tight">
-                              {task.project}
-                            </div>
-                          )}
-
-                          {/* Row 3: Part & Hours on their own row below title and project */}
-                          <div className="flex items-center gap-1.5 text-[10px] text-white/90 font-mono pt-0.5 flex-wrap">
-                            {isCrit && (
-                              <span className="px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-bold shrink-0 flex items-center gap-0.5">
-                                <span className="material-symbols-outlined text-[10px] text-white">warning</span>
-                                Kritická
-                              </span>
-                            )}
-                            {isCompleted ? (
-                              <span className="px-1.5 py-0.2 rounded-full bg-emerald-950/60 border border-emerald-400/40 text-emerald-200 text-[9px] font-bold shrink-0">
-                                Hotovo
-                              </span>
-                            ) : isSplit ? (
-                              <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[9px] font-bold shrink-0">
-                                díl {partIndex}/{totalParts}
-                              </span>
-                            ) : null}
-                            <span className="font-bold text-[10px]">
-                              {isNotAvailable
-                                ? chunkHours === totalDayHours
-                                  ? `${chunkHours}h (celý den)`
-                                  : `${chunkHours}h`
-                                : isSplit
-                                ? `${chunkHours}h z ${totalHours}h`
-                                : `${chunkHours}h`}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Bottom row: clickable code (Txxx/Rxxx) + smaller author circle (NO divider border!) */}
-                        <div className="flex items-center justify-between gap-1 text-[10px] min-w-0">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            {isNotAvailable ? (
-                              <span className="px-2 py-0.5 rounded-full bg-white/10 text-[9px] font-bold text-zinc-300 font-sans truncate">
-                                Státní svátek / Volno
-                              </span>
-                            ) : (
-                              <>
-                                {displayCode && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => onOpenCodeLink(displayCode, task, e)}
-                                    className="px-1.5 py-0.5 rounded-full bg-white/20 hover:bg-white/30 text-white font-mono font-bold text-[10px] transition cursor-pointer truncate shrink-0"
-                                    title="Otevřít v TaskManageru"
-                                  >
-                                    {displayCode}
-                                  </button>
-                                )}
-
-                                {/* Author initials in small compact circle next to Txxx */}
-                                {task.author && (
-                                  <div
-                                    className="w-5 h-5 rounded-full bg-white/20 shrink-0 flex items-center justify-center font-bold text-[9px] text-white shadow-inner font-mono"
-                                    title={`Zadavatel: ${task.author}`}
-                                  >
-                                    {task.author}
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
-
-                          {/* Small type indicator icon (dev vs service) */}
-                          <span className="material-symbols-outlined text-xs text-white/50 shrink-0">
-                            {isCompleted ? 'task_alt' : isNotAvailable ? 'celebration' : isService ? 'support_agent' : 'terminal'}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-
-                {/* Free capacity block for the day */}
-                {currentDayFree && currentDayFree.freeHours > 0 && (
-                  <div
-                    style={{
-                      gridColumn: `${((currentDayFree.startCol - 1) % totalDayHours) + 1} / span ${currentDayFree.spanCols}`,
-                      gridRow: 1,
-                    }}
-                    className="rounded-2xl p-4 border border-dashed border-white/10 bg-white/[0.015] hover:bg-white/[0.03] text-gray-500 text-xs flex items-center justify-center gap-2 transition select-none min-h-[90px]"
-                  >
-                    <span className="material-symbols-outlined text-base opacity-60">hourglass_empty</span>
-                    <span className="font-mono font-semibold">+{currentDayFree.freeHours}h volná kapacita</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          )}
         </div>
-      ) : (
-        /* VIEW 2: TÝDENNÍ PŘEHLED (40 sloupců, sloučené přetékající bloky, bez textu, custom tooltip) */
-        <div className="w-full overflow-x-auto pb-4 rounded-3xl bg-[#0d0f17]/80 border border-white/[0.04] p-5 shadow-2xl backdrop-blur-md">
+
+        {/* Scrollable Timeline Grid Container for both Day and Week */}
+        <div className="w-full overflow-x-auto pb-2 outline-none">
           <div className="min-w-[1040px] relative select-none">
-            {/* Realtime Moving Time Indicator Line (ON TOP of tasks, z-40, pointer-events-none) */}
-            {weekTimeIndicatorPercent !== null && (
+            {/* Realtime Moving Time Indicator Line (SHARED persistent element - animates smoothly between Day and Week!) */}
+            {currentIndicatorPercent !== null && (
               <div
-                className="absolute top-0 bottom-0 pointer-events-none z-40 flex flex-col items-center -translate-x-1/2 transition-all duration-300"
-                style={{ left: `${weekTimeIndicatorPercent}%` }}
+                className="absolute top-0 bottom-0 pointer-events-none z-40 outline-none"
+                style={{
+                  left: hasMultipleUsers ? 'calc(52px + 2px)' : '2px',
+                  right: '2px',
+                }}
               >
-                {/* Floating Time Pill Indicator at top (dedicated lane) */}
-                <div className="px-2.5 py-0.5 rounded-full bg-[#161a26] border border-indigo-400/80 text-indigo-300 font-mono text-[10px] font-bold shadow-[0_0_15px_rgba(99,102,241,0.5)] flex items-center gap-1.5 shrink-0 z-50 select-none">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
-                  <span>{currentTimeLabel}</span>
-                </div>
-                {/* Vertical Guideline extending continuously down OVER all tasks */}
-                <div className="w-[2px] flex-1 bg-indigo-400/80 shadow-[0_0_12px_rgba(99,102,241,0.9)] z-40" />
-              </div>
-            )}
-
-            {/* Top Dedicated Time Cursor Track (32px lane so chip doesn't cover headers) */}
-            <div className="h-8 w-full mb-1" />
-
-            {/* 5 Day Headers (Po, Út, St, Čt, Pá) */}
-            <div className="grid grid-cols-5 gap-0 border-b border-white/[0.06] pb-3 mb-2">
-              {dayCapacities.map((day) => {
-                const dayBlocks = scheduledBlocks.filter((b) => b.dayIndex === day.dayIndex);
-                const dayHours = dayBlocks.reduce((sum, b) => sum + b.chunkHours, 0);
-
-                return (
+                <div
+                  className="absolute top-0 bottom-0 w-0 flex flex-col items-start transition-[left] duration-300 ease-out outline-none pointer-events-none"
+                  style={{ left: `${currentIndicatorPercent}%` }}
+                >
+                  {/* Floating Time Pill Indicator at top */}
                   <div
-                    key={day.date}
-                    className={`px-3 py-1 flex flex-col justify-between border-r border-white/[0.05] last:border-r-0 ${
-                      day.isToday ? 'bg-indigo-500/[0.04] rounded-t-xl' : ''
+                    className={`px-2.5 py-0.5 rounded-full bg-[#1a1b24] text-indigo-300 font-mono text-[10px] font-bold shadow-md flex items-center gap-1.5 shrink-0 z-50 select-none outline-none border-0 whitespace-nowrap transition-transform duration-300 ease-out ${
+                      pillAlignment === 'start'
+                        ? 'translate-x-0'
+                        : pillAlignment === 'end'
+                        ? '-translate-x-full'
+                        : '-translate-x-1/2'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`text-xs font-bold uppercase tracking-wider ${
-                            day.isToday ? 'text-indigo-300 font-extrabold' : 'text-gray-300'
-                          }`}
-                        >
-                          {day.dayLabel}
-                        </span>
-                        {day.isToday && (
-                          <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-extrabold text-[9px] uppercase tracking-wider">
-                            Dnes
-                          </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
+                    <span>{currentTimeLabel}</span>
+                  </div>
+                  {/* Vertical Guideline extending continuously down OVER all tasks (dashed style) */}
+                  <div className="w-0 flex-1 border-l-[1.5px] border-dashed border-indigo-400/70 z-40" />
+                </div>
+              </div>
+            )}
+
+            {/* Top Dedicated Time Cursor Track (shared) */}
+            <div className="h-8 w-full mb-1" />
+
+            {/* VIEW 1: DENNÍ VÝSEK (1 den na celou šířku okna, podpora pro více uživatelů) */}
+            {viewMode === 'day' ? (
+              <div className="w-full">
+                {/* Column Hour Sub-Markers Header Row */}
+            <div className="flex items-center gap-3 pb-3 mb-2 border-b border-white/[0.06]">
+              {hasMultipleUsers && <div className="w-10 shrink-0" />}
+              <div
+                className="flex-1 px-[2px] grid gap-1 text-xs text-gray-400 font-mono text-center items-center"
+                style={{ gridTemplateColumns: `repeat(${totalDayHours}, minmax(0, 1fr))` }}
+              >
+                {daySlotMarkers.map((slot, i) => {
+                  if (i === 0) {
+                    return (
+                      <div key={i} className="min-w-0">
+                        {isEditingStart ? (
+                          <div className="py-0.5 px-1 bg-white/[0.06] border border-indigo-500/50 rounded-lg flex items-center justify-center gap-1 shadow-sm">
+                            <input
+                              type="time"
+                              value={tempStart}
+                              onChange={(e) => setTempStart(e.target.value)}
+                              onBlur={(e) => handleCommitStart(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleCommitStart(e.currentTarget.value);
+                                if (e.key === 'Escape') {
+                                  setIsEditingStart(false);
+                                  setTempStart(startTimeLabel);
+                                }
+                              }}
+                              className="bg-black/60 border border-white/20 rounded px-1 text-xs text-white font-mono outline-none focus:border-indigo-400"
+                              autoFocus
+                            />
+                            <span className="text-[10px] text-gray-500 shrink-0">1h</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTempStart(startTimeLabel);
+                              setIsEditingStart(true);
+                            }}
+                            className="py-1 bg-white/[0.02] hover:bg-white/[0.08] hover:text-white rounded-lg truncate px-1 cursor-pointer transition flex items-center justify-center gap-1 group w-full"
+                            title="Kliknutím upravit počáteční čas"
+                          >
+                            <span className="group-hover:text-indigo-300 font-semibold underline decoration-dashed decoration-indigo-400/40 underline-offset-2">
+                              {startTimeLabel}
+                            </span>
+                            <span className="text-[10px] text-gray-500">1h</span>
+                            <span className="material-symbols-outlined text-[11px] text-gray-500 group-hover:text-indigo-300 opacity-0 group-hover:opacity-100 transition-opacity">
+                              edit
+                            </span>
+                          </button>
                         )}
                       </div>
+                    );
+                  }
 
-                      <span
-                        className={`text-[11px] font-mono font-semibold ${
-                          dayHours >= totalDayHours ? 'text-indigo-300' : 'text-gray-400'
-                        }`}
-                      >
-                        {dayHours}/{totalDayHours}h
-                      </span>
+                  if (i === totalDayHours - 1) {
+                    return (
+                      <div key={i} className="min-w-0">
+                        {isEditingEnd ? (
+                          <div className="py-0.5 px-1 bg-white/[0.06] border border-indigo-500/50 rounded-lg flex items-center justify-center gap-1 shadow-sm">
+                            <span className="text-[10px] text-gray-500 shrink-0">8h</span>
+                            <input
+                              type="time"
+                              value={tempEnd}
+                              onChange={(e) => setTempEnd(e.target.value)}
+                              onBlur={(e) => handleCommitEnd(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleCommitEnd(e.currentTarget.value);
+                                if (e.key === 'Escape') {
+                                  setIsEditingEnd(false);
+                                  setTempEnd(endTimeLabel);
+                                }
+                              }}
+                              className="bg-black/60 border border-white/20 rounded px-1 text-xs text-white font-mono outline-none focus:border-indigo-400"
+                              autoFocus
+                            />
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTempEnd(endTimeLabel);
+                              setIsEditingEnd(true);
+                            }}
+                            className="py-1 bg-white/[0.02] hover:bg-white/[0.08] hover:text-white rounded-lg truncate px-1 cursor-pointer transition flex items-center justify-center gap-1 group w-full"
+                            title="Kliknutím upravit konečný čas"
+                          >
+                            <span className="text-[10px] text-gray-500">8h</span>
+                            <span className="group-hover:text-indigo-300 font-semibold underline decoration-dashed decoration-indigo-400/40 underline-offset-2">
+                              {endTimeLabel}
+                            </span>
+                            <span className="material-symbols-outlined text-[11px] text-gray-500 group-hover:text-indigo-300 opacity-0 group-hover:opacity-100 transition-opacity">
+                              edit
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={i} className="py-1 bg-white/[0.02] rounded-lg truncate px-1">
+                      {slot}
                     </div>
+                  );
+                })}
+              </div>
+            </div>
 
-                    {/* 8 Column Sub-Markers (1h to 8h) */}
-                    <div className="grid grid-cols-8 gap-0 mt-2 text-[10px] text-gray-500 font-mono text-center">
-                      <span>1h</span>
-                      <span>2h</span>
-                      <span>3h</span>
-                      <span>4h</span>
-                      <span>5h</span>
-                      <span>6h</span>
-                      <span>7h</span>
-                      <span>8h</span>
+            {/* Day Scheduled Tasks per user */}
+            <div className="space-y-4">
+              {userSchedules.map((uSched) => {
+                const dayItems = uSched.scheduledBlocks.filter((b) => b.dayIndex === selectedDayIndex);
+                const dayFree = uSched.freeSlots.find((f) => f.dayIndex === selectedDayIndex);
+                const isMe = Boolean(currentUser && isTaskForUser(uSched.userName, currentUser));
+
+                return (
+                  <div key={uSched.userName || 'single'} className="flex items-center gap-3">
+                    {hasMultipleUsers && (
+                      <div className="w-10 shrink-0 flex items-center justify-center">
+                        <div
+                          className={`w-9 h-9 rounded-full font-mono font-bold text-xs flex items-center justify-center text-center select-none transition-all ${
+                            isMe
+                              ? 'bg-indigo-500/20 text-indigo-400 font-bold'
+                              : 'bg-white/[0.08] text-gray-300'
+                          }`}
+                          title={isMe ? `${uSched.userName} (To jste vy)` : `Uživatel: ${uSched.userName}`}
+                        >
+                          {uSched.initials}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex-1 relative w-full py-1">
+                      {/* Background Column Lines */}
+                      <div
+                        className="absolute inset-0 pointer-events-none z-0"
+                          style={{ display: 'grid', gridTemplateColumns: `repeat(${totalDayHours}, minmax(0, 1fr))` }}
+                        >
+                          {Array.from({ length: totalDayHours }).map((_, colIdx) => (
+                            <div
+                              key={colIdx}
+                              className="h-full border-r border-dashed border-white/[0.04] last:border-r-0"
+                            />
+                          ))}
+                        </div>
+
+                        {/* Day Scheduled Tasks (Neutral borderless cards with shadows) */}
+                        <div
+                          className="relative z-10 gap-2 items-stretch"
+                          style={{ display: 'grid', gridTemplateColumns: `repeat(${totalDaySlots}, minmax(0, 1fr))` }}
+                        >
+                          {dayItems.length === 0 ? (
+                            <div
+                              style={{
+                                gridColumn: `1 / span ${totalDaySlots}`,
+                                gridRow: 1,
+                                opacity: searchQuery?.trim() ? 0.1 : 1,
+                              }}
+                              className="rounded-2xl p-4 border border-dashed border-white/10 bg-white/[0.015] text-gray-500 text-xs flex items-center justify-center gap-3 select-none h-[112px] transition-all duration-200"
+                            >
+                              <span className="material-symbols-outlined text-2xl opacity-40">
+                                {selectedDayIndex < todayIdx ? 'history_toggle_off' : 'weekend'}
+                              </span>
+                              <div className="flex flex-col">
+                                <span className="font-medium text-gray-400">
+                                  {selectedDayIndex < todayIdx ? 'Žádné záznamy v historii' : 'Žádné úkoly pro tento den'}
+                                </span>
+                                <span className="text-[11px] text-gray-600">
+                                  {totalDayHours} hodin {selectedDayIndex < todayIdx ? 'nevyužité kapacity' : 'volné kapacity'}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            dayItems.map((block) => {
+                              const { task, chunkHours, totalHours, isService, isNotAvailable, isCompleted, isCritical, isSplit, partIndex, totalParts } = block;
+                              const isCrit = Boolean(isCritical || task.isCritical);
+                              const dayColStart = ((block.startCol - 1) % totalDaySlots) + 1;
+                              const spanCols = Math.min(totalDaySlots - dayColStart + 1, block.spanCols);
+                              const reqCode = task.requirementId;
+                              const taskCode = task.taskIdentifier;
+                              const displayCode = taskCode || reqCode;
+
+                              const isNaMatch = !searchQuery?.trim() || 'nedostupný volno absence dovolená'.includes(searchQuery.trim().toLowerCase());
+                              const isNaMuted = Boolean(searchQuery?.trim()) && !isNaMatch;
+
+                              if (isNotAvailable) {
+                                return (
+                                  <div
+                                    key={block.id}
+                                    style={{
+                                      gridColumn: `${dayColStart} / span ${spanCols}`,
+                                      gridRow: 1,
+                                      opacity: isNaMuted ? 0.1 : 1,
+                                    }}
+                                    className={`rounded-2xl p-2.5 flex flex-col justify-between gap-1 transition-all duration-200 select-none overflow-hidden min-w-0 h-[112px] timeline-task-unavailable text-zinc-300 cursor-default ${
+                                      isNaMuted ? 'pointer-events-none' : ''
+                                    }`}
+                                  >
+                                    <div className="min-w-0 flex flex-col gap-0.5">
+                                      <div className="font-bold text-xs text-white truncate leading-tight">
+                                        Nedostupný / Volno
+                                      </div>
+                                      <div className="font-mono text-xs text-zinc-400 font-bold pt-0.5">
+                                        {chunkHours === totalDayHours ? `${chunkHours}h (celý den)` : `${chunkHours}h`}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center justify-end text-[10px]">
+                                      <span className="material-symbols-outlined text-sm text-zinc-400">
+                                        celebration
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              const isSolidCard = !isNotAvailable;
+
+                              const isCutRight = Boolean(!isNotAvailable && isSplit && partIndex < totalParts);
+                              const isCutLeft = Boolean(!isNotAvailable && isSplit && partIndex > 1);
+
+                              const isMatch = isTaskMatchingQuery(task, searchQuery || '');
+                              const isMuted = Boolean(searchQuery?.trim()) && !isMatch;
+
+                              const taskBackgroundColor = isNotAvailable
+                                ? 'rgba(39, 39, 42, 0.8)'
+                                : isCompleted
+                                ? 'rgba(16, 185, 129, 0.7)'
+                                : isService
+                                ? serviceColor
+                                : devColor;
+
+                              const blockStyle: React.CSSProperties = {
+                                gridColumn: `${dayColStart} / span ${spanCols}`,
+                                gridRow: 1,
+                                borderRadius: `${isCutLeft ? '0px' : '16px'} ${isCutRight ? '0px' : '16px'} ${isCutRight ? '0px' : '16px'} ${isCutLeft ? '0px' : '16px'}`,
+                                opacity: isMuted ? 0.1 : 1,
+                                backgroundColor: taskBackgroundColor,
+                              };
+
+                              return (
+                                <div
+                                  key={block.id}
+                                  style={blockStyle}
+                                  onClick={isMuted ? undefined : () => onOpenTask(task)}
+                                  className={`timeline-task-card p-2.5 flex flex-col justify-between gap-1 transition-all duration-200 select-none overflow-hidden min-w-0 h-[112px] text-white ${
+                                    isMuted ? 'pointer-events-none' : 'cursor-pointer'
+                                  }`}
+                                >
+                                  {/* Content area: Title, Project, and Part/Hours row */}
+                                  <div className="min-w-0 flex flex-col gap-0.5">
+                                    {/* Row 1: Task Title */}
+                                    <div className="font-bold text-xs text-white truncate leading-tight">
+                                      {task.customName || task.title}
+                                    </div>
+
+                                    {/* Row 2: Project name */}
+                                    {task.project && (
+                                      <div className={`text-[10px] truncate leading-tight ${isSolidCard ? 'text-white/80' : 'text-white/70'}`}>
+                                        {task.project}
+                                      </div>
+                                    )}
+
+                                    {/* Row 3: Part & Hours */}
+                                    <div className="flex items-center gap-1.5 text-[10px] text-white/90 font-mono pt-0.5 flex-wrap">
+                                      {isSplit && (
+                                        <span className={`text-[10px] font-sans shrink-0 ${isSolidCard ? 'text-white/80' : 'text-white/70'}`}>
+                                          {partIndex}/{totalParts}
+                                        </span>
+                                      )}
+                                      <span className="font-bold text-xs">
+                                        {isSplit ? `${chunkHours}h z ${totalHours}h` : `${chunkHours}h`}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Bottom row: clickable code + author initials pill + type icon with warning */}
+                                  <div className="flex items-center justify-between gap-1 text-[10px] min-w-0">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      {chunkHours > 0.5 && (
+                                        isGoddayTask(task) ? (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              onOpenTask(task);
+                                            }}
+                                            className={`px-2 py-0.5 rounded-full font-mono font-bold text-[11px] transition cursor-pointer truncate shrink-0 ${
+                                              isSolidCard
+                                                ? 'border border-white/60 bg-white/10 hover:bg-white/20 text-white'
+                                                : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300'
+                                            }`}
+                                            title={task.url ? 'Otevřít odkaz úkolu' : 'Godday úkol'}
+                                          >
+                                            godday
+                                          </button>
+                                        ) : (
+                                          displayCode && displayCode !== 'R0' && (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => onOpenCodeLink(displayCode, task, e)}
+                                              className={`px-2 py-0.5 rounded-full font-mono font-bold text-[11px] transition cursor-pointer truncate shrink-0 ${
+                                                isSolidCard
+                                                  ? 'border border-white/60 bg-white/10 hover:bg-white/20 text-white'
+                                                  : 'bg-white/15 hover:bg-white/25 text-white'
+                                              }`}
+                                              title="Otevřít v TaskManageru"
+                                            >
+                                              {displayCode}
+                                            </button>
+                                          )
+                                        )
+                                      )}
+
+                                      {/* Author initials in pill: white outline when solid card */}
+                                      {task.author && (
+                                        <div
+                                          className={`px-2.5 py-0.5 min-w-[24px] rounded-full shrink-0 flex items-center justify-center font-bold text-[10px] font-mono text-center ${
+                                            isSolidCard
+                                              ? 'border border-white/60 bg-white/10 text-white'
+                                              : 'bg-indigo-500/20 text-indigo-300'
+                                          }`}
+                                          title={`Zadavatel: ${task.author}`}
+                                        >
+                                          {task.author}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Type indicator icon with warning triangle next to it: white when solid card */}
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      {isCrit && (
+                                        <span
+                                          className="material-symbols-outlined text-sm text-red-400"
+                                          title="Kritická priorita"
+                                        >
+                                          warning
+                                        </span>
+                                      )}
+                                      <span
+                                        className={`material-symbols-outlined text-sm ${isSolidCard ? 'text-white' : 'text-white/50'}`}
+                                      >
+                                        {isService ? 'build' : 'code'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+
+                          {/* Free capacity block for the day (only when day has tasks, preventing double placeholder) */}
+                          {dayItems.length > 0 && dayFree && dayFree.freeHours > 0 && (
+                            <div
+                              style={{
+                                gridColumn: `${((dayFree.startCol - 1) % totalDaySlots) + 1} / span ${dayFree.spanCols}`,
+                                gridRow: 1,
+                              }}
+                              className="rounded-2xl p-4 border border-dashed border-white/10 bg-white/[0.015] hover:bg-white/[0.03] text-gray-500 text-xs flex items-center justify-center gap-2 transition select-none h-[112px]"
+                            >
+                              <span className="material-symbols-outlined text-base opacity-60">
+                                {selectedDayIndex < todayIdx ? 'history' : 'hourglass_empty'}
+                              </span>
+                              <span className="font-mono font-semibold">
+                                {dayFree.freeHours}h {selectedDayIndex < todayIdx ? 'nevyužito' : 'volná kapacita'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+        ) : (
+          /* VIEW 2: TÝDENNÍ PŘEHLED (40 sloupců, sloučené přetékající bloky, podpora pro více uživatelů) */
+          <div className="w-full">
+            {/* 5 Day Headers (Po, Út, St, Čt, Pá) */}
+            <div className="flex items-center gap-3 border-b border-white/[0.06] pb-3 mb-2">
+              {hasMultipleUsers && <div className="w-10 shrink-0" />}
+              <div className="flex-1 px-[2px] grid grid-cols-5 gap-0">
+                {days.slice(0, 5).map((day, dIdx) => {
+                  const dayBlocks = userSchedules.flatMap((u) =>
+                    u.scheduledBlocks.filter((b) => b.dayIndex === dIdx)
+                  );
+                  const dayHours = dayBlocks.reduce((sum, b) => sum + b.chunkHours, 0);
+                  const totalCap = totalDayHours * userSchedules.length;
+
+                  return (
+                    <div
+                      key={day.date}
+                      className={`px-3 py-1 flex flex-col justify-between border-r border-white/[0.05] last:border-r-0 ${
+                        day.isToday ? 'bg-indigo-500/[0.04] rounded-t-xl' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-xs font-bold uppercase tracking-wider ${
+                              day.isToday ? 'text-indigo-300 font-extrabold' : 'text-gray-300'
+                            }`}
+                          >
+                            {day.dayLabel}
+                          </span>
+                          {day.isToday && (
+                            <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-extrabold text-[9px] uppercase tracking-wider">
+                              Dnes
+                            </span>
+                          )}
+                        </div>
+
+                        <span
+                          className={`text-[11px] font-mono font-semibold ${
+                            dayHours >= totalCap ? 'text-indigo-300' : 'text-gray-400'
+                          }`}
+                        >
+                          {dayHours}/{totalCap}h
+                        </span>
+                      </div>
+
+                      {/* 8 Column Sub-Markers (1h to 8h) */}
+                      <div className="grid grid-cols-8 gap-0 mt-2 text-[10px] text-gray-500 font-mono text-center">
+                        <span>1h</span>
+                        <span>2h</span>
+                        <span>3h</span>
+                        <span>4h</span>
+                        <span>5h</span>
+                        <span>6h</span>
+                        <span>7h</span>
+                        <span>8h</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Week Grid Tracks for each user */}
+            <div className="space-y-4">
+              {userSchedules.map((uSched) => {
+                const isMe = Boolean(currentUser && isTaskForUser(uSched.userName, currentUser));
+
+                return (
+                  <div key={uSched.userName || 'single'} className="flex items-center gap-3">
+                    {hasMultipleUsers && (
+                      <div className="w-10 shrink-0 flex items-center justify-center">
+                        <div
+                          className={`w-9 h-9 rounded-full font-mono font-bold text-xs flex items-center justify-center text-center select-none transition-all ${
+                            isMe
+                              ? 'bg-indigo-500/20 text-indigo-400 font-bold'
+                              : 'bg-white/[0.08] text-gray-300'
+                          }`}
+                          title={isMe ? `${uSched.userName} (To jste vy)` : `Uživatel: ${uSched.userName}`}
+                        >
+                          {uSched.initials}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex-1 relative w-full rounded-lg overflow-hidden py-1 px-[2px] h-[66px]">
+                      {/* Background Column Lines */}
+                      <div
+                        className="absolute inset-0 pointer-events-none z-0 px-[2px]"
+                        style={{ display: 'grid', gridTemplateColumns: `repeat(${totalWeekColumns}, minmax(0, 1fr))` }}
+                      >
+                        {Array.from({ length: totalWeekColumns }).map((_, colIdx) => {
+                          const dayIdx = Math.floor(colIdx / totalDayHours);
+                          const isDayBoundary = (colIdx + 1) % totalDayHours === 0;
+                          const isTodayCol = days[dayIdx]?.isToday;
+
+                          return (
+                            <div
+                              key={colIdx}
+                              className={`h-full ${
+                                isDayBoundary
+                                  ? 'border-r border-white/[0.08]'
+                                  : 'border-r border-dashed border-white/[0.03]'
+                              } ${isTodayCol ? 'bg-indigo-500/[0.02]' : ''}`}
+                            />
+                          );
+                        })}
+                      </div>
+
+                      {/* Merged Items Row (Neutral card bars) */}
+                      <div
+                        className="relative z-10 gap-1.5 h-[58px] items-stretch"
+                        style={{ display: 'grid', gridTemplateColumns: `repeat(${totalWeekSlots}, minmax(0, 1fr))` }}
+                      >
+                        {uSched.weekMergedBlocks.map((block) => {
+                          const { task, startCol, spanCols, isService, isNotAvailable, isCompleted, isCritical, isSplit, partIndex, totalParts } = block;
+                          const isCrit = Boolean(isCritical || task.isCritical);
+
+                          const isSolidBlock = !isNotAvailable;
+
+                          const isCutRight = Boolean(!isNotAvailable && isSplit && partIndex < totalParts);
+                          const isCutLeft = Boolean(!isNotAvailable && isSplit && partIndex > 1);
+
+                          const isMatch = isNotAvailable
+                            ? (!searchQuery?.trim() || 'nedostupný volno absence dovolená'.includes(searchQuery.trim().toLowerCase()))
+                            : isTaskMatchingQuery(task, searchQuery || '');
+                          const isMuted = Boolean(searchQuery?.trim()) && !isMatch;
+
+                          const taskBackgroundColor = isNotAvailable
+                            ? 'rgba(39, 39, 42, 0.8)'
+                            : isCompleted
+                            ? 'rgba(16, 185, 129, 0.7)'
+                            : isService
+                            ? serviceColor
+                            : devColor;
+
+                          const blockStyle: React.CSSProperties = {
+                            gridColumn: `${startCol} / span ${spanCols}`,
+                            gridRow: 1,
+                            borderRadius: `${isCutLeft ? '0px' : '8px'} ${isCutRight ? '0px' : '8px'} ${isCutRight ? '0px' : '8px'} ${isCutLeft ? '0px' : '8px'}`,
+                            opacity: isMuted ? 0.1 : 1,
+                            backgroundColor: taskBackgroundColor,
+                          };
+
+                          return (
+                            <div
+                              key={block.id}
+                              style={blockStyle}
+                              onClick={isNotAvailable || isMuted ? undefined : () => onOpenTask(task)}
+                              onMouseEnter={(e) =>
+                                isMuted ? undefined : setHoveredTask({ block, rect: e.currentTarget.getBoundingClientRect() })
+                              }
+                              onMouseLeave={() => setHoveredTask(null)}
+                              className={`timeline-task-card h-full transition-all duration-200 select-none flex items-center justify-center overflow-hidden ${
+                                isMuted ? 'pointer-events-none' : ''
+                              } ${
+                                isNotAvailable ? 'text-zinc-300 cursor-default' : 'cursor-pointer text-white'
+                              }`}
+                            >
+                                  <div
+                                    className={`pointer-events-none flex items-center justify-center ${
+                                      isCrit && !isNotAvailable ? 'flex-col gap-0.5' : 'flex-row gap-1'
+                                    }`}
+                                  >
+                                    {isCrit && !isNotAvailable && (
+                                      <span
+                                        className="material-symbols-outlined text-xs text-red-400"
+                                        title="Kritická priorita"
+                                      >
+                                        warning
+                                      </span>
+                                    )}
+                                    <span
+                                      className={`material-symbols-outlined text-xs ${isSolidBlock ? 'text-white' : 'text-white/50'}`}
+                                    >
+                                      {isNotAvailable ? 'celebration' : isService ? 'build' : 'code'}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                        })}
+
+                        {/* Free Capacity Slots */}
+                        {uSched.freeSlots.map((free) => (
+                          <div
+                            key={`free-${free.dayIndex}-${free.startCol}`}
+                            style={{
+                              gridColumn: `${free.startCol} / span ${free.spanCols}`,
+                              gridRow: 1,
+                              opacity: searchQuery?.trim() ? 0.1 : 1,
+                            }}
+                            className="rounded-lg border border-dashed border-white/10 bg-white/[0.015] hover:bg-white/[0.03] text-gray-500 text-xs flex items-center justify-center gap-1 transition-all duration-200 select-none h-full"
+                            title={free.dayIndex < todayIdx ? `${free.freeHours}h nevyužité kapacity` : `${free.freeHours}h volné kapacity`}
+                          >
+                            <span className="font-mono text-[10px] opacity-60">
+                              {free.freeHours}h{free.dayIndex < todayIdx ? ' nevyužito' : ''}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
-
-            {/* Dynamic Column Background Grid & Week Merged Items Track */}
-            <div className="relative w-full rounded-2xl overflow-hidden py-2 space-y-2">
-              {/* Background Column Lines */}
-              <div
-                className="absolute inset-0 pointer-events-none z-0"
-                style={{ display: 'grid', gridTemplateColumns: `repeat(${totalWeekColumns}, minmax(0, 1fr))` }}
-              >
-                {Array.from({ length: totalWeekColumns }).map((_, colIdx) => {
-                  const dayIdx = Math.floor(colIdx / totalDayHours);
-                  const isDayBoundary = (colIdx + 1) % totalDayHours === 0;
-                  const isTodayCol = dayCapacities[dayIdx]?.isToday;
-
-                  return (
-                    <div
-                      key={colIdx}
-                      className={`h-full ${
-                        isDayBoundary
-                          ? 'border-r border-white/[0.08]'
-                          : 'border-r border-dashed border-white/[0.03]'
-                      } ${isTodayCol ? 'bg-indigo-500/[0.02]' : ''}`}
-                    />
-                  );
-                })}
-              </div>
-
-              {/* Merged Items Row (No text inside, clean primary/secondary bars that overflow across days!) */}
-              <div
-                className="relative z-10 gap-1.5 min-h-[58px] items-stretch"
-                style={{ display: 'grid', gridTemplateColumns: `repeat(${totalWeekColumns}, minmax(0, 1fr))` }}
-              >
-                {weekMergedBlocks.map((block) => {
-                  const { task, startCol, spanCols, isService, isNotAvailable, isCompleted, isCritical } = block;
-                  const isCrit = Boolean(isCritical || task.isCritical);
-
-                  return (
-                    <div
-                      key={block.id}
-                      style={{ gridColumn: `${startCol} / span ${spanCols}`, gridRow: 1 }}
-                      onClick={() => onOpenTask(task)}
-                      onMouseEnter={(e) =>
-                        setHoveredTask({ block, rect: e.currentTarget.getBoundingClientRect() })
-                      }
-                      onMouseLeave={() => setHoveredTask(null)}
-                      className={`rounded-2xl transition-all cursor-pointer shadow-md select-none flex items-center justify-center overflow-hidden ${
-                        isCrit
-                          ? 'outline outline-2 outline-red-500 ring-2 ring-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.45)] '
-                          : ''
-                      }${
-                        isCompleted
-                          ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 border border-emerald-400/30 shadow-emerald-950/30'
-                          : isNotAvailable
-                          ? 'bg-zinc-800/90 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/60 shadow-black/20'
-                          : isService
-                          ? 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 border border-purple-400/30 shadow-purple-950/30'
-                          : 'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 border border-indigo-400/30 shadow-indigo-950/30'
-                      }`}
-                    >
-                      {/* Text is hidden in week view, clean pill bar */}
-                      <span className="material-symbols-outlined text-xs pointer-events-none text-white/50">
-                        {isCompleted ? 'task_alt' : isNotAvailable ? 'celebration' : isService ? 'support_agent' : 'terminal'}
-                      </span>
-                    </div>
-                  );
-                })}
-
-                {/* Free Capacity Slots */}
-                {freeSlots.map((free) => (
-                  <div
-                    key={`free-${free.dayIndex}-${free.startCol}`}
-                    style={{ gridColumn: `${free.startCol} / span ${free.spanCols}`, gridRow: 1 }}
-                    className="rounded-2xl border border-dashed border-white/10 bg-white/[0.015] hover:bg-white/[0.03] text-gray-500 text-xs flex items-center justify-center gap-1 transition select-none min-h-[58px]"
-                    title={`${free.freeHours}h volné kapacity`}
-                  >
-                    <span className="font-mono text-[10px] opacity-60">+{free.freeHours}h</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          </div>
+        )}
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Custom Floating Tooltip for Week View (Appears below hovered element) */}
-      {viewMode === 'week' && hoveredTask && (
+      {/* Custom Floating Tooltip for Week View (Bounded inside visible viewport) */}
+      {viewMode === 'week' && hoveredTask && tooltipPosition && (
         <div
-          className="fixed z-50 pointer-events-none transform -translate-x-1/2 p-3.5 rounded-2xl bg-[#161a26]/95 backdrop-blur-md border border-white/10 shadow-2xl text-xs space-y-2 min-w-[240px] max-w-[320px] animate-in fade-in zoom-in-95 duration-150"
+          className="fixed z-50 pointer-events-none p-3.5 rounded-2xl bg-[#161720]/95 backdrop-blur-md shadow-2xl text-xs space-y-2 min-w-[240px] max-w-[320px] animate-in fade-in zoom-in-95 duration-150"
           style={{
-            top: hoveredTask.rect.bottom + 10,
-            left: hoveredTask.rect.left + hoveredTask.rect.width / 2,
+            top: tooltipPosition.top,
+            left: tooltipPosition.left,
+            transform: `translate(-50%, ${tooltipPosition.translateY})`,
           }}
         >
-          {/* Header row: Type badge + hours */}
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {Boolean(hoveredTask.block.isCritical || hoveredTask.block.task.isCritical) && (
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-red-600 text-white flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[10px] text-white">warning</span>
-                  Kritická
+          {hoveredTask.block.isNotAvailable ? (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-bold text-white leading-snug">
+                  Nedostupný / Volno
+                </div>
+                <span className="material-symbols-outlined text-sm text-zinc-400">
+                  celebration
                 </span>
-              )}
-              <span
-                className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                  hoveredTask.block.isCompleted
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                    : hoveredTask.block.isNotAvailable
-                    ? 'bg-zinc-700/60 text-zinc-300'
-                    : hoveredTask.block.isService
-                    ? 'bg-purple-500/20 text-purple-300'
-                    : 'bg-indigo-500/20 text-indigo-300'
-                }`}
-              >
-                {hoveredTask.block.isCompleted
-                  ? 'Hotovo / Splněno'
-                  : hoveredTask.block.isNotAvailable
-                  ? 'Státní svátek / Volno'
-                  : hoveredTask.block.isService
-                  ? 'Servis'
-                  : 'Vývoj'}
-              </span>
-            </div>
-            <span className="font-mono font-bold text-gray-200">
-              {hoveredTask.block.chunkHours}h
-              {hoveredTask.block.totalHours > hoveredTask.block.chunkHours && (
-                <span className="text-gray-400 font-normal"> z {hoveredTask.block.totalHours}h</span>
-              )}
-            </span>
-          </div>
-
-          {/* Title */}
-          <div className="font-bold text-white leading-snug">
-            {hoveredTask.block.task.customName || hoveredTask.block.task.title}
-          </div>
-
-          {/* Codes & Author */}
-          <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-gray-400 font-mono">
-            {hoveredTask.block.task.taskIdentifier && (
-              <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold">
-                {hoveredTask.block.task.taskIdentifier}
-              </span>
-            )}
-            {hoveredTask.block.task.requirementId &&
-              hoveredTask.block.task.requirementId !== hoveredTask.block.task.taskIdentifier && (
-                <span className="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">
-                  {hoveredTask.block.task.requirementId}
+              </div>
+              <div className="font-mono text-xs text-zinc-300 font-bold">
+                {hoveredTask.block.chunkHours === totalDayHours
+                  ? `${hoveredTask.block.chunkHours}h (celý den)`
+                  : `${hoveredTask.block.chunkHours}h`}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Header row: Type badge + hours */}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {Boolean(hoveredTask.block.isCritical || hoveredTask.block.task.isCritical) && (
+                    <span className="material-symbols-outlined text-xs text-red-400" title="Kritická priorita">
+                      warning
+                    </span>
+                  )}
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      hoveredTask.block.isCompleted
+                        ? 'bg-emerald-500/20 text-emerald-300'
+                        : hoveredTask.block.isService
+                        ? 'bg-purple-500/20 text-purple-300'
+                        : 'bg-indigo-500/20 text-indigo-300'
+                    }`}
+                  >
+                    {hoveredTask.block.isCompleted
+                      ? 'Hotovo / Splněno'
+                      : hoveredTask.block.isService
+                      ? 'Servis'
+                      : 'Vývoj'}
+                  </span>
+                  {hoveredTask.block.isSplit && (
+                    <span className="text-[10px] font-mono text-white/80 font-bold">
+                      ({hoveredTask.block.partIndex}/{hoveredTask.block.totalParts})
+                    </span>
+                  )}
+                </div>
+                <span className="font-mono font-bold text-gray-200">
+                  {hoveredTask.block.chunkHours}h
+                  {hoveredTask.block.totalHours > hoveredTask.block.chunkHours && (
+                    <span className="text-gray-400 font-normal"> z {hoveredTask.block.totalHours}h</span>
+                  )}
                 </span>
-              )}
-            {hoveredTask.block.task.author && (
-              <span className="px-1.5 py-0.5 rounded bg-white/10 text-gray-200 font-bold">
-                {hoveredTask.block.task.author}
-              </span>
-            )}
-            {hoveredTask.block.task.project && (
-              <span className="truncate max-w-[140px] text-gray-400 font-sans">
-                {hoveredTask.block.task.project}
-              </span>
-            )}
-          </div>
-          <div className="text-[10px] text-gray-500 italic pt-1 border-t border-white/5">
-            Kliknutím otevřít v TaskManageru
-          </div>
+              </div>
+
+              {/* Title */}
+              <div className="font-bold text-white leading-snug">
+                {hoveredTask.block.task.customName || hoveredTask.block.task.title}
+              </div>
+
+              {/* Codes & Author */}
+              <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-gray-400 font-mono">
+                {hoveredTask.block.task.taskIdentifier && (
+                  <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold">
+                    {hoveredTask.block.task.taskIdentifier}
+                  </span>
+                )}
+                {isGoddayTask(hoveredTask.block.task) ? (
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">
+                    godday
+                  </span>
+                ) : (
+                  hoveredTask.block.task.requirementId &&
+                  hoveredTask.block.task.requirementId !== hoveredTask.block.task.taskIdentifier &&
+                  hoveredTask.block.task.requirementId !== 'R0' && (
+                    <span className="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-bold">
+                      {hoveredTask.block.task.requirementId}
+                    </span>
+                  )
+                )}
+                {hoveredTask.block.task.author && (
+                  <span className="px-2 py-0.5 rounded-full bg-white/10 text-gray-200 font-bold">
+                    {hoveredTask.block.task.author}
+                  </span>
+                )}
+                {hoveredTask.block.task.project && (
+                  <span className="truncate max-w-[140px] text-gray-400 font-sans">
+                    {hoveredTask.block.task.project}
+                  </span>
+                )}
+              </div>
+              <div className="text-[10px] text-gray-500 italic pt-0.5">
+                {isGoddayTask(hoveredTask.block.task) ? 'Kliknutím otevřít odkaz' : 'Kliknutím otevřít v TaskManageru'}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -1644,12 +2760,35 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
       <div className="p-4 rounded-2xl bg-white/[0.02] flex items-center justify-between gap-4 flex-wrap text-xs text-gray-400 select-none">
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-indigo-500 shadow-sm" />
-            <span>Vývoj (DEV úkoly - primární)</span>
+            <span
+              className="w-3.5 h-3.5 rounded flex items-center justify-center border border-white/10 shadow-sm"
+              style={{ backgroundColor: hexToRgba(primaryColor, '#6366f1', 0.85) }}
+            >
+              <span className="material-symbols-outlined text-[10px] text-white">code</span>
+            </span>
+            <span>Vývoj</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-purple-500 shadow-sm" />
-            <span>Servisy & HD (sekundární)</span>
+            <span
+              className="w-3.5 h-3.5 rounded flex items-center justify-center border border-white/10 shadow-sm"
+              style={{ backgroundColor: hexToRgba(actionsColor, '#a855f7', 0.85) }}
+            >
+              <span className="material-symbols-outlined text-[10px] text-white">build</span>
+            </span>
+            <span>Servisy & HD</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className="w-3.5 h-3.5 rounded flex items-center justify-center border border-white/10 shadow-sm text-zinc-300"
+              style={{ backgroundColor: 'rgba(39, 39, 42, 0.85)' }}
+            >
+              <span className="material-symbols-outlined text-[10px]">celebration</span>
+            </span>
+            <span>Volno / Absence</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm text-red-400">warning</span>
+            <span>Kritická priorita</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full border border-dashed border-gray-500" />
@@ -1660,27 +2799,27 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
         <div className="flex items-center gap-3 font-mono">
           <span>
             Naplánováno:{' '}
-            <strong className="text-indigo-300 font-bold">{totalWeekScheduledHours}h</strong> / 40h
+            <strong className="text-indigo-300 font-bold">{totalWeekScheduledHours}h</strong> / {statsCapacityHours}h
           </span>
           <span>•</span>
           <span>
             Zbývá v týdnu:{' '}
             <strong className="text-gray-300 font-bold">
-              {Math.max(0, 40 - totalWeekScheduledHours)}h
+              {Math.max(0, statsCapacityHours - totalWeekScheduledHours)}h
             </strong>
           </span>
         </div>
       </div>
 
-      {/* Overflow Tasks Section (Tasks exceeding 40h workweek) */}
-      {overflowTasks.length > 0 && (
+      {/* Overflow Tasks Section */}
+      {allOverflowTasks.length > 0 && (
         <div className="p-4 rounded-2xl bg-white/[0.02] space-y-3">
           <h4 className="text-xs font-semibold text-gray-300 flex items-center gap-2 select-none">
             <span className="material-symbols-outlined text-sm text-indigo-400">arrow_forward</span>
-            <span>Úkoly přesahující do dalšího týdne ({overflowTasks.length})</span>
+            <span>Úkoly přesahující do dalšího týdne ({allOverflowTasks.length})</span>
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-            {overflowTasks.map(({ task, remainingHours }) => (
+            {allOverflowTasks.map(({ task, remainingHours }) => (
               <TaskCard
                 key={`timeline-overflow-${task.taskId}`}
                 task={{ ...task, totalHours: remainingHours }}
@@ -1688,6 +2827,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                 onOpenCodeLink={onOpenCodeLink}
                 getTaskManagerUrl={getTaskManagerUrl}
                 isCopied={copiedId === task.taskId}
+                showAssignee={hasMultipleUsers}
               />
             ))}
           </div>
@@ -1702,6 +2842,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
 /* ========================================================================= */
 interface ListViewProps {
   tasks: PlanTaskItem[];
+  hasMultipleUsers?: boolean;
   onOpenTask: (task: PlanTaskItem) => void;
   onOpenCodeLink: (code: string, task: PlanTaskItem, e?: React.MouseEvent) => void;
   getTaskManagerUrl: (code?: string) => string | null;
@@ -1710,12 +2851,17 @@ interface ListViewProps {
 
 const ListView: React.FC<ListViewProps> = ({
   tasks,
+  hasMultipleUsers,
   onOpenTask,
   onOpenCodeLink,
   getTaskManagerUrl,
   copiedId,
 }) => {
-  if (tasks.length === 0) {
+  const sortedTasks = useMemo(() => {
+    return [...tasks].sort(comparePlanOrder);
+  }, [tasks]);
+
+  if (sortedTasks.length === 0) {
     return (
       <div className="py-20 text-center text-gray-400 text-xs">
         Žádné úkoly neodpovídají zadanému filtru.
@@ -1723,12 +2869,18 @@ const ListView: React.FC<ListViewProps> = ({
     );
   }
 
+  const gridColsClass = hasMultipleUsers
+    ? 'grid-cols-[40px_36px_120px_70px_1fr_160px_110px_60px]'
+    : 'grid-cols-[36px_120px_70px_1fr_160px_110px_60px]';
+
   return (
     <div className="space-y-2">
       {/* Header bar */}
-      <div className="grid grid-cols-[36px_140px_1fr_180px_120px_70px] items-center px-4 py-2 gap-3 text-[11px] text-gray-400 font-medium uppercase tracking-wider select-none">
-        <div>Typ</div>
-        <div>Kód & Zadavatel</div>
+      <div className={`grid ${gridColsClass} items-center px-4 py-2 gap-3 text-[11px] text-gray-400 font-medium uppercase tracking-wider select-none`}>
+        {hasMultipleUsers && <div className="text-center">Osoba</div>}
+        <div className="text-center">Typ</div>
+        <div>Kód</div>
+        <div className="text-center">Zadavatel</div>
         <div>Název úkolu</div>
         <div>Projekt</div>
         <div>Termín</div>
@@ -1737,78 +2889,134 @@ const ListView: React.FC<ListViewProps> = ({
 
       {/* Rows */}
       <div className="space-y-1.5">
-        {tasks.map((task) => {
+        {sortedTasks.map((task) => {
           const isDev = task.taskType === 'dev';
           const isCrit = Boolean(task.isCritical);
+          const isCompleted = Boolean(task.isCompleted || task.isSolved);
           return (
             <div
               key={task.taskId}
               onClick={() => onOpenTask(task)}
-              className={`grid grid-cols-[36px_140px_1fr_180px_120px_70px] items-center px-4 py-3 gap-3 text-xs rounded-2xl transition-colors cursor-pointer select-none group ${
-                isCrit
-                  ? 'outline outline-2 outline-red-500 ring-2 ring-red-500/40 shadow-[0_0_12px_rgba(239,68,68,0.25)] bg-red-950/20 hover:bg-red-950/30'
+              className={`grid ${gridColsClass} items-center px-4 py-3 gap-3 text-xs rounded-2xl transition-colors cursor-pointer select-none group shadow-sm ${
+                isCompleted
+                  ? 'bg-emerald-950/30 hover:bg-emerald-950/50 text-emerald-100'
                   : 'bg-white/[0.02] hover:bg-white/[0.05]'
               }`}
             >
-              {/* Type icon (dev vs service) */}
-              <div>
-                <span
-                  className={`inline-flex items-center justify-center w-7 h-7 rounded-full ${
-                    isDev
-                      ? 'bg-indigo-500/15 text-indigo-300'
-                      : task.taskType === 'service'
-                      ? 'bg-purple-500/15 text-purple-300'
-                      : 'bg-white/5 text-gray-300'
-                  }`}
-                  title={isDev ? 'Vývoj' : 'Servis'}
-                >
-                  <span className="material-symbols-outlined text-sm">
-                    {task.isPinned ? 'push_pin' : isDev ? 'code' : 'build'}
+              {/* Assignee circle avatar if 2+ users */}
+              {hasMultipleUsers && (
+                <div className="flex items-center justify-center">
+                  <span
+                    className="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-300 font-mono text-[11px] font-bold flex items-center justify-center text-center shadow-sm select-none"
+                    title={`Přiřazeno: ${task.userName || '–'}`}
+                  >
+                    {getUserInitials(task.userName)}
                   </span>
-                </span>
-              </div>
+                </div>
+              )}
 
-              {/* R / T codes & Author initials & Critical badge */}
-              <div className="flex items-center gap-1.5 flex-wrap">
+              {/* Type: larger icon without chip, event_busy for unavailable */}
+              <div className="flex items-center justify-center gap-1">
+                <span
+                  className={`material-symbols-outlined text-lg ${
+                    task.isNotAvailable
+                      ? 'text-zinc-400'
+                      : isCompleted
+                      ? 'text-emerald-400'
+                      : isDev
+                      ? 'text-indigo-400'
+                      : task.taskType === 'service'
+                      ? 'text-purple-400'
+                      : 'text-gray-400'
+                  }`}
+                  title={
+                    task.isNotAvailable
+                      ? 'Nedostupnost / Volno'
+                      : isCompleted
+                      ? 'Splněno'
+                      : isDev
+                      ? 'Vývoj'
+                      : 'Servis'
+                  }
+                >
+                  {task.isNotAvailable
+                    ? 'event_busy'
+                    : task.isPinned && !isCompleted
+                    ? 'push_pin'
+                    : isDev
+                    ? 'code'
+                    : 'build'}
+                </span>
                 {isCrit && (
-                  <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-bold tracking-wider shrink-0 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[10px] text-white">warning</span>
-                    <span>Kritická</span>
+                  <span
+                    className={`material-symbols-outlined text-sm shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-red-400'}`}
+                    title="Kritická priorita"
+                  >
+                    warning
                   </span>
                 )}
-                {task.author && (
+              </div>
+
+              {/* Dedicated Column: Task & Req Codes / Godday chip */}
+              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                {isGoddayTask(task) ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenTask(task);
+                    }}
+                    className="px-2 py-0.5 rounded-full bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 font-mono text-[10px] font-bold transition cursor-pointer"
+                    title={task.url ? 'Otevřít odkaz úkolu' : 'Godday úkol'}
+                  >
+                    godday
+                  </button>
+                ) : (
+                  <>
+                    {task.taskIdentifier && (
+                      <button
+                        type="button"
+                        onClick={(e) => onOpenCodeLink(task.taskIdentifier!, task, e)}
+                        className="px-2 py-0.5 rounded-full bg-purple-500/15 hover:bg-purple-500/30 text-purple-300 font-mono text-[10px] font-bold transition cursor-pointer"
+                        title={getTaskManagerUrl(task.taskIdentifier) ? 'Otevřít úkol v TaskManageru' : 'Kliknutím zkopírovat kód'}
+                      >
+                        {task.taskIdentifier}
+                      </button>
+                    )}
+                    {task.requirementId && task.requirementId !== task.taskIdentifier && task.requirementId !== 'R0' && (
+                      <button
+                        type="button"
+                        onClick={(e) => onOpenCodeLink(task.requirementId!, task, e)}
+                        className="px-2 py-0.5 rounded-full bg-blue-500/15 hover:bg-blue-500/30 text-blue-300 font-mono text-[10px] font-semibold transition cursor-pointer"
+                        title={getTaskManagerUrl(task.requirementId) ? 'Otevřít požadavek v TaskManageru' : 'Kliknutím zkopírovat kód'}
+                      >
+                        {task.requirementId}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Dedicated Column: Author chip in primary color */}
+              <div className="flex items-center justify-center">
+                {task.author ? (
                   <span
-                    className="px-2 py-0.5 rounded-full bg-white/10 text-gray-200 font-mono text-[10px] font-bold tracking-wider"
-                    title="Zadavatel úkolu"
+                    className="px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono text-[10px] font-bold tracking-wider text-center"
+                    title={`Zadavatel: ${task.author}`}
                   >
                     {task.author}
                   </span>
-                )}
-                {task.taskIdentifier && (
-                  <button
-                    type="button"
-                    onClick={(e) => onOpenCodeLink(task.taskIdentifier!, task, e)}
-                    className="px-2 py-0.5 rounded-full bg-purple-500/15 hover:bg-purple-500/30 text-purple-300 font-mono text-[11px] font-semibold transition cursor-pointer"
-                    title={getTaskManagerUrl(task.taskIdentifier) ? 'Otevřít úkol v TaskManageru' : 'Kliknutím zkopírovat kód'}
-                  >
-                    {task.taskIdentifier}
-                  </button>
-                )}
-                {task.requirementId && task.requirementId !== task.taskIdentifier && (
-                  <button
-                    type="button"
-                    onClick={(e) => onOpenCodeLink(task.requirementId!, task, e)}
-                    className="px-2 py-0.5 rounded-full bg-blue-500/15 hover:bg-blue-500/30 text-blue-300 font-mono text-[11px] font-semibold transition cursor-pointer"
-                    title={getTaskManagerUrl(task.requirementId) ? 'Otevřít požadavek v TaskManageru' : 'Kliknutím zkopírovat kód'}
-                  >
-                    {task.requirementId}
-                  </button>
+                ) : (
+                  <span className="text-gray-600 text-[11px]">–</span>
                 )}
               </div>
 
               {/* Title */}
               <div className="min-w-0 pr-2">
-                <span className="font-semibold text-white truncate block" title={task.title}>
+                <span
+                  className={`font-semibold truncate block ${isCompleted ? 'text-gray-400' : 'text-white'}`}
+                  title={task.title}
+                >
                   {task.customName || task.title}
                 </span>
               </div>
@@ -1818,14 +3026,14 @@ const ListView: React.FC<ListViewProps> = ({
                 {task.project || '–'}
               </div>
 
-              {/* Dates */}
+              {/* Formatted Dates */}
               <div className="text-gray-400 font-mono text-[11px] truncate">
-                {task.dates && task.dates.length > 0 ? task.dates.join(', ') : '–'}
+                {task.dates && task.dates.length > 0 ? task.dates.map(formatPlanDate).join(', ') : '–'}
               </div>
 
-              {/* Hours */}
+              {/* Hours in plain text (no chip) */}
               <div className="text-right">
-                <span className="font-mono font-bold text-indigo-300 bg-indigo-500/15 px-2.5 py-0.5 rounded-full text-xs">
+                <span className={`font-mono font-bold text-xs ${isCompleted ? 'text-emerald-300' : 'text-gray-300'}`}>
                   {task.totalHours}h
                 </span>
               </div>
@@ -1866,98 +3074,119 @@ const TaskCard: React.FC<TaskCardProps> = ({
     <div
       onClick={() => onOpenTask(task)}
       className={`group relative p-3.5 rounded-2xl transition-colors cursor-pointer flex flex-col justify-between gap-2.5 select-none shadow-sm ${
-        isCrit
-          ? 'outline outline-2 outline-red-500 ring-2 ring-red-500/40 shadow-[0_0_12px_rgba(239,68,68,0.3)] bg-red-950/20 hover:bg-red-950/30'
-          : isCompletedView
-          ? 'bg-emerald-500/[0.04] hover:bg-emerald-500/[0.08] opacity-75'
-          : 'bg-white/[0.03] hover:bg-white/[0.06]'
+        isCompletedView
+          ? 'bg-emerald-950/30 hover:bg-emerald-950/50 text-emerald-100'
+          : 'bg-white/[0.04] hover:bg-white/[0.08] text-white'
       }`}
     >
-      {/* Top row: tags, author acronym, hours */}
+      {/* Top row: Type indicator (plain text & icon, no chip), author chip in primary color, plain hours */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {/* Critical priority badge */}
-          {isCrit && (
-            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 bg-red-600 text-white">
-              <span className="material-symbols-outlined text-[11px] text-white">warning</span>
-              <span>Kritická</span>
-            </span>
-          )}
-
-          {/* Dev / Service badge */}
-          <span
-            className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider flex items-center gap-0.5 ${
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Dev / Service type indicator (no chip visual) */}
+          <div
+            className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${
               isCompletedView
-                ? 'bg-emerald-500/15 text-emerald-300'
+                ? 'text-emerald-300'
                 : isDev
-                ? 'bg-indigo-500/15 text-indigo-300'
+                ? 'text-indigo-300'
                 : isService
-                ? 'bg-purple-500/15 text-purple-300'
-                : 'bg-white/5 text-gray-300'
+                ? 'text-purple-300'
+                : 'text-gray-300'
             }`}
           >
-            {isCompletedView ? (
-              <span className="material-symbols-outlined text-[10px]">check</span>
-            ) : (
-              task.isPinned && <span className="material-symbols-outlined text-[10px]">push_pin</span>
+            {task.isPinned && !isCompletedView && <span className="material-symbols-outlined text-xs">push_pin</span>}
+            <span className={`material-symbols-outlined text-xs ${isCompletedView ? 'text-emerald-400' : ''}`}>
+              {isDev ? 'code' : isService ? 'build' : 'task'}
+            </span>
+            {isCrit && (
+              <span
+                className={`material-symbols-outlined text-xs ${isCompletedView ? 'text-emerald-400' : 'text-red-400'}`}
+                title="Kritická priorita"
+              >
+                warning
+              </span>
             )}
             <span>{isCompletedView ? 'Splněno' : isDev ? 'Vývoj' : isService ? 'Servis' : 'Úkol'}</span>
-          </span>
+          </div>
 
-          {/* Author / Zadavatel acronym pill (e.g. VM) */}
+          {/* Author in primary color chip */}
           {task.author && (
             <span
-              className="px-2 py-0.5 rounded-full bg-white/10 text-gray-200 font-mono text-[10px] font-bold tracking-wider"
+              className="px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono text-[10px] font-bold tracking-wider"
               title="Zadavatel úkolu"
             >
               {task.author}
             </span>
           )}
-
-          {/* Task / Req Codes */}
-          {task.taskIdentifier && (
-            <button
-              type="button"
-              onClick={(e) => onOpenCodeLink(task.taskIdentifier!, task, e)}
-              className="px-2 py-0.5 rounded-full bg-purple-500/15 hover:bg-purple-500/30 text-purple-300 font-mono text-[10px] font-bold transition cursor-pointer"
-              title={getTaskManagerUrl(task.taskIdentifier) ? 'Otevřít úkol v TaskManageru' : 'Kliknutím zkopírovat kód'}
-            >
-              {task.taskIdentifier}
-            </button>
-          )}
-          {task.requirementId && task.requirementId !== task.taskIdentifier && (
-            <button
-              type="button"
-              onClick={(e) => onOpenCodeLink(task.requirementId!, task, e)}
-              className="px-2 py-0.5 rounded-full bg-blue-500/15 hover:bg-blue-500/30 text-blue-300 font-mono text-[10px] font-semibold transition cursor-pointer"
-              title={getTaskManagerUrl(task.requirementId) ? 'Otevřít požadavek v TaskManageru' : 'Kliknutím zkopírovat kód'}
-            >
-              {task.requirementId}
-            </button>
-          )}
         </div>
 
-        {/* Hours Pill */}
-        <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 font-mono text-xs font-bold shrink-0">
+        {/* Hours plain text (no chip visual) */}
+        <span className={`font-mono text-xs font-bold shrink-0 ${isCompletedView ? 'text-emerald-300' : 'text-gray-300'}`}>
           {task.totalHours}h
         </span>
       </div>
 
       {/* Middle: Title */}
-      <div className={`text-xs font-semibold leading-snug line-clamp-2 ${isCompletedView ? 'line-through text-gray-400' : 'text-white'}`}>
+      <div className={`text-xs font-semibold leading-snug line-clamp-2 ${isCompletedView ? 'text-gray-400' : 'text-white'}`}>
         {task.customName || task.title}
       </div>
 
-      {/* Bottom row: Project (NO hover action icons!) */}
-      <div className="flex items-center justify-between text-[11px] text-gray-400 pt-0.5">
-        <div className="truncate max-w-[200px]" title={task.project || 'Projekt'}>
-          {task.project || '–'}
+      {/* Bottom row: Project + Codes & Assignee */}
+      <div className="flex items-center justify-between gap-2 text-[11px] text-gray-400 pt-0.5 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+          <span className="truncate max-w-[150px] text-gray-400 text-xs" title={task.project || 'Projekt'}>
+            {task.project || '–'}
+          </span>
+
+          {/* Task / Req Codes / Godday chip moved behind project */}
+          {isGoddayTask(task) ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenTask(task);
+              }}
+              className="px-2 py-0.5 rounded-full bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 font-mono text-[10px] font-bold transition cursor-pointer"
+              title={task.url ? 'Otevřít odkaz úkolu' : 'Godday úkol'}
+            >
+              godday
+            </button>
+          ) : (
+            <>
+              {task.taskIdentifier && (
+                <button
+                  type="button"
+                  onClick={(e) => onOpenCodeLink(task.taskIdentifier!, task, e)}
+                  className="px-2 py-0.5 rounded-full bg-purple-500/15 hover:bg-purple-500/30 text-purple-300 font-mono text-[10px] font-bold transition cursor-pointer"
+                  title={getTaskManagerUrl(task.taskIdentifier) ? 'Otevřít úkol v TaskManageru' : 'Kliknutím zkopírovat kód'}
+                >
+                  {task.taskIdentifier}
+                </button>
+              )}
+              {task.requirementId && task.requirementId !== task.taskIdentifier && task.requirementId !== 'R0' && (
+                <button
+                  type="button"
+                  onClick={(e) => onOpenCodeLink(task.requirementId!, task, e)}
+                  className="px-2 py-0.5 rounded-full bg-blue-500/15 hover:bg-blue-500/30 text-blue-300 font-mono text-[10px] font-semibold transition cursor-pointer"
+                  title={getTaskManagerUrl(task.requirementId) ? 'Otevřít požadavek v TaskManageru' : 'Kliknutím zkopírovat kód'}
+                >
+                  {task.requirementId}
+                </button>
+              )}
+            </>
+          )}
         </div>
 
         {showAssignee && task.userName && (
-          <div className="text-[10px] text-gray-400 flex items-center gap-1 shrink-0">
-            <span className="material-symbols-outlined text-[11px]">person</span>
-            <span className="truncate max-w-[90px]">{task.userName}</span>
+          <div
+            className={`w-6 h-6 rounded-full font-mono text-[10px] font-bold flex items-center justify-center text-center shadow-sm select-none shrink-0 ml-auto ${
+              isCompletedView
+                ? 'bg-emerald-500/20 text-emerald-300'
+                : 'bg-indigo-500/20 text-indigo-300'
+            }`}
+            title={`Přiřazeno: ${task.userName}`}
+          >
+            {getUserInitials(task.userName)}
           </div>
         )}
       </div>

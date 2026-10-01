@@ -4,6 +4,16 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [2.1.0] - 1. 10. 2026
+### MagicPlan Timeline novinky, inteligentní párování notifikací úkolů a moderní Material 3 ikony oznámení
+- **MagicPlan – Inteligentní párování přechodů úkolů**: Pokročilá detekce pohybů úkolů mezi frontou nepřiřazených a osobním plánem. Zamezení duplicitním notifikacím při přesunu úkolu do plánu, automatické upozornění při vrácení do fronty a detekce vyřešení při zmizení z plánu bez návratu.
+- **MagicPlan – Sledování kolegů v plánu**: Notifikace o přiřazení a dokončení úkolů pro sledované kolegy v týmu přímo ve Windows toastech se jménem uživatele.
+- **Nová sada 13 moderních ikon oznámení (Material 3)**: Kompletně přepracované minimalistické kruhové ikony pro všechny systémové notifikace (vývoj, servis, dokončeno, kritický úkol, fronta, QuickCap, ColorMaster, ScreenRuler, synchronizace, aktualizace, schránka, chyba a test).
+- **Testování notifikací v Nastavení**: Vývojářská tlačítka TEST pro okamžité otestování všech variant systémových notifikací v záložkách Notifikace a MagicPlan.
+- **MagicPlan Timeline – Interaktivní rozsah osy a přesné tikání**: Možnost přímé editace počátečního i konečného času v záhlaví osy, přesný vteřinový přepočet a plynulý pohyb čárkovaného časového ukazatele s dynamickým zarovnáním pillu.
+- **MagicPlan Timeline – Čisté ploché barvy a průhlednost**: Karty úkolů mají ploché barvy s jemnou průhledností pro zachování čitelnosti podkladu a mřížky, dynamické barvy vývoje i servisu z nastavení a novou položku pro volno a absenci v legendě.
+- **MagicPlan Timeline – Vizuální vyladění a fokus**: Odstranění outline focus efektů při přepínání dnů a týdne, transparentní záhlaví vybraného dne, výrazně červené označení kritických úkolů a okamžitý návrat na dnešní den po kliknutí.
+
 ## [2.0.0] - 28. 9. 2026
 ### Generace 2.0: Modernizace správy aplikace, servisní nástroje, vyladění DonkeyTools a sjednocený design
 - **Generace 2.0 – Oficiální ostré vydání**: Přechod na novou generaci aplikace IADonkey přinášející celkovou modernizaci rozhraní, ladicí a servisní vývojářské nástroje a pokročilou integraci systémových utilit.

@@ -87,7 +87,7 @@ export const WindowTitleBar: React.FC<WindowTitleBarProps> = ({
           <img
             src={appLogo}
             alt="IADonkey"
-            className="w-4 h-4 rounded-full object-contain shrink-0"
+            className="w-4 h-4 object-contain shrink-0"
           />
         )}
         <span className="text-xs font-semibold text-gray-300 tracking-wide truncate">

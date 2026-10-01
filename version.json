@@ -1,6 +1,6 @@
 {
-  "version": "2.0.0",
-  "releaseNotes": "• Generace 2.0 aplikace IADonkey – oficiální ostré vydání nové generace.\n• Správa aplikace: Moderní rozhraní s velkými kruhovými ikonami, čistou patičkou s klávesovou zkratkou Esc a napojením do vývojářských nástrojů.\n• DonkeyTools: Přehlednější nastavení ScreenRuleru (samostatné řádky pro jednotky a barvu vodítek) a spolehlivé předání systémového popředí u ColorMasteru pro okamžitou klávesovou navigaci a Esc.\n• Sjednocení designu: Standardizovaný vizuál klávesových zkratek Esc a Enter napříč aplikací a zaoblení překryvných vrstev dialogů.\n• Vývojář & Servis: Rozšířené dropdown nabídky pro testování GitHubu, MagicGate a CMSinFS, plus oprava stínování a synchronizační ikony.",
-  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v2.0.0/IADonkey-Setup-2.0.0.exe",
-  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v2.0.0/IADonkey-2.0.0.zip"
+  "version": "2.1.0",
+  "releaseNotes": "• MagicPlan: Inteligentní párování přechodů úkolů (z fronty, do fronty, dokončení, eliminace duplicit) a sledování kolegů.\n• Notifikace: Sada 13 moderních kruhových ikon Material 3 s akčními subtypy a tlačítka TEST v Nastavení.\n• MagicPlan Timeline: Interaktivní časový rozsah osy (editovatelné od/do), vteřinový přepočet tikání, čárkovaná linka s dynamickým zarovnáním pillu, ploché barvy s průhledností a nová položka volno v legendě.",
+  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v2.1.0/IADonkey-Setup-2.1.0.exe",
+  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v2.1.0/IADonkey-2.1.0.zip"
 }

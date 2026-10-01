@@ -52,6 +52,7 @@ export function applyPrimaryColor(hexColor?: string) {
   const root = document.documentElement;
   root.style.setProperty('--color-primary-hex', fullHex);
   root.style.setProperty('--color-primary-rgb', `${r}, ${g}, ${b}`);
+  root.style.setProperty('--color-primary-lighter-rgb', `${rLighter}, ${gLighter}, ${bLighter}`);
   root.style.setProperty('--color-primary-500-rgb', `${r} ${g} ${b}`);
   root.style.setProperty('--color-primary-400-rgb', `${rLighter} ${gLighter} ${bLighter}`);
   root.style.setProperty('--color-primary-300-rgb', `${rLighter} ${gLighter} ${bLighter}`);
@@ -66,9 +67,22 @@ export function applyPrimaryColor(hexColor?: string) {
   }
 
   styleEl.textContent = `
-    /* Primary buttons */
-    .bg-indigo-600 {
+    /* Primary buttons & cards with opacity */
+    .bg-indigo-600,
+    .bg-indigo-500 {
       background-color: ${fullHex} !important;
+    }
+    .bg-indigo-600\\/70,
+    .bg-indigo-500\\/70 {
+      background-color: rgba(${r}, ${g}, ${b}, 0.7) !important;
+    }
+    .hover\\:bg-indigo-600\\/85:hover,
+    .hover\\:bg-indigo-500\\/85:hover {
+      background-color: rgba(${r}, ${g}, ${b}, 0.85) !important;
+    }
+    .bg-indigo-600\\/85,
+    .bg-indigo-500\\/85 {
+      background-color: rgba(${r}, ${g}, ${b}, 0.85) !important;
     }
     .hover\\:bg-indigo-500:hover,
     .hover\\:bg-indigo-600:hover {
@@ -76,6 +90,14 @@ export function applyPrimaryColor(hexColor?: string) {
     }
     .active\\:bg-indigo-700:active {
       background-color: ${hexDarker} !important;
+    }
+
+    /* MagicPlan Timeline dev task (clean flat solid color) */
+    .timeline-task-dev {
+      background-color: rgba(${r}, ${g}, ${b}, 0.70) !important;
+    }
+    .timeline-task-dev:hover {
+      background-color: rgba(${r}, ${g}, ${b}, 0.85) !important;
     }
 
     /* Primary texts & icons */
@@ -116,8 +138,14 @@ export function applyPrimaryColor(hexColor?: string) {
     .bg-indigo-500\\/10 {
       background-color: rgba(${r}, ${g}, ${b}, 0.1) !important;
     }
+    .bg-indigo-500\\/15 {
+      background-color: rgba(${r}, ${g}, ${b}, 0.15) !important;
+    }
     .hover\\:bg-indigo-500\\/20:hover {
       background-color: rgba(${r}, ${g}, ${b}, 0.2) !important;
+    }
+    .hover\\:bg-indigo-500\\/25:hover {
+      background-color: rgba(${r}, ${g}, ${b}, 0.25) !important;
     }
     .bg-indigo-500\\/20 {
       background-color: rgba(${r}, ${g}, ${b}, 0.2) !important;
@@ -211,6 +239,11 @@ export function applyActionsColor(hexColor?: string) {
   const root = document.documentElement;
   root.style.setProperty('--color-actions-hex', fullHex);
   root.style.setProperty('--color-actions-rgb', `${r}, ${g}, ${b}`);
+  root.style.setProperty('--color-actions-lighter-rgb', `${rLighter}, ${gLighter}, ${bLighter}`);
+  root.style.setProperty('--color-actions-500-rgb', `${r} ${g} ${b}`);
+  root.style.setProperty('--color-actions-400-rgb', `${rLighter} ${gLighter} ${bLighter}`);
+  root.style.setProperty('--color-actions-300-rgb', `${rLighter} ${gLighter} ${bLighter}`);
+  root.style.setProperty('--color-actions-600-rgb', `${rDarker} ${gDarker} ${bDarker}`);
 
   // Create or update dedicated dynamic stylesheet for actions
   let styleEl = document.getElementById('iadonkey-dynamic-actions-theme') as HTMLStyleElement | null;
@@ -221,9 +254,22 @@ export function applyActionsColor(hexColor?: string) {
   }
 
   styleEl.textContent = `
-    /* Actions buttons */
-    .bg-purple-600 {
+    /* Actions buttons & cards with opacity */
+    .bg-purple-600,
+    .bg-purple-500 {
       background-color: ${fullHex} !important;
+    }
+    .bg-purple-600\\/70,
+    .bg-purple-500\\/70 {
+      background-color: rgba(${r}, ${g}, ${b}, 0.7) !important;
+    }
+    .hover\\:bg-purple-600\\/85:hover,
+    .hover\\:bg-purple-500\\/85:hover {
+      background-color: rgba(${r}, ${g}, ${b}, 0.85) !important;
+    }
+    .bg-purple-600\\/85,
+    .bg-purple-500\\/85 {
+      background-color: rgba(${r}, ${g}, ${b}, 0.85) !important;
     }
     .hover\\:bg-purple-500:hover,
     .hover\\:bg-purple-600:hover {
@@ -231,6 +277,14 @@ export function applyActionsColor(hexColor?: string) {
     }
     .active\\:bg-purple-700:active {
       background-color: ${hexDarker} !important;
+    }
+
+    /* MagicPlan Timeline service task (clean flat solid color) */
+    .timeline-task-service {
+      background-color: rgba(${r}, ${g}, ${b}, 0.70) !important;
+    }
+    .timeline-task-service:hover {
+      background-color: rgba(${r}, ${g}, ${b}, 0.85) !important;
     }
 
     /* Actions texts & icons */
