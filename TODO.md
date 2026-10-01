@@ -67,6 +67,13 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
 - [ ] **8. Testovací notifikace: Výměna textace za obecná / fiktivní data (odstranění reálných dat)**
   - **Popis**: Testovací notifikace vyvolávané přes tlačítka TEST v Nastavení obsahují ukázkové texty s reálnými údaji (jména kolegů, konkrétní ID požadavků či projektů). Tyto textace nahradit za neutrální fiktivní data (např. „Kolega (VN)“, „Testovací úkol: Implementace modulu XYZ“, „Projekt Demo“).
 
+- [ ] **9. Sjednocení systémové ikony aplikace ve Windows (hlavní panel, Start menu, záhlaví oken)**
+  - **Popis**: V aplikaci a na splashscreenu je moderní podoba ikony, ale systémová ikona samotné aplikace ve Windows (na hlavním panelu / taskbaru, ve vyhledávání / našeptávači Start menu a v `.exe` binárkách) je starší verze. Je potřeba nahradit a sjednotit systémové `.ico` a zdrojové `.png` ikony.
+  - **Body k řešení**:
+    - **Zdrojová grafika**: Vytvořit čistý víceresoluční soubor `icon.ico` (16×16 až 256×256 px) a odpovídající `icon.png` z aktuální moderní předlohy.
+    - **Sjednocení v projektu**: Nahradit soubory v `electron/assets/icon.ico`, `electron/assets/icon.png`, `public/icon.png` a v konfiguraci `build` v `package.json`.
+    - **Ověření v systému**: Zajistit ostré a nerozmazané zobrazení v taskbaru Windows, tray liště, Start menu zástupci i v záhlaví všech oken aplikace.
+
 ---
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
