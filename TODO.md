@@ -74,6 +74,12 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
     - **Sjednocení v projektu**: Nahradit soubory v `electron/assets/icon.ico`, `electron/assets/icon.png`, `public/icon.png` a v konfiguraci `build` v `package.json`.
     - **Ověření v systému**: Zajistit ostré a nerozmazané zobrazení v taskbaru Windows, tray liště, Start menu zástupci i v záhlaví všech oken aplikace.
 
+- [ ] **10. MagicPlan: Automatická detekce nového dne po půlnoci a při aktivaci okna**
+  - **Popis**: Okno MagicPlan zůstává v Electronu otevřené na pozadí a při zavření se pouze skrývá (`hide()`). Výpočet pracovního týdne `workWeekDays` a indexu dneška `todayIdx` / `selectedDayIndex` proto po přechodu půlnoci zůstával zakešovaný na předchozím dni.
+  - **Body k řešení**:
+    - **Detekce přechodu půlnoci**: Pravidelná kontrola změny kalendářního dne (`new Date().toDateString()`) v intervalu. Při přelomu půlnoci automaticky přepočítat `workWeekDays` a aktualizovat příznak `isToday`.
+    - **Reakce na aktivaci okna (Focus / Show)**: Při každém opětovném zobrazení / zaměření okna (`focus` nebo IPC signál při `show()`) zkontrolovat aktuální systémový čas a v denním režimu nastavit `selectedDayIndex` na nový aktuální den.
+
 ---
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
