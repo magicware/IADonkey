@@ -64,6 +64,9 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
 - [ ] **7. Okno „Co je nového“ (Release Notes): Odstranit ztmavující / rozmazávací backdrop**
   - **Popis**: Modální okno s přehledem novinek po aktualizaci aplikace má na pozadí ztmavující overlay (backdrop), který překrývá okolí. Tento backdrop zrušit / odstranit pro čistý styl bez nežádoucího ztmavení.
 
+- [ ] **8. Testovací notifikace: Výměna textace za obecná / fiktivní data (odstranění reálných dat)**
+  - **Popis**: Testovací notifikace vyvolávané přes tlačítka TEST v Nastavení obsahují ukázkové texty s reálnými údaji (jména kolegů, konkrétní ID požadavků či projektů). Tyto textace nahradit za neutrální fiktivní data (např. „Kolega (VN)“, „Testovací úkol: Implementace modulu XYZ“, „Projekt Demo“).
+
 ---
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
