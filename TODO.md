@@ -61,6 +61,9 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
     - **Dynamické přegenerování ikon**: Automatické přegenerování / obarvení ikonek do mezipaměti (`userData` / cache) při uložení změn v konfiguraci témat nebo za běhu při spuštění.
     - **Barevné sladění toastů**: Promítnutí aktuální primární barvy do toastů vývoje a sekundární akční barvy do toastů servisu.
 
+- [ ] **7. Okno „Co je nového“ (Release Notes): Odstranit ztmavující / rozmazávací backdrop**
+  - **Popis**: Modální okno s přehledem novinek po aktualizaci aplikace má na pozadí ztmavující overlay (backdrop), který překrývá okolí. Tento backdrop zrušit / odstranit pro čistý styl bez nežádoucího ztmavení.
+
 ---
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
