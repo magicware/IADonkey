@@ -42,6 +42,25 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
       - Odeslání přes interní API / Helpdesk (např. MLog API jako požadavek Rxxxx), GitHub Issues REST API, nebo centrální webhook (Slack/Teams/e-mail).
       - Ošetření offline stavu (uložení do fronty k odeslání po obnovení připojení).
 
+- [ ] **4. Integrace odpracovaných hodin v daném dni do MagicPlanu (společná analýza)**
+  - **Popis**: Společná analýza a návrh integrace reálně odpracovaných a vykázaných hodin za daný den přímo do okna a časové osy MagicPlanu.
+  - **Body k řešení**:
+    - **Zdroj dat**: Možnosti napojení na helpdesk MLog / výkazy práce (REST API, interní endpoint nebo přímé dotazování) pro zjištění reálně vykázaných hodin uživatele v daném dni.
+    - **Zobrazení v UI**: Přehledný indikátor celkového součtu odpracovaných hodin vs. plánovaná kapacita (např. v záhlaví navigace dne vedle data a časového rozmezí).
+    - **Vizuální párování**: Porovnání naplánovaných bloků na ose s reálně zapsanými výkazy (indikace splněno / rozpracováno / manko / přesčas).
+
+- [ ] **5. Ikony notifikací: Analýza přímého napojení Material Icons z aplikace vs. úprava vzhledu**
+  - **Popis**: Technická analýza možností vykreslování systémových ikon notifikací přímo z lokální sady Material Symbols / Icons integrovaných v aplikaci.
+  - **Body k řešení**:
+    - **Limity Windows Toast API**: Ověřit možnosti dynamického renderování ikon (Windows toasty vyžadují fyzický soubor na disku – např. dynamický offscreen Canvas / SVG export / Sharp nebo nativní renderer).
+    - **Alternativní vzhled ikon**: Pokud přímé napojení z webových fontů/SVG nebude za běhu Electronu dostatečně svižné či spolehlivé, přetvořit vybrané stávající rastrové ikony do nového, ještě čistšího vizuálního stylu.
+
+- [ ] **6. Přebírání dynamických barev přímo v notifikacích z nastavení aplikace**
+  - **Popis**: Zajištění, aby systémové notifikace a jejich ikony dynamicky respektovaly uživatelsky zvolené barvy z Nastavení IADonkey (primární barva vývoje, sekundární barva akcí/servisu apod.).
+  - **Body k řešení**:
+    - **Dynamické přegenerování ikon**: Automatické přegenerování / obarvení ikonek do mezipaměti (`userData` / cache) při uložení změn v konfiguraci témat nebo za běhu při spuštění.
+    - **Barevné sladění toastů**: Promítnutí aktuální primární barvy do toastů vývoje a sekundární akční barvy do toastů servisu.
+
 ---
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
