@@ -906,9 +906,24 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     return false;
   };
 
+  const canCloneGit = Boolean(githubEnabled && hasGithubCredentials);
+
+  const isMagicGateItem = (item?: LauncherItem | null): boolean => {
+    if (!item) return false;
+    return Boolean(
+      item.settings === 'magicgate' ||
+      item.sourceId === 'magicgate' ||
+      item.sourceId === 'magicgate-xml' ||
+      item.actions?.some((a) => a.action === 'mgclone' || a.action === 'mgclonerecursive')
+    );
+  };
+
   // Dynamically resolve actions for an item, inserting either 'Otevřít v Android Studiu' or 'Otevřít ve VS Code' (never both!)
   const getItemActions = (item?: LauncherItem | null): LauncherAction[] => {
     if (!item) return [];
+    if (isMagicGateItem(item) && !canCloneGit) {
+      return [];
+    }
     let baseActions = item.actions ? [...item.actions] : [];
 
     // Filter out redundant recursive clone actions (handled by checkbox in clone modal)
@@ -917,7 +932,6 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     );
 
     // If GitHub extension is disabled or GitHub credentials are not configured, hide cloning actions
-    const canCloneGit = Boolean(githubEnabled && hasGithubCredentials);
     if (!canCloneGit) {
       baseActions = baseActions.filter(
         (a) =>
@@ -1025,17 +1039,24 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     return baseActions;
   };
 
-  const hasItemActions = (item?: LauncherItem | null) =>
-    Boolean(getItemActions(item).length > 0);
+  const hasItemActions = (item?: LauncherItem | null) => {
+    if (isMagicGateItem(item) && !canCloneGit) return false;
+    return Boolean(getItemActions(item).length > 0);
+  };
 
-  const hasItemInfo = (item?: LauncherItem | null) =>
-    Boolean(item?.info && typeof item.info === 'object' && Object.keys(item.info).length > 0);
+  const hasItemInfo = (item?: LauncherItem | null) => {
+    if (isMagicGateItem(item) && !canCloneGit) return false;
+    return Boolean(item?.info && typeof item.info === 'object' && Object.keys(item.info).length > 0);
+  };
 
-  const hasItemActionsOrInfo = (item?: LauncherItem | null) =>
-    hasItemActions(item) || hasItemInfo(item);
+  const hasItemActionsOrInfo = (item?: LauncherItem | null) => {
+    if (isMagicGateItem(item) && !canCloneGit) return false;
+    return hasItemActions(item) || hasItemInfo(item);
+  };
 
   // Enter actions / info mode for an item
   const enterActions = (item: LauncherItem) => {
+    if (isMagicGateItem(item) && !canCloneGit) return;
     if (!hasItemActionsOrInfo(item)) return;
     window.electronAPI?.logAction?.({
       type: 'action',
@@ -3937,26 +3958,29 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
                           return null;
                         })()}
                         {item.settings === 'magicgate' && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              if (hasActionsOrInfo) {
+                          canCloneGit && hasActionsOrInfo ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
                                 e.stopPropagation();
                                 enterActions(item);
-                              }
-                            }}
-                            className={`text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 shadow-sm flex items-center gap-1 select-none ${
-                              hasActionsOrInfo ? 'hover:bg-amber-500/25 cursor-pointer' : 'cursor-default'
-                            }`}
-                            title={hasActionsOrInfo ? 'MagicGate položka – klikněte nebo stiskněte Shift+Enter pro podrobné informace o serveru' : 'MagicGate'}
-                          >
-                            {hasActionsOrInfo && (
+                              }}
+                              className="text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 shadow-sm flex items-center gap-1 select-none hover:bg-amber-500/25 cursor-pointer"
+                              title="MagicGate položka – klikněte nebo stiskněte Shift+Enter pro akce"
+                            >
                               <span className="material-symbols-outlined text-[12px] leading-none">
                                 {hasActions ? 'bolt' : 'info'}
                               </span>
-                            )}
-                            <span>MagicGate</span>
-                          </button>
+                              <span>MagicGate</span>
+                            </button>
+                          ) : (
+                            <span
+                              className="text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 shadow-sm select-none cursor-default"
+                              title="MagicGate"
+                            >
+                              MagicGate
+                            </span>
+                          )
                         )}
                       </div>
                       <div className="text-xs mt-0.5 font-mono flex items-center gap-1.5 flex-nowrap min-w-0 w-full overflow-hidden text-gray-400">

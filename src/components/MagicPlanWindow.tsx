@@ -2859,7 +2859,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
             <span className="material-symbols-outlined text-sm text-indigo-400">arrow_forward</span>
             <span>Úkoly přesahující do dalšího týdne ({allOverflowTasks.length})</span>
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 min-[1366px]:grid-cols-4 min-[2560px]:grid-cols-5 gap-2.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 min-[1366px]:grid-cols-4 min-[1921px]:grid-cols-5 gap-2.5">
             {allOverflowTasks.map(({ task, remainingHours }) => (
               <TaskCard
                 key={`timeline-overflow-${task.taskId}`}

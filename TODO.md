@@ -75,23 +75,8 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
 - [x] **7. Okno „Co je nového“ (Release Notes): Odstranit ztmavující / rozmazávací backdrop**
   - **Popis**: Odstraněn tmavý a rozmazaný overlay (`bg-black/75 backdrop-blur-sm`) z `src/components/WhatsNewModal.tsx`. Obsah i přepínač „Nezobrazovat při startu“ jsou nyní čistě čitelné na plně průhledném pozadí.
 
-- [x] **8. Textace a odladění notifikací: Fiktivní data u testů a textace „kritický požadavek“**
-  - **Popis**: V `electron/magicPlanService.ts` aktualizovány diff notifikace při přiřazení z fronty do plánu, přesunu zpět do fronty i novém požadavku tak, aby u `curr.isCritical` obsahovaly explicitní termín „kritický požadavek“ namísto obecného „požadavek“. V `src/components/SettingsModal.tsx` nahrazena reálná data v testovacích tlačítkách notifikací za neutrální demo položky.
-
-- [x] **10. MagicPlan: Automatická detekce nového dne po půlnoci a při aktivaci okna (včetně zachování pátku o víkendu)**
-  - **Popis**: V `src/components/MagicPlanWindow.tsx` doplněn focus listener pro okamžitou aktualizaci systémového času, výpočet `workWeekDays` navázán na kalendářní klíč dne `currentDateKey` s ošetřením víkendu (v sobotu i neděli zůstává aktivním dnem pátek, k přepnutí na pondělí nového týdne dochází až v neděli po půlnoci), v `TimelineGridView` přidána automatická aktualizace `selectedDayIndex` při změně dneška (`todayIdx`), vypnuta červená časová osa během víkendu a zajištěno spolehlivé zobrazení všech úkolů.
-
-- [x] **11. Klonování MagicGate repozitářů: Tlačítko klonování nepřebírá dynamickou barvu z nastavení**
-  - **Popis**: V `src/components/GitCloneModal.tsx` a `src/App.tsx` napojena dynamická akční barva (`actionsColor`). Tlačítko pro spuštění stahování/klonování a ikona složky nyní přesně respektují sekundární akční barvu nastavenou uživatelem.
-
 - [x] **12. MagicGate položky ve Spotlightu: Nezobrazovat možnost přejít do AKCÍ při nevyplněném GitHubu**
-  - **Popis**: V `src/components/SearchSpotlight.tsx` a `src/App.tsx` zavedena kontrola `githubEnabled` a `hasGithubCredentials`. Pokud není rozšíření GitHub zapnuto nebo chybí přihlašovací údaje, akce `mgclone` a `clone` jsou z položek odfiltrovány a u MagicGate položek se nezobrazuje přechod do akcí klonování.
-
-- [x] **13. Analýza a ošetření stahování repozitářů při vypnutém rozšíření GitHub**
-  - **Popis**: Zjištěno, že stahování fungovalo kvůli tomu, že systémový Git na Windows využíval Windows Git Credential Manager, zatímco seznam repozitářů se stahuje z MagicGate serveru. V `electron/main.ts` bylo stahování v handlerech `magicgate-clone-start` i `run-git-clone` striktně podmíněno aktivním stavem rozšíření `config.extensions?.github !== false`, přičemž uložené přihlašovací tokeny zůstávají bezpečně zachovány.
+  - **Popis**: V `src/components/SearchSpotlight.tsx` a `src/App.tsx` zavedena striktní kontrola `githubEnabled` a `hasGithubCredentials`. Pokud není rozšíření GitHub zapnuto nebo chybí přihlašovací údaje, u MagicGate položek je zcela zakázán přechod do nabídky akcí a informací (`getItemActions` vrací prázdné pole, `hasItemActions`, `hasItemInfo` i `hasItemActionsOrInfo` vrací `false`, `enterActions` okamžitě končí), zástupce v řádku výsledků se vykreslí jako neklikatelný pasivní badge bez ikony akcí a v patičce/nápovědě se nezobrazuje zkratka Shift+Enter.
 
 - [x] **14. MagicPlan: Responzivní grid pro úkoly přesahující do dalšího týdne (4 a 5 sloupců pro vyšší rozlišení)**
-  - **Popis**: V `src/components/MagicPlanWindow.tsx` upravena mřížka pro úkoly přesahující do dalšího týdne na responzivní rozložení: 1 sloupec (mobilní) → 2 sloupce (`md`) → 3 sloupce (`lg`) → 4 sloupce od šířky 1366 px (`min-[1366px]`) → 5 sloupců na Ultrawide monitorech od 2560 px (`min-[2560px]`).
-
-- [x] **15. Sjednocení notifikací MagicPlan do záložky Notifikace a odstranění duplicitního nastavení**
-  - **Popis**: V `src/components/SettingsModal.tsx` odstraněna duplicitní karta nastavení notifikací ze záložky MagicPlan (nahrazena elegantní navigační kartou s odkazem). V záložce Notifikace byla původní jednořádková položka rozšířena o plnohodnotné granulární nastavení všech 4 typů událostí (nový požadavek v plánu, nový úkol ve frontě, úkol splněn, změna v rozvrhu/hodinách) včetně dedikovaných testovacích tlačítek. Všechny notifikace jsou tak centralizovány na jednom místě.
+  - **Popis**: V `src/components/MagicPlanWindow.tsx` upravena mřížka pro úkoly přesahující do dalšího týdne na responzivní rozložení: 1 sloupec (mobilní) → 2 sloupce (`md`) → 3 sloupce (`lg`) → 4 sloupce od šířky 1366 px (`min-[1366px]`) → 5 sloupců pro širokoúhlé monitory již od rozlišení 1921 px (`min-[1921px]`).
