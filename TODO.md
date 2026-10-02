@@ -78,8 +78,8 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
 - [x] **8. Textace a odladění notifikací: Fiktivní data u testů a textace „kritický požadavek“**
   - **Popis**: V `electron/magicPlanService.ts` aktualizovány diff notifikace při přiřazení z fronty do plánu, přesunu zpět do fronty i novém požadavku tak, aby u `curr.isCritical` obsahovaly explicitní termín „kritický požadavek“ namísto obecného „požadavek“. V `src/components/SettingsModal.tsx` nahrazena reálná data v testovacích tlačítkách notifikací za neutrální demo položky.
 
-- [x] **10. MagicPlan: Automatická detekce nového dne po půlnoci a při aktivaci okna**
-  - **Popis**: V `src/components/MagicPlanWindow.tsx` doplněn focus listener pro okamžitou aktualizaci systémového času, výpočet `workWeekDays` navázán na kalendářní klíč dne `currentDateKey`, v `TimelineGridView` přidána automatická aktualizace `selectedDayIndex` při změně dneška (`todayIdx`) a zajištěno automatické obnovení dat plánu při přechodu půlnoci.
+- [x] **10. MagicPlan: Automatická detekce nového dne po půlnoci a při aktivaci okna (včetně zachování pátku o víkendu)**
+  - **Popis**: V `src/components/MagicPlanWindow.tsx` doplněn focus listener pro okamžitou aktualizaci systémového času, výpočet `workWeekDays` navázán na kalendářní klíč dne `currentDateKey` s ošetřením víkendu (v sobotu i neděli zůstává aktivním dnem pátek, k přepnutí na pondělí nového týdne dochází až v neděli po půlnoci), v `TimelineGridView` přidána automatická aktualizace `selectedDayIndex` při změně dneška (`todayIdx`), vypnuta červená časová osa během víkendu a zajištěno spolehlivé zobrazení všech úkolů.
 
 - [x] **11. Klonování MagicGate repozitářů: Tlačítko klonování nepřebírá dynamickou barvu z nastavení**
   - **Popis**: V `src/components/GitCloneModal.tsx` a `src/App.tsx` napojena dynamická akční barva (`actionsColor`). Tlačítko pro spuštění stahování/klonování a ikona složky nyní přesně respektují sekundární akční barvu nastavenou uživatelem.
