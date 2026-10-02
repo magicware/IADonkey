@@ -64,8 +64,11 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
 - [ ] **7. Okno „Co je nového“ (Release Notes): Odstranit ztmavující / rozmazávací backdrop**
   - **Popis**: Modální okno s přehledem novinek po aktualizaci aplikace má na pozadí ztmavující overlay (backdrop), který překrývá okolí. Tento backdrop zrušit / odstranit pro čistý styl bez nežádoucího ztmavení.
 
-- [ ] **8. Testovací notifikace: Výměna textace za obecná / fiktivní data (odstranění reálných dat)**
-  - **Popis**: Testovací notifikace vyvolávané přes tlačítka TEST v Nastavení obsahují ukázkové texty s reálnými údaji (jména kolegů, konkrétní ID požadavků či projektů). Tyto textace nahradit za neutrální fiktivní data (např. „Kolega (VN)“, „Testovací úkol: Implementace modulu XYZ“, „Projekt Demo“).
+- [ ] **8. Textace a odladění notifikací: Fiktivní data u testů a textace „kritický požadavek“**
+  - **Popis**: Úprava textů notifikací v MagicPlanu i Nastavení. Zajištění, aby u kritických úkolů byla závažnost zřejmá nejen z ikony, ale i přímo z textu notifikace, a nahrazení reálných dat v testovacích tlačítkách za obecná data.
+  - **Body k řešení**:
+    - **Označení „kritický požadavek“ v textech**: U notifikací přiřazení úkolu z fronty do plánu i přesunutí zpět do fronty nahradit při kritické závažnosti (`isCritical`) obecné slovo „úkol / požadavek“ za explicitní text **„kritický požadavek“** (např. *„Přiřazení kritického požadavku“*, *„Kritický požadavek byl přesunut zpátky do nepřiřazených“*).
+    - **Fiktivní data v testovacích notifikacích**: Testovací tlačítka v Nastavení upravit tak, aby ukázkové texty neobsahovaly reálná jména kolegů ani existující tickety a projekty (nahradit za neutrální např. „Kolega (VN)“, „Testovací požadavek: Implementace modulu XYZ“, „Projekt Demo“).
 
 - [ ] **9. Sjednocení systémové ikony aplikace ve Windows (hlavní panel, Start menu, záhlaví oken)**
   - **Popis**: V aplikaci a na splashscreenu je moderní podoba ikony, ale systémová ikona samotné aplikace ve Windows (na hlavním panelu / taskbaru, ve vyhledávání / našeptávači Start menu a v `.exe` binárkách) je starší verze. Je potřeba nahradit a sjednotit systémové `.ico` a zdrojové `.png` ikony.
