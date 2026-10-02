@@ -102,6 +102,13 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
     - **Respektování stavu rozšíření**: Ošetřit v backendu Electronu i v modálu klonování (`GitCloneModal.tsx`), aby při `config.extensions?.github === false` byly klonovací operace blokovány a uživateli byla zobrazena informace o nutnosti zapnutí rozšíření.
     - **Zachování uložených údajů**: Ponechat uložené PAT a přihlašovací údaje v `config.github` i při vypnutém přepínači pro komfort uživatele, ale všechny související akce podmiňovat aktivním stavem rozšíření.
 
+- [ ] **14. MagicPlan: Responzivní grid pro úkoly přesahující do dalšího týdne (4 a 5 sloupců pro vyšší rozlišení)**
+  - **Popis**: V týdenním pohledu MagicPlanu má sekce „Úkoly přesahující do dalšího týdne“ strop na 3 sloupcích (`lg:grid-cols-3`), což na FullHD, QHD i Ultrawide monitorech zbytečně plýtvá vodorovným prostorem.
+  - **Body k řešení**:
+    - **4 sloupce od šířky 1366 px**: Na běžných notebookových a desktopových obrazovkách (od min-width 1366 px / breakpoint `xl`) rozšířit mřížku na 4 sloupce.
+    - **5 sloupců pro Ultrawide / 2560 px+**: Na ultra-širokoúhlých displejích a vysokém rozlišení (od min-width 2560 px) přepnout na 5 sloupců pro maximální přehled bez nutnosti zbytečného vertikálního rolování.
+    - **Plynulá responzivita**: 1 sloupec (mobilní/velmi úzké okno) → 2 sloupce (`md`) → 3 sloupce (`lg`) → 4 sloupce (`min-[1366px]` / `xl`) → 5 sloupců (`min-[2560px]`).
+
 ---
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
