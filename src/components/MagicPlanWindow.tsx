@@ -402,6 +402,7 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
     };
 
     const todayStr = formatLocalDate(now);
+    const isWeekendNow = dayOfWeek === 0 || dayOfWeek === 6;
     const dayNames = ['Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek'];
 
     const days: PlanDayInfo[] = [];
@@ -412,11 +413,15 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
       const dayNum = d.getDate();
       const monthNum = d.getMonth() + 1;
 
+      // Pokud je sobota nebo neděle, ponecháme aktivní pátek (i === 4),
+      // až v neděli po půlnoci (pondělí ráno) se novým týdnem přepne na pondělí (i === 0).
+      const isToday = isWeekendNow ? i === 4 : dateStr === todayStr;
+
       days.push({
         date: dateStr,
         dayLabel: `${dayNames[i]} ${dayNum}.${monthNum}.`,
         isWeekend: false,
-        isToday: dateStr === todayStr,
+        isToday,
       });
     }
 
@@ -1706,9 +1711,14 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
 
   // Today index (0 = Po ... 4 = Pá)
-  const todayIdx = useMemo(() => days.findIndex((d) => d.isToday), [days]);
+  const todayIdx = useMemo(() => {
+    const idx = days.findIndex((d) => d.isToday);
+    if (idx !== -1) return idx;
+    const day = currentTime.getDay();
+    return day === 0 || day === 6 ? 4 : 0;
+  }, [days, currentTime]);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(() =>
-    todayIdx !== -1 ? todayIdx : 0
+    todayIdx !== -1 ? todayIdx : (currentTime.getDay() === 0 || currentTime.getDay() === 6 ? 4 : 0)
   );
 
   // Automatically update selectedDayIndex when calendar day rolls over (e.g. across midnight or window focus)
@@ -1879,16 +1889,21 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
     return Math.max(0, Math.min(1, (currentHourDec - startHour) / span));
   }, [currentTime, startHour, endHour]);
 
+  const isWeekendNow = useMemo(() => {
+    const day = currentTime.getDay();
+    return day === 0 || day === 6;
+  }, [currentTime]);
+
   const weekTimeIndicatorPercent = useMemo(() => {
-    if (todayIdx === -1) return null;
+    if (todayIdx === -1 || isWeekendNow) return null;
     const colPosition = todayIdx * 8 + timeProgressFraction * 8;
     return Math.max(0, Math.min(100, (colPosition / 40) * 100));
-  }, [todayIdx, timeProgressFraction]);
+  }, [todayIdx, timeProgressFraction, isWeekendNow]);
 
   const dayTimeIndicatorPercent = useMemo(() => {
-    if (todayIdx === -1 || selectedDayIndex !== todayIdx) return null;
+    if (todayIdx === -1 || selectedDayIndex !== todayIdx || isWeekendNow) return null;
     return Math.max(0, Math.min(100, timeProgressFraction * 100));
-  }, [todayIdx, selectedDayIndex, timeProgressFraction]);
+  }, [todayIdx, selectedDayIndex, timeProgressFraction, isWeekendNow]);
 
   const currentIndicatorPercent = viewMode === 'day' ? dayTimeIndicatorPercent : weekTimeIndicatorPercent;
 
