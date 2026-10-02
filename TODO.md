@@ -92,3 +92,6 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
 
 - [x] **14. MagicPlan: Responzivní grid pro úkoly přesahující do dalšího týdne (4 a 5 sloupců pro vyšší rozlišení)**
   - **Popis**: V `src/components/MagicPlanWindow.tsx` upravena mřížka pro úkoly přesahující do dalšího týdne na responzivní rozložení: 1 sloupec (mobilní) → 2 sloupce (`md`) → 3 sloupce (`lg`) → 4 sloupce od šířky 1366 px (`min-[1366px]`) → 5 sloupců na Ultrawide monitorech od 2560 px (`min-[2560px]`).
+
+- [x] **15. Sjednocení notifikací MagicPlan do záložky Notifikace a odstranění duplicitního nastavení**
+  - **Popis**: V `src/components/SettingsModal.tsx` odstraněna duplicitní karta nastavení notifikací ze záložky MagicPlan (nahrazena elegantní navigační kartou s odkazem). V záložce Notifikace byla původní jednořádková položka rozšířena o plnohodnotné granulární nastavení všech 4 typů událostí (nový požadavek v plánu, nový úkol ve frontě, úkol splněn, změna v rozvrhu/hodinách) včetně dedikovaných testovacích tlačítek. Všechny notifikace jsou tak centralizovány na jednom místě.

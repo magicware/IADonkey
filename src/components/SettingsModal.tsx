@@ -4769,7 +4769,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {activeTab === 'github' && 'Přístup k osobním i firemním repozitářům a rychlému klonování'}
               {activeTab === 'vscode' && 'Konfigurace cesty k editoru VS Code pro otevírání repozitářů a projektů'}
               {activeTab === 'android-studio' && 'Konfigurace cesty k Android Studiu pro otevírání mobilních a Kotlin/Java projektů'}
-              {activeTab === 'magicplan' && 'Sledování interního plánu práce a notifikace o změnách'}
+              {activeTab === 'magicplan' && 'Sledování interního plánu práce, nastavení sloupce a časové osy'}
               {activeTab === 'donkey-tools' && 'Správa vestavěných utilit, modulu ColorMaster a klávesových zkratek'}
               {activeTab === 'snippets' && 'Předem definované textové zkratky a osobní údaje pro rychlé vložení'}
               {activeTab === 'general' && 'Globální klávesová zkratka, barva motivu a vyhledávání programů'}
@@ -7410,187 +7410,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </div>
 
-              {/* Notification triggers card */}
-              <div className="p-5 bg-white/[0.03] rounded-2xl space-y-4">
-                <div className="flex items-center justify-between gap-4">
+              {/* Odkaz na nastavení notifikací */}
+              <div className="p-4 bg-white/[0.02] border border-white/[0.05] rounded-2xl flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-lg text-cyan-400">notifications</span>
                   <div>
-                    <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                      <span className="material-symbols-outlined text-base text-cyan-400">notifications_active</span>
-                      Události a toast notifikace
-                    </h4>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      Nastavení systémových Windows toast notifikací na změny a události v plánu.
-                    </p>
+                    <span className="text-xs font-semibold text-white block">Toast notifikace změn v plánu</span>
+                    <span className="text-[11px] text-gray-400">Nastavení jednotlivých událostí a testování notifikací najdete v záložce Notifikace.</span>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
-                    <input
-                      type="checkbox"
-                      checked={formData.notifications?.magicplan !== false}
-                      onChange={(e) => {
-                        const updated = {
-                          ...formData,
-                          notifications: {
-                            ...formData.notifications,
-                            enabled: formData.notifications?.enabled ?? true,
-                            magicplan: e.target.checked,
-                          },
-                        };
-                        setFormData(updated);
-                        handleSave(updated);
-                      }}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600" />
-                  </label>
                 </div>
-
-                {formData.notifications?.magicplan !== false && (
-                  <div className="space-y-2 pt-2 border-t border-white/[0.06]">
-                    {/* Nový úkol */}
-                    <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors">
-                      <div>
-                        <span className="text-xs font-medium text-gray-200 block">Nový požadavek v plánu</span>
-                        <span className="text-[11px] text-gray-400">Upozornění při přiřazení nového úkolu do vašeho sloupce</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isDevelop && (
-                          <button
-                            type="button"
-                            onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'dev', title: 'Nový požadavek v plánu', body: '[R9001 / T1002] Implementace platební brány (8h)' })}
-                            className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
-                            title="Otestovat notifikaci nového požadavku"
-                          >
-                            TEST
-                          </button>
-                        )}
-                        <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
-                          <input
-                            type="checkbox"
-                            checked={formData.magicplan?.notifyNewTasks !== false}
-                            onChange={(e) => {
-                              const updated = {
-                                ...formData,
-                                magicplan: { ...formData.magicplan, notifyNewTasks: e.target.checked },
-                              };
-                              setFormData(updated);
-                              handleSave(updated);
-                            }}
-                            className="sr-only peer"
-                          />
-                          <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Nový úkol ve frontě (nástěnka) */}
-                    <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors">
-                      <div>
-                        <span className="text-xs font-medium text-gray-200 block">Nový úkol ve frontě (nástěnka)</span>
-                        <span className="text-[11px] text-gray-400">Upozornění při přidání nového nezařazeného úkolu do fronty</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isDevelop && (
-                          <button
-                            type="button"
-                            onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'queue', title: 'Nový úkol ve frontě (Nástěnka)', body: '[R9002 / T1003] Úprava validačních hlášek formuláře (2h)' })}
-                            className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
-                            title="Otestovat notifikaci úkolu ve frontě"
-                          >
-                            TEST
-                          </button>
-                        )}
-                        <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
-                          <input
-                            type="checkbox"
-                            checked={formData.magicplan?.notifyQueueTasks !== false}
-                            onChange={(e) => {
-                              const updated = {
-                                ...formData,
-                                magicplan: { ...formData.magicplan, notifyQueueTasks: e.target.checked },
-                              };
-                              setFormData(updated);
-                              handleSave(updated);
-                            }}
-                            className="sr-only peer"
-                          />
-                          <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Dokončený úkol */}
-                    <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors">
-                      <div>
-                        <span className="text-xs font-medium text-gray-200 block">Úkol v plánu úspěšně zpracován</span>
-                        <span className="text-[11px] text-gray-400">Upozornění při odbavení nebo odebrání úkolu z vašeho sloupce</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isDevelop && (
-                          <button
-                            type="button"
-                            onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'completed', title: 'Úkol v plánu splněn', body: '[R9003 / T1004] Refaktoring API a optimalizace dotazů' })}
-                            className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
-                            title="Otestovat notifikaci splněného úkolu"
-                          >
-                            TEST
-                          </button>
-                        )}
-                        <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
-                          <input
-                            type="checkbox"
-                            checked={formData.magicplan?.notifyCompletedTasks !== false}
-                            onChange={(e) => {
-                              const updated = {
-                                ...formData,
-                                magicplan: { ...formData.magicplan, notifyCompletedTasks: e.target.checked },
-                              };
-                              setFormData(updated);
-                              handleSave(updated);
-                            }}
-                            className="sr-only peer"
-                          />
-                          <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Změna hodin */}
-                    <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors">
-                      <div>
-                        <span className="text-xs font-medium text-gray-200 block">Změna v rozvrhu nebo hodinách</span>
-                        <span className="text-[11px] text-gray-400">Upozornění při úpravě alokace hodin nebo posunu termínu</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isDevelop && (
-                          <button
-                            type="button"
-                            onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'critical', title: 'Kritický požadavek!', body: '[R9004 / T1005] Výpadek synchronizace služeb (4h)' })}
-                            className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
-                            title="Otestovat notifikaci kritického úkolu"
-                          >
-                            TEST
-                          </button>
-                        )}
-                        <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
-                          <input
-                            type="checkbox"
-                            checked={formData.magicplan?.notifyTaskChanges !== false}
-                            onChange={(e) => {
-                              const updated = {
-                                ...formData,
-                                magicplan: { ...formData.magicplan, notifyTaskChanges: e.target.checked },
-                              };
-                              setFormData(updated);
-                              handleSave(updated);
-                            }}
-                            className="sr-only peer"
-                          />
-                          <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('notifications')}
+                  className="px-3.5 py-1.5 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/20 text-xs font-semibold transition cursor-pointer select-none shrink-0 flex items-center gap-1.5"
+                >
+                  <span>Přejít na Notifikace</span>
+                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                </button>
               </div>
             </div>
           )}
@@ -9695,25 +9531,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
 
                     {/* Notifikace MagicPlan */}
-                    <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined text-base text-cyan-400">calendar_today</span>
-                        <div>
-                          <span className="text-xs font-medium text-gray-200 block">Notifikace MagicPlan</span>
-                          <span className="text-[11px] text-gray-400">Upozornění na nové požadavky, frontu a vyřešené úkoly v plánu</span>
+                    <div className="rounded-xl bg-white/[0.03] overflow-hidden transition-colors border border-white/[0.04]">
+                      <div className="flex items-center justify-between gap-4 p-3 hover:bg-white/[0.02] transition-colors">
+                        <div className="flex items-center gap-3">
+                          <span className="material-symbols-outlined text-base text-cyan-400">calendar_month</span>
+                          <div>
+                            <span className="text-xs font-medium text-gray-200 block">Notifikace MagicPlan</span>
+                            <span className="text-[11px] text-gray-400">Toast oznámení při změnách v plánu, nových úkolech, frontě a vyřešení</span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isDevelop && (
-                          <button
-                            type="button"
-                            onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'dev', title: 'Nový požadavek v plánu', body: '[R9001 / T1002] Implementace platební brány (8h)' })}
-                            className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
-                            title="Otestovat notifikaci MagicPlan"
-                          >
-                            TEST
-                          </button>
-                        )}
                         <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
                           <input
                             type="checkbox"
@@ -9735,6 +9561,154 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
                         </label>
                       </div>
+
+                      {formData.notifications?.magicplan !== false && (
+                        <div className="p-3 pt-2 space-y-2 border-t border-white/[0.04] bg-white/[0.015]">
+                          {/* Nový úkol */}
+                          <div className="flex items-center justify-between gap-4 p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+                            <div className="pl-2">
+                              <span className="text-xs font-medium text-gray-200 block">Nový požadavek v plánu</span>
+                              <span className="text-[11px] text-gray-400">Upozornění při přiřazení nového úkolu do vašeho sloupce</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {isDevelop && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'dev', title: 'Nový požadavek v plánu', body: '[R9001 / T1002] Implementace platební brány (8h)' })}
+                                  className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
+                                  title="Otestovat notifikaci nového požadavku"
+                                >
+                                  TEST
+                                </button>
+                              )}
+                              <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                                <input
+                                  type="checkbox"
+                                  checked={formData.magicplan?.notifyNewTasks !== false}
+                                  onChange={(e) => {
+                                    const updated = {
+                                      ...formData,
+                                      magicplan: { ...formData.magicplan, notifyNewTasks: e.target.checked },
+                                    };
+                                    setFormData(updated);
+                                    handleSave(updated);
+                                  }}
+                                  className="sr-only peer"
+                                />
+                                <div className="w-8 h-4.5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-3.5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Nový úkol ve frontě (nástěnka) */}
+                          <div className="flex items-center justify-between gap-4 p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+                            <div className="pl-2">
+                              <span className="text-xs font-medium text-gray-200 block">Nový úkol ve frontě (nástěnka)</span>
+                              <span className="text-[11px] text-gray-400">Upozornění při přidání nového nezařazeného úkolu do fronty</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {isDevelop && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'queue', title: 'Nový úkol ve frontě (Nástěnka)', body: '[R9002 / T1003] Úprava validačních hlášek formuláře (2h)' })}
+                                  className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
+                                  title="Otestovat notifikaci úkolu ve frontě"
+                                >
+                                  TEST
+                                </button>
+                              )}
+                              <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                                <input
+                                  type="checkbox"
+                                  checked={formData.magicplan?.notifyQueueTasks !== false}
+                                  onChange={(e) => {
+                                    const updated = {
+                                      ...formData,
+                                      magicplan: { ...formData.magicplan, notifyQueueTasks: e.target.checked },
+                                    };
+                                    setFormData(updated);
+                                    handleSave(updated);
+                                  }}
+                                  className="sr-only peer"
+                                />
+                                <div className="w-8 h-4.5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-3.5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Dokončený úkol */}
+                          <div className="flex items-center justify-between gap-4 p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+                            <div className="pl-2">
+                              <span className="text-xs font-medium text-gray-200 block">Úkol v plánu úspěšně zpracován</span>
+                              <span className="text-[11px] text-gray-400">Upozornění při odbavení nebo odebrání úkolu z vašeho sloupce</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {isDevelop && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'completed', title: 'Úkol v plánu splněn', body: '[R9003 / T1004] Refaktoring API a optimalizace dotazů' })}
+                                  className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
+                                  title="Otestovat notifikaci splněného úkolu"
+                                >
+                                  TEST
+                                </button>
+                              )}
+                              <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                                <input
+                                  type="checkbox"
+                                  checked={formData.magicplan?.notifyCompletedTasks !== false}
+                                  onChange={(e) => {
+                                    const updated = {
+                                      ...formData,
+                                      magicplan: { ...formData.magicplan, notifyCompletedTasks: e.target.checked },
+                                    };
+                                    setFormData(updated);
+                                    handleSave(updated);
+                                  }}
+                                  className="sr-only peer"
+                                />
+                                <div className="w-8 h-4.5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-3.5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Změna hodin */}
+                          <div className="flex items-center justify-between gap-4 p-2.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+                            <div className="pl-2">
+                              <span className="text-xs font-medium text-gray-200 block">Změna v rozvrhu nebo hodinách</span>
+                              <span className="text-[11px] text-gray-400">Upozornění při úpravě alokace hodin nebo posunu termínu</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {isDevelop && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'critical', title: 'Kritický požadavek!', body: '[R9004 / T1005] Výpadek synchronizace služeb (4h)' })}
+                                  className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
+                                  title="Otestovat notifikaci kritického úkolu"
+                                >
+                                  TEST
+                                </button>
+                              )}
+                              <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                                <input
+                                  type="checkbox"
+                                  checked={formData.magicplan?.notifyTaskChanges !== false}
+                                  onChange={(e) => {
+                                    const updated = {
+                                      ...formData,
+                                      magicplan: { ...formData.magicplan, notifyTaskChanges: e.target.checked },
+                                    };
+                                    setFormData(updated);
+                                    handleSave(updated);
+                                  }}
+                                  className="sr-only peer"
+                                />
+                                <div className="w-8 h-4.5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-3.5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
 
