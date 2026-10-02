@@ -9281,15 +9281,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           <span className="text-[11px] text-gray-400">Upozornění na uložení výstřižku (kliknutím otevřete ve složce)</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         {isDevelop && (
                           <button
                             type="button"
                             onClick={() => handleTestNotification('quickCap')}
-                            className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
+                            className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition cursor-pointer select-none shrink-0"
                             title="Otestovat notifikaci QuickCap"
                           >
-                            TEST
+                            <span className="material-symbols-outlined text-sm leading-none">notifications_active</span>
+                            <span>TEST</span>
                           </button>
                         )}
                         <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
@@ -9324,15 +9325,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           <span className="text-[11px] text-gray-400">Upozornění s kódem nabrané barvy zkopírované do schránky</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         {isDevelop && (
                           <button
                             type="button"
                             onClick={() => handleTestNotification('colorMaster')}
-                            className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
+                            className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition cursor-pointer select-none shrink-0"
                             title="Otestovat notifikaci ColorMaster"
                           >
-                            TEST
+                            <span className="material-symbols-outlined text-sm leading-none">notifications_active</span>
+                            <span>TEST</span>
                           </button>
                         )}
                         <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
@@ -9367,15 +9369,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           <span className="text-[11px] text-gray-400">Upozornění na úspěšnou synchronizaci a počet načtených položek</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         {isDevelop && (
                           <button
                             type="button"
                             onClick={() => handleTestNotification('syncComplete')}
-                            className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
+                            className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition cursor-pointer select-none shrink-0"
                             title="Otestovat notifikaci synchronizace"
                           >
-                            TEST
+                            <span className="material-symbols-outlined text-sm leading-none">notifications_active</span>
+                            <span>TEST</span>
                           </button>
                         )}
                         <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
@@ -9410,15 +9413,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           <span className="text-[11px] text-gray-400">Upozornění na dostupnou novou verzi s možností kliknout pro instalaci</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         {isDevelop && (
                           <button
                             type="button"
                             onClick={() => handleTestNotification('update')}
-                            className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
+                            className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition cursor-pointer select-none shrink-0"
                             title="Otestovat notifikaci aktualizace"
                           >
-                            TEST
+                            <span className="material-symbols-outlined text-sm leading-none">notifications_active</span>
+                            <span>TEST</span>
                           </button>
                         )}
                         <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
@@ -9453,15 +9457,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           <span className="text-[11px] text-gray-400">Upozornění při zkopírování textu, barvy, rozměrů či cesty do schránky (ze Spotlightu, pravítka, PaletteMasteru apod.)</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         {isDevelop && (
                           <button
                             type="button"
                             onClick={() => handleTestNotification('clipboard')}
-                            className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
+                            className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition cursor-pointer select-none shrink-0"
                             title="Otestovat notifikaci schránky"
                           >
-                            TEST
+                            <span className="material-symbols-outlined text-sm leading-none">notifications_active</span>
+                            <span>TEST</span>
                           </button>
                         )}
                         <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
@@ -9496,15 +9501,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           <span className="text-[11px] text-gray-400">Upozornění při chybovém pádu nebo selhání akce (kliknutím otevřete crashlog)</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         {isDevelop && (
                           <button
                             type="button"
                             onClick={() => handleTestNotification('error')}
-                            className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
+                            className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition cursor-pointer select-none shrink-0"
                             title="Otestovat chybovou notifikaci"
                           >
-                            TEST
+                            <span className="material-symbols-outlined text-sm leading-none">notifications_active</span>
+                            <span>TEST</span>
                           </button>
                         )}
                         <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
