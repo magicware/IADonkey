@@ -2672,7 +2672,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                             title={free.dayIndex < todayIdx ? `${free.freeHours}h nevyužité kapacity` : `${free.freeHours}h volné kapacity`}
                           >
                             <span className="font-mono text-[10px] opacity-60">
-                              {free.freeHours}h{free.dayIndex < todayIdx ? ' nevyužito' : ''}
+                              {free.freeHours}h
                             </span>
                           </div>
                         ))}
