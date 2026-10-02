@@ -80,6 +80,12 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
     - **Detekce přechodu půlnoci**: Pravidelná kontrola změny kalendářního dne (`new Date().toDateString()`) v intervalu. Při přelomu půlnoci automaticky přepočítat `workWeekDays` a aktualizovat příznak `isToday`.
     - **Reakce na aktivaci okna (Focus / Show)**: Při každém opětovném zobrazení / zaměření okna (`focus` nebo IPC signál při `show()`) zkontrolovat aktuální systémový čas a v denním režimu nastavit `selectedDayIndex` na nový aktuální den.
 
+- [ ] **11. Klonování MagicGate repozitářů: Tlačítko klonování nepřebírá dynamickou barvu z nastavení**
+  - **Popis**: V modálním okně stahování a klonování repozitářů MagicGate instance (`GitCloneModal.tsx`) má hlavní tlačítko pro stažení/klonování fixně zadrátovanou fialovou barvu (`bg-purple-600`), namísto aby přebíralo dynamickou sekundární akční barvu nastavenou v konfiguraci aplikace.
+  - **Body k řešení**:
+    - **Napojení konfigurace témat**: Předat nebo načíst aktuální nastavení barev (sekundární akční barva / primární barva) do `GitCloneModal.tsx`.
+    - **Dynamický styl tlačítka**: Nahradit pevné fialové třídy (`bg-purple-600`, `hover:bg-purple-500`, `active:bg-purple-700`, `text-purple-400`) za dynamický styl odvozený z nastavené sekundární/akční barvy.
+
 ---
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
