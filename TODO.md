@@ -86,6 +86,19 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
     - **Napojení konfigurace témat**: Předat nebo načíst aktuální nastavení barev (sekundární akční barva / primární barva) do `GitCloneModal.tsx`.
     - **Dynamický styl tlačítka**: Nahradit pevné fialové třídy (`bg-purple-600`, `hover:bg-purple-500`, `active:bg-purple-700`, `text-purple-400`) za dynamický styl odvozený z nastavené sekundární/akční barvy.
 
+- [ ] **12. MagicGate položky ve Spotlightu: Nezobrazovat možnost přejít do AKCÍ při nevyplněném GitHubu**
+  - **Popis**: Pokud uživatel nemá nakonfigurovaný GitHub (není zadaný PAT / uživatelské jméno nebo je rozšíření GitHub vypnuté), u položek instancí MagicGate ve Spotlightu by se neměla nabízet nabídka Akcí (`Shift+Enter`) pro klonování repozitářů.
+  - **Body k řešení**:
+    - **Podmíněné zobrazení akcí**: V `SearchSpotlight.tsx` (`getItemActions`, `hasItemActions` a `hasItemActionsOrInfo`) odfiltrovat `mgclone` akce, pokud rozšíření GitHub není aktivní nebo nejsou vyplněny potřebné přihlašovací údaje.
+    - **Ošetření klávesové zkratky**: Pokud instance nemá žádné další dostupné akce (např. CMSinFS zdrojáky), skrýt nápovědu Akcí a potlačit reakci na stisk <kbd>Shift+Enter</kbd>.
+
+- [ ] **13. Analýza a ošetření stahování repozitářů při vypnutém rozšíření GitHub**
+  - **Popis**: Prověřit a ošetřit chování stahování repozitářů při vypnutém rozšíření GitHub. Přihlašovací údaje (PAT / token) v konfiguraci zůstávají zachovány (pro případ nechtěného vypnutí, aby nebylo nutné znovu generovat PAT), ale samotné funkce stahování a klonování repozitářů by měly striktně respektovat stav vypnutého rozšíření.
+  - **Body k řešení**:
+    - **Mechanismus klonování vs. Windows Credential Manager**: Samotný příkaz `git clone` běží přes systémový `git` a může využívat přihlášení z Windows Git Credential Manageru, zatímco seznam repozitářů sekcí se stahuje přes `CmsFsContentHandler.ashx` z MagicGate serveru.
+    - **Respektování stavu rozšíření**: Ošetřit v backendu Electronu i v modálu klonování (`GitCloneModal.tsx`), aby při `config.extensions?.github === false` byly klonovací operace blokovány a uživateli byla zobrazena informace o nutnosti zapnutí rozšíření.
+    - **Zachování uložených údajů**: Ponechat uložené PAT a přihlašovací údaje v `config.github` i při vypnutém přepínači pro komfort uživatele, ale všechny související akce podmiňovat aktivním stavem rozšíření.
+
 ---
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
