@@ -7456,7 +7456,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         {isDevelop && (
                           <button
                             type="button"
-                            onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'dev', title: 'Nový požadavek v plánu', body: '[R134695 / T789857] Migrace webu TIPtravel (16h)' })}
+                            onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'dev', title: 'Nový požadavek v plánu', body: '[R9001 / T1002] Implementace platební brány (8h)' })}
                             className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
                             title="Otestovat notifikaci nového požadavku"
                           >
@@ -7492,7 +7492,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         {isDevelop && (
                           <button
                             type="button"
-                            onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'queue', title: 'Nový úkol ve frontě (Nástěnka FK)', body: '[R134073 / T791492] Kolonka k vyplnění (1h)' })}
+                            onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'queue', title: 'Nový úkol ve frontě (Nástěnka)', body: '[R9002 / T1003] Úprava validačních hlášek formuláře (2h)' })}
                             className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
                             title="Otestovat notifikaci úkolu ve frontě"
                           >
@@ -7528,7 +7528,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         {isDevelop && (
                           <button
                             type="button"
-                            onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'completed', title: 'Úkol v plánu splněn', body: '[R125809 / T763516] Konzultace / Školení 2026' })}
+                            onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'completed', title: 'Úkol v plánu splněn', body: '[R9003 / T1004] Refaktoring API a optimalizace dotazů' })}
                             className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
                             title="Otestovat notifikaci splněného úkolu"
                           >
@@ -7564,7 +7564,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         {isDevelop && (
                           <button
                             type="button"
-                            onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'critical', title: 'Kritický úkol!', body: '[R127034 / T792097] Marco polo nastavit sabre (6h)' })}
+                            onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'critical', title: 'Kritický požadavek!', body: '[R9004 / T1005] Výpadek synchronizace služeb (4h)' })}
                             className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
                             title="Otestovat notifikaci kritického úkolu"
                           >
@@ -9707,7 +9707,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         {isDevelop && (
                           <button
                             type="button"
-                            onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'dev', title: 'Nový požadavek v plánu', body: '[R134695 / T789857] Migrace webu TIPtravel (16h)' })}
+                            onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'dev', title: 'Nový požadavek v plánu', body: '[R9001 / T1002] Implementace platební brány (8h)' })}
                             className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 transition cursor-pointer select-none shrink-0"
                             title="Otestovat notifikaci MagicPlan"
                           >

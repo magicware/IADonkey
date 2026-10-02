@@ -1222,7 +1222,7 @@ export class MagicPlanService {
             notificationService.show({
               type: 'magicPlan',
               subType: curr.isCritical ? 'critical' : 'queue',
-              title: `Nový úkol ve frontě (${queueName})`,
+              title: curr.isCritical ? `Nový kritický požadavek ve frontě (${queueName})` : `Nový úkol ve frontě (${queueName})`,
               body: taskDesc,
             });
           }
@@ -1232,7 +1232,7 @@ export class MagicPlanService {
             notificationService.show({
               type: 'magicPlan',
               subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
-              title: 'Nový požadavek v plánu',
+              title: curr.isCritical ? 'Nový kritický požadavek v plánu' : 'Nový požadavek v plánu',
               body: taskDesc,
             });
           }
@@ -1243,7 +1243,7 @@ export class MagicPlanService {
             notificationService.show({
               type: 'magicPlan',
               subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
-              title: `${curr.userName} byl přiřazen úkol`,
+              title: curr.isCritical ? `${curr.userName} byl přiřazen kritický požadavek` : `${curr.userName} byl přiřazen úkol`,
               body: taskDesc,
             });
           }
@@ -1260,7 +1260,7 @@ export class MagicPlanService {
               notificationService.show({
                 type: 'magicPlan',
                 subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
-                title: 'Přiřazení úkolu',
+                title: curr.isCritical ? 'Přiřazení kritického požadavku' : 'Přiřazení úkolu',
                 body: taskDesc,
               });
             }
@@ -1271,7 +1271,7 @@ export class MagicPlanService {
               notificationService.show({
                 type: 'magicPlan',
                 subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
-                title: `${curr.userName} byl přiřazen úkol`,
+                title: curr.isCritical ? `${curr.userName} byl přiřazen kritický požadavek` : `${curr.userName} byl přiřazen úkol`,
                 body: taskDesc,
               });
             }
@@ -1282,7 +1282,7 @@ export class MagicPlanService {
               notificationService.show({
                 type: 'magicPlan',
                 subType: curr.isCritical ? 'critical' : 'queue',
-                title: 'Úkol byl přesunut zpátky do nepřiřazených úkolů',
+                title: curr.isCritical ? 'Kritický požadavek byl přesunut zpátky do nepřiřazených' : 'Úkol byl přesunut zpátky do nepřiřazených úkolů',
                 body: taskDesc,
               });
             }
@@ -1293,7 +1293,7 @@ export class MagicPlanService {
               notificationService.show({
                 type: 'magicPlan',
                 subType: curr.isCritical ? 'critical' : 'queue',
-                title: `Úkol od ${prev.userName} byl vrácen do fronty`,
+                title: curr.isCritical ? `Kritický požadavek od ${prev.userName} byl vrácen do fronty` : `Úkol od ${prev.userName} byl vrácen do fronty`,
                 body: taskDesc,
               });
             }
@@ -1304,7 +1304,7 @@ export class MagicPlanService {
               notificationService.show({
                 type: 'magicPlan',
                 subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
-                title: `Úkol od ${prev.userName} byl přiřazen k vám`,
+                title: curr.isCritical ? `Kritický požadavek od ${prev.userName} byl přiřazen k vám` : `Úkol od ${prev.userName} byl přiřazen k vám`,
                 body: taskDesc,
               });
             }
@@ -1314,7 +1314,7 @@ export class MagicPlanService {
               notificationService.show({
                 type: 'magicPlan',
                 subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
-                title: `${curr.userName} převzal váš úkol`,
+                title: curr.isCritical ? `${curr.userName} převzal váš kritický požadavek` : `${curr.userName} převzal váš úkol`,
                 body: taskDesc,
               });
             }

@@ -222,12 +222,15 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
     applyActionsColor(config?.actionsColor);
   }, [config?.primaryColor, config?.actionsColor]);
 
-  // Realtime clock ticker for timeline progress line (1s interval for smooth precision)
+  // Realtime clock ticker for timeline progress line and day changes (1s interval + window focus)
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
+    const updateTime = () => setCurrentTime(new Date());
+    const timer = setInterval(updateTime, 1000);
+    window.addEventListener('focus', updateTime);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', updateTime);
+    };
   }, []);
 
   // Day progress percentage (0:00 = 0%, 12:00 = 50%, 18:00 = 75%, 23:59 = 100%)
@@ -371,9 +374,21 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
   const myTasks = useMemo(() => data?.myTasks || [], [data]);
   const queueTasks = useMemo(() => data?.unassignedTasks || [], [data]);
 
+  // Current calendar date key (e.g. "2026-10-02") to detect midnight day rollover
+  const currentDateKey = `${currentTime.getFullYear()}-${currentTime.getMonth() + 1}-${currentTime.getDate()}`;
+
+  // Automatically refresh plan data when calendar day changes across midnight
+  const lastLoadedDateKeyRef = useRef(currentDateKey);
+  useEffect(() => {
+    if (lastLoadedDateKeyRef.current !== currentDateKey) {
+      lastLoadedDateKeyRef.current = currentDateKey;
+      handleRefresh();
+    }
+  }, [currentDateKey]);
+
   // Always compute current work week: Monday to Friday (5 days, no Saturday or Sunday)
   const workWeekDays = useMemo((): PlanDayInfo[] => {
-    const now = new Date();
+    const now = currentTime;
     const dayOfWeek = now.getDay();
     const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     const monday = new Date(now);
@@ -406,7 +421,7 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
     }
 
     return days;
-  }, []);
+  }, [currentDateKey]);
 
   const currentUser = config.magicplan?.currentUserColumn?.trim();
   const [showOnlyMyTasks, setShowOnlyMyTasks] = useState<boolean>(() => Boolean(currentUser));
@@ -1696,6 +1711,17 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
     todayIdx !== -1 ? todayIdx : 0
   );
 
+  // Automatically update selectedDayIndex when calendar day rolls over (e.g. across midnight or window focus)
+  const prevTodayIdxRef = useRef(todayIdx);
+  useEffect(() => {
+    if (prevTodayIdxRef.current !== todayIdx) {
+      prevTodayIdxRef.current = todayIdx;
+      if (todayIdx !== -1) {
+        setSelectedDayIndex(todayIdx);
+      }
+    }
+  }, [todayIdx]);
+
   // Hover state for custom tooltip in week view
   const [hoveredTask, setHoveredTask] = useState<{
     block: TimelineScheduledBlock;
@@ -2818,7 +2844,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
             <span className="material-symbols-outlined text-sm text-indigo-400">arrow_forward</span>
             <span>Úkoly přesahující do dalšího týdne ({allOverflowTasks.length})</span>
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 min-[1366px]:grid-cols-4 min-[2560px]:grid-cols-5 gap-2.5">
             {allOverflowTasks.map(({ task, remainingHours }) => (
               <TaskCard
                 key={`timeline-overflow-${task.taskId}`}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { applyActionsColor, applyPrimaryColor } from '../utils/theme';
 
 interface GitCloneModalProps {
   isOpen?: boolean;
@@ -13,6 +14,7 @@ interface GitCloneModalProps {
   vscodeEnabled?: boolean;
   androidStudioEnabled?: boolean;
   repoLanguage?: string;
+  actionsColor?: string;
 }
 
 interface SectionRepoItem {
@@ -54,7 +56,27 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
   vscodeEnabled = false,
   androidStudioEnabled = false,
   repoLanguage = '',
+  actionsColor,
 }) => {
+  const [effectiveActionsColor, setEffectiveActionsColor] = useState<string>(() => actionsColor || '#a855f7');
+
+  useEffect(() => {
+    if (actionsColor) {
+      setEffectiveActionsColor(actionsColor);
+      applyActionsColor(actionsColor);
+    } else if (window.electronAPI?.getConfig) {
+      window.electronAPI.getConfig().then((cfg) => {
+        if (cfg?.actionsColor) {
+          setEffectiveActionsColor(cfg.actionsColor);
+          applyActionsColor(cfg.actionsColor);
+        }
+        if (cfg?.primaryColor) {
+          applyPrimaryColor(cfg.primaryColor);
+        }
+      });
+    }
+  }, [actionsColor]);
+
   const getInitialTargetDir = () => {
     if (isInstanceMode && repoName && defaultTargetDir) {
       return normalizeInstanceTargetDir(defaultTargetDir, repoName);
@@ -682,7 +704,7 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
                 onClick={handleOpenInExplorer}
                 className="px-4 py-2 rounded-full text-xs font-medium flex items-center gap-1.5 transition cursor-pointer bg-white/[0.08] hover:bg-white/[0.14] text-white"
               >
-                <span className="material-symbols-outlined text-base text-purple-400">folder</span>
+                <span className="material-symbols-outlined text-base" style={{ color: effectiveActionsColor }}>folder</span>
                 <span>Otevřít v Průzkumníku</span>
               </button>
               {/* Either Android Studio or VS Code - never both */}
@@ -744,12 +766,19 @@ export const GitCloneModal: React.FC<GitCloneModalProps> = ({
                   type="button"
                   disabled={isCloning || isBlocked}
                   onClick={() => handleStartClone()}
+                  style={
+                    isCloning
+                      ? { backgroundColor: effectiveActionsColor, opacity: 0.85 }
+                      : !isBlocked
+                      ? { backgroundColor: effectiveActionsColor }
+                      : undefined
+                  }
                   className={`px-5 py-2.5 rounded-full text-xs font-semibold flex items-center gap-2 transition select-none ${
                     isCloning
-                      ? 'bg-purple-600/80 text-white cursor-wait opacity-90'
+                      ? 'text-white cursor-wait'
                       : isBlocked
                       ? 'bg-white/10 text-gray-500 opacity-40 cursor-not-allowed'
-                      : 'bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white cursor-pointer'
+                      : 'hover:brightness-110 active:brightness-95 text-white cursor-pointer'
                   }`}
                   title={!isBlocked ? 'Klonovat (Enter)' : undefined}
                 >

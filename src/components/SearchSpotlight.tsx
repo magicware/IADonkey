@@ -25,6 +25,8 @@ interface SearchSpotlightProps {
   mlogRequestPrefix?: string;
   searchGoogle?: boolean;
   defaultSearchEngine?: string;
+  githubEnabled?: boolean;
+  hasGithubCredentials?: boolean;
   defaultCloneDir?: string;
   instanceSourceCodesPath?: string;
   vscodeEnabled?: boolean;
@@ -53,6 +55,8 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
   mlogRequestPrefix,
   searchGoogle = true,
   defaultSearchEngine = 'google',
+  githubEnabled = false,
+  hasGithubCredentials = false,
   defaultCloneDir,
   instanceSourceCodesPath,
   vscodeEnabled = false,
@@ -911,6 +915,18 @@ export const SearchSpotlight: React.FC<SearchSpotlightProps> = ({
     baseActions = baseActions.filter(
       (a) => a.action !== 'clonerecursive' && a.action !== 'mgclonerecursive'
     );
+
+    // If GitHub extension is disabled or GitHub credentials are not configured, hide cloning actions
+    const canCloneGit = Boolean(githubEnabled && hasGithubCredentials);
+    if (!canCloneGit) {
+      baseActions = baseActions.filter(
+        (a) =>
+          a.action !== 'clone' &&
+          a.action !== 'clonerecursive' &&
+          a.action !== 'mgclone' &&
+          a.action !== 'mgclonerecursive'
+      );
+    }
 
     // For Git / GitHub items: ensure 'Otevřít na GitHubu' is always at the very end
     const isGit = item.settings === 'git' || item.sourceId === 'github' || item.sourceId === 'git';

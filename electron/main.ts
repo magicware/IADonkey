@@ -1562,6 +1562,13 @@ function setupIpcHandlers() {
     recursive?: boolean;
     rawJson?: string;
   }) => {
+    if (config.extensions?.github === false) {
+      return {
+        success: false,
+        results: [],
+        error: 'Rozšíření GitHub je v Nastavení vypnuté. Klonování repozitářů není povoleno.',
+      };
+    }
     const sender = event.sender;
     return runMultiRepoClone({
       ...params,
@@ -1904,6 +1911,13 @@ function setupIpcHandlers() {
   });
 
   ipcMain.handle('run-git-clone', async (_event, data: { repoUrl: string; targetDir: string; recursive?: boolean }) => {
+    if (config.extensions?.github === false) {
+      return {
+        success: false,
+        targetPath: '',
+        error: 'Rozšíření GitHub je v Nastavení vypnuté. Klonování repozitářů není povoleno.',
+      };
+    }
     const { repoUrl, targetDir, recursive } = data;
     if (!repoUrl || !targetDir) {
       return { success: false, targetPath: '', error: 'Chybí URL repozitáře nebo cílová složka.' };

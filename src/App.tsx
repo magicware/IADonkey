@@ -547,6 +547,7 @@ export const App: React.FC = () => {
           vscodeEnabled={config.extensions?.vscode ?? false}
           androidStudioEnabled={config.extensions?.androidStudio ?? false}
           repoLanguage={gitCloneParams.repoLanguage}
+          actionsColor={config.actionsColor}
         />
       </WindowFrame>
     );
@@ -719,6 +720,8 @@ export const App: React.FC = () => {
           mlogRequestPrefix={config?.mlog?.requestPrefix}
           searchGoogle={config.searchGoogle !== false}
           defaultSearchEngine={config.defaultSearchEngine}
+          githubEnabled={config.extensions?.github ?? false}
+          hasGithubCredentials={Boolean(config.github?.token?.trim() || config.github?.oauthToken?.trim())}
           defaultCloneDir={config?.github?.defaultCloneDir}
           instanceSourceCodesPath={config?.magicgate?.instanceSourceCodesPath}
           vscodeEnabled={config.extensions?.vscode ?? false}
