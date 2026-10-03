@@ -72,6 +72,6 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
 
-- [x] **7. Okno „Co je nového“ (Release Notes): Odstranit ztmavující / rozmazávací backdrop**
-  - **Popis**: Odstraněn tmavý a rozmazaný overlay (`bg-black/75 backdrop-blur-sm`) z `src/components/WhatsNewModal.tsx`. Obsah i přepínač „Nezobrazovat při startu“ jsou nyní čistě čitelné na plně průhledném pozadí.
+*(Všechny dokončené úkoly byly zkontrolovány a schváleny)*
+
 
