@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
-  <!-- Minimalist square with rounded corners -->
-  <rect x="2.5" y="2.5" width="27" height="27" rx="5.5" stroke="#ffffff" stroke-width="2" fill="none"/>
+  <!-- Minimalist square with rounded corners, dark fill and violet border -->
+  <rect x="2.5" y="2.5" width="27" height="27" rx="5.5" fill="#181920" stroke="#585bd4" stroke-width="2"/>
   
   <!-- Donkey Head with long upright ears in clean outline -->
   <!-- Left tall ear -->

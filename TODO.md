@@ -61,17 +61,9 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
     - **Dynamické přegenerování ikon**: Automatické přegenerování / obarvení ikonek do mezipaměti (`userData` / cache) při uložení změn v konfiguraci témat nebo za běhu při spuštění.
     - **Barevné sladění toastů**: Promítnutí aktuální primární barvy do toastů vývoje a sekundární akční barvy do toastů servisu.
 
-- [ ] **9. Sjednocení systémové ikony aplikace ve Windows (hlavní panel, Start menu, záhlaví oken)**
-  - **Popis**: V aplikaci a na splashscreenu je moderní podoba ikony, ale systémová ikona samotné aplikace ve Windows (na hlavním panelu / taskbaru, ve vyhledávání / našeptávači Start menu a v `.exe` binárkách) je starší verze. Je potřeba nahradit a sjednotit systémové `.ico` a zdrojové `.png` ikony.
-  - **Body k řešení**:
-    - **Zdrojová grafika**: Vytvořit čistý víceresoluční soubor `icon.ico` (16×16 až 256×256 px) a odpovídající `icon.png` z aktuální moderní předlohy.
-    - **Sjednocení v projektu**: Nahradit soubory v `electron/assets/icon.ico`, `electron/assets/icon.png`, `public/icon.png` a v konfiguraci `build` v `package.json`.
-    - **Ověření v systému**: Zajistit ostré a nerozmazané zobrazení v taskbaru Windows, tray liště, Start menu zástupci i v záhlaví všech oken aplikace.
-
----
-
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
 
-*(Všechny dokončené úkoly byly zkontrolovány a schváleny)*
+- [x] **9. Sjednocení systémové ikony aplikace ve Windows (hlavní panel, Start menu, záhlaví oken a Tray lišta)**
+  - **Popis**: Nahrazen starý 4-bitový (16 barev VGA) `icon.ico` novým plně 32-bitovým víceresolučním souborem (16, 24, 32, 48, 64, 128 a 256 px) s hladkým fialovým rámečkem `#585BD4` a bílým oslíkem přímo z kanonického `src/assets/icon.png`. Sjednoceny soubory `electron/assets/icon.ico`, `build/icon.ico`, `electron/assets/tray-icon.png` i `tray-icon.svg`. V `electron/windowManager.ts` opraven poškozený base64 fallback a napojeno dynamické načítání plnobarevné miniatury ikony pro Tray. Všechna místa (taskbar, Alt+Tab, Start menu, záhlaví oken i oznamovací oblast Tray) mají nyní identickou ikonu.
 
 
