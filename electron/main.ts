@@ -1562,7 +1562,8 @@ function setupIpcHandlers() {
     recursive?: boolean;
     rawJson?: string;
   }) => {
-    if (config.extensions?.github === false) {
+    const config = store ? store.getConfig() : null;
+    if (config?.extensions?.github === false) {
       return {
         success: false,
         results: [],
@@ -1911,7 +1912,8 @@ function setupIpcHandlers() {
   });
 
   ipcMain.handle('run-git-clone', async (_event, data: { repoUrl: string; targetDir: string; recursive?: boolean }) => {
-    if (config.extensions?.github === false) {
+    const config = store ? store.getConfig() : null;
+    if (config?.extensions?.github === false) {
       return {
         success: false,
         targetPath: '',

@@ -1,6 +1,6 @@
 {
-  "version": "2.1.0",
-  "releaseNotes": "• MagicPlan: Inteligentní párování přechodů úkolů (z fronty, do fronty, dokončení, eliminace duplicit) a sledování kolegů.\n• Notifikace: Sada 13 moderních kruhových ikon Material 3 s akčními subtypy a tlačítka TEST v Nastavení.\n• MagicPlan Timeline: Interaktivní časový rozsah osy (editovatelné od/do), vteřinový přepočet tikání, čárkovaná linka s dynamickým zarovnáním pillu, ploché barvy s průhledností a nová položka volno v legendě.",
-  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v2.1.0/IADonkey-Setup-2.1.0.exe",
-  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v2.1.0/IADonkey-2.1.0.zip"
+  "version": "2.1.1",
+  "releaseNotes": "• MagicPlan: Automatická detekce nového dne po půlnoci i při probuzení (včetně zachování pátku o víkendu) a responzivní mřížka přetékajících úkolů (až 5 sloupců pro monitory od 1921 px).\n• Notifikace: Centralizované nastavení notifikací MagicPlanu s granulárními přepínači všech 4 typů událostí, vizuálním odlišením vnoření a kompletní sadou testovacích tlačítek.\n• Spotlight & MagicGate: Zabezpečení přechodu do akcí a informací podmíněné aktivním rozšířením GitHub a dynamická akční barva u klonování repozitářů.",
+  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v2.1.1/IADonkey-Setup-2.1.1.exe",
+  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v2.1.1/IADonkey-2.1.1.zip"
 }

@@ -75,8 +75,3 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
 - [x] **7. Okno „Co je nového“ (Release Notes): Odstranit ztmavující / rozmazávací backdrop**
   - **Popis**: Odstraněn tmavý a rozmazaný overlay (`bg-black/75 backdrop-blur-sm`) z `src/components/WhatsNewModal.tsx`. Obsah i přepínač „Nezobrazovat při startu“ jsou nyní čistě čitelné na plně průhledném pozadí.
 
-- [x] **12. MagicGate položky ve Spotlightu: Nezobrazovat možnost přejít do AKCÍ při nevyplněném GitHubu**
-  - **Popis**: V `src/components/SearchSpotlight.tsx` a `src/App.tsx` zavedena striktní kontrola `githubEnabled` a `hasGithubCredentials`. Pokud není rozšíření GitHub zapnuto nebo chybí přihlašovací údaje, u MagicGate položek je zcela zakázán přechod do nabídky akcí a informací (`getItemActions` vrací prázdné pole, `hasItemActions`, `hasItemInfo` i `hasItemActionsOrInfo` vrací `false`, `enterActions` okamžitě končí), zástupce v řádku výsledků se vykreslí jako neklikatelný pasivní badge bez ikony akcí a v patičce/nápovědě se nezobrazuje zkratka Shift+Enter.
-
-- [x] **14. MagicPlan: Responzivní grid pro úkoly přesahující do dalšího týdne (4 a 5 sloupců pro vyšší rozlišení)**
-  - **Popis**: V `src/components/MagicPlanWindow.tsx` upravena mřížka pro úkoly přesahující do dalšího týdne na responzivní rozložení: 1 sloupec (mobilní) → 2 sloupce (`md`) → 3 sloupce (`lg`) → 4 sloupce od šířky 1366 px (`min-[1366px]`) → 5 sloupců pro širokoúhlé monitory již od rozlišení 1921 px (`min-[1921px]`).

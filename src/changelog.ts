@@ -5,12 +5,24 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '2.1.0';
+export const CURRENT_APP_VERSION = '2.1.1';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '2.1.1',
+    date: '3. 10. 2026',
+    title: 'MagicPlan detekce nového dne a responzivní mřížka, centralizace notifikací a ochrana MagicGate akcí',
+    highlights: [
+      'MagicPlan – Automatická detekce nového dne po půlnoci a při probuzení: Okamžitá aktualizace časové osy a vybraného dne po půlnoci i při obnovení okna. Během víkendu (sobota i neděle) zůstává aktivní pátek s přepnutím na pondělí nového týdne až po nedělní půlnoci, v týdenním přehledu zjednodušen zápis nevyužité kapacity.',
+      'MagicPlan – Responzivní grid přetékajících úkolů: Moderní responzivní mřížka pro úkoly přesahující do dalšího týdne škálující od 1 sloupce až po 5 sloupců pro monitory a širokoúhlé displeje s rozlišením od 1921 px.',
+      'Sjednocení a granularita notifikací v Nastavení: Všechna nastavení notifikací MagicPlanu byla centralizována do záložky Notifikace s odstraněním duplicit. Přidány granulární přepínače pro všechny 4 typy událostí plánu s vizuálním odsazením podpoložek a dedikovaná testovací tlačítka s neutrálními demo daty.',
+      'Spotlight & MagicGate – Ochrana při neaktivním GitHubu: Pokud není zapnuté rozšíření GitHub nebo chybí přihlašovací údaje, u MagicGate položek ve Spotlightu je zcela skryt přechod do nabídky akcí a informací. Položka se zobrazí jako čistý pasivní badge bez klávesové zkratky Shift+Enter.',
+      'Dynamická akční barva u klonování: Tlačítko pro spuštění klonování repozitářů MagicGate a ikona složky v dialogu plně respektují dynamickou sekundární akční barvu zvolenou uživatelem v nastavení.',
+    ],
+  },
   {
     version: '2.1.0',
     date: '1. 10. 2026',

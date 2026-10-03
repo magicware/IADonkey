@@ -4,6 +4,14 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [2.1.1] - 3. 10. 2026
+### MagicPlan detekce nového dne a responzivní mřížka, centralizace notifikací a ochrana MagicGate akcí
+- **MagicPlan – Automatická detekce nového dne po půlnoci a při probuzení**: Okamžitá aktualizace časové osy a vybraného dne po půlnoci i při obnovení okna. Během víkendu (sobota i neděle) zůstává aktivní pátek s přepnutím na pondělí nového týdne až po nedělní půlnoci, v týdenním přehledu zjednodušen zápis nevyužité kapacity.
+- **MagicPlan – Responzivní grid přetékajících úkolů**: Moderní responzivní mřížka pro úkoly přesahující do dalšího týdne škálující od 1 sloupce až po 5 sloupců pro monitory a širokoúhlé displeje s rozlišením od 1921 px.
+- **Sjednocení a granularita notifikací v Nastavení**: Všechna nastavení notifikací MagicPlanu byla centralizována do záložky Notifikace s odstraněním duplicit. Přidány granulární přepínače pro všechny 4 typy událostí plánu s vizuálním odsazením podpoložek a dedikovaná testovací tlačítka s neutrálními demo daty.
+- **Spotlight & MagicGate – Ochrana při neaktivním GitHubu**: Pokud není zapnuté rozšíření GitHub nebo chybí přihlašovací údaje, u MagicGate položek ve Spotlightu je zcela skryt přechod do nabídky akcí a informací. Položka se zobrazí jako čistý pasivní badge bez klávesové zkratky Shift+Enter.
+- **Dynamická akční barva u klonování**: Tlačítko pro spuštění klonování repozitářů MagicGate a ikona složky v dialogu plně respektují dynamickou sekundární akční barvu zvolenou uživatelem v nastavení.
+
 ## [2.1.0] - 1. 10. 2026
 ### MagicPlan Timeline novinky, inteligentní párování notifikací úkolů a moderní Material 3 ikony oznámení
 - **MagicPlan – Inteligentní párování přechodů úkolů**: Pokročilá detekce pohybů úkolů mezi frontou nepřiřazených a osobním plánem. Zamezení duplicitním notifikacím při přesunu úkolu do plánu, automatické upozornění při vrácení do fronty a detekce vyřešení při zmizení z plánu bez návratu.
