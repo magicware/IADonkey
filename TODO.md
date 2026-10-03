@@ -49,19 +49,15 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
     - **Zobrazení v UI**: Přehledný indikátor celkového součtu odpracovaných hodin vs. plánovaná kapacita (např. v záhlaví navigace dne vedle data a časového rozmezí).
     - **Vizuální párování**: Porovnání naplánovaných bloků na ose s reálně zapsanými výkazy (indikace splněno / rozpracováno / manko / přesčas).
 
-- [ ] **5. Ikony notifikací: Analýza přímého napojení Material Icons z aplikace vs. úprava vzhledu**
-  - **Popis**: Technická analýza možností vykreslování systémových ikon notifikací přímo z lokální sady Material Symbols / Icons integrovaných v aplikaci.
-  - **Body k řešení**:
-    - **Limity Windows Toast API**: Ověřit možnosti dynamického renderování ikon (Windows toasty vyžadují fyzický soubor na disku – např. dynamický offscreen Canvas / SVG export / Sharp nebo nativní renderer).
-    - **Alternativní vzhled ikon**: Pokud přímé napojení z webových fontů/SVG nebude za běhu Electronu dostatečně svižné či spolehlivé, přetvořit vybrané stávající rastrové ikony do nového, ještě čistšího vizuálního stylu.
-
-- [ ] **6. Přebírání dynamických barev přímo v notifikacích z nastavení aplikace**
-  - **Popis**: Zajištění, aby systémové notifikace a jejich ikony dynamicky respektovaly uživatelsky zvolené barvy z Nastavení IADonkey (primární barva vývoje, sekundární barva akcí/servisu apod.).
-  - **Body k řešení**:
-    - **Dynamické přegenerování ikon**: Automatické přegenerování / obarvení ikonek do mezipaměti (`userData` / cache) při uložení změn v konfiguraci témat nebo za běhu při spuštění.
-    - **Barevné sladění toastů**: Promítnutí aktuální primární barvy do toastů vývoje a sekundární akční barvy do toastů servisu.
-
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
+
+- [x] **5. & 6. Ikony notifikací (Material Symbols) a MagicPlan v Tray liště**
+  - **Popis**: Provedena technická analýza vykreslování systémových notifikací. Z důvodu maximální svižnosti a nulové zátěže na RAM a CPU bylo zvoleno řešení bez dynamického přebarvování za běhu. Všech 13 systémových notifikačních ikon bylo vygenerováno jako čisté 128x128 PNG s tmavým kruhovým podkladem (`#14151c`, border `#262834`) a oficiálními vektorovými glyfy Google Material Symbols:
+    - **Indigo (`#6366f1`)**: standardní nástroje a akce (`plan-dev`, `plan-service`, `plan-queue`, `quickCap`, `colorMaster`, `screenRuler`, `syncComplete`, `update`, `clipboard`).
+    - **Zelená (`#22c55e`)**: úspěch pro `plan-completed` (použit symbol `check` bez vnitřního kruhu).
+    - **Červená (`#ef4444`)**: kritické a chybové notifikace (`plan-critical`, `error`).
+    - **Žlutá (`#eab308`)**: testovací notifikace (`test`).
+  - **MagicPlan v Tray**: Pokud je v konfiguraci aktivní rozšíření MagicPlan (`config.extensions.magicplan`), zobrazí se v kontextové nabídce systémového Traye položka `MagicPlan – Plánování a úkoly` ve vlastní oddělené sekci (mimo DonkeyTools).
 
 - [x] **9. Sjednocení systémové ikony aplikace ve Windows (hlavní panel, Start menu, záhlaví oken a Tray lišta)**
   - **Popis**: Nahrazen starý 4-bitový (16 barev VGA) `icon.ico` novým plně 32-bitovým víceresolučním souborem (16, 24, 32, 48, 64, 128 a 256 px) s hladkým fialovým rámečkem `#585BD4` a bílým oslíkem přímo z kanonického `src/assets/icon.png`. Sjednoceny soubory `electron/assets/icon.ico`, `build/icon.ico`, `electron/assets/tray-icon.png` i `tray-icon.svg`. V `electron/windowManager.ts` opraven poškozený base64 fallback a napojeno dynamické načítání plnobarevné miniatury ikony pro Tray. Všechna místa (taskbar, Alt+Tab, Start menu, záhlaví oken i oznamovací oblast Tray) mají nyní identickou ikonu.

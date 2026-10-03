@@ -1336,7 +1336,19 @@ export class WindowManager {
       },
     ];
 
+    const isMagicPlanEnabled = Boolean(config?.extensions?.magicplan);
+
     const hasAnyTool = isQuickCapEnabled || isColorMasterEnabled || isScreenRulerEnabled || isEasyClipEnabled;
+
+    if (isMagicPlanEnabled) {
+      template.push({ type: 'separator' });
+      template.push({
+        label: 'MagicPlan – Plánování a úkoly',
+        click: () => {
+          this.openMagicPlanWindow();
+        },
+      });
+    }
 
     if (hasAnyTool) {
       template.push({ type: 'separator' });
