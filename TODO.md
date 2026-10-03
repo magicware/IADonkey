@@ -51,15 +51,7 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
 
-- [x] **5. & 6. Ikony notifikací (Material Symbols) a MagicPlan v Tray liště**
-  - **Popis**: Provedena technická analýza vykreslování systémových notifikací. Z důvodu maximální svižnosti a nulové zátěže na RAM a CPU bylo zvoleno řešení bez dynamického přebarvování za běhu. Všech 13 systémových notifikačních ikon bylo vygenerováno jako čisté 128x128 PNG s tmavým kruhovým podkladem (`#14151c`, border `#262834`) a oficiálními vektorovými glyfy Google Material Symbols:
-    - **Indigo (`#6366f1`)**: standardní nástroje a akce (`plan-dev`, `plan-service`, `plan-queue`, `quickCap`, `colorMaster`, `screenRuler`, `syncComplete`, `update`, `clipboard`).
-    - **Zelená (`#22c55e`)**: úspěch pro `plan-completed` (použit symbol `check` bez vnitřního kruhu).
-    - **Červená (`#ef4444`)**: kritické a chybové notifikace (`plan-critical`, `error`).
-    - **Žlutá (`#eab308`)**: testovací notifikace (`test`).
-  - **MagicPlan v Tray**: Pokud je v konfiguraci aktivní rozšíření MagicPlan (`config.extensions.magicplan`), zobrazí se v kontextové nabídce systémového Traye položka `MagicPlan – Plánování a úkoly` ve vlastní oddělené sekci (mimo DonkeyTools).
+*(Žádné – všechny dokončené úkoly byly otestovány a schváleny v checklistu)*
 
-- [x] **9. Sjednocení systémové ikony aplikace ve Windows (hlavní panel, Start menu, záhlaví oken a Tray lišta)**
-  - **Popis**: Nahrazen starý 4-bitový (16 barev VGA) `icon.ico` novým plně 32-bitovým víceresolučním souborem (16, 24, 32, 48, 64, 128 a 256 px) s hladkým fialovým rámečkem `#585BD4` a bílým oslíkem přímo z kanonického `src/assets/icon.png`. Sjednoceny soubory `electron/assets/icon.ico`, `build/icon.ico`, `electron/assets/tray-icon.png` i `tray-icon.svg`. V `electron/windowManager.ts` opraven poškozený base64 fallback a napojeno dynamické načítání plnobarevné miniatury ikony pro Tray. Všechna místa (taskbar, Alt+Tab, Start menu, záhlaví oken i oznamovací oblast Tray) mají nyní identickou ikonu.
 
 
