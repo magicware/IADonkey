@@ -49,9 +49,34 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
     - **Zobrazení v UI**: Přehledný indikátor celkového součtu odpracovaných hodin vs. plánovaná kapacita (např. v záhlaví navigace dne vedle data a časového rozmezí).
     - **Vizuální párování**: Porovnání naplánovaných bloků na ose s reálně zapsanými výkazy (indikace splněno / rozpracováno / manko / přesčas).
 
+- [ ] **5. MagicPlan: Integrace zobrazení víkendů**
+  - **Popis**: Zobrazení víkendových dnů v plánu, defaultně indikovaných jako 8h volno.
+  - **Požadavky**: Údaje o volnu/kapacitě přebírat dynamicky z dat plánu (ne hardcoded).
+
+- [ ] **6. MagicPlan: Inline správa osob a filtru JÁ přímo v časové ose (Timeline)**
+  - **Popis**: Možnost přidat/odebrat osobu a označit/odoznačit přepínač „JÁ“ přímo v rozhraní Timeline.
+  - **Požadavky**: Prolinkované akce přímo s konfigurací v Nastavení (obdobně jako již existující nastavení časového rozsahu).
+
+- [ ] **7. MagicPlan: Kompaktní zobrazení denního plánu**
+  - **Popis**: Přepínač v Nastavení pro aktivaci kompaktního zobrazení denního plánu pro úsporu vertikálního i horizontálního prostoru.
+
+- [ ] **8. MagicPlan: Zmenšení výšky úkolů v týdenním plánu**
+  - **Popis**: Zmenšení výšky jednotlivých bloků/úkolů v týdenním zobrazení cca o polovinu pro přehlednější zobrazení většího množství úkolů bez nutnosti scrollování.
+
+- [ ] **9. MagicPlan: Trvalé zapamatování přepínače „Všechny úkoly“**
+  - **Popis**: Uložení stavu přepínače „Všechny úkoly“ v okně MagicPlanu do konfigurace rozšíření (`config.extensions.magicplan`).
+  - **Požadavky**: Automatické prolinkování a uložení konfigurace ihned při změně switche.
+
+- [ ] **10. Nastavení: Zrušení barvy pozadí postranního panelu menu**
+  - **Popis**: Odstranění podbarvení bočního panelu navigace v okně Nastavení pro sjednocený, čistý borderless UI zážitek.
+
+- [ ] **11. Nastavení: Zmenšení ikon a položek v sekci Rozšíření v menu**
+  - **Popis**: Úprava vizuální hierarchie – zmenšení velikosti ikon a položek podsekce Rozšíření v postranním panelu Nastavení.
+
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
 
 *(Žádné – všechny dokončené úkoly byly otestovány a schváleny v checklistu)*
+
 
 
 
