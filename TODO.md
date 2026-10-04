@@ -55,28 +55,8 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
 
-- [x] **6. MagicPlan: Inline správa osob a filtru JÁ přímo v časové ose (Timeline)**
-  - **Popis**: Možnost přidat/odebrat osobu a označit/odoznačit přepínač „JÁ“ přímo v rozhraní Timeline (denní i týdenní přehled).
-  - **Stav**: Dokončeno. Placeholder „+ Přidat osobu“ s výběrem nepřidaných osob, kontextové menu tří teček u avatarů (posun nahoru/dolů, To jsem já / To nejsem já, vymazat) propojené s ukládáním do konfigurace.
+*(Všechny dokončené úkoly byly otestovány a schváleny v checklistu).*
 
-- [x] **7. MagicPlan: Kompaktní zobrazení denního plánu**
-  - **Popis**: Přepínač v Nastavení pro aktivaci kompaktního zobrazení denního plánu pro úsporu vertikálního i horizontálního prostoru.
-  - **Stav**: Dokončeno. Kompaktní výška karet 72px s dvouřádkovou typografií a zmenšenými mezerami.
-
-- [x] **8. MagicPlan: Zmenšení výšky úkolů v týdenním plánu**
-  - **Popis**: Zmenšení výšky jednotlivých bloků/úkolů v týdenním zobrazení cca o polovinu pro přehlednější zobrazení bez nutnosti scrollování.
-  - **Stav**: Dokončeno. Výška řádku zmenšena na 38px (karty 30px).
-
-- [x] **9. MagicPlan: Trvalé zapamatování přepínače „Všechny úkoly“**
-  - **Popis**: Uložení stavu přepínače „Všechny úkoly“ v okně MagicPlanu do konfigurace rozšíření (`config.magicplan.showAllTasks`).
-  - **Stav**: Dokončeno. Stav se automaticky ukládá při kliknutí na přepínač.
-
-- [x] **10. Nastavení: Zrušení barvy pozadí postranního panelu menu**
-  - **Popis**: Odstranění šedého podbarvení bočního panelu navigace (`bg-transparent`) v okně Nastavení pro sjednocený čistý borderless UI zážitek.
-
-- [x] **11. Nastavení: Zmenšení ikon a položek v sekci Rozšíření v menu**
-  - **Popis**: Úprava vizuální hierarchie – zmenšení velikosti ikon a položek podsekce Rozšíření v postranním panelu Nastavení.
-  - **Stav**: Dokončeno. Písmo 12px, ikony 16px, kompaktní padding py-1.5 s odsazením pl-6.
 
 
 
