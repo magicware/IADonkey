@@ -2352,7 +2352,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
               <div
                 className="absolute top-0 bottom-0 pointer-events-none z-40 outline-none"
                 style={{
-                  left: hasMultipleUsers ? '68px' : '0px',
+                  left: hasMultipleUsers ? '40px' : '0px',
                   right: '0px',
                 }}
               >
@@ -2386,8 +2386,8 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
             {viewMode === 'day' ? (
               <div className="w-full">
                 {/* Column Hour Sub-Markers Header Row */}
-            <div className="flex items-center gap-3 pb-3 mb-2 border-b border-white/[0.06]">
-              {hasMultipleUsers && <div className="w-14 shrink-0" />}
+            <div className="flex items-center gap-2 pb-3 mb-2 border-b border-white/[0.06]">
+              {hasMultipleUsers && <div className="w-8 shrink-0" />}
               <div
                 className="flex-1 grid text-xs text-gray-400 font-mono text-center items-center"
                 style={{ gridTemplateColumns: `repeat(${totalDayHours}, minmax(0, 1fr))` }}
@@ -2395,7 +2395,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                 {daySlotMarkers.map((slot, i) => {
                   if (i === 0) {
                     return (
-                      <div key={i} className="min-w-0">
+                      <div key={i} className="min-w-0 mx-[2.5px]">
                         {isEditingStart ? (
                           <div className="py-0.5 px-1 bg-white/[0.06] border border-indigo-500/50 rounded-lg flex items-center justify-center gap-1 shadow-sm">
                             <input
@@ -2440,7 +2440,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
 
                   if (i === totalDayHours - 1) {
                     return (
-                      <div key={i} className="min-w-0">
+                      <div key={i} className="min-w-0 mx-[2.5px]">
                         {isEditingEnd ? (
                           <div className="py-0.5 px-1 bg-white/[0.06] border border-indigo-500/50 rounded-lg flex items-center justify-center gap-1 shadow-sm">
                             <span className="text-[10px] text-gray-500 shrink-0">8h</span>
@@ -2484,7 +2484,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                   }
 
                   return (
-                    <div key={i} className="py-1 bg-white/[0.02] rounded-lg truncate px-1">
+                    <div key={i} className="py-1 bg-white/[0.02] rounded-lg truncate px-1 mx-[2.5px]">
                       {slot}
                     </div>
                   );
@@ -2500,9 +2500,9 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                 const isMe = Boolean(currentUser && isTaskForUser(uSched.userName, currentUser, availablePersons));
 
                 return (
-                  <div key={uSched.userName || 'single'} className="flex items-center gap-3">
+                  <div key={uSched.userName || 'single'} className="flex items-center gap-2">
                     {hasMultipleUsers && (
-                      <div className="w-14 shrink-0 flex items-center justify-center relative">
+                      <div className="w-8 shrink-0 flex items-center justify-center relative">
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
@@ -2665,7 +2665,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                       gridRow: 1,
                                       opacity: isNaMuted ? 0.1 : 1,
                                     }}
-                                    className={`rounded-2xl mx-[1px] transition-all duration-200 select-none overflow-hidden min-w-0 timeline-task-unavailable text-zinc-300 cursor-default ${
+                                    className={`rounded-2xl mx-[2.5px] transition-all duration-200 select-none overflow-hidden min-w-0 timeline-task-unavailable text-zinc-300 cursor-default ${
                                       isCompact
                                         ? 'h-[60px] px-3 py-1.5 flex items-center justify-between'
                                         : 'h-[112px] p-2.5 flex flex-col justify-between gap-1'
@@ -2735,7 +2735,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                   key={block.id}
                                   style={blockStyle}
                                   onClick={isMuted ? undefined : () => onOpenTask(task)}
-                                  className={`timeline-task-card group mx-[1px] transition-all duration-200 select-none overflow-hidden min-w-0 text-white ${
+                                  className={`timeline-task-card group mx-[2.5px] transition-all duration-200 select-none overflow-hidden min-w-0 text-white ${
                                     isCompact
                                       ? 'h-[60px] px-3 py-1.5 flex items-center justify-between'
                                       : 'h-[112px] p-2.5 flex flex-col justify-between gap-1'
@@ -2936,7 +2936,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                 gridColumn: `${((dayFree.startCol - 1) % totalDaySlots) + 1} / span ${dayFree.spanCols}`,
                                 gridRow: 1,
                               }}
-                              className={`rounded-2xl mx-[1px] border border-dashed border-white/10 bg-white/[0.015] hover:bg-white/[0.03] text-gray-500 text-xs flex items-center justify-center gap-2 transition select-none ${
+                              className={`rounded-2xl mx-[2.5px] border border-dashed border-white/10 bg-white/[0.015] hover:bg-white/[0.03] text-gray-500 text-xs flex items-center justify-center gap-2 transition select-none ${
                                 isCompact ? 'h-[60px] px-3 py-1.5' : 'h-[112px] p-4'
                               }`}
                             >
@@ -2954,10 +2954,9 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                   );
                 })}
 
-                {/* Row placeholder to add a new person */}
+                {/* Row placeholder to add a new person (aligned flush left) */}
                 {onUpdateUserColumns && (
-                  <div className="pt-1 flex items-center">
-                    {hasMultipleUsers && <div className="w-14 shrink-0" />}
+                  <div className="pt-2 flex items-center">
                     {!isAddingPerson ? (
                       <button
                         type="button"
@@ -3011,8 +3010,8 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
           /* VIEW 2: TÝDENNÍ PŘEHLED (40 sloupců, sloučené přetékající bloky, podpora pro více uživatelů) */
           <div className="w-full">
             {/* 5 Day Headers (Po, Út, St, Čt, Pá) */}
-            <div className="flex items-center gap-3 border-b border-white/[0.06] pb-3 mb-2">
-              {hasMultipleUsers && <div className="w-14 shrink-0" />}
+            <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3 mb-2">
+              {hasMultipleUsers && <div className="w-8 shrink-0" />}
               <div className="flex-1 px-[2px] grid grid-cols-5 gap-0">
                 {days.slice(0, 5).map((day, dIdx) => {
                   const dayBlocks = userSchedules.flatMap((u) =>
@@ -3076,9 +3075,9 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                 const isMe = Boolean(currentUser && isTaskForUser(uSched.userName, currentUser, availablePersons));
 
                 return (
-                  <div key={uSched.userName || 'single'} className="flex items-center gap-3">
+                  <div key={uSched.userName || 'single'} className="flex items-center gap-2">
                     {hasMultipleUsers && (
-                      <div className="w-14 shrink-0 flex items-center justify-center relative">
+                      <div className="w-8 shrink-0 flex items-center justify-center relative">
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
@@ -3288,8 +3287,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
 
               {/* Row placeholder to add a new person */}
               {onUpdateUserColumns && (
-                <div className="pt-1 flex items-center">
-                  {hasMultipleUsers && <div className="w-14 shrink-0" />}
+                <div className="pt-2 flex items-center">
                   {!isAddingPerson ? (
                     <button
                       type="button"
@@ -3340,6 +3338,61 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
             </div>
           </div>
         )}
+          </div>
+        </div>
+
+        {/* Week Capacity & Workload Summary Bar (Inside timeline box with top divider) */}
+        <div className="pt-4 mt-4 border-t border-white/[0.06] flex items-center justify-between gap-4 flex-wrap text-xs text-gray-400 select-none">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span
+                className="w-3.5 h-3.5 rounded flex items-center justify-center border border-white/10 shadow-sm"
+                style={{ backgroundColor: hexToRgba(primaryColor, '#6366f1', 0.85) }}
+              >
+                <span className="material-symbols-outlined text-[10px] text-white">code</span>
+              </span>
+              <span>Vývoj</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                className="w-3.5 h-3.5 rounded flex items-center justify-center border border-white/10 shadow-sm"
+                style={{ backgroundColor: hexToRgba(actionsColor, '#a855f7', 0.85) }}
+              >
+                <span className="material-symbols-outlined text-[10px] text-white">build</span>
+              </span>
+              <span>Servisy & HD</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                className="w-3.5 h-3.5 rounded flex items-center justify-center border border-white/10 shadow-sm text-zinc-300"
+                style={{ backgroundColor: 'rgba(39, 39, 42, 0.85)' }}
+              >
+                <span className="material-symbols-outlined text-[10px]">celebration</span>
+              </span>
+              <span>Volno / Absence</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-sm text-red-400">warning</span>
+              <span>Kritická priorita</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full border border-dashed border-gray-500" />
+              <span>Volná kapacita</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 font-mono">
+            <span>
+              Naplánováno:{' '}
+              <strong className="text-indigo-300 font-bold">{totalWeekScheduledHours}h</strong> / {statsCapacityHours}h
+            </span>
+            <span>•</span>
+            <span>
+              Zbývá v týdnu:{' '}
+              <strong className="text-gray-300 font-bold">
+                {Math.max(0, statsCapacityHours - totalWeekScheduledHours)}h
+              </strong>
+            </span>
           </div>
         </div>
       </div>
@@ -3453,64 +3506,9 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
         </div>
       )}
 
-      {/* Week Capacity & Workload Summary Bar */}
-      <div className="p-4 rounded-2xl bg-white/[0.02] flex items-center justify-between gap-4 flex-wrap text-xs text-gray-400 select-none">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span
-              className="w-3.5 h-3.5 rounded flex items-center justify-center border border-white/10 shadow-sm"
-              style={{ backgroundColor: hexToRgba(primaryColor, '#6366f1', 0.85) }}
-            >
-              <span className="material-symbols-outlined text-[10px] text-white">code</span>
-            </span>
-            <span>Vývoj</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span
-              className="w-3.5 h-3.5 rounded flex items-center justify-center border border-white/10 shadow-sm"
-              style={{ backgroundColor: hexToRgba(actionsColor, '#a855f7', 0.85) }}
-            >
-              <span className="material-symbols-outlined text-[10px] text-white">build</span>
-            </span>
-            <span>Servisy & HD</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span
-              className="w-3.5 h-3.5 rounded flex items-center justify-center border border-white/10 shadow-sm text-zinc-300"
-              style={{ backgroundColor: 'rgba(39, 39, 42, 0.85)' }}
-            >
-              <span className="material-symbols-outlined text-[10px]">celebration</span>
-            </span>
-            <span>Volno / Absence</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm text-red-400">warning</span>
-            <span>Kritická priorita</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full border border-dashed border-gray-500" />
-            <span>Volná kapacita</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 font-mono">
-          <span>
-            Naplánováno:{' '}
-            <strong className="text-indigo-300 font-bold">{totalWeekScheduledHours}h</strong> / {statsCapacityHours}h
-          </span>
-          <span>•</span>
-          <span>
-            Zbývá v týdnu:{' '}
-            <strong className="text-gray-300 font-bold">
-              {Math.max(0, statsCapacityHours - totalWeekScheduledHours)}h
-            </strong>
-          </span>
-        </div>
-      </div>
-
       {/* Overflow Tasks Section */}
       {allOverflowTasks.length > 0 && (
-        <div className="p-4 rounded-2xl bg-white/[0.02] space-y-3">
+        <div className="space-y-3 pt-2">
           <h4 className="text-xs font-semibold text-gray-300 flex items-center gap-2 select-none">
             <span className="material-symbols-outlined text-sm text-indigo-400">arrow_forward</span>
             <span>Úkoly přesahující do dalšího týdne ({allOverflowTasks.length})</span>
