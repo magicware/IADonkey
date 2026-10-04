@@ -1,15 +1,66 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import type { AppConfig, MagicPlanData, PlanTaskItem, PlanDayInfo, MagicPlanSettings } from '../types';
+import type { AppConfig, MagicPlanData, PlanTaskItem, PlanDayInfo, MagicPlanSettings, PlanPersonInfo } from '../types';
 import { applyPrimaryColor, applyActionsColor } from '../utils/theme';
 
-export const getUserInitials = (name?: string): string => {
+export const extractPersonNameAndShortcut = (nameOrText?: string): { name: string; shortcut: string } => {
+  if (!nameOrText) return { name: '', shortcut: '' };
+  const clean = nameOrText.trim();
+  const parenMatch = clean.match(/\(([^)]+)\)$/);
+  if (parenMatch) {
+    const shortcut = parenMatch[1].trim();
+    const name = clean.replace(/\s*\([^)]+\)$/, '').trim();
+    return { name, shortcut };
+  }
+  return { name: clean, shortcut: '' };
+};
+
+export const getUserInitials = (name?: string, availablePersons?: PlanPersonInfo[]): string => {
   if (!name) return '??';
   const clean = name.trim();
-  const parts = clean.split(/[\s,.-]+/).filter(Boolean);
+
+  // 1. Zkusit najít v availablePersons podle ID nebo jména
+  if (availablePersons && availablePersons.length > 0) {
+    const p = availablePersons.find(
+      (x) =>
+        String(x.id).trim().toLowerCase() === clean.toLowerCase() ||
+        (x.name && x.name.trim().toLowerCase() === clean.toLowerCase()) ||
+        (x.cleanName && x.cleanName.trim().toLowerCase() === clean.toLowerCase()) ||
+        (x.shortcut && x.shortcut.trim().toLowerCase() === clean.toLowerCase())
+    );
+    if (p?.shortcut) return p.shortcut.toUpperCase();
+  }
+
+  // 2. Závorka např. "Kulhánek Petr (PKU)" -> zkratka je ze závorky PKU
+  const parenMatch = clean.match(/\(([^)]+)\)/);
+  if (parenMatch) {
+    return parenMatch[1].trim().toUpperCase();
+  }
+
+  // 3. Fallback: odstranit závorky a vzít iniciály ze jména
+  const cleanWithoutParen = clean.replace(/\([^)]*\)/g, '').trim();
+  const parts = cleanWithoutParen.split(/[\s,.-]+/).filter(Boolean);
   if (parts.length === 1) {
     return parts[0].slice(0, 3).toUpperCase();
   }
   return parts.slice(0, 3).map((p) => p[0].toUpperCase()).join('');
+};
+
+export const formatUserDisplayName = (name?: string, availablePersons?: PlanPersonInfo[]): string => {
+  if (!name) return '';
+  const clean = name.trim();
+  if (availablePersons && availablePersons.length > 0) {
+    const p = availablePersons.find(
+      (x) =>
+        String(x.id).trim().toLowerCase() === clean.toLowerCase() ||
+        (x.name && x.name.trim().toLowerCase() === clean.toLowerCase()) ||
+        (x.cleanName && x.cleanName.trim().toLowerCase() === clean.toLowerCase()) ||
+        (x.shortcut && x.shortcut.trim().toLowerCase() === clean.toLowerCase())
+    );
+    if (p?.cleanName) return p.cleanName;
+    if (p?.name) return p.name.replace(/\s*\([^)]*\)/g, '').trim();
+  }
+  const { name: parsedName } = extractPersonNameAndShortcut(clean);
+  return parsedName || clean;
 };
 
 export const formatPlanDate = (dStr?: string): string => {
@@ -511,7 +562,7 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
   const currentUserDisplayName = useMemo(() => {
     if (!currentUser) return '';
     const p = availablePersons.find((x) => String(x.id).trim().toLowerCase() === currentUser.toLowerCase());
-    return p?.name || currentUser;
+    return formatUserDisplayName(p?.name || currentUser, availablePersons);
   }, [currentUser, availablePersons]);
 
   const handleToggleShowAllTasks = useCallback(async () => {
@@ -562,7 +613,7 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
     const raw = (config.magicplan?.unassignedColumn || '').trim();
     if (!raw) return 'Nepřiřazené úkoly';
     const p = availablePersons.find((x) => String(x.id).trim().toLowerCase() === raw.toLowerCase());
-    return p?.name || raw;
+    return formatUserDisplayName(p?.name || raw, availablePersons);
   }, [config.magicplan?.unassignedColumn, availablePersons]);
 
   const distinctUsers = useMemo(() => {
@@ -580,7 +631,7 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
       const norm = nameOrId.trim().toLowerCase();
       if (!norm) continue;
       const p = availablePersons.find((x) => String(x.id).trim().toLowerCase() === norm);
-      const displayName = p?.name || nameOrId.trim();
+      const displayName = formatUserDisplayName(p?.name || nameOrId.trim(), availablePersons);
       if (!canonical.some((c) => c.trim().toLowerCase() === displayName.toLowerCase())) {
         canonical.push(displayName);
       }
@@ -589,9 +640,9 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
     if (canonical.length === 0) {
       for (const t of myTasks) {
         if (t.userName && t.userName.trim()) {
-          const norm = t.userName.trim().toLowerCase();
-          if (!canonical.some((c) => c.trim().toLowerCase() === norm)) {
-            canonical.push(t.userName.trim());
+          const displayName = formatUserDisplayName(t.userName.trim(), availablePersons);
+          if (!canonical.some((c) => c.trim().toLowerCase() === displayName.toLowerCase())) {
+            canonical.push(displayName);
           }
         }
       }
@@ -2157,7 +2208,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
 
       return {
         userName: user,
-        initials: getUserInitials(user),
+        initials: getUserInitials(user, availablePersons),
         ...calculateScheduleForTasks(userTasks, days, todayIdx, totalDayHours),
       };
     });
@@ -2449,7 +2500,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                               ? 'bg-indigo-500/20 text-indigo-400 font-bold'
                               : 'bg-white/[0.08] text-gray-300'
                           }`}
-                          title={isMe ? `${uSched.userName} (To jste vy)` : `Uživatel: ${uSched.userName}`}
+                          title={isMe ? `${formatUserDisplayName(uSched.userName, availablePersons)} (To jste vy)` : `Uživatel: ${formatUserDisplayName(uSched.userName, availablePersons)}`}
                         >
                           {uSched.initials}
                         </div>
@@ -2554,7 +2605,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                 opacity: searchQuery?.trim() ? 0.1 : 1,
                               }}
                               className={`rounded-2xl p-4 border border-dashed border-white/10 bg-white/[0.015] text-gray-500 text-xs flex items-center justify-center gap-3 select-none transition-all duration-200 ${
-                                isCompact ? 'h-[72px] !p-2' : 'h-[112px]'
+                                isCompact ? 'h-[60px] !p-2' : 'h-[112px]'
                               }`}
                             >
                               <span className={`material-symbols-outlined opacity-40 ${isCompact ? 'text-lg' : 'text-2xl'}`}>
@@ -2591,23 +2642,43 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                       gridRow: 1,
                                       opacity: isNaMuted ? 0.1 : 1,
                                     }}
-                                    className={`rounded-2xl p-2.5 flex flex-col justify-between gap-1 transition-all duration-200 select-none overflow-hidden min-w-0 timeline-task-unavailable text-zinc-300 cursor-default ${
-                                      isCompact ? 'h-[72px] !p-2' : 'h-[112px]'
+                                    className={`rounded-2xl transition-all duration-200 select-none overflow-hidden min-w-0 timeline-task-unavailable text-zinc-300 cursor-default ${
+                                      isCompact
+                                        ? 'h-[60px] px-3 py-2 flex items-center justify-between'
+                                        : 'h-[112px] p-2.5 flex flex-col justify-between gap-1'
                                     } ${isNaMuted ? 'pointer-events-none' : ''}`}
                                   >
-                                    <div className="min-w-0 flex flex-col gap-0.5">
-                                      <div className="font-bold text-xs text-white truncate leading-tight">
-                                        Nedostupný / Volno
+                                    {isCompact ? (
+                                      <div className="flex items-center justify-between w-full min-w-0 gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <span className="material-symbols-outlined text-lg text-zinc-400 shrink-0">
+                                            celebration
+                                          </span>
+                                          <span className="font-bold text-xs text-white truncate">
+                                            Nedostupný / Volno
+                                          </span>
+                                        </div>
+                                        <span className="font-mono text-xs text-zinc-300 font-bold shrink-0">
+                                          {chunkHours === totalDayHours ? `${chunkHours}h` : `${chunkHours}h`}
+                                        </span>
                                       </div>
-                                      <div className="font-mono text-xs text-zinc-400 font-bold pt-0.5">
-                                        {chunkHours === totalDayHours ? `${chunkHours}h (celý den)` : `${chunkHours}h`}
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center justify-end text-[10px]">
-                                      <span className="material-symbols-outlined text-sm text-zinc-400">
-                                        celebration
-                                      </span>
-                                    </div>
+                                    ) : (
+                                      <>
+                                        <div className="min-w-0 flex flex-col gap-0.5">
+                                          <div className="font-bold text-xs text-white truncate leading-tight">
+                                            Nedostupný / Volno
+                                          </div>
+                                          <div className="font-mono text-xs text-zinc-400 font-bold pt-0.5">
+                                            {chunkHours === totalDayHours ? `${chunkHours}h (celý den)` : `${chunkHours}h`}
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center justify-end text-[10px]">
+                                          <span className="material-symbols-outlined text-sm text-zinc-400">
+                                            celebration
+                                          </span>
+                                        </div>
+                                      </>
+                                    )}
                                   </div>
                                 );
                               }
@@ -2641,35 +2712,86 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                   key={block.id}
                                   style={blockStyle}
                                   onClick={isMuted ? undefined : () => onOpenTask(task)}
-                                  className={`timeline-task-card p-2.5 flex flex-col justify-between transition-all duration-200 select-none overflow-hidden min-w-0 text-white ${
-                                    isCompact ? 'h-[72px] !p-2 gap-0.5' : 'h-[112px] gap-1'
+                                  className={`timeline-task-card group transition-all duration-200 select-none overflow-hidden min-w-0 text-white ${
+                                    isCompact
+                                      ? 'h-[60px] px-3 py-2 flex items-center justify-between'
+                                      : 'h-[112px] p-2.5 flex flex-col justify-between gap-1'
                                   } ${isMuted ? 'pointer-events-none' : 'cursor-pointer'}`}
                                 >
                                   {isCompact ? (
-                                    <>
-                                      <div className="min-w-0 flex items-center justify-between gap-1.5">
-                                        <div className="font-bold text-xs text-white truncate leading-tight flex-1">
-                                          {task.customName || task.title}
-                                        </div>
-                                        <span className="font-mono font-bold text-xs shrink-0 text-white/95">
-                                          {chunkHours}h
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center justify-between gap-1 text-[10px] min-w-0">
-                                        <div className="flex items-center gap-1.5 min-w-0 truncate text-white/80">
-                                          {displayCode && displayCode !== 'R0' && (
-                                            <span className="px-1.5 py-0.2 rounded font-mono font-semibold bg-white/15 text-white text-[10px] shrink-0">
-                                              {displayCode}
+                                    <div className="relative w-full h-full flex items-center min-w-0 overflow-hidden">
+                                      {/* Základní jednořádkový stav: [ikona typ velká + kritická] Název [chip zadavatele] */}
+                                      <div className="flex items-center gap-2 min-w-0 w-full group-hover:hidden select-none">
+                                        <div className="relative flex items-center shrink-0">
+                                          <span className="material-symbols-outlined text-xl opacity-90 text-white">
+                                            {isCompleted ? 'check_circle' : isService ? 'build' : 'code'}
+                                          </span>
+                                          {isCrit && (
+                                            <span
+                                              className="material-symbols-outlined text-[13px] text-red-400 absolute -top-1.5 -right-1.5 drop-shadow"
+                                              title="Kritická priorita"
+                                            >
+                                              warning
                                             </span>
                                           )}
-                                          {task.project && <span className="truncate">{task.project}</span>}
                                         </div>
-                                        <div className="flex items-center gap-1 shrink-0">
-                                          {isCrit && <span className="material-symbols-outlined text-xs text-rose-400">warning</span>}
-                                          <span className="material-symbols-outlined text-xs opacity-75">{isService ? 'build' : 'code'}</span>
-                                        </div>
+
+                                        <span className="font-bold text-xs text-white truncate min-w-0 flex-1 leading-snug">
+                                          {task.customName || task.title}
+                                        </span>
+
+                                        {task.author && (
+                                          <span
+                                            className="px-2 py-0.5 rounded-full font-mono font-bold text-[10px] bg-white/20 text-white shrink-0 shadow-sm"
+                                            title={`Zadavatel: ${task.author}`}
+                                          >
+                                            {task.author}
+                                          </span>
+                                        )}
                                       </div>
-                                    </>
+
+                                      {/* Hover stav (při najetí myši skryje původní info a zobrazí): Počet hodin | Projekt | úkol Txxxxx */}
+                                      <div className="hidden group-hover:flex items-center gap-2 min-w-0 w-full text-xs text-white select-none animate-fade-in">
+                                        <span className="font-mono font-bold shrink-0 text-white bg-white/15 px-2 py-0.5 rounded-full">
+                                          {isSplit ? `${chunkHours}h (${totalHours}h)` : `${chunkHours}h`}
+                                        </span>
+
+                                        <span className="text-white/40 shrink-0 font-bold">•</span>
+
+                                        <span className="truncate min-w-0 font-medium text-white/90" title={task.project || 'Bez projektu'}>
+                                          {task.project || '–'}
+                                        </span>
+
+                                        {displayCode && displayCode !== 'R0' && (
+                                          <>
+                                            <span className="text-white/40 shrink-0 font-bold">•</span>
+                                            {isGoddayTask(task) ? (
+                                              <span
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  onOpenTask(task);
+                                                }}
+                                                className="px-2 py-0.5 rounded-full font-mono font-bold text-[10px] bg-amber-500/20 text-amber-300 transition cursor-pointer shrink-0"
+                                                title={task.url ? 'Otevřít odkaz úkolu' : 'Godday úkol'}
+                                              >
+                                                godday
+                                              </span>
+                                            ) : (
+                                              <span
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  onOpenCodeLink(displayCode, task, e);
+                                                }}
+                                                className="px-2 py-0.5 rounded-full font-mono font-bold text-[10px] bg-white/20 hover:bg-white/30 text-white transition cursor-pointer shrink-0"
+                                                title="Otevřít v TaskManageru"
+                                              >
+                                                {displayCode}
+                                              </span>
+                                            )}
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
                                   ) : (
                                     <>
                                       {/* Content area: Title, Project, and Part/Hours row */}
@@ -2932,7 +3054,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                               ? 'bg-indigo-500/20 text-indigo-400 font-bold'
                               : 'bg-white/[0.08] text-gray-300'
                           }`}
-                          title={isMe ? `${uSched.userName} (To jste vy)` : `Uživatel: ${uSched.userName}`}
+                          title={isMe ? `${formatUserDisplayName(uSched.userName, availablePersons)} (To jste vy)` : `Uživatel: ${formatUserDisplayName(uSched.userName, availablePersons)}`}
                         >
                           {uSched.initials}
                         </div>
@@ -3449,7 +3571,7 @@ const ListView: React.FC<ListViewProps> = ({
                 <div className="flex items-center justify-center">
                   <span
                     className="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-300 font-mono text-[11px] font-bold flex items-center justify-center text-center shadow-sm select-none"
-                    title={`Přiřazeno: ${task.userName || '–'}`}
+                    title={`Přiřazeno: ${formatUserDisplayName(task.userName) || '–'}`}
                   >
                     {getUserInitials(task.userName)}
                   </span>
@@ -3725,7 +3847,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                 ? 'bg-emerald-500/20 text-emerald-300'
                 : 'bg-indigo-500/20 text-indigo-300'
             }`}
-            title={`Přiřazeno: ${task.userName}`}
+            title={`Přiřazeno: ${formatUserDisplayName(task.userName)}`}
           >
             {getUserInitials(task.userName)}
           </div>

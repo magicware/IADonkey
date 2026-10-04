@@ -8077,6 +8077,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
                     </label>
                   </div>
+
+                  {/* Trvalé zobrazení všech úkolů */}
+                  <div className="flex items-center justify-between gap-4 p-4 bg-white/[0.02] border border-white/[0.04] rounded-2xl">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-semibold text-white block">
+                        Zobrazit úkoly všech osob
+                      </span>
+                      <span className="text-[11px] text-gray-400">
+                        Při otevření MagicPlanu se výchozivě zobrazí úkoly všech sledovaných osob namísto pouze vašich
+                      </span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={formData.magicplan?.showAllTasks === true}
+                        onChange={(e) => {
+                          const updated = {
+                            ...formData,
+                            magicplan: {
+                              ...formData.magicplan,
+                              showAllTasks: e.target.checked,
+                            },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
+                    </label>
+                  </div>
                 </div>
 
                 {/* Test button and feedback */}
