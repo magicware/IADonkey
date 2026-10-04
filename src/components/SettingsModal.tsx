@@ -5054,7 +5054,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   return (
     <div className="w-full h-full flex bg-[#0e0f12] text-gray-200 select-none overflow-hidden font-sans">
       {/* Left Sidebar */}
-      <aside className="w-60 bg-transparent flex flex-col shrink-0 z-10 border-r border-white/[0.04]">
+      <aside className="w-60 bg-transparent flex flex-col shrink-0 z-10">
         {/* Sidebar Brand Header */}
         <div className="p-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -5117,132 +5117,137 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
           </button>
 
-          {/* MagicGate tab - visible only when extension is enabled */}
-          {formData.extensions?.magicgate && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('magicgate')}
-              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
-                activeTab === 'magicgate'
-                  ? 'bg-amber-500/20 text-amber-200 font-semibold shadow-sm'
-                  : 'text-gray-400 hover:text-amber-200 hover:bg-white/[0.04]'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px] text-amber-400">security</span>
-                <span>MagicGate</span>
-              </div>
-            </button>
-          )}
+          {/* Sub-items for enabled extensions: collapsed unless extensions or one of extension tabs is active */}
+          {['extensions', 'magicgate', 'mlog', 'magicplan', 'github', 'vscode', 'android-studio', 'donkey-tools'].includes(activeTab) && (
+            <div className="space-y-0.5 animate-in fade-in duration-150">
+              {/* MagicGate tab - visible only when extension is enabled */}
+              {formData.extensions?.magicgate && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('magicgate')}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
+                    activeTab === 'magicgate'
+                      ? 'bg-amber-500/20 text-amber-200 font-semibold shadow-sm'
+                      : 'text-gray-400 hover:text-amber-200 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[16px] text-amber-400">security</span>
+                    <span>MagicGate</span>
+                  </div>
+                </button>
+              )}
 
-          {/* MLog tab - visible only when extension is enabled */}
-          {formData.extensions?.mlog && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('mlog')}
-              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
-                activeTab === 'mlog'
-                  ? 'bg-sky-500/20 text-sky-200 font-semibold shadow-sm'
-                  : 'text-gray-400 hover:text-sky-200 hover:bg-white/[0.04]'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px] text-sky-400">support_agent</span>
-                <span>Taskmanager</span>
-              </div>
-            </button>
-          )}
+              {/* MLog tab - visible only when extension is enabled */}
+              {formData.extensions?.mlog && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('mlog')}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
+                    activeTab === 'mlog'
+                      ? 'bg-sky-500/20 text-sky-200 font-semibold shadow-sm'
+                      : 'text-gray-400 hover:text-sky-200 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[16px] text-sky-400">support_agent</span>
+                    <span>Taskmanager</span>
+                  </div>
+                </button>
+              )}
 
-          {/* MagicPlan tab - visible only when extension is enabled */}
-          {Boolean(formData.extensions?.magicplan) && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('magicplan')}
-              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
-                activeTab === 'magicplan'
-                  ? 'bg-cyan-500/20 text-cyan-200 font-semibold shadow-sm'
-                  : 'text-gray-400 hover:text-cyan-200 hover:bg-white/[0.04]'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px] text-cyan-400">calendar_month</span>
-                <span>MagicPlan</span>
-              </div>
-            </button>
-          )}
+              {/* MagicPlan tab - visible only when extension is enabled */}
+              {Boolean(formData.extensions?.magicplan) && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('magicplan')}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
+                    activeTab === 'magicplan'
+                      ? 'bg-cyan-500/20 text-cyan-200 font-semibold shadow-sm'
+                      : 'text-gray-400 hover:text-cyan-200 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[16px] text-cyan-400">calendar_month</span>
+                    <span>MagicPlan</span>
+                  </div>
+                </button>
+              )}
 
-          {/* GitHub tab - visible only when extension is enabled */}
-          {formData.extensions?.github && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('github')}
-              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
-                activeTab === 'github'
-                  ? 'bg-emerald-500/20 text-emerald-200 font-semibold shadow-sm'
-                  : 'text-gray-400 hover:text-emerald-200 hover:bg-white/[0.04]'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px] text-emerald-400">
-                  folder_code
-                </span>
-                <span>GitHub</span>
-              </div>
-            </button>
-          )}
+              {/* GitHub tab - visible only when extension is enabled */}
+              {formData.extensions?.github && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('github')}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
+                    activeTab === 'github'
+                      ? 'bg-emerald-500/20 text-emerald-200 font-semibold shadow-sm'
+                      : 'text-gray-400 hover:text-emerald-200 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[16px] text-emerald-400">
+                      folder_code
+                    </span>
+                    <span>GitHub</span>
+                  </div>
+                </button>
+              )}
 
-          {/* VS Code tab - visible only when extension is enabled */}
-          {formData.extensions?.vscode && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('vscode')}
-              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
-                activeTab === 'vscode'
-                  ? 'bg-cyan-500/20 text-cyan-200 font-semibold shadow-sm'
-                  : 'text-gray-400 hover:text-cyan-200 hover:bg-white/[0.04]'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px] text-cyan-400">code</span>
-                <span>VS Code</span>
-              </div>
-            </button>
-          )}
+              {/* VS Code tab - visible only when extension is enabled */}
+              {formData.extensions?.vscode && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('vscode')}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
+                    activeTab === 'vscode'
+                      ? 'bg-cyan-500/20 text-cyan-200 font-semibold shadow-sm'
+                      : 'text-gray-400 hover:text-cyan-200 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[16px] text-cyan-400">code</span>
+                    <span>VS Code</span>
+                  </div>
+                </button>
+              )}
 
-          {/* Android Studio tab - visible only when extension is enabled */}
-          {formData.extensions?.androidStudio && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('android-studio')}
-              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
-                activeTab === 'android-studio'
-                  ? 'bg-pink-500/20 text-pink-200 font-semibold shadow-sm'
-                  : 'text-gray-400 hover:text-pink-200 hover:bg-white/[0.04]'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px] text-pink-400">android</span>
-                <span>Android Studio</span>
-              </div>
-            </button>
-          )}
+              {/* Android Studio tab - visible only when extension is enabled */}
+              {formData.extensions?.androidStudio && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('android-studio')}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
+                    activeTab === 'android-studio'
+                      ? 'bg-pink-500/20 text-pink-200 font-semibold shadow-sm'
+                      : 'text-gray-400 hover:text-pink-200 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[16px] text-pink-400">android</span>
+                    <span>Android Studio</span>
+                  </div>
+                </button>
+              )}
 
-          {/* DonkeyTools tab - visible only when extension is enabled */}
-          {formData.extensions?.donkeyTools && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('donkey-tools')}
-              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
-                activeTab === 'donkey-tools'
-                  ? 'bg-rose-500/20 text-rose-200 font-semibold shadow-sm'
-                  : 'text-gray-400 hover:text-rose-200 hover:bg-white/[0.04]'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px] text-rose-400">construction</span>
-                <span>DonkeyTools</span>
-              </div>
-            </button>
+              {/* DonkeyTools tab - visible only when extension is enabled */}
+              {formData.extensions?.donkeyTools && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('donkey-tools')}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
+                    activeTab === 'donkey-tools'
+                      ? 'bg-rose-500/20 text-rose-200 font-semibold shadow-sm'
+                      : 'text-gray-400 hover:text-rose-200 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[16px] text-rose-400">construction</span>
+                    <span>DonkeyTools</span>
+                  </div>
+                </button>
+              )}
+            </div>
           )}
 
           {/* Snippets tab */}
@@ -10554,7 +10559,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 className="w-full h-[38px] flex items-center justify-between px-3 rounded-lg bg-black/40 border border-white/10 hover:border-white/20 text-left transition-colors cursor-pointer"
                               >
                                 <div className="flex items-center gap-2 truncate">
-                                  <span className="material-symbols-outlined text-sm text-cyan-400 shrink-0">
+                                  <span className="material-symbols-outlined text-sm text-amber-400 shrink-0">
                                     {magicPlanSituationsList.find((s) => s.id === testSituationId)?.icon || 'notifications'}
                                   </span>
                                   <span className="text-xs text-gray-200 font-medium truncate">
@@ -10580,11 +10585,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                         }}
                                         className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left text-xs transition-colors cursor-pointer ${
                                           isSelected
-                                            ? 'bg-cyan-500/15 text-cyan-200 font-medium'
+                                            ? 'bg-amber-500/15 text-amber-200 font-medium'
                                             : 'text-gray-300 hover:bg-white/5 hover:text-white'
                                         }`}
                                       >
-                                        <span className="material-symbols-outlined text-sm shrink-0 text-cyan-400">
+                                        <span className="material-symbols-outlined text-sm shrink-0 text-amber-400">
                                           {sit.icon}
                                         </span>
                                         <div className="flex-1 min-w-0">
@@ -10597,7 +10602,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                           <p className="text-[10px] text-gray-400 truncate mt-0.5">{sit.desc}</p>
                                         </div>
                                         {isSelected && (
-                                          <span className="material-symbols-outlined text-xs text-cyan-400 shrink-0">
+                                          <span className="material-symbols-outlined text-xs text-amber-400 shrink-0">
                                             check
                                           </span>
                                         )}

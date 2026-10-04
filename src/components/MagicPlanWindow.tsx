@@ -868,7 +868,7 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
                 <button
                   type="button"
                   onClick={handleToggleShowAllTasks}
-                  className="w-[38px] h-[38px] rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-gray-300 hover:text-white flex items-center justify-center transition cursor-pointer"
+                  className="w-[38px] h-[38px] rounded-full bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 flex items-center justify-center transition cursor-pointer"
                   title={
                     !showOnlyMyTasks
                       ? 'Zobrazují se úkoly všech osob (aktivní) – kliknutím přepnout na pouze moje úkoly'
@@ -3034,7 +3034,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                           </span>
                           {day.isToday && (
                             <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-extrabold text-[9px] uppercase tracking-wider">
-                              Dnes
+                              Nyní
                             </span>
                           )}
                         </div>
@@ -3438,17 +3438,17 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                 </span>
               </div>
 
-              {/* Title */}
-              <div className="font-bold text-white leading-snug">
-                {hoveredTask.block.task.customName || hoveredTask.block.task.title}
-              </div>
-
-              {/* Project name on own row */}
-              {hoveredTask.block.task.project && (
-                <div className="text-[11px] text-gray-400 truncate" title={hoveredTask.block.task.project}>
-                  {hoveredTask.block.task.project}
+              {/* Title & Project with tight spacing */}
+              <div className="space-y-0.5">
+                <div className="font-bold text-white leading-snug">
+                  {hoveredTask.block.task.customName || hoveredTask.block.task.title}
                 </div>
-              )}
+                {hoveredTask.block.task.project && (
+                  <div className="text-[11px] text-gray-400 truncate" title={hoveredTask.block.task.project}>
+                    {hoveredTask.block.task.project}
+                  </div>
+                )}
+              </div>
 
               {/* Codes & Author */}
               <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-gray-400 font-mono">
