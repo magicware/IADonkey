@@ -778,12 +778,60 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
         {/* Integrated Header (non-floating, scrolls with content) */}
         <div className="space-y-4">
           <div className="relative flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap min-h-[44px]">
-            {/* Left branding & title */}
-            <div className="flex items-center gap-3">
+            {/* Left branding, title & tab switcher */}
+            <div className="flex items-center gap-3 flex-wrap">
               <div className="w-10 h-10 rounded-full bg-indigo-500/15 text-indigo-400 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-2xl">calendar_month</span>
               </div>
               <h2 className="text-base font-bold text-white tracking-wide">MagicPlan</h2>
+
+              {/* Unified 3-Tab Switcher (Nástěnka, Timeline, Seznam) */}
+              <div className="flex items-center gap-1.5 p-1 bg-white/[0.04] rounded-full w-fit shrink-0 ml-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('nastenka')}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
+                    activeTab === 'nastenka'
+                      ? 'bg-indigo-500/20 text-white shadow-sm font-semibold'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  <span className={`material-symbols-outlined text-sm ${activeTab === 'nastenka' ? 'text-indigo-400' : 'text-gray-400'}`}>
+                    dashboard
+                  </span>
+                  <span className={activeTab === 'nastenka' ? 'text-white' : ''}>Nástěnka</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('timeline')}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
+                    activeTab === 'timeline'
+                      ? 'bg-indigo-500/20 text-white shadow-sm font-semibold'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  <span className={`material-symbols-outlined text-sm ${activeTab === 'timeline' ? 'text-indigo-400' : 'text-gray-400'}`}>
+                    calendar_view_week
+                  </span>
+                  <span className={activeTab === 'timeline' ? 'text-white' : ''}>Timeline</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('list')}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
+                    activeTab === 'list'
+                      ? 'bg-indigo-500/20 text-white shadow-sm font-semibold'
+                      : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  <span className={`material-symbols-outlined text-sm ${activeTab === 'list' ? 'text-indigo-400' : 'text-gray-400'}`}>
+                    format_list_bulleted
+                  </span>
+                  <span className={activeTab === 'list' ? 'text-white' : ''}>Seznam</span>
+                </button>
+              </div>
             </div>
 
             {/* Action Buttons */}
@@ -813,14 +861,27 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
                 </span>
               </button>
 
-              <button
-                type="button"
-                onClick={handleOpenPlanWeb}
-                className="w-[38px] h-[38px] rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-gray-300 hover:text-white flex items-center justify-center transition cursor-pointer"
-                title="Otevřít interní stránku plánu v prohlížeči"
-              >
-                <span className="material-symbols-outlined text-base">open_in_new</span>
-              </button>
+              {/* Show All Tasks Toggle Icon Button (replaces open in browser) */}
+              {currentUser && (
+                <button
+                  type="button"
+                  onClick={handleToggleShowAllTasks}
+                  className={`w-[38px] h-[38px] rounded-full flex items-center justify-center transition cursor-pointer ${
+                    !showOnlyMyTasks
+                      ? 'bg-indigo-500/25 text-indigo-300 ring-1 ring-indigo-400/40 shadow-sm'
+                      : 'bg-white/[0.04] hover:bg-white/[0.08] text-gray-300 hover:text-white'
+                  }`}
+                  title={
+                    !showOnlyMyTasks
+                      ? 'Zobrazují se úkoly všech osob (aktivní) – kliknutím přepnout na pouze moje úkoly'
+                      : `Zobrazují se pouze úkoly pro ${currentUserDisplayName || currentUser} – kliknutím zobrazit úkoly všech osob`
+                  }
+                >
+                  <span className="material-symbols-outlined text-base">
+                    {!showOnlyMyTasks ? 'groups' : 'person'}
+                  </span>
+                </button>
+              )}
 
               <button
                 type="button"
@@ -889,78 +950,6 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
                   </button>
                 </div>
               </div>
-            )}
-          </div>
-
-          {/* Controls Bar: Tabs & Slide Switch */}
-          <div className="flex items-center justify-between gap-3">
-            {/* Unified 3-Tab Switcher (Nástěnka, Timeline, Seznam) */}
-            <div className="flex items-center gap-1.5 p-1 bg-white/[0.04] rounded-full w-fit shrink-0">
-              <button
-                type="button"
-                onClick={() => setActiveTab('nastenka')}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
-                  activeTab === 'nastenka'
-                    ? 'bg-indigo-500/20 text-white shadow-sm font-semibold'
-                    : 'text-gray-400 hover:text-gray-200'
-                }`}
-              >
-                <span className={`material-symbols-outlined text-sm ${activeTab === 'nastenka' ? 'text-indigo-400' : 'text-gray-400'}`}>
-                  dashboard
-                </span>
-                <span className={activeTab === 'nastenka' ? 'text-white' : ''}>Nástěnka</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('timeline')}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
-                  activeTab === 'timeline'
-                    ? 'bg-indigo-500/20 text-white shadow-sm font-semibold'
-                    : 'text-gray-400 hover:text-gray-200'
-                }`}
-              >
-                <span className={`material-symbols-outlined text-sm ${activeTab === 'timeline' ? 'text-indigo-400' : 'text-gray-400'}`}>
-                  calendar_view_week
-                </span>
-                <span className={activeTab === 'timeline' ? 'text-white' : ''}>Timeline</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('list')}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
-                  activeTab === 'list'
-                    ? 'bg-indigo-500/20 text-white shadow-sm font-semibold'
-                    : 'text-gray-400 hover:text-gray-200'
-                }`}
-              >
-                <span className={`material-symbols-outlined text-sm ${activeTab === 'list' ? 'text-indigo-400' : 'text-gray-400'}`}>
-                  format_list_bulleted
-                </span>
-                <span className={activeTab === 'list' ? 'text-white' : ''}>Seznam</span>
-              </button>
-            </div>
-
-            {/* Classic Slide Switch for 'Všechny úkoly' (positioned on right) */}
-            {currentUser && (
-              <label
-                className="inline-flex items-center cursor-pointer select-none group shrink-0"
-                title={!showOnlyMyTasks ? 'Zobrazují se úkoly všech sledovaných osob' : `Zobrazují se pouze úkoly pro ${currentUserDisplayName || currentUser}`}
-              >
-                <span className="text-xs font-medium text-gray-300 group-hover:text-white transition mr-3">
-                  Všechny úkoly
-                </span>
-                <div className="relative inline-flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={!showOnlyMyTasks}
-                    onChange={handleToggleShowAllTasks}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 group-hover:bg-white/15" />
-                </div>
-              </label>
             )}
           </div>
         </div>
@@ -2534,14 +2523,31 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                               });
                             }
                           }}
-                          className={`group relative w-8 h-8 rounded-full font-mono font-bold text-[11px] flex items-center justify-center text-center select-none cursor-pointer transition-all hover:ring-2 hover:ring-indigo-400/50 ${
+                          className={`group relative w-[32px] h-[32px] rounded-full font-mono font-bold text-[10px] select-none cursor-pointer transition-all hover:ring-2 hover:ring-indigo-400/50 shrink-0 ${
                             isMe
                               ? 'bg-indigo-500/20 text-indigo-400 font-bold hover:bg-indigo-500/30'
                               : 'bg-white/[0.08] text-gray-300 hover:bg-white/[0.16] hover:text-white'
                           }`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px',
+                          }}
                           title={isMe ? `${formatUserDisplayName(uSched.userName, availablePersons)} (To jste vy) – Možnosti` : `Uživatel: ${formatUserDisplayName(uSched.userName, availablePersons)} – Možnosti`}
                         >
-                          <span className="group-hover:opacity-0 transition-opacity truncate max-w-[28px] text-center">
+                          <span
+                            className="group-hover:opacity-0 transition-opacity tracking-tight select-none"
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '100%',
+                              height: '100%',
+                              lineHeight: '10px',
+                            }}
+                          >
                             {uSched.initials}
                           </span>
                           <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
@@ -2553,7 +2559,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                 justifyContent: 'center',
                                 width: '100%',
                                 height: '100%',
-                                lineHeight: 1,
+                                lineHeight: '18px',
                               }}
                             >
                               more_horiz
@@ -2589,9 +2595,9 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                 gridRow: 1,
                                 opacity: searchQuery?.trim() ? 0.1 : 1,
                               }}
-                              className={`rounded-2xl border border-dashed border-white/10 bg-white/[0.015] text-gray-500 text-xs flex items-center justify-center gap-3 select-none transition-all duration-200 ${
-                                isCompact ? 'h-[60px] px-3 py-1.5' : 'h-[112px] p-4'
-                              }`}
+                              className={`${
+                                isCompact ? 'rounded-lg h-[46px] px-3 py-1' : 'rounded-2xl h-[112px] p-4'
+                              } border border-dashed border-white/10 bg-white/[0.015] text-gray-500 text-xs flex items-center justify-center gap-3 select-none transition-all duration-200`}
                             >
                               <span className={`material-symbols-outlined opacity-40 ${isCompact ? 'text-lg' : 'text-2xl'}`}>
                                 {selectedDayIndex < todayIdx ? 'history_toggle_off' : 'weekend'}
@@ -3075,14 +3081,31 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                               });
                             }
                           }}
-                          className={`group relative w-8 h-8 rounded-full font-mono font-bold text-[11px] flex items-center justify-center text-center select-none cursor-pointer transition-all hover:ring-2 hover:ring-indigo-400/50 ${
+                          className={`group relative w-[32px] h-[32px] rounded-full font-mono font-bold text-[10px] select-none cursor-pointer transition-all hover:ring-2 hover:ring-indigo-400/50 shrink-0 ${
                             isMe
                               ? 'bg-indigo-500/20 text-indigo-400 font-bold hover:bg-indigo-500/30'
                               : 'bg-white/[0.08] text-gray-300 hover:bg-white/[0.16] hover:text-white'
                           }`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px',
+                          }}
                           title={isMe ? `${formatUserDisplayName(uSched.userName, availablePersons)} (To jste vy) – Možnosti` : `Uživatel: ${formatUserDisplayName(uSched.userName, availablePersons)} – Možnosti`}
                         >
-                          <span className="group-hover:opacity-0 transition-opacity truncate max-w-[28px] text-center">
+                          <span
+                            className="group-hover:opacity-0 transition-opacity tracking-tight select-none"
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '100%',
+                              height: '100%',
+                              lineHeight: '10px',
+                            }}
+                          >
                             {uSched.initials}
                           </span>
                           <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
@@ -3094,7 +3117,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                 justifyContent: 'center',
                                 width: '100%',
                                 height: '100%',
-                                lineHeight: 1,
+                                lineHeight: '18px',
                               }}
                             >
                               more_horiz
