@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BrowserWindow, Tray, Menu, screen, nativeImage, app } from 'electron';
+import { diagnosticsService } from './diagnosticsService';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -59,7 +60,19 @@ export class WindowManager {
   private shouldRestoreSpotlightOnCloneClose = true;
   private shouldRestoreSpotlightOnCmsDownloadClose = true;
   private shouldResetSpotlightOnCloneClose = false;
-  private shouldResetSpotlightOnCmsDownloadClose = false;
+  private registerCrashHandlers(win: BrowserWindow, windowName: string): void {
+    win.webContents.on('render-process-gone', (_event, details) => {
+      diagnosticsService.recordCrash(`Pád procesu okna ${windowName} (${details.reason})`, new Error(details.reason), {
+        windowName,
+        details,
+      });
+    });
+    win.webContents.on('unresponsive', () => {
+      diagnosticsService.recordCrash(`Okno ${windowName} přestalo odpovídat (unresponsive)`, new Error('Process unresponsive'), {
+        windowName,
+      });
+    });
+  }
 
   public setSkipSpotlightRestoreOnCloneClose(skip: boolean): void {
     this.shouldRestoreSpotlightOnCloneClose = !skip;
@@ -123,6 +136,8 @@ export class WindowManager {
         nodeIntegration: false,
       },
     });
+
+    this.registerCrashHandlers(this.mainWindow, 'Spotlight (Hlavní okno)');
 
     // In dev mode, load Vite server; in prod, load index.html
     if (process.env.VITE_DEV_SERVER_URL) {
@@ -284,6 +299,8 @@ export class WindowManager {
         nodeIntegration: false,
       },
     });
+
+    this.registerCrashHandlers(this.settingsWindow, 'Nastavení');
 
     this.settingsWindow.on('maximize', () => {
       this.settingsWindow?.webContents.send('window-maximize-changed', true);
@@ -932,6 +949,8 @@ export class WindowManager {
       },
     });
 
+    this.registerCrashHandlers(this.magicPlanWindow, 'MagicPlan');
+
     if (process.env.VITE_DEV_SERVER_URL) {
       this.magicPlanWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}?${query}#magicplan`);
     } else {
@@ -1479,7 +1498,7 @@ export class WindowManager {
     width: 100%;
     height: 100%;
     background-color: #15161c;
-    border-radius: 28px;
+    border-radius: 20px;
     border: none;
     outline: none;
     box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.35), 0 4px 12px -2px rgba(0, 0, 0, 0.2), 0 0 1px 0 rgba(255, 255, 255, 0.08);

@@ -854,6 +854,10 @@ function setupIpcHandlers() {
     return await diagnosticsService.exportCrashReport(fileName);
   });
 
+  ipcMain.handle('record-crash', (_event, action: string, error: any, context?: any) => {
+    return diagnosticsService.recordCrash(action, error, context);
+  });
+
   ipcMain.handle('simulate-test-crash', () => {
     return diagnosticsService.recordCrash(
       'Simulovaný pád z vývojářského režimu (Test exception)',
@@ -1436,17 +1440,37 @@ function setupIpcHandlers() {
 
   ipcMain.handle(
     'send-test-notification',
-    (_event, payload?: string | { type?: string; subType?: string; title?: string; body?: string }) => {
+    (
+      _event,
+      payload?:
+        | string
+        | {
+            type?: string;
+            subType?: string;
+            title?: string;
+            body?: string;
+            mpSituation?: number;
+            isCritical?: boolean;
+            taskType?: 'dev' | 'service';
+          }
+    ) => {
       if (typeof payload === 'object' && payload !== null) {
         const type = (payload.type as any) || 'test';
         const subType = payload.subType as any;
         const title = payload.title || 'Testovací notifikace';
         const body = payload.body || 'Systémové notifikace fungují správně!';
+        const mpSituation = payload.mpSituation;
+        const isCritical = payload.isCritical;
+        const taskType = payload.taskType as any;
         return notificationService.show({
           type,
           subType,
           title,
           body,
+          isTest: true,
+          mpSituation,
+          isCritical,
+          taskType,
           onClick: () => {
             if (type === 'error') {
               diagnosticsService.openCrashLogFolder();

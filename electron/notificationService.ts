@@ -86,10 +86,28 @@ export interface ShowNotificationOptions {
   icon?: string;
   silent?: boolean;
   onClick?: () => void;
+  isTest?: boolean;
+  mpSituation?: number;
+  isCritical?: boolean;
+  taskType?: 'dev' | 'service';
 }
 
-const getNotificationIcon = (type?: NotificationType, subType?: NotificationSubType): string | undefined => {
+const getNotificationIcon = (
+  type?: NotificationType,
+  subType?: NotificationSubType,
+  mpSituation?: number,
+  isCritical?: boolean,
+  taskType?: 'dev' | 'service'
+): string | undefined => {
   if (type === 'magicPlan') {
+    if (mpSituation && mpSituation >= 1 && mpSituation <= 20) {
+      const resolvedTaskType = taskType || (subType === 'service' ? 'service' : 'dev');
+      const critSuffix = isCritical ? '-crit' : '';
+      const fn = `mp-${mpSituation}-${resolvedTaskType}${critSuffix}.png`;
+      const p = resolveNotificationIconFile(fn);
+      if (p) return p;
+    }
+
     if (subType === 'critical') {
       const p = resolveNotificationIconFile('plan-critical.png');
       if (p) return p;
@@ -223,12 +241,12 @@ export class NotificationService {
     const notifConfig = this.config?.notifications;
 
     // Pokud jsou notifikace globálně vypnuté (výchozí stav je povoleno)
-    if (notifConfig && notifConfig.enabled === false && options.type !== 'test') {
+    if (notifConfig && notifConfig.enabled === false && options.type !== 'test' && !options.isTest) {
       return false;
     }
 
     // Specifické filtry dle typu události
-    if (notifConfig && options.type !== 'test') {
+    if (notifConfig && options.type !== 'test' && !options.isTest) {
       if (options.type === 'quickCap' && notifConfig.quickCap === false) return false;
       if (options.type === 'colorMaster' && notifConfig.colorMaster === false) return false;
       if (options.type === 'screenRuler' && notifConfig.screenRuler === false) return false;
@@ -258,7 +276,9 @@ export class NotificationService {
     }
 
     try {
-      const iconPath = options.icon || getNotificationIcon(options.type, options.subType);
+      const iconPath =
+        options.icon ||
+        getNotificationIcon(options.type, options.subType, options.mpSituation, options.isCritical, options.taskType);
       const notification = new Notification({
         title: options.title,
         body: options.body,

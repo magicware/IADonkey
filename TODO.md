@@ -53,29 +53,31 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
   - **Popis**: Zobrazení víkendových dnů v plánu, defaultně indikovaných jako 8h volno.
   - **Požadavky**: Údaje o volnu/kapacitě přebírat dynamicky z dat plánu (ne hardcoded).
 
-- [ ] **6. MagicPlan: Inline správa osob a filtru JÁ přímo v časové ose (Timeline)**
-  - **Popis**: Možnost přidat/odebrat osobu a označit/odoznačit přepínač „JÁ“ přímo v rozhraní Timeline.
-  - **Požadavky**: Prolinkované akce přímo s konfigurací v Nastavení (obdobně jako již existující nastavení časového rozsahu).
-
-- [ ] **7. MagicPlan: Kompaktní zobrazení denního plánu**
-  - **Popis**: Přepínač v Nastavení pro aktivaci kompaktního zobrazení denního plánu pro úsporu vertikálního i horizontálního prostoru.
-
-- [ ] **8. MagicPlan: Zmenšení výšky úkolů v týdenním plánu**
-  - **Popis**: Zmenšení výšky jednotlivých bloků/úkolů v týdenním zobrazení cca o polovinu pro přehlednější zobrazení většího množství úkolů bez nutnosti scrollování.
-
-- [ ] **9. MagicPlan: Trvalé zapamatování přepínače „Všechny úkoly“**
-  - **Popis**: Uložení stavu přepínače „Všechny úkoly“ v okně MagicPlanu do konfigurace rozšíření (`config.extensions.magicplan`).
-  - **Požadavky**: Automatické prolinkování a uložení konfigurace ihned při změně switche.
-
-- [ ] **10. Nastavení: Zrušení barvy pozadí postranního panelu menu**
-  - **Popis**: Odstranění podbarvení bočního panelu navigace v okně Nastavení pro sjednocený, čistý borderless UI zážitek.
-
-- [ ] **11. Nastavení: Zmenšení ikon a položek v sekci Rozšíření v menu**
-  - **Popis**: Úprava vizuální hierarchie – zmenšení velikosti ikon a položek podsekce Rozšíření v postranním panelu Nastavení.
-
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
 
-*(Žádné – všechny dokončené úkoly byly otestovány a schváleny v checklistu)*
+- [x] **6. MagicPlan: Inline správa osob a filtru JÁ přímo v časové ose (Timeline)**
+  - **Popis**: Možnost přidat/odebrat osobu a označit/odoznačit přepínač „JÁ“ přímo v rozhraní Timeline (denní i týdenní přehled).
+  - **Stav**: Dokončeno. Placeholder „+ Přidat osobu“ s výběrem nepřidaných osob, kontextové menu tří teček u avatarů (posun nahoru/dolů, To jsem já / To nejsem já, vymazat) propojené s ukládáním do konfigurace.
+
+- [x] **7. MagicPlan: Kompaktní zobrazení denního plánu**
+  - **Popis**: Přepínač v Nastavení pro aktivaci kompaktního zobrazení denního plánu pro úsporu vertikálního i horizontálního prostoru.
+  - **Stav**: Dokončeno. Kompaktní výška karet 72px s dvouřádkovou typografií a zmenšenými mezerami.
+
+- [x] **8. MagicPlan: Zmenšení výšky úkolů v týdenním plánu**
+  - **Popis**: Zmenšení výšky jednotlivých bloků/úkolů v týdenním zobrazení cca o polovinu pro přehlednější zobrazení bez nutnosti scrollování.
+  - **Stav**: Dokončeno. Výška řádku zmenšena na 38px (karty 30px).
+
+- [x] **9. MagicPlan: Trvalé zapamatování přepínače „Všechny úkoly“**
+  - **Popis**: Uložení stavu přepínače „Všechny úkoly“ v okně MagicPlanu do konfigurace rozšíření (`config.magicplan.showAllTasks`).
+  - **Stav**: Dokončeno. Stav se automaticky ukládá při kliknutí na přepínač.
+
+- [x] **10. Nastavení: Zrušení barvy pozadí postranního panelu menu**
+  - **Popis**: Odstranění šedého podbarvení bočního panelu navigace (`bg-transparent`) v okně Nastavení pro sjednocený čistý borderless UI zážitek.
+
+- [x] **11. Nastavení: Zmenšení ikon a položek v sekci Rozšíření v menu**
+  - **Popis**: Úprava vizuální hierarchie – zmenšení velikosti ikon a položek podsekce Rozšíření v postranním panelu Nastavení.
+  - **Stav**: Dokončeno. Písmo 12px, ikony 16px, kompaktní padding py-1.5 s odsazením pl-6.
+
 
 
 

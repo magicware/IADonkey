@@ -6,7 +6,7 @@ export const SplashScreen: React.FC = () => {
   return (
     <div className="w-screen h-screen bg-transparent p-9 flex items-center justify-center select-none overflow-hidden font-sans">
       <div
-        className="w-full h-full m3-surface-main text-gray-200 rounded-[28px] flex flex-col items-start justify-between p-8 relative outline-none border-0"
+        className="w-full h-full m3-surface-main text-gray-200 rounded-[20px] flex flex-col items-start justify-between p-8 relative outline-none border-0"
         style={{ WebkitAppRegion: 'drag' } as any}
       >
         <div>

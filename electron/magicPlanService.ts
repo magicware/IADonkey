@@ -4,7 +4,7 @@ import { net, BrowserWindow, app } from 'electron';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { AppStore } from './store';
-import type { MagicPlanData, PlanTaskItem, MagicPlanSettings, PlanDayInfo } from '../src/types';
+import type { MagicPlanData, PlanTaskItem, MagicPlanSettings, PlanDayInfo, PlanPersonInfo } from '../src/types';
 import { notificationService } from './notificationService';
 import { diagnosticsService } from './diagnosticsService';
 
@@ -118,6 +118,7 @@ export class MagicPlanService {
   private queryHistory: MagicPlanQueryLog[] = [];
   private isFetching = false;
   private currentUserConfigKey: string = '';
+  private knownPersonsMap: Map<string, PlanPersonInfo> = new Map();
 
   constructor(store: AppStore) {
     this.store = store;
@@ -126,7 +127,7 @@ export class MagicPlanService {
       urls: cfg?.urls || (cfg?.url ? [cfg.url] : []),
       users: cfg?.userColumns || (cfg?.userColumn ? [cfg.userColumn] : []),
     });
-    const { myTasks: loadedMyTasks, unassignedTasks: loadedUnassigned } = this.loadDiskCache();
+    const { myTasks: loadedMyTasks, unassignedTasks: loadedUnassigned, availablePersons: loadedPersons } = this.loadDiskCache();
     this.previousMyTasks = loadedMyTasks;
     this.previousUnassignedTasks = loadedUnassigned;
 
@@ -164,7 +165,7 @@ export class MagicPlanService {
       });
     }
 
-    if (this.previousMyTasks.size > 0 || this.previousUnassignedTasks.size > 0) {
+    if (this.previousMyTasks.size > 0 || this.previousUnassignedTasks.size > 0 || loadedPersons.length > 0) {
       const myTasks = Array.from(this.previousMyTasks.values());
       const unassignedTasks = Array.from(this.previousUnassignedTasks.values());
       const totalMyHours = myTasks.reduce((sum, t) => sum + (t.totalHours || 0), 0);
@@ -173,6 +174,7 @@ export class MagicPlanService {
         myTasks,
         unassignedTasks,
         totalMyHours,
+        availablePersons: loadedPersons,
       };
     }
   }
@@ -205,9 +207,14 @@ export class MagicPlanService {
     };
   }
 
-  private loadDiskCache(): { myTasks: Map<string, PlanTaskItem>; unassignedTasks: Map<string, PlanTaskItem> } {
+  private loadDiskCache(): {
+    myTasks: Map<string, PlanTaskItem>;
+    unassignedTasks: Map<string, PlanTaskItem>;
+    availablePersons: PlanPersonInfo[];
+  } {
     const myTasks = new Map<string, PlanTaskItem>();
     const unassignedTasks = new Map<string, PlanTaskItem>();
+    const availablePersons: PlanPersonInfo[] = [];
     try {
       if (fs.existsSync(CACHE_FILE)) {
         const raw = fs.readFileSync(CACHE_FILE, 'utf-8');
@@ -226,17 +233,30 @@ export class MagicPlanService {
             unassignedTasks.set(fp, task);
           }
         }
+        if (Array.isArray(parsed?.availablePersons)) {
+          for (const p of parsed.availablePersons) {
+            if (p && p.id) {
+              availablePersons.push(p);
+              this.knownPersonsMap.set(String(p.id).trim(), p);
+            }
+          }
+        }
       }
     } catch (err) {
       console.warn('[MagicPlan] Chyba načítání diskové mezipaměti:', err);
     }
-    return { myTasks, unassignedTasks };
+    return { myTasks, unassignedTasks, availablePersons };
   }
 
-  private saveDiskCache(tasks: PlanTaskItem[], unassignedTasks: PlanTaskItem[] = []): void {
+  private saveDiskCache(
+    tasks: PlanTaskItem[],
+    unassignedTasks: PlanTaskItem[] = [],
+    availablePersons: PlanPersonInfo[] = []
+  ): void {
     try {
       const serializeTask = (t: PlanTaskItem) => ({
         taskId: t.taskId,
+        userId: t.userId,
         requirementId: t.requirementId,
         taskIdentifier: t.taskIdentifier,
         title: t.title,
@@ -267,6 +287,12 @@ export class MagicPlanService {
         unassignedObj[fp] = serializeTask(t);
       }
 
+      const personsToSave = availablePersons.length > 0
+        ? availablePersons
+        : (this.cachedData?.availablePersons && this.cachedData.availablePersons.length > 0
+            ? this.cachedData.availablePersons
+            : Array.from(this.knownPersonsMap.values()));
+
       fs.writeFileSync(
         CACHE_FILE,
         JSON.stringify(
@@ -274,6 +300,7 @@ export class MagicPlanService {
             lastUpdated: new Date().toISOString(),
             tasks: tasksObj,
             unassignedTasks: unassignedObj,
+            availablePersons: personsToSave,
           },
           null,
           2
@@ -449,14 +476,15 @@ export class MagicPlanService {
     const mlogTaskPrefix = config.mlog?.taskPrefix || 'T';
     const mlogRequestPrefix = config.mlog?.requestPrefix || 'R';
 
-    if (urls.length === 0 || userColumns.length === 0) {
+    if (urls.length === 0) {
       this.isFetching = false;
       const emptyData: MagicPlanData = {
         lastChecked: new Date().toLocaleTimeString('cs-CZ'),
         myTasks: [],
         unassignedTasks: [],
         totalMyHours: 0,
-        error: 'Nastavte URL adresu plánu a alespoň jednu osobu v nastavení MagicPlan.',
+        availablePersons: [],
+        error: 'Nastavte URL adresu plánu v nastavení MagicPlan.',
         isOffline: true,
       };
       this.cachedData = emptyData;
@@ -467,6 +495,7 @@ export class MagicPlanService {
       let allMyTasks: PlanTaskItem[] = [];
       let allUnassignedTasks: PlanTaskItem[] = [];
       let combinedDays: PlanDayInfo[] = [];
+      let allAvailablePersons: PlanPersonInfo[] = [];
       let planNumber: string | undefined;
       let planRange: string | undefined;
       let totalHtmlLen = 0;
@@ -490,6 +519,18 @@ export class MagicPlanService {
           if (combinedDays.length === 0 && parsed.days && parsed.days.length > 0) {
             combinedDays = parsed.days;
           }
+          if (parsed.availablePersons && parsed.availablePersons.length > 0) {
+            for (const p of parsed.availablePersons) {
+              const existing = allAvailablePersons.find((x) => x.id === p.id);
+              if (!existing) {
+                allAvailablePersons.push({ ...p });
+              } else {
+                if (!existing.shortcut && p.shortcut) existing.shortcut = p.shortcut;
+                if (!existing.cleanName && p.cleanName) existing.cleanName = p.cleanName;
+                if (existing.name === existing.id && p.name !== p.id) existing.name = p.name;
+              }
+            }
+          }
           allMyTasks.push(...parsed.myTasks);
           allUnassignedTasks.push(...parsed.unassignedTasks);
           successfulUrls++;
@@ -502,6 +543,7 @@ export class MagicPlanService {
         throw new Error('Nelze se připojit k žádné ze zadaných URL adres plánu.');
       }
 
+      allAvailablePersons.sort((a, b) => (a.name || a.id || '').localeCompare(b.name || b.id || '', 'cs'));
       const myTasks = this.deduplicateTasks(allMyTasks);
       const unassignedTasks = this.deduplicateTasks(allUnassignedTasks);
       const totalMyHours = myTasks.reduce((sum, t) => sum + (t.totalHours || 0), 0);
@@ -515,13 +557,15 @@ export class MagicPlanService {
         myTasks,
         unassignedTasks,
         totalMyHours,
+        availablePersons: allAvailablePersons,
         isOffline: false,
       };
+
+      this.cachedData = newData;
 
       // Check diffs and show notifications
       const diffResult = this.checkDiffsAndNotify(myTasks, unassignedTasks, planConfig);
 
-      this.cachedData = newData;
       this.broadcastData(newData);
 
       // Record query log for developer inspection
@@ -617,7 +661,22 @@ export class MagicPlanService {
       // Net.fetch failed or intranet zone requires explicit default credentials, proceed to fallback
     }
 
-    // 2. Robust fallback: PowerShell Invoke-WebRequest with current Windows user credentials
+    // 2. Windows native curl with Negotiate/NTLM authentication (fast and robust)
+    try {
+      const curlCommand = `curl.exe -s --negotiate -u : "${url}"`;
+      const { stdout: curlOut } = await execAsync(curlCommand, {
+        maxBuffer: 15 * 1024 * 1024,
+        timeout: 10000,
+        encoding: 'utf-8',
+      });
+      if (curlOut && curlOut.includes('class="plan"')) {
+        return curlOut;
+      }
+    } catch (err) {
+      // Fallback to PowerShell
+    }
+
+    // 3. Fallback: PowerShell Invoke-WebRequest with current Windows user credentials
     const psCommand = `powershell -NoProfile -NonInteractive -Command "$res = Invoke-WebRequest -Uri '${url}' -UseDefaultCredentials -UseBasicParsing -TimeoutSec 15; [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $res.Content"`;
     const { stdout, stderr } = await execAsync(psCommand, {
       maxBuffer: 10 * 1024 * 1024,
@@ -653,6 +712,7 @@ export class MagicPlanService {
     myTasks: PlanTaskItem[];
     unassignedTasks: PlanTaskItem[];
     totalMyHours: number;
+    availablePersons: PlanPersonInfo[];
   } {
     // 1. Extract plan number and date range from dropdown
     let planNumber: string | undefined;
@@ -706,32 +766,119 @@ export class MagicPlanService {
     // 3. Extract user columns
     const normQueueId = normalizeStr(queueColumnIdentifier);
 
+    // Robust user regex matching <div class="user" or <div id="..." class="user"...>
     const userRegex =
-      /<div class="user"[^>]*>[\s\S]*?<div class="header">([^<]+)<\/div>([\s\S]*?)(?=(?:<div class="user"|$))/gi;
+      /<div\s+([^>]*\bclass=["'][^"']*\buser\b[^"']*["'][^>]*)>[\s\S]*?<div\s+class=["']header["'][^>]*>([\s\S]*?)<\/div>([\s\S]*?)(?=(?:<div\s+[^>]*\bclass=["'][^"']*\buser\b[^"']*["']|$))/gi;
     let match: RegExpExecArray | null;
 
     let myTasksRaw: PlanTaskItem[] = [];
     let unassignedTasksRaw: PlanTaskItem[] = [];
+    const availablePersons: PlanPersonInfo[] = [];
 
     while ((match = userRegex.exec(html)) !== null) {
-      const headerRaw = match[1];
-      const headerText = decodeHtmlEntities(headerRaw);
+      const userAttrs = match[1] || '';
+      const headerRaw = match[2] || '';
+      const headerText = decodeHtmlEntities(headerRaw.replace(/<[^>]+>/g, '')).trim();
       const normHeader = normalizeStr(headerText);
-      const columnBody = match[2];
+      const columnBody = match[3] || '';
 
-      const matchedUserId = userColumnIdentifiers.find((uId) => {
-        const normUId = normalizeStr(uId);
-        return normUId && (normHeader.includes(normUId) || columnBody.includes(`data-user-id="${normUId}"`));
-      });
-      const isMyColumn = Boolean(matchedUserId);
+      const shortcutMatch = headerText.match(/\(([^)]+)\)$/);
+      const shortcut = shortcutMatch ? shortcutMatch[1].trim() : '';
+      const cleanName = shortcut ? headerText.replace(/\s*\([^)]+\)$/, '').trim() : headerText;
+
+      let detectedPersonId = '';
+      const userAttrMatch =
+        userAttrs.match(/data-user[-_]?id=["']([^"']+)["']/i) ||
+        userAttrs.match(/id=["']user[-_]?(\d+)["']/i) ||
+        userAttrs.match(/data-person[-_]?id=["']([^"']+)["']/i) ||
+        userAttrs.match(/data-id=["']([^"']+)["']/i);
+      if (userAttrMatch) {
+        detectedPersonId = userAttrMatch[1];
+      } else {
+        const bodyAttrMatch =
+          columnBody.match(/data-user[-_]?id=["']([^"']+)["']/i) ||
+          columnBody.match(/data-person[-_]?id=["']([^"']+)["']/i) ||
+          columnBody.match(/id=["']user[-_]?(\d+)["']/i);
+        if (bodyAttrMatch) {
+          detectedPersonId = bodyAttrMatch[1];
+        } else {
+          const headerIdMatch = headerText.match(/\((\d+)\)/) || headerText.match(/\bID:?\s*(\d+)\b/i);
+          if (headerIdMatch) {
+            detectedPersonId = headerIdMatch[1];
+          }
+        }
+      }
+
+      // Check known persons cache if not detected directly from HTML
+      if (!detectedPersonId) {
+        for (const kp of this.knownPersonsMap.values()) {
+          if (
+            (normHeader && (normalizeStr(kp.name) === normHeader || normalizeStr(kp.cleanName || '') === normHeader)) ||
+            (shortcut && normalizeStr(kp.shortcut || '') === normalizeStr(shortcut))
+          ) {
+            detectedPersonId = kp.id;
+            break;
+          }
+        }
+      }
 
       const isQueueColumn = Boolean(
         normQueueId &&
-        (normHeader.includes(normQueueId) || columnBody.includes(`data-user-id="${normQueueId}"`))
+        (normHeader === normQueueId ||
+          normHeader.includes(normQueueId) ||
+          userAttrs.includes(`data-user-id="${normQueueId}"`) ||
+          userAttrs.includes(`data-user-id='${normQueueId}'`) ||
+          columnBody.includes(`data-user-id="${normQueueId}"`) ||
+          columnBody.includes(`data-user-id='${normQueueId}'`) ||
+          (detectedPersonId && normalizeStr(detectedPersonId) === normQueueId))
       );
 
+      if (headerText) {
+        const personId = detectedPersonId || headerText;
+        const personObj: PlanPersonInfo = {
+          id: personId,
+          name: headerText,
+          cleanName,
+          shortcut,
+        };
+        const existing = availablePersons.find((p) => p.id === personId);
+        if (!existing) {
+          availablePersons.push(personObj);
+        } else {
+          if (!existing.shortcut && shortcut) existing.shortcut = shortcut;
+          if (!existing.cleanName && cleanName) existing.cleanName = cleanName;
+        }
+        if (personId && personId !== headerText) {
+          this.knownPersonsMap.set(personId, personObj);
+        }
+      }
+
+      const matchedUserId = userColumnIdentifiers.find((uId) => {
+        const normUId = normalizeStr(uId);
+        if (!normUId) return false;
+        if (detectedPersonId && normalizeStr(detectedPersonId) === normUId) return true;
+        if (
+          userAttrs.includes(`data-user-id="${normUId}"`) ||
+          userAttrs.includes(`data-user-id='${normUId}'`) ||
+          columnBody.includes(`data-user-id="${normUId}"`) ||
+          columnBody.includes(`data-user-id='${normUId}'`)
+        ) return true;
+        if (normHeader === normUId || normHeader.includes(normUId)) return true;
+        if (shortcut && normalizeStr(shortcut) === normUId) return true;
+        if (cleanName && (normalizeStr(cleanName) === normUId || normalizeStr(cleanName).includes(normUId))) return true;
+
+        const kp = this.knownPersonsMap.get(normUId);
+        if (kp) {
+          if (normHeader && (normalizeStr(kp.name) === normHeader || normalizeStr(kp.cleanName || '') === normHeader)) return true;
+          if (shortcut && normalizeStr(kp.shortcut || '') === normalizeStr(shortcut)) return true;
+        }
+        return false;
+      });
+      const isMyColumn = Boolean(matchedUserId);
+
       if (isMyColumn) {
-        const resolvedUserName = matchedUserId ? matchedUserId.trim() : headerText.trim();
+        const resolvedUserName = headerText || (matchedUserId ? matchedUserId.trim() : '');
+        const columnUserId = detectedPersonId || matchedUserId || '';
         const userTasks = this.extractTasksFromColumn(
           columnBody,
           resolvedUserName,
@@ -739,7 +886,8 @@ export class MagicPlanService {
           linkWithTaskManager,
           mlogBaseUrl,
           mlogTaskPrefix,
-          mlogRequestPrefix
+          mlogRequestPrefix,
+          columnUserId
         );
         myTasksRaw.push(...userTasks);
       } else if (isQueueColumn) {
@@ -750,7 +898,8 @@ export class MagicPlanService {
           linkWithTaskManager,
           mlogBaseUrl,
           mlogTaskPrefix,
-          mlogRequestPrefix
+          mlogRequestPrefix,
+          detectedPersonId
         );
         unassignedTasksRaw.push(...queueTasks);
       }
@@ -760,6 +909,43 @@ export class MagicPlanService {
     const myTasks = this.deduplicateTasks(myTasksRaw);
     const unassignedTasks = this.deduplicateTasks(unassignedTasksRaw);
     const totalMyHours = myTasks.reduce((sum, t) => sum + (t.totalHours || 0), 0);
+
+    // Correlate extracted tasks to discover / reconcile user IDs for availablePersons
+    for (const t of [...myTasks, ...unassignedTasks]) {
+      if (t.userId && t.userName) {
+        const uId = String(t.userId).trim();
+        const normName = normalizeStr(t.userName);
+        const existing = availablePersons.find(
+          (p) => p.id === uId || normalizeStr(p.name) === normName
+        );
+        if (existing) {
+          if (existing.id !== uId && /^\d+$/.test(uId)) {
+            existing.id = uId;
+          }
+          if (!existing.shortcut) {
+            const scMatch = t.userName.match(/\(([^)]+)\)$/);
+            if (scMatch) existing.shortcut = scMatch[1].trim();
+          }
+          if (!existing.cleanName) {
+            existing.cleanName = existing.shortcut
+              ? t.userName.replace(/\s*\([^)]+\)$/, '').trim()
+              : t.userName;
+          }
+          this.knownPersonsMap.set(uId, existing);
+        } else {
+          const scMatch = t.userName.match(/\(([^)]+)\)$/);
+          const sc = scMatch ? scMatch[1].trim() : '';
+          const personObj: PlanPersonInfo = {
+            id: uId,
+            name: t.userName,
+            cleanName: sc ? t.userName.replace(/\s*\([^)]+\)$/, '').trim() : t.userName,
+            shortcut: sc,
+          };
+          availablePersons.push(personObj);
+          this.knownPersonsMap.set(uId, personObj);
+        }
+      }
+    }
 
     const days: PlanDayInfo[] = dayBlocks.map((d) => ({
       date: d.date,
@@ -775,6 +961,7 @@ export class MagicPlanService {
       myTasks,
       unassignedTasks,
       totalMyHours,
+      availablePersons,
     };
   }
 
@@ -788,7 +975,8 @@ export class MagicPlanService {
     linkWithTaskManager: boolean,
     mlogBaseUrl?: string,
     mlogTaskPrefix: string = 'T',
-    mlogRequestPrefix: string = 'R'
+    mlogRequestPrefix: string = 'R',
+    columnUserId: string = ''
   ): PlanTaskItem[] {
     const tasks: PlanTaskItem[] = [];
 
@@ -962,7 +1150,7 @@ export class MagicPlanService {
         title: cleanTitle || rawTitle || 'Bez názvu',
         customName: customName || undefined,
         project,
-        userId,
+        userId: userId || columnUserId || '',
         userName,
         totalHours,
         isPinned: pinState === 'pinned',
@@ -1010,7 +1198,7 @@ export class MagicPlanService {
         title: 'Nedostupný / Volno',
         customName: 'Nedostupný / Volno',
         project: 'Absence / Svátek',
-        userId: info.userId || '',
+        userId: info.userId || columnUserId || '',
         userName,
         totalHours: info.count,
         isPinned: false,
@@ -1154,9 +1342,11 @@ export class MagicPlanService {
     const currentUserName = (planConfig.currentUserColumn?.trim() || userColumns[0] || '').toLowerCase();
 
     const rawQueue = planConfig.unassignedColumn?.trim() || 'FK';
-    const queueName = rawQueue.toLowerCase().startsWith('nástěnk') || rawQueue.toLowerCase().startsWith('nasten')
-      ? rawQueue
-      : `Nástěnka ${rawQueue}`;
+    const queuePerson = this.knownPersonsMap.get(rawQueue) || this.cachedData?.availablePersons?.find((p) => p.id === rawQueue);
+    const cleanQueueName = queuePerson?.cleanName || queuePerson?.name || rawQueue;
+    const queueName = cleanQueueName.toLowerCase().startsWith('nástěnk') || cleanQueueName.toLowerCase().startsWith('nasten')
+      ? cleanQueueName
+      : `Nástěnka (${cleanQueueName})`;
 
     const currentSnapshot = new Map<string, TrackedTaskSnapshot>();
     const currentMap = new Map<string, PlanTaskItem>();
@@ -1217,16 +1407,21 @@ export class MagicPlanService {
       if (!prev) {
         // Completely new task
         if (curr.location === 'queue') {
+          // Situace 1: požadavek se objevil ve frontě
           diffResult.newTasks.push(`[${queueName}] ${taskDesc}`);
-          if (notificationsEnabled && planConfig.notifyNewTasks !== false && planConfig.notifyQueueTasks !== false) {
+          if (notificationsEnabled && planConfig.notifyNewTasks !== false) {
             notificationService.show({
               type: 'magicPlan',
               subType: curr.isCritical ? 'critical' : 'queue',
               title: curr.isCritical ? `Nový kritický požadavek ve frontě (${queueName})` : `Nový úkol ve frontě (${queueName})`,
               body: taskDesc,
+              mpSituation: 1,
+              isCritical: !!curr.isCritical,
+              taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
             });
           }
         } else if (curr.location === 'me') {
+          // Situace 2: požadavek se objevil u mě (při předchozím načtení v plánu nebyl)
           diffResult.newTasks.push(taskDesc);
           if (notificationsEnabled && planConfig.notifyNewTasks !== false) {
             notificationService.show({
@@ -1234,103 +1429,228 @@ export class MagicPlanService {
               subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
               title: curr.isCritical ? 'Nový kritický požadavek v plánu' : 'Nový požadavek v plánu',
               body: taskDesc,
+              mpSituation: 2,
+              isCritical: !!curr.isCritical,
+              taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
             });
           }
         } else {
-          // Other colleague
+          // Situace 5: požadavek se objevil u kolegy (při předchozím načtení v plánu nebyl)
           diffResult.newTasks.push(`[${curr.userName}] ${taskDesc}`);
-          if (notificationsEnabled && planConfig.notifyNewTasks !== false) {
+          if (notificationsEnabled && planConfig.notifyColleagueTasks !== false) {
             notificationService.show({
               type: 'magicPlan',
               subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
-              title: curr.isCritical ? `${curr.userName} byl přiřazen kritický požadavek` : `${curr.userName} byl přiřazen úkol`,
+              title: curr.isCritical ? `${curr.userName} má nový kritický úkol` : `${curr.userName} má nový úkol v plánu`,
               body: taskDesc,
+              mpSituation: 5,
+              isCritical: !!curr.isCritical,
+              taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
             });
           }
         }
       } else {
         // Existing task - check movements & state changes
         const locationChanged = prev.location !== curr.location;
+        const colleagueChanged = prev.location === 'other' && curr.location === 'other' && prev.userName !== curr.userName;
 
-        if (locationChanged) {
+        if (locationChanged || colleagueChanged) {
           if (prev.location === 'queue' && curr.location === 'me') {
-            // Task assigned from queue to ME
+            // Situace 3: požadavek se objevil u mě a byl ve frontě
             diffResult.newTasks.push(taskDesc);
             if (notificationsEnabled && planConfig.notifyNewTasks !== false) {
               notificationService.show({
                 type: 'magicPlan',
                 subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
-                title: curr.isCritical ? 'Přiřazení kritického požadavku' : 'Přiřazení úkolu',
+                title: curr.isCritical ? 'Přiřazení kritického úkolu z fronty' : 'Přiřazení úkolu z fronty',
                 body: taskDesc,
+                mpSituation: 3,
+                isCritical: !!curr.isCritical,
+                taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
               });
             }
           } else if (prev.location === 'queue' && curr.location === 'other') {
-            // Task assigned from queue to colleague
+            // Situace 6: požadavek se objevil u kolegy a byl ve frontě
             diffResult.newTasks.push(`[${curr.userName}] ${taskDesc}`);
-            if (notificationsEnabled && planConfig.notifyNewTasks !== false) {
+            if (notificationsEnabled && planConfig.notifyColleagueTasks !== false) {
               notificationService.show({
                 type: 'magicPlan',
                 subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
-                title: curr.isCritical ? `${curr.userName} byl přiřazen kritický požadavek` : `${curr.userName} byl přiřazen úkol`,
+                title: curr.isCritical ? `${curr.userName} byl přiřazen kritický úkol` : `${curr.userName} byl přiřazen úkol z fronty`,
                 body: taskDesc,
+                mpSituation: 6,
+                isCritical: !!curr.isCritical,
+                taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
               });
             }
           } else if (prev.location === 'me' && curr.location === 'queue') {
-            // Task moved back to unassigned queue from ME
+            // Situace 9: požadavek se objevil ve frontě a byl u mě
             diffResult.newTasks.push(`[${queueName}] ${taskDesc}`);
-            if (notificationsEnabled && planConfig.notifyQueueTasks !== false) {
+            if (notificationsEnabled && planConfig.notifyNewTasks !== false) {
               notificationService.show({
                 type: 'magicPlan',
                 subType: curr.isCritical ? 'critical' : 'queue',
-                title: curr.isCritical ? 'Kritický požadavek byl přesunut zpátky do nepřiřazených' : 'Úkol byl přesunut zpátky do nepřiřazených úkolů',
+                title: curr.isCritical ? 'Váš kritický úkol byl vrácen do fronty' : 'Váš úkol byl vrácen do fronty',
                 body: taskDesc,
+                mpSituation: 9,
+                isCritical: !!curr.isCritical,
+                taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
               });
             }
           } else if (prev.location === 'other' && curr.location === 'queue') {
-            // Task moved back to queue from colleague
+            // Situace 10: požadavek se objevil ve frontě a byl u kolegy
+            // Bez zapnutí notifikace kolegů se bere jako nový úkol ve frontě (Situace 1)
             diffResult.newTasks.push(`[${queueName}] ${taskDesc}`);
-            if (notificationsEnabled && planConfig.notifyQueueTasks !== false) {
-              notificationService.show({
-                type: 'magicPlan',
-                subType: curr.isCritical ? 'critical' : 'queue',
-                title: curr.isCritical ? `Kritický požadavek od ${prev.userName} byl vrácen do fronty` : `Úkol od ${prev.userName} byl vrácen do fronty`,
-                body: taskDesc,
-              });
+            if (notificationsEnabled && planConfig.notifyNewTasks !== false) {
+              const notifyColleagues = planConfig.notifyColleagueTasks !== false;
+              if (notifyColleagues) {
+                notificationService.show({
+                  type: 'magicPlan',
+                  subType: curr.isCritical ? 'critical' : 'queue',
+                  title: curr.isCritical ? `Kritický úkol od ${prev.userName} byl vrácen do fronty` : `Úkol od ${prev.userName} byl vrácen do fronty`,
+                  body: taskDesc,
+                  mpSituation: 10,
+                  isCritical: !!curr.isCritical,
+                  taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
+                });
+              } else {
+                notificationService.show({
+                  type: 'magicPlan',
+                  subType: curr.isCritical ? 'critical' : 'queue',
+                  title: curr.isCritical ? 'Kritický úkol ve frontě (Nástěnka)' : 'Nový úkol ve frontě (Nástěnka)',
+                  body: taskDesc,
+                  mpSituation: 1,
+                  isCritical: !!curr.isCritical,
+                  taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
+                });
+              }
             }
           } else if (prev.location === 'other' && curr.location === 'me') {
-            // Task moved from colleague to ME
+            // Situace 4: požadavek se objevil u mě a byl u kolegy
+            // Bez zapnutí notifikace kolegů se úkol od kolegy bere jako požadavek z fronty (Situace 3)
             diffResult.newTasks.push(taskDesc);
             if (notificationsEnabled && planConfig.notifyNewTasks !== false) {
-              notificationService.show({
-                type: 'magicPlan',
-                subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
-                title: curr.isCritical ? `Kritický požadavek od ${prev.userName} byl přiřazen k vám` : `Úkol od ${prev.userName} byl přiřazen k vám`,
-                body: taskDesc,
-              });
+              const notifyColleagues = planConfig.notifyColleagueTasks !== false;
+              if (notifyColleagues) {
+                notificationService.show({
+                  type: 'magicPlan',
+                  subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
+                  title: curr.isCritical ? `Kritický úkol od ${prev.userName} byl přiřazen k vám` : `Úkol od ${prev.userName} byl přiřazen k vám`,
+                  body: taskDesc,
+                  mpSituation: 4,
+                  isCritical: !!curr.isCritical,
+                  taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
+                });
+              } else {
+                notificationService.show({
+                  type: 'magicPlan',
+                  subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
+                  title: curr.isCritical ? 'Přiřazení kritického úkolu z fronty' : 'Přiřazení úkolu z fronty',
+                  body: taskDesc,
+                  mpSituation: 3,
+                  isCritical: !!curr.isCritical,
+                  taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
+                });
+              }
             }
           } else if (prev.location === 'me' && curr.location === 'other') {
-            // Task moved from ME to colleague
+            // Situace 7: požadavek se objevil u kolegy a byl u mě
+            // Pokud jsou notifikace kolegů vypnuté, úkol byl odebrán z mého sloupce (fallback na Situaci 9 - vrácen/odebrán)
             if (notificationsEnabled && planConfig.notifyNewTasks !== false) {
+              const notifyColleagues = planConfig.notifyColleagueTasks !== false;
+              if (notifyColleagues) {
+                notificationService.show({
+                  type: 'magicPlan',
+                  subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
+                  title: curr.isCritical ? `${curr.userName} převzal váš kritický úkol` : `${curr.userName} převzal váš úkol`,
+                  body: taskDesc,
+                  mpSituation: 7,
+                  isCritical: !!curr.isCritical,
+                  taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
+                });
+              } else {
+                notificationService.show({
+                  type: 'magicPlan',
+                  subType: curr.isCritical ? 'critical' : 'queue',
+                  title: curr.isCritical ? 'Váš kritický úkol byl vrácen do fronty' : 'Váš úkol byl vrácen do fronty',
+                  body: taskDesc,
+                  mpSituation: 9,
+                  isCritical: !!curr.isCritical,
+                  taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
+                });
+              }
+            }
+          } else if (colleagueChanged) {
+            // Situace 8: požadavek se objevil u kolegy a byl u jiného kolegy
+            diffResult.newTasks.push(`[${curr.userName}] ${taskDesc}`);
+            if (notificationsEnabled && planConfig.notifyColleagueTasks !== false) {
               notificationService.show({
                 type: 'magicPlan',
                 subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
-                title: curr.isCritical ? `${curr.userName} převzal váš kritický požadavek` : `${curr.userName} převzal váš úkol`,
+                title: curr.isCritical ? `Kritický úkol přesunut: ${prev.userName} ➜ ${curr.userName}` : `Úkol přesunut od ${prev.userName} k ${curr.userName}`,
                 body: taskDesc,
+                mpSituation: 8,
+                isCritical: !!curr.isCritical,
+                taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
               });
             }
           }
         }
 
-        // Change to critical
+        // Change to critical / non-critical
         if (!prev.isCritical && curr.isCritical) {
           diffResult.changedTasks.push(`[Kritický] ${taskDesc}`);
           if (notificationsEnabled && planConfig.notifyTaskChanges !== false) {
-            notificationService.show({
-              type: 'magicPlan',
-              subType: 'critical',
-              title: 'Kritický úkol!',
-              body: `${curr.location === 'other' ? `[${curr.userName}] ` : ''}${taskDesc}`,
-            });
+            if (curr.location === 'queue') {
+              // Situace 17: ve frontě se změnil úkol na kritický
+              notificationService.show({
+                type: 'magicPlan',
+                subType: 'critical',
+                title: 'Úkol ve frontě změněn na kritický!',
+                body: `${taskDesc} (nově priorita 1)`,
+                mpSituation: 17,
+                isCritical: true,
+                taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
+              });
+            } else if (curr.location === 'me') {
+              // Situace 18: u mě se změnil úkol na kritický
+              notificationService.show({
+                type: 'magicPlan',
+                subType: 'critical',
+                title: 'Váš úkol označen jako kritický!',
+                body: `${taskDesc} (přiřazena priorita 1)`,
+                mpSituation: 18,
+                isCritical: true,
+                taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
+              });
+            }
+          }
+        } else if (prev.isCritical && !curr.isCritical) {
+          diffResult.changedTasks.push(`[Zrušena priorita] ${taskDesc}`);
+          if (notificationsEnabled && planConfig.notifyTaskChanges !== false) {
+            if (curr.location === 'queue') {
+              // Situace 19: ve frontě se změnil úkol na nekritický
+              notificationService.show({
+                type: 'magicPlan',
+                subType: 'queue',
+                title: 'Úkol ve frontě již není kritický',
+                body: `${taskDesc} (priorita snížena na běžnou)`,
+                mpSituation: 19,
+                isCritical: false,
+                taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
+              });
+            } else if (curr.location === 'me') {
+              // Situace 20: u mě se změnil úkol na nekritický
+              notificationService.show({
+                type: 'magicPlan',
+                subType: curr.task.taskType === 'service' ? 'service' : 'dev',
+                title: 'U vašeho úkolu zrušena kritická priorita',
+                body: `${taskDesc} (priorita snížena na běžnou)`,
+                mpSituation: 20,
+                isCritical: false,
+                taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
+              });
+            }
           }
         }
 
@@ -1339,33 +1659,63 @@ export class MagicPlanService {
           diffResult.completedTasks.push(taskTitle);
           if (notificationsEnabled && planConfig.notifyCompletedTasks !== false) {
             if (curr.location === 'me') {
+              // Situace 14: úkol u mě změnil stav na solved
               notificationService.show({
                 type: 'magicPlan',
                 subType: 'completed',
                 title: 'Úkol v plánu splněn',
                 body: taskTitle,
+                mpSituation: 14,
+                isCritical: !!curr.isCritical,
+                taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
               });
             } else if (curr.location === 'other') {
-              notificationService.show({
-                type: 'magicPlan',
-                subType: 'completed',
-                title: `${curr.userName} dokončil úkol`,
-                body: taskTitle,
-              });
+              // Situace 16: kolegovi úkol přepnul stav na solved
+              if (planConfig.notifyColleagueTasks !== false) {
+                notificationService.show({
+                  type: 'magicPlan',
+                  subType: 'completed',
+                  title: `${curr.userName} označil úkol za splněný`,
+                  body: taskTitle,
+                  mpSituation: 16,
+                  isCritical: !!curr.isCritical,
+                  taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
+                });
+              }
             }
           }
         }
 
         // Hours changed (for my active tasks)
         if (curr.location === 'me' && !curr.isSolved && prev.totalHours !== curr.totalHours) {
-          diffResult.changedTasks.push(`${taskTitle} (${prev.totalHours}h → ${curr.totalHours}h)`);
-          if (notificationsEnabled && planConfig.notifyTaskChanges !== false) {
-            notificationService.show({
-              type: 'magicPlan',
-              subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
-              title: 'Změna v plánu',
-              body: `${taskTitle} (hodiny: ${prev.totalHours}h → ${curr.totalHours}h)`,
-            });
+          if (curr.totalHours > prev.totalHours) {
+            // Situace 11: požadavek u mě změnil čas na vyšší
+            diffResult.changedTasks.push(`${taskTitle} (navýšeno: ${prev.totalHours}h → ${curr.totalHours}h)`);
+            if (notificationsEnabled && planConfig.notifyTaskChanges !== false) {
+              notificationService.show({
+                type: 'magicPlan',
+                subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
+                title: curr.isCritical ? 'Zvýšení času u kritického úkolu' : 'Zvýšení odhadu času úkolu',
+                body: `${taskTitle} (navýšeno: ${prev.totalHours}h → ${curr.totalHours}h)`,
+                mpSituation: 11,
+                isCritical: !!curr.isCritical,
+                taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
+              });
+            }
+          } else {
+            // Situace 12: požadavek u mě změnil čas na nižší
+            diffResult.changedTasks.push(`${taskTitle} (zkráceno: ${prev.totalHours}h → ${curr.totalHours}h)`);
+            if (notificationsEnabled && planConfig.notifyTaskChanges !== false) {
+              notificationService.show({
+                type: 'magicPlan',
+                subType: curr.isCritical ? 'critical' : (curr.task.taskType === 'service' ? 'service' : 'dev'),
+                title: curr.isCritical ? 'Snížení času u kritického úkolu' : 'Snížení odhadu času úkolu',
+                body: `${taskTitle} (zkráceno: ${prev.totalHours}h → ${curr.totalHours}h)`,
+                mpSituation: 12,
+                isCritical: !!curr.isCritical,
+                taskType: curr.task.taskType === 'service' ? 'service' : 'dev',
+              });
+            }
           }
         }
       }
@@ -1388,23 +1738,31 @@ export class MagicPlanService {
 
         // An unsolved task disappeared from ME or OTHER without returning to queue: it was completed/solved!
         if (prev.location === 'me') {
+          // Situace 13: úkol u mě zmizel a neobjevil se jinde
           diffResult.completedTasks.push(prevTaskTitle);
           if (notificationsEnabled && planConfig.notifyCompletedTasks !== false) {
             notificationService.show({
               type: 'magicPlan',
               subType: 'completed',
-              title: 'Úkol v plánu splněn',
+              title: 'Úkol v plánu vyřešen',
               body: prevTaskTitle,
+              mpSituation: 13,
+              isCritical: !!prev.isCritical,
+              taskType: prev.task.taskType === 'service' ? 'service' : 'dev',
             });
           }
         } else if (prev.location === 'other') {
+          // Situace 15: kolegovi zmizel úkol a nikde jinde se neobjevil
           diffResult.completedTasks.push(`[${prev.userName}] ${prevTaskTitle}`);
-          if (notificationsEnabled && planConfig.notifyCompletedTasks !== false) {
+          if (notificationsEnabled && planConfig.notifyCompletedTasks !== false && planConfig.notifyColleagueTasks !== false) {
             notificationService.show({
               type: 'magicPlan',
               subType: 'completed',
               title: `${prev.userName} dokončil úkol`,
               body: prevTaskTitle,
+              mpSituation: 15,
+              isCritical: !!prev.isCritical,
+              taskType: prev.task.taskType === 'service' ? 'service' : 'dev',
             });
           }
         }

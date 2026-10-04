@@ -115,10 +115,13 @@ export interface MagicPlanSettings {
   notifyCompletedTasks?: boolean;
   notifyTaskChanges?: boolean;
   notifyQueueTasks?: boolean;
+  notifyColleagueTasks?: boolean;
   linkWithTaskManager?: boolean;
   timelineTimeMode?: 'real8h' | 'custom';
   timelineCustomStart?: string;
   timelineCustomEnd?: string;
+  showAllTasks?: boolean;
+  compactDayView?: boolean;
 }
 
 export interface PlanDayInfo {
@@ -151,6 +154,13 @@ export interface PlanTaskItem {
   topPx?: number; // Svislá pozice v pixelovém rozvrhu HTML stránky
 }
 
+export interface PlanPersonInfo {
+  id: string;
+  name: string;
+  cleanName?: string;
+  shortcut?: string;
+}
+
 export interface MagicPlanData {
   planNumber?: string;
   planRange?: string;
@@ -159,6 +169,7 @@ export interface MagicPlanData {
   myTasks: PlanTaskItem[];
   unassignedTasks: PlanTaskItem[];
   totalMyHours: number;
+  availablePersons?: PlanPersonInfo[];
   error?: string;
   isOffline?: boolean;
 }

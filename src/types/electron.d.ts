@@ -190,6 +190,7 @@ declare global {
       clearCrashLogs?: () => Promise<void>;
       logAction?: (entry: Omit<ActionLogEntry, 'id' | 'timestamp'> & { timestamp?: string }) => Promise<void>;
       exportCrashReport?: (fileName: string) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
+      recordCrash?: (action: string, error: any, context?: any) => Promise<string>;
       simulateTestCrash?: () => Promise<string>;
       openDevTools?: () => Promise<void>;
 

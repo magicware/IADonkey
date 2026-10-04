@@ -18,6 +18,7 @@ import { PaletteDetailModal } from './components/PaletteDetailModal';
 import { WindowFrame } from './components/WindowFrame';
 import { PowerManagementModal } from './components/PowerManagementModal';
 import { MagicPlanWindow } from './components/MagicPlanWindow';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { CURRENT_APP_VERSION, getLatestRelease } from './changelog';
 import { applyPrimaryColor, applyActionsColor } from './utils/theme';
 
@@ -488,19 +489,21 @@ export const App: React.FC = () => {
         onClose={() => window.close()}
       >
         <main className="w-full h-full bg-[#181920] overflow-hidden text-gray-200">
-          <SettingsModal
-            config={config}
-            items={items}
-            onSaveConfig={handleSaveConfig}
-            onClose={() => window.close()}
-            onTriggerSync={handleRefreshData}
-            onCheckUpdate={handleCheckUpdate}
-            isSyncing={isSyncing}
-            syncProgress={syncProgress}
-            updateStatusMessage={updateStatusMessage}
-            updateInfo={updateInfo}
-            onSimulateUpdate={handleSimulateUpdate}
-          />
+          <ErrorBoundary fallbackTitle="Chyba vykreslení okna Nastavení">
+            <SettingsModal
+              config={config}
+              items={items}
+              onSaveConfig={handleSaveConfig}
+              onClose={() => window.close()}
+              onTriggerSync={handleRefreshData}
+              onCheckUpdate={handleCheckUpdate}
+              isSyncing={isSyncing}
+              syncProgress={syncProgress}
+              updateStatusMessage={updateStatusMessage}
+              updateInfo={updateInfo}
+              onSimulateUpdate={handleSimulateUpdate}
+            />
+          </ErrorBoundary>
           {/* Update Dialog in settings view if simulated */}
           {updateInfo && (
             <UpdateDialog
@@ -673,17 +676,19 @@ export const App: React.FC = () => {
           }
         }}
       >
-        <MagicPlanWindow
-          config={config}
-          onSaveConfig={handleSaveConfig}
-          onOpenSettings={() => {
-            if (window.electronAPI?.openSettingsWindow) {
-              window.electronAPI.openSettingsWindow();
-            } else {
-              setShowSettings(true);
-            }
-          }}
-        />
+        <ErrorBoundary fallbackTitle="Chyba vykreslení okna MagicPlan">
+          <MagicPlanWindow
+            config={config}
+            onSaveConfig={handleSaveConfig}
+            onOpenSettings={() => {
+              if (window.electronAPI?.openSettingsWindow) {
+                window.electronAPI.openSettingsWindow();
+              } else {
+                setShowSettings(true);
+              }
+            }}
+          />
+        </ErrorBoundary>
       </WindowFrame>
     );
   }
@@ -752,22 +757,24 @@ export const App: React.FC = () => {
 
       {/* Fallback modal if not in dedicated window */}
       {showSettings && (
-        <SettingsModal
-          config={config}
-          items={items}
-          onSaveConfig={handleSaveConfig}
-          onClose={() => {
-            setShowSettings(false);
-            window.dispatchEvent(new CustomEvent('focus-search-input'));
-          }}
-          onTriggerSync={handleRefreshData}
-          onCheckUpdate={handleCheckUpdate}
-          isSyncing={isSyncing}
-          syncProgress={syncProgress}
-          updateStatusMessage={updateStatusMessage}
-          updateInfo={updateInfo}
-          onSimulateUpdate={handleSimulateUpdate}
-        />
+        <ErrorBoundary fallbackTitle="Chyba vykreslení okna Nastavení">
+          <SettingsModal
+            config={config}
+            items={items}
+            onSaveConfig={handleSaveConfig}
+            onClose={() => {
+              setShowSettings(false);
+              window.dispatchEvent(new CustomEvent('focus-search-input'));
+            }}
+            onTriggerSync={handleRefreshData}
+            onCheckUpdate={handleCheckUpdate}
+            isSyncing={isSyncing}
+            syncProgress={syncProgress}
+            updateStatusMessage={updateStatusMessage}
+            updateInfo={updateInfo}
+            onSimulateUpdate={handleSimulateUpdate}
+          />
+        </ErrorBoundary>
       )}
 
       {/* Update Dialog */}

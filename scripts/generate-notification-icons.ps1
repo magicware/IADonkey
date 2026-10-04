@@ -1,19 +1,19 @@
-# Script to generate 13 notification icons in 128x128 PNG format with dark circular background and Material Symbols
+# Script to generate 13 notification icons in 128x128 PNG format with transparent background and white Material Symbols (error red)
 
 $symbols = @(
-  @{ name = 'plan-dev'; symbol = 'code'; color = '#6366f1' },
-  @{ name = 'plan-service'; symbol = 'build'; color = '#6366f1' },
-  @{ name = 'plan-queue'; symbol = 'inbox'; color = '#6366f1' },
-  @{ name = 'plan-completed'; symbol = 'check'; color = '#22c55e' },
+  @{ name = 'plan-dev'; symbol = 'code'; color = '#ffffff' },
+  @{ name = 'plan-service'; symbol = 'build'; color = '#ffffff' },
+  @{ name = 'plan-queue'; symbol = 'inbox'; color = '#ffffff' },
+  @{ name = 'plan-completed'; symbol = 'check'; color = '#ffffff' },
   @{ name = 'plan-critical'; symbol = 'warning'; color = '#ef4444' },
-  @{ name = 'quickCap'; symbol = 'crop'; color = '#6366f1' },
-  @{ name = 'colorMaster'; symbol = 'colorize'; color = '#6366f1' },
-  @{ name = 'screenRuler'; symbol = 'straighten'; color = '#6366f1' },
-  @{ name = 'syncComplete'; symbol = 'sync'; color = '#6366f1' },
-  @{ name = 'update'; symbol = 'upgrade'; color = '#6366f1' },
-  @{ name = 'clipboard'; symbol = 'content_copy'; color = '#6366f1' },
+  @{ name = 'quickCap'; symbol = 'crop'; color = '#ffffff' },
+  @{ name = 'colorMaster'; symbol = 'colorize'; color = '#ffffff' },
+  @{ name = 'screenRuler'; symbol = 'straighten'; color = '#ffffff' },
+  @{ name = 'syncComplete'; symbol = 'sync'; color = '#ffffff' },
+  @{ name = 'update'; symbol = 'upgrade'; color = '#ffffff' },
+  @{ name = 'clipboard'; symbol = 'content_copy'; color = '#ffffff' },
   @{ name = 'error'; symbol = 'error'; color = '#ef4444' },
-  @{ name = 'test'; symbol = 'notifications_active'; color = '#eab308' }
+  @{ name = 'test'; symbol = 'notifications_active'; color = '#ffffff' }
 )
 
 $edgePath = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
@@ -61,8 +61,7 @@ foreach ($item in $symbols) {
 </head>
 <body>
   <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-    <circle cx="64" cy="64" r="56" fill="#14151c" stroke="#262834" stroke-width="2.5"/>
-    <svg x="32" y="32" width="64" height="64" viewBox="0 -960 960 960">
+    <svg x="16" y="16" width="96" height="96" viewBox="0 -960 960 960">
       <path d="$d" fill="$($item.color)"/>
     </svg>
   </svg>

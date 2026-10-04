@@ -263,18 +263,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [paletteHotkeyError, setPaletteHotkeyError] = useState<string | null>(null);
   const [isSharedDropdownOpen, setIsSharedDropdownOpen] = useState(false);
   const [openSimDropdown, setOpenSimDropdown] = useState<'github' | 'magicgate' | 'cms' | null>(null);
+  const [openNotifDropdown, setOpenNotifDropdown] = useState<string | null>(null);
+  const [testTaskType, setTestTaskType] = useState<'dev' | 'service'>('dev');
+  const [testIsCritical, setTestIsCritical] = useState<boolean>(false);
+  const [testSituationId, setTestSituationId] = useState<number>(1);
 
   useEffect(() => {
-    if (!openSimDropdown) return;
+    if (!openSimDropdown && !openNotifDropdown) return;
     const handleDocClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target.closest('[data-sim-dropdown]')) {
         setOpenSimDropdown(null);
       }
+      if (!target.closest('[data-notif-dropdown]')) {
+        setOpenNotifDropdown(null);
+      }
     };
     document.addEventListener('mousedown', handleDocClick);
     return () => document.removeEventListener('mousedown', handleDocClick);
-  }, [openSimDropdown]);
+  }, [openSimDropdown, openNotifDropdown]);
 
   const firstGithubRepo = useMemo(() => {
     for (const it of items) {
@@ -387,9 +394,98 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [snippetFeedback, setSnippetFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [testingNotificationVariant, setTestingNotificationVariant] = useState<string | null>(null);
   const [testNotificationFeedback, setTestNotificationFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [systemNotifTestStatus, setSystemNotifTestStatus] = useState<Record<string, 'success' | 'blocked'>>({});
+
+  const handleTestSystemNotification = async (typeKey: string) => {
+    const globalEnabled = formData.notifications?.enabled !== false;
+    const notifKeyMap: Record<string, string> = {
+      quickCap: 'quickCap',
+      colorMaster: 'colorMaster',
+      syncComplete: 'syncComplete',
+      update: 'updates',
+      clipboard: 'clipboard',
+      error: 'errors',
+    };
+    const settingKey = notifKeyMap[typeKey];
+    const isSpecificEnabled = settingKey ? (formData.notifications as any)?.[settingKey] !== false : true;
+
+    if (!globalEnabled || !isSpecificEnabled) {
+      setSystemNotifTestStatus((prev) => ({ ...prev, [typeKey]: 'blocked' }));
+      setTimeout(() => {
+        setSystemNotifTestStatus((prev) => {
+          const next = { ...prev };
+          delete next[typeKey];
+          return next;
+        });
+      }, 3000);
+      return;
+    }
+
+    try {
+      if (window.electronAPI?.sendTestNotification) {
+        const ok = await window.electronAPI.sendTestNotification(typeKey);
+        setSystemNotifTestStatus((prev) => ({ ...prev, [typeKey]: ok ? 'success' : 'blocked' }));
+      } else {
+        setSystemNotifTestStatus((prev) => ({ ...prev, [typeKey]: 'blocked' }));
+      }
+    } catch {
+      setSystemNotifTestStatus((prev) => ({ ...prev, [typeKey]: 'blocked' }));
+    } finally {
+      setTimeout(() => {
+        setSystemNotifTestStatus((prev) => {
+          const next = { ...prev };
+          delete next[typeKey];
+          return next;
+        });
+      }, 3000);
+    }
+  };
 
   const handleTestNotification = async (payload: any = 'success') => {
     const variantKey = typeof payload === 'string' ? payload : (payload.subType || payload.type || 'test');
+
+    // Check if the tested non-magicplan notification is disabled by user settings
+    if (typeof payload === 'string' || (payload && payload.type !== 'magicPlan')) {
+      const typeKey = typeof payload === 'string' ? payload : payload.type;
+      const globalEnabled = formData.notifications?.enabled !== false;
+      if (!globalEnabled) {
+        setTestNotificationFeedback({
+          type: 'error',
+          message: 'Tato notifikace je vypnutá (globální notifikace aplikace jsou vypnuté).',
+        });
+        setTimeout(() => setTestNotificationFeedback(null), 4000);
+        return;
+      }
+
+      const notifKeyMap: Record<string, string> = {
+        quickCap: 'quickCap',
+        colorMaster: 'colorMaster',
+        syncComplete: 'syncComplete',
+        update: 'updates',
+        clipboard: 'clipboard',
+        error: 'errors',
+      };
+
+      const nameMap: Record<string, string> = {
+        quickCap: 'Výstřižky QuickCap',
+        colorMaster: 'Kapátko Eyedropper (ColorMaster)',
+        syncComplete: 'Dokončení synchronizace dat',
+        update: 'Nové verze a aktualizace',
+        clipboard: 'Kopírování do schránky',
+        error: 'Chyby aplikace a pády',
+      };
+
+      const settingKey = notifKeyMap[typeKey];
+      if (settingKey && (formData.notifications as any)?.[settingKey] === false) {
+        setTestNotificationFeedback({
+          type: 'error',
+          message: `Tato notifikace je vypnutá (položka „${nameMap[typeKey] || typeKey}“ je vypnutá).`,
+        });
+        setTimeout(() => setTestNotificationFeedback(null), 4000);
+        return;
+      }
+    }
+
     setTestingNotificationVariant(variantKey);
     setTestNotificationFeedback(null);
     try {
@@ -398,7 +494,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         if (ok) {
           setTestNotificationFeedback({
             type: variantKey === 'error' ? 'error' : 'success',
-            message: 'Testovací notifikace byla úspěšně odeslána do Windows.',
+            message: payload?.customSuccessMessage || 'Testovací notifikace byla úspěšně odeslána do Windows.',
           });
         } else {
           setTestNotificationFeedback({
@@ -423,6 +519,475 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         setTestNotificationFeedback(null);
       }, 4000);
     }
+  };
+
+  const magicPlanSituationsList = [
+    {
+      id: 1,
+      name: 'Požadavek ve frontě (nový)',
+      badge: 'Fronta',
+      icon: 'schedule',
+      iconColor: 'text-cyan-400',
+      desc: 'Požadavek se nově objevil ve frontě (při předchozím načtení v plánu nebyl)',
+      getTitle: (_tt: 'dev' | 'service', isCrit: boolean) =>
+        isCrit ? 'Kritický úkol ve frontě (Nástěnka)' : 'Nový úkol ve frontě (Nástěnka)',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9006 / T1007] Servisní dotaz k objednávce (1h)' : '[R9002 / T1003] Úprava validačních hlášek formuláře (2h)',
+      subType: (isCrit: boolean) => (isCrit ? 'critical' : 'queue'),
+    },
+    {
+      id: 2,
+      name: 'Požadavek u mě (nový)',
+      badge: 'Vlastní',
+      icon: 'lightbulb',
+      iconColor: 'text-cyan-400',
+      desc: 'Požadavek se objevil u mě (při předchozím načtení v plánu nebyl)',
+      getTitle: (_tt: 'dev' | 'service', isCrit: boolean) =>
+        isCrit ? 'Nový kritický požadavek v plánu' : 'Nový požadavek v plánu',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9005 / T1006] Oprava tiskové sestavy faktur (3h)' : '[R9001 / T1002] Implementace platební brány (8h)',
+      subType: (isCrit: boolean, tt: 'dev' | 'service') => (isCrit ? 'critical' : tt),
+    },
+    {
+      id: 3,
+      name: 'Přiřazení z fronty ke mně',
+      badge: 'Přiřazení',
+      icon: 'lightbulb',
+      iconColor: 'text-cyan-400',
+      desc: 'Požadavek se objevil u mě a byl ve frontě',
+      getTitle: (_tt: 'dev' | 'service', isCrit: boolean) =>
+        isCrit ? 'Přiřazení kritického úkolu z fronty' : 'Přiřazení úkolu z fronty',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9011 / T1016] Konzultace nastavení e-shopu (2h)' : '[R9010 / T1015] Optimalizace databázových indexů (5h)',
+      subType: (isCrit: boolean, tt: 'dev' | 'service') => (isCrit ? 'critical' : tt),
+    },
+    {
+      id: 4,
+      name: 'Úkol od kolegy ke mně',
+      badge: 'Předání',
+      icon: 'lightbulb',
+      iconColor: 'text-cyan-400',
+      desc: 'Požadavek se objevil u mě a byl u kolegy',
+      getTitle: (_tt: 'dev' | 'service', isCrit: boolean) =>
+        isCrit ? 'Kritický úkol od Novák byl přiřazen k vám' : 'Úkol od Novák byl přiřazen k vám',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9024 / T1029] Servisní kontrola databáze (2h)' : '[R9020 / T1025] Dokončení integrace API (3h)',
+      subType: (isCrit: boolean, tt: 'dev' | 'service') => (isCrit ? 'critical' : tt),
+    },
+    {
+      id: 5,
+      name: 'Nový úkol u kolegy',
+      badge: 'Kolega',
+      icon: 'person',
+      iconColor: 'text-cyan-400',
+      desc: 'Požadavek se objevil u kolegy a nebyl ve frontě',
+      getTitle: (_tt: 'dev' | 'service', isCrit: boolean) =>
+        isCrit ? 'Novák má nový kritický úkol' : 'Novák má nový úkol v plánu',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9038 / T1043] Reklamace tiskové sestavy (2h)' : '[R9035 / T1040] Příprava testovacích scénářů (4h)',
+      subType: (isCrit: boolean, tt: 'dev' | 'service') => (isCrit ? 'critical' : tt),
+    },
+    {
+      id: 6,
+      name: 'Z fronty ke kolegovi',
+      badge: 'Kolega',
+      icon: 'person',
+      iconColor: 'text-cyan-400',
+      desc: 'Požadavek se objevil u kolegy a byl ve frontě',
+      getTitle: (_tt: 'dev' | 'service', isCrit: boolean) =>
+        isCrit ? 'Novák byl přiřazen kritický úkol' : 'Novák byl přiřazen úkol z fronty',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9039 / T1044] Nastavení platebního terminálu (1h)' : '[R9036 / T1041] Nastavení exportů dat (3h)',
+      subType: (isCrit: boolean, tt: 'dev' | 'service') => (isCrit ? 'critical' : tt),
+    },
+    {
+      id: 7,
+      name: 'Kolega převzal můj úkol',
+      badge: 'Předání',
+      icon: 'arrow_forward',
+      iconColor: 'text-cyan-400',
+      desc: 'Požadavek se objevil u kolegy a byl u mě',
+      getTitle: (_tt: 'dev' | 'service', isCrit: boolean) =>
+        isCrit ? 'Dvořák převzal váš kritický úkol' : 'Dvořák převzal váš úkol',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9025 / T1030] Úprava nastavení tiskárny (1h)' : '[R9021 / T1026] Revize tiskového formuláře (2h)',
+      subType: (isCrit: boolean, tt: 'dev' | 'service') => (isCrit ? 'critical' : tt),
+    },
+    {
+      id: 8,
+      name: 'Přesun mezi kolegy',
+      badge: 'Kolega',
+      icon: 'person',
+      iconColor: 'text-cyan-400',
+      desc: 'Požadavek se objevil u kolegy a byl u jiného kolegy',
+      getTitle: (_tt: 'dev' | 'service', isCrit: boolean) =>
+        isCrit ? 'Kritický úkol přesunut: Novák ➜ Dvořák' : 'Úkol přesunut od Novák k Dvořák',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9043 / T1048] Prověření chyby exportu (2h)' : '[R9037 / T1042] Migrace databáze zákazníků (5h)',
+      subType: (isCrit: boolean, tt: 'dev' | 'service') => (isCrit ? 'critical' : tt),
+    },
+    {
+      id: 9,
+      name: 'Vrácení mého úkolu do fronty',
+      badge: 'Fronta',
+      icon: 'close',
+      iconColor: 'text-cyan-400',
+      desc: 'Požadavek se objevil ve frontě a byl u mě',
+      getTitle: (_tt: 'dev' | 'service', isCrit: boolean) =>
+        isCrit ? 'Váš kritický úkol byl vrácen do fronty' : 'Váš úkol byl vrácen do fronty',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9044 / T1049] Odložený servisní ticket (1h)' : '[R9031 / T1036] Odložená úprava filtrů (2h)',
+      subType: (isCrit: boolean) => (isCrit ? 'critical' : 'queue'),
+    },
+    {
+      id: 10,
+      name: 'Vrácení od kolegy do fronty',
+      badge: 'Fronta',
+      icon: 'person',
+      iconColor: 'text-cyan-400',
+      desc: 'Požadavek se objevil ve frontě a byl u kolegy',
+      getTitle: (_tt: 'dev' | 'service', isCrit: boolean) =>
+        isCrit ? 'Kritický úkol od Novák byl vrácen do fronty' : 'Úkol od Novák byl vrácen do fronty',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9045 / T1050] Servisní požadavek čekající na díl (2h)' : '[R9033 / T1038] Pozastavený vývoj modulu (3h)',
+      subType: (isCrit: boolean) => (isCrit ? 'critical' : 'queue'),
+    },
+    {
+      id: 11,
+      name: 'Zvýšení odhadu času úkolu',
+      badge: 'Hodiny',
+      icon: 'arrow_upward',
+      iconColor: 'text-cyan-400',
+      desc: 'Požadavek u mě změnil čas na vyšší',
+      getTitle: (_tt: 'dev' | 'service', isCrit: boolean) =>
+        isCrit ? 'Zvýšení času u kritického úkolu' : 'Zvýšení odhadu času úkolu',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9005 / T1006] Oprava tiskárny (navýšeno: 2h ➜ 4h)' : '[R9001 / T1002] Implementace plateb (navýšeno: 4h ➜ 8h)',
+      subType: (isCrit: boolean, tt: 'dev' | 'service') => (isCrit ? 'critical' : tt),
+    },
+    {
+      id: 12,
+      name: 'Snížení odhadu času úkolu',
+      badge: 'Hodiny',
+      icon: 'priority_high',
+      iconColor: 'text-cyan-400',
+      desc: 'Požadavek u mě změnil čas na nižší',
+      getTitle: (_tt: 'dev' | 'service', isCrit: boolean) =>
+        isCrit ? 'Snížení času u kritického úkolu' : 'Snížení odhadu času úkolu',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9005 / T1006] Oprava tiskárny (zkráceno: 4h ➜ 2h)' : '[R9001 / T1002] Implementace plateb (zkráceno: 8h ➜ 4h)',
+      subType: (isCrit: boolean, tt: 'dev' | 'service') => (isCrit ? 'critical' : tt),
+    },
+    {
+      id: 13,
+      name: 'Můj úkol vyřešen (zmizel)',
+      badge: 'Vyřešeno',
+      icon: 'check',
+      iconColor: 'text-cyan-400',
+      desc: 'Úkol u mě zmizel a neobjevil se jinde (úkol vyřešen)',
+      getTitle: () => 'Úkol v plánu vyřešen',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9007 / T1008] Vyřešení tiskové sestavy faktury' : '[R9003 / T1004] Refaktoring API a optimalizace dotazů',
+      subType: () => 'completed',
+    },
+    {
+      id: 14,
+      name: 'Můj úkol splněn (solved)',
+      badge: 'Vyřešeno',
+      icon: 'check',
+      iconColor: 'text-cyan-400',
+      desc: 'Úkol u mě změnil stav na solved',
+      getTitle: () => 'Úkol v plánu splněn',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9046 / T1051] Oprava konfigurace e-shopu' : '[R9041 / T1046] Revize zabezpečení formuláře',
+      subType: () => 'completed',
+    },
+    {
+      id: 15,
+      name: 'Úkol kolegy vyřešen (zmizel)',
+      badge: 'Kolega',
+      icon: 'person',
+      iconColor: 'text-cyan-400',
+      desc: 'Kolegovi zmizel úkol a nikde jinde se neobjevil',
+      getTitle: () => 'Novák dokončil úkol',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9047 / T1052] Servisní zásah na serveru' : '[R9040 / T1045] Nasazení nové verze na staging',
+      subType: () => 'completed',
+    },
+    {
+      id: 16,
+      name: 'Kolega označil úkol za splněný',
+      badge: 'Kolega',
+      icon: 'person',
+      iconColor: 'text-cyan-400',
+      desc: 'Kolegovi úkol přepnul stav na solved',
+      getTitle: () => 'Novák označil úkol za splněný',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9048 / T1053] Nastavení parametrů účetnictví' : '[R9042 / T1047] Úprava stylů a komponent',
+      subType: () => 'completed',
+    },
+    {
+      id: 17,
+      name: 'Ve frontě změněn na kritický',
+      badge: 'Kritický',
+      icon: 'priority_high',
+      iconColor: 'text-cyan-400',
+      desc: 'Ve frontě se změnil úkol na kritický',
+      getTitle: () => 'Úkol ve frontě změněn na kritický!',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9049 / T1054] Havárie pokladního serveru (nově priorita 1)' : '[R9034 / T1039] Výpadek platební brány (nově priorita 1)',
+      subType: () => 'critical',
+    },
+    {
+      id: 18,
+      name: 'U mě změněn na kritický',
+      badge: 'Kritický',
+      icon: 'lightbulb',
+      iconColor: 'text-cyan-400',
+      desc: 'U mě se změnil úkol na kritický',
+      getTitle: () => 'Váš úkol označen jako kritický!',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9051 / T1056] Zablokovaná synchronizace skladů (přiřazena priorita 1)' : '[R9050 / T1055] Výpadek synchronizace plateb (přiřazena priorita 1)',
+      subType: () => 'critical',
+    },
+    {
+      id: 19,
+      name: 'Ve frontě zrušena kritičnost',
+      badge: 'Fronta',
+      icon: 'schedule',
+      iconColor: 'text-cyan-400',
+      desc: 'Ve frontě se změnil úkol na nekritický',
+      getTitle: () => 'Úkol ve frontě již není kritický',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9049 / T1054] Běžný servisní dotaz (priorita snížena na běžnou)' : '[R9034 / T1039] Běžná konzultace (priorita snížena na běžnou)',
+      subType: () => 'queue',
+    },
+    {
+      id: 20,
+      name: 'U mě zrušena kritičnost',
+      badge: 'Vlastní',
+      icon: 'lightbulb',
+      iconColor: 'text-cyan-400',
+      desc: 'U mě se změnil úkol na nekritický',
+      getTitle: () => 'U vašeho úkolu zrušena kritická priorita',
+      getBody: (tt: 'dev' | 'service', _isCrit: boolean) =>
+        tt === 'service' ? '[R9051 / T1056] Standardní úprava číselníku (priorita snížena na běžnou)' : '[R9050 / T1055] Běžná oprava komponenty (priorita snížena na běžnou)',
+      subType: (_isCrit: boolean, tt: 'dev' | 'service') => tt,
+    },
+  ];
+
+  const evaluateMagicPlanNotification = (
+    situationId: number,
+    data: any
+  ): {
+    allowed: boolean;
+    effectiveSituationId: number;
+    reasonDisabled?: string;
+    isFallback?: boolean;
+    fallbackNote?: string;
+  } => {
+    const globalEnabled = data?.notifications?.enabled !== false;
+    if (!globalEnabled) {
+      return {
+        allowed: false,
+        effectiveSituationId: situationId,
+        reasonDisabled: 'Globální notifikace aplikace jsou vypnuté',
+      };
+    }
+
+    const mpEnabled = data?.notifications?.magicplan !== false;
+    if (!mpEnabled) {
+      return {
+        allowed: false,
+        effectiveSituationId: situationId,
+        reasonDisabled: 'Notifikace modulu MagicPlan jsou vypnuté',
+      };
+    }
+
+    const notifyNew = data?.magicplan?.notifyNewTasks !== false;
+    const notifyChanges = data?.magicplan?.notifyTaskChanges !== false;
+    const notifyColleagues = data?.magicplan?.notifyColleagueTasks !== false;
+    const notifyCompleted = data?.magicplan?.notifyCompletedTasks !== false;
+
+    // Situace 1, 2, 3, 9 -> Kategorie Nové úkoly
+    if ([1, 2, 3, 9].includes(situationId)) {
+      if (!notifyNew) {
+        return {
+          allowed: false,
+          effectiveSituationId: situationId,
+          reasonDisabled: 'Kategorie „Nové úkoly" je vypnutá',
+        };
+      }
+      return { allowed: true, effectiveSituationId: situationId };
+    }
+
+    // Situace 11, 12, 17, 18, 19, 20 -> Kategorie Změny v úkolech
+    if ([11, 12, 17, 18, 19, 20].includes(situationId)) {
+      if (!notifyChanges) {
+        return {
+          allowed: false,
+          effectiveSituationId: situationId,
+          reasonDisabled: 'Kategorie „Změny v úkolech" je vypnutá',
+        };
+      }
+      return { allowed: true, effectiveSituationId: situationId };
+    }
+
+    // Situace 13, 14 -> Kategorie Dokončené a uzavřené úkoly
+    if ([13, 14].includes(situationId)) {
+      if (!notifyCompleted) {
+        return {
+          allowed: false,
+          effectiveSituationId: situationId,
+          reasonDisabled: 'Kategorie „Dokončené a uzavřené úkoly" je vypnutá',
+        };
+      }
+      return { allowed: true, effectiveSituationId: situationId };
+    }
+
+    // Situace 15, 16 -> Kolegovi smazán / splněn (Kategorie Dokončené + Moji kolegové)
+    if ([15, 16].includes(situationId)) {
+      if (!notifyCompleted) {
+        return {
+          allowed: false,
+          effectiveSituationId: situationId,
+          reasonDisabled: 'Kategorie „Dokončené a uzavřené úkoly" je vypnutá',
+        };
+      }
+      if (!notifyColleagues) {
+        return {
+          allowed: false,
+          effectiveSituationId: situationId,
+          reasonDisabled: 'Kategorie „Moji kolegové" je vypnutá',
+        };
+      }
+      return { allowed: true, effectiveSituationId: situationId };
+    }
+
+    // Situace 5, 6, 8 -> Čistě kolegialní události (žádný fallback, netýkají se fronty ani mě)
+    if ([5, 6, 8].includes(situationId)) {
+      if (!notifyColleagues) {
+        return {
+          allowed: false,
+          effectiveSituationId: situationId,
+          reasonDisabled: 'Kategorie „Moji kolegové" je vypnutá',
+        };
+      }
+      return { allowed: true, effectiveSituationId: situationId };
+    }
+
+    // Situace 4 -> Úkol od kolegy ke mně (fallback na Situaci 3: Přiřazení z fronty)
+    if (situationId === 4) {
+      if (notifyColleagues) {
+        if (!notifyNew) {
+          return {
+            allowed: false,
+            effectiveSituationId: 4,
+            reasonDisabled: 'Kategorie „Nové úkoly" je vypnutá',
+          };
+        }
+        return { allowed: true, effectiveSituationId: 4 };
+      } else {
+        if (!notifyNew) {
+          return {
+            allowed: false,
+            effectiveSituationId: 3,
+            reasonDisabled: 'Kategorie „Nové úkoly" i „Moji kolegové" jsou vypnuté',
+          };
+        }
+        return {
+          allowed: true,
+          effectiveSituationId: 3,
+          isFallback: true,
+          fallbackNote: 'Fallback na Situaci 3 (Přiřazení z fronty), protože notifikace kolegů jsou vypnuté',
+        };
+      }
+    }
+
+    // Situace 10 -> Kolega vrátil do fronty (fallback na Situaci 1: Nový úkol ve frontě)
+    if (situationId === 10) {
+      if (notifyColleagues) {
+        if (!notifyNew) {
+          return {
+            allowed: false,
+            effectiveSituationId: 10,
+            reasonDisabled: 'Kategorie „Nové úkoly" je vypnutá',
+          };
+        }
+        return { allowed: true, effectiveSituationId: 10 };
+      } else {
+        if (!notifyNew) {
+          return {
+            allowed: false,
+            effectiveSituationId: 1,
+            reasonDisabled: 'Kategorie „Nové úkoly" i „Moji kolegové" jsou vypnuté',
+          };
+        }
+        return {
+          allowed: true,
+          effectiveSituationId: 1,
+          isFallback: true,
+          fallbackNote: 'Fallback na Situaci 1 (Nový požadavek ve frontě), protože notifikace kolegů jsou vypnuté',
+        };
+      }
+    }
+
+    // Situace 7 -> Kolega převzal můj úkol (fallback na Situaci 9: Úkol odebrán / vrácen do fronty)
+    if (situationId === 7) {
+      if (notifyColleagues) {
+        return { allowed: true, effectiveSituationId: 7 };
+      } else {
+        if (!notifyNew) {
+          return {
+            allowed: false,
+            effectiveSituationId: 9,
+            reasonDisabled: 'Kategorie „Nové úkoly" i „Moji kolegové" jsou vypnuté',
+          };
+        }
+        return {
+          allowed: true,
+          effectiveSituationId: 9,
+          isFallback: true,
+          fallbackNote: 'Fallback na Situaci 9 (Úkol odebrán z vašeho sloupce), protože notifikace kolegů jsou vypnuté',
+        };
+      }
+    }
+
+    return { allowed: true, effectiveSituationId: situationId };
+  };
+
+  const handleSendMagicPlanTestNotification = (
+    sitId: number,
+    taskType: 'dev' | 'service',
+    isCrit: boolean
+  ) => {
+    const evalResult = evaluateMagicPlanNotification(sitId, formData);
+    if (!evalResult.allowed) {
+      setTestNotificationFeedback({
+        type: 'error',
+        message: `Tato notifikace je vypnutá (${evalResult.reasonDisabled}).`,
+      });
+      setTimeout(() => setTestNotificationFeedback(null), 4000);
+      return;
+    }
+
+    const effectiveId = evalResult.effectiveSituationId;
+    const sit = magicPlanSituationsList.find((s) => s.id === effectiveId) || magicPlanSituationsList[0];
+    const title = sit.getTitle(taskType, isCrit);
+    const body = sit.getBody(taskType, isCrit);
+    const subType = sit.subType(isCrit, taskType);
+    handleTestNotification({
+      type: 'magicPlan',
+      subType,
+      title,
+      body,
+      mpSituation: sit.id,
+      isCritical: isCrit,
+      taskType,
+      customSuccessMessage: evalResult.isFallback
+        ? `Notifikace odeslána (${evalResult.fallbackNote}).`
+        : undefined,
+    });
   };
 
   // MagicPlan test state & handler
@@ -723,6 +1288,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
+  const [magicPlanPersons, setMagicPlanPersons] = useState<{ id: string; name: string }[]>([]);
+
+  const loadMagicPlanPersons = useCallback(async () => {
+    if (!window.electronAPI?.getMagicPlanData) return;
+    try {
+      const data = await window.electronAPI.getMagicPlanData();
+      if (data?.availablePersons && Array.isArray(data.availablePersons)) {
+        setMagicPlanPersons(data.availablePersons);
+      }
+    } catch (err) {
+      console.warn('[Settings] Failed to fetch available MagicPlan persons:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (formData.extensions?.magicplan) {
+      loadMagicPlanPersons();
+    }
+  }, [formData.extensions?.magicplan, activeTab, loadMagicPlanPersons]);
+
   useEffect(() => {
     if (activeTab === 'develop' && formData.extensions?.magicplan) {
       fetchMagicPlanDevLogs();
@@ -731,7 +1316,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   useEffect(() => {
     if (!window.electronAPI?.onMagicPlanDataUpdated) return;
-    const cleanup = window.electronAPI.onMagicPlanDataUpdated(() => {
+    const cleanup = window.electronAPI.onMagicPlanDataUpdated((data: any) => {
+      if (data?.availablePersons && Array.isArray(data.availablePersons)) {
+        setMagicPlanPersons(data.availablePersons);
+      }
       if (activeTab === 'develop' && formData.extensions?.magicplan) {
         fetchMagicPlanDevLogs();
       }
@@ -740,6 +1328,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       if (typeof cleanup === 'function') cleanup();
     };
   }, [activeTab, formData.extensions?.magicplan, fetchMagicPlanDevLogs]);
+
+  const allAvailablePersons = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of magicPlanPersons || []) {
+      if (p && p.id) {
+        const idStr = String(p.id).trim();
+        if (idStr) map.set(idStr, String(p.name || idStr));
+      }
+    }
+    const cachedPersons = magicPlanDevLogs?.cachedData?.availablePersons;
+    if (Array.isArray(cachedPersons)) {
+      for (const p of cachedPersons) {
+        if (p && p.id) {
+          const idStr = String(p.id).trim();
+          if (idStr && !map.has(idStr)) map.set(idStr, String(p.name || idStr));
+        }
+      }
+    }
+    const userCols = formData.magicplan?.userColumns || (formData.magicplan?.userColumn ? [formData.magicplan.userColumn] : []);
+    for (const u of userCols) {
+      if (u !== undefined && u !== null) {
+        const uStr = String(u).trim();
+        if (uStr && !map.has(uStr)) {
+          map.set(uStr, uStr);
+        }
+      }
+    }
+    if (formData.magicplan?.unassignedColumn !== undefined && formData.magicplan?.unassignedColumn !== null) {
+      const unStr = String(formData.magicplan.unassignedColumn).trim();
+      if (unStr && !map.has(unStr)) {
+        map.set(unStr, unStr);
+      }
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [magicPlanPersons, magicPlanDevLogs?.cachedData?.availablePersons, formData.magicplan?.userColumns, formData.magicplan?.userColumn, formData.magicplan?.unassignedColumn]);
 
   const handleCopyMagicPlanJson = () => {
     if (!magicPlanDevLogs) return;
@@ -4431,7 +5054,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   return (
     <div className="w-full h-full flex bg-[#0e0f12] text-gray-200 select-none overflow-hidden font-sans">
       {/* Left Sidebar */}
-      <aside className="w-60 bg-[#121319] flex flex-col shrink-0 shadow-2xl z-10">
+      <aside className="w-60 bg-transparent flex flex-col shrink-0 z-10 border-r border-white/[0.04]">
         {/* Sidebar Brand Header */}
         <div className="p-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -4499,14 +5122,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('magicgate')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'magicgate'
                   ? 'bg-amber-500/20 text-amber-200 font-semibold shadow-sm'
                   : 'text-gray-400 hover:text-amber-200 hover:bg-white/[0.04]'
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-lg text-amber-400">security</span>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px] text-amber-400">security</span>
                 <span>MagicGate</span>
               </div>
             </button>
@@ -4517,14 +5140,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('mlog')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'mlog'
                   ? 'bg-sky-500/20 text-sky-200 font-semibold shadow-sm'
                   : 'text-gray-400 hover:text-sky-200 hover:bg-white/[0.04]'
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-lg text-sky-400">support_agent</span>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px] text-sky-400">support_agent</span>
                 <span>Taskmanager</span>
               </div>
             </button>
@@ -4535,14 +5158,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('magicplan')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'magicplan'
                   ? 'bg-cyan-500/20 text-cyan-200 font-semibold shadow-sm'
                   : 'text-gray-400 hover:text-cyan-200 hover:bg-white/[0.04]'
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-lg text-cyan-400">calendar_month</span>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px] text-cyan-400">calendar_month</span>
                 <span>MagicPlan</span>
               </div>
             </button>
@@ -4553,14 +5176,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('github')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'github'
                   ? 'bg-emerald-500/20 text-emerald-200 font-semibold shadow-sm'
                   : 'text-gray-400 hover:text-emerald-200 hover:bg-white/[0.04]'
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-lg text-emerald-400">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px] text-emerald-400">
                   folder_code
                 </span>
                 <span>GitHub</span>
@@ -4573,14 +5196,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('vscode')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'vscode'
                   ? 'bg-cyan-500/20 text-cyan-200 font-semibold shadow-sm'
                   : 'text-gray-400 hover:text-cyan-200 hover:bg-white/[0.04]'
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-lg text-cyan-400">code</span>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px] text-cyan-400">code</span>
                 <span>VS Code</span>
               </div>
             </button>
@@ -4591,14 +5214,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('android-studio')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'android-studio'
                   ? 'bg-pink-500/20 text-pink-200 font-semibold shadow-sm'
                   : 'text-gray-400 hover:text-pink-200 hover:bg-white/[0.04]'
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-lg text-pink-400">android</span>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px] text-pink-400">android</span>
                 <span>Android Studio</span>
               </div>
             </button>
@@ -4609,14 +5232,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('donkey-tools')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-full text-[13px] font-medium transition cursor-pointer pl-6 ${
+              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-full text-[12px] font-medium transition cursor-pointer pl-6 ${
                 activeTab === 'donkey-tools'
                   ? 'bg-rose-500/20 text-rose-200 font-semibold shadow-sm'
                   : 'text-gray-400 hover:text-rose-200 hover:bg-white/[0.04]'
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-lg text-rose-400">construction</span>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px] text-rose-400">construction</span>
                 <span>DonkeyTools</span>
               </div>
             </button>
@@ -4742,56 +5365,58 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       {/* Main Right Content Pane */}
       <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#0e0f12]">
         {/* Right Pane Header */}
-        <header className="px-6 py-4 flex items-center justify-between bg-transparent shrink-0">
-          <div>
-            <h2 className="text-base font-semibold text-white tracking-tight">
-              {activeTab === 'sources' && 'Zdroje dat'}
-              {activeTab === 'extensions' && 'Rozšíření'}
-              {activeTab === 'magicgate' && 'MagicGate'}
-              {activeTab === 'mlog' && 'Taskmanager'}
-              {activeTab === 'github' && 'GitHub'}
-              {activeTab === 'vscode' && 'VS Code'}
-              {activeTab === 'android-studio' && 'Android Studio'}
-              {activeTab === 'magicplan' && 'MagicPlan'}
-              {activeTab === 'donkey-tools' && 'DonkeyTools'}
-              {activeTab === 'snippets' && 'Snippety'}
-              {activeTab === 'general' && 'Obecné'}
-              {activeTab === 'notifications' && 'Notifikace'}
-              {(activeTab === 'system' || activeTab === 'updates') && 'Systém'}
-              {activeTab === 'help' && 'Nápověda'}
-              {activeTab === 'develop' && 'Vývojář'}
-            </h2>
-            <p className="text-[13px] text-gray-400 mt-0.5">
-              {activeTab === 'sources' && 'Správa lokálních JSON souborů a vzdálených API endpointů'}
-              {activeTab === 'extensions' && 'Správa doplňkových modulů, firemních nástrojů a externích služeb'}
-              {activeTab === 'magicgate' && 'Konfigurace tichého přihlášení pro instanci IS Tour'}
-              {activeTab === 'mlog' && 'Nastavení Base URL pro rychlé otevírání požadavků a úkolů'}
-              {activeTab === 'github' && 'Přístup k osobním i firemním repozitářům a rychlému klonování'}
-              {activeTab === 'vscode' && 'Konfigurace cesty k editoru VS Code pro otevírání repozitářů a projektů'}
-              {activeTab === 'android-studio' && 'Konfigurace cesty k Android Studiu pro otevírání mobilních a Kotlin/Java projektů'}
-              {activeTab === 'magicplan' && 'Sledování interního plánu práce, nastavení sloupce a časové osy'}
-              {activeTab === 'donkey-tools' && 'Správa vestavěných utilit, modulu ColorMaster a klávesových zkratek'}
-              {activeTab === 'snippets' && 'Předem definované textové zkratky a osobní údaje pro rychlé vložení'}
-              {activeTab === 'general' && 'Globální klávesová zkratka, barva motivu a vyhledávání programů'}
-              {activeTab === 'notifications' && 'Nastavení systémových oznámení Windows a upozornění na události'}
-              {(activeTab === 'system' || activeTab === 'updates') && 'Správa verzí, aktualizace IADonkey a diagnostika chybových protokolů'}
-              {activeTab === 'help' && 'Přehled všech klávesových zkratek a chytrých funkcí'}
-              {activeTab === 'develop' && 'Ladicí nástroje, systémová konzole a auditní protokol prováděných akcí'}
-            </p>
+        <header className="px-6 py-4 bg-transparent shrink-0">
+          <div className="w-full max-w-4xl mx-auto flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-white tracking-tight">
+                {activeTab === 'sources' && 'Zdroje dat'}
+                {activeTab === 'extensions' && 'Rozšíření'}
+                {activeTab === 'magicgate' && 'MagicGate'}
+                {activeTab === 'mlog' && 'Taskmanager'}
+                {activeTab === 'github' && 'GitHub'}
+                {activeTab === 'vscode' && 'VS Code'}
+                {activeTab === 'android-studio' && 'Android Studio'}
+                {activeTab === 'magicplan' && 'MagicPlan'}
+                {activeTab === 'donkey-tools' && 'DonkeyTools'}
+                {activeTab === 'snippets' && 'Snippety'}
+                {activeTab === 'general' && 'Obecné'}
+                {activeTab === 'notifications' && 'Notifikace'}
+                {(activeTab === 'system' || activeTab === 'updates') && 'Systém'}
+                {activeTab === 'help' && 'Nápověda'}
+                {activeTab === 'develop' && 'Vývojář'}
+              </h2>
+              <p className="text-[13px] text-gray-400 mt-0.5">
+                {activeTab === 'sources' && 'Správa lokálních JSON souborů a vzdálených API endpointů'}
+                {activeTab === 'extensions' && 'Správa doplňkových modulů, firemních nástrojů a externích služeb'}
+                {activeTab === 'magicgate' && 'Konfigurace tichého přihlášení pro instanci IS Tour'}
+                {activeTab === 'mlog' && 'Nastavení Base URL pro rychlé otevírání požadavků a úkolů'}
+                {activeTab === 'github' && 'Přístup k osobním i firemním repozitářům a rychlému klonování'}
+                {activeTab === 'vscode' && 'Konfigurace cesty k editoru VS Code pro otevírání repozitářů a projektů'}
+                {activeTab === 'android-studio' && 'Konfigurace cesty k Android Studiu pro otevírání mobilních a Kotlin/Java projektů'}
+                {activeTab === 'magicplan' && 'Sledování interního plánu práce, nastavení sloupce a časové osy'}
+                {activeTab === 'donkey-tools' && 'Správa vestavěných utilit, modulu ColorMaster a klávesových zkratek'}
+                {activeTab === 'snippets' && 'Předem definované textové zkratky a osobní údaje pro rychlé vložení'}
+                {activeTab === 'general' && 'Globální klávesová zkratka, barva motivu a vyhledávání programů'}
+                {activeTab === 'notifications' && 'Nastavení systémových oznámení Windows a upozornění na události'}
+                {(activeTab === 'system' || activeTab === 'updates') && 'Správa verzí, aktualizace IADonkey a diagnostika chybových protokolů'}
+                {activeTab === 'help' && 'Přehled všech klávesových zkratek a chytrých funkcí'}
+                {activeTab === 'develop' && 'Ladicí nástroje, systémová konzole a auditní protokol prováděných akcí'}
+              </p>
+            </div>
+            {saveSuccess && (
+              <span className="text-[13px] text-emerald-300 flex items-center gap-1.5 font-medium animate-fade-in bg-emerald-500/15 px-3.5 py-1.5 rounded-full shadow-sm shrink-0">
+                <span className="material-symbols-outlined text-base">check_circle</span>
+                Změny uloženy
+              </span>
+            )}
           </div>
-          {saveSuccess && (
-            <span className="text-[13px] text-emerald-300 flex items-center gap-1.5 font-medium animate-fade-in bg-emerald-500/15 px-3.5 py-1.5 rounded-full shadow-sm shrink-0">
-              <span className="material-symbols-outlined text-base">check_circle</span>
-              Změny uloženy
-            </span>
-          )}
         </header>
 
         {/* Content Area */}
         <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* TAB 1: Sources */}
           {activeTab === 'sources' && (
-            <div className="space-y-4 animate-fade-in max-w-4xl">
+            <div className="space-y-4 animate-fade-in max-w-4xl mx-auto">
               {/* Alert banner for synchronization */}
               <div
                 className="mb-6 p-4 rounded-2xl flex items-center justify-between gap-4 text-[13px] font-medium animate-fade-in min-h-[58px]"
@@ -5248,7 +5873,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB: Extensions */}
           {activeTab === 'extensions' && (
-            <div className="space-y-6 animate-fade-in max-w-4xl">
+            <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
               <div>
                 <h3 className="font-semibold text-white text-base flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-indigo-400">extension</span>
@@ -5754,7 +6379,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB 2: MagicGate Credentials */}
           {activeTab === 'magicgate' && (
-            <div className="space-y-6 animate-fade-in max-w-4xl">
+            <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-amber-400">security</span>
@@ -5954,7 +6579,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB Taskmanager */}
           {activeTab === 'mlog' && (
-            <div className="space-y-6 animate-fade-in max-w-4xl">
+            <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-sky-400">support_agent</span>
@@ -6086,7 +6711,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB: GitHub */}
           {activeTab === 'github' && (
-            <div className="space-y-6 animate-fade-in max-w-4xl">
+            <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-emerald-400">
@@ -6699,7 +7324,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB: Visual Studio Code */}
           {activeTab === 'vscode' && (
-            <div className="space-y-6 animate-fade-in max-w-4xl">
+            <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-cyan-400">code</span>
@@ -6808,7 +7433,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB: Android Studio */}
           {activeTab === 'android-studio' && (
-            <div className="space-y-6 animate-fade-in max-w-4xl">
+            <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-pink-400">android</span>
@@ -6917,7 +7542,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB: MagicPlan */}
           {activeTab === 'magicplan' && (
-            <div className="space-y-6 animate-fade-in max-w-4xl">
+            <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
               <div>
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-indigo-400">calendar_month</span>
@@ -6933,83 +7558,85 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Seznam URL adres plánů */}
                   <div className="space-y-2 md:col-span-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium text-gray-300">URL adresy plánů (interní síť / intranet)</label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const currentUrls = formData.magicplan?.urls && formData.magicplan.urls.length > 0
-                            ? [...formData.magicplan.urls, '']
-                            : [formData.magicplan?.url || '', ''];
-                          const updated = {
-                            ...formData,
-                            magicplan: {
-                              ...formData.magicplan,
-                              urls: currentUrls,
-                              url: currentUrls[0] || '',
-                            },
-                          };
-                          setFormData(updated);
-                          handleSave(updated);
-                        }}
-                        className="px-2.5 py-1 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs font-medium flex items-center gap-1 transition cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-sm">add</span>
-                        <span>Přidat plán</span>
-                      </button>
-                    </div>
+                    <label className="text-xs font-medium text-gray-300 block">URL adresy plánů (interní síť / intranet)</label>
 
                     {(() => {
                       const urlList = (formData.magicplan?.urls && formData.magicplan.urls.length > 0)
                         ? formData.magicplan.urls
                         : [formData.magicplan?.url ?? ''];
 
-                      return urlList.map((uStr, uIdx) => (
-                        <div key={uIdx} className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={uStr}
-                            onChange={(e) => {
-                              const newUrls = [...urlList];
-                              newUrls[uIdx] = e.target.value;
+                      return (
+                        <div className="space-y-2">
+                          {urlList.map((uStr, uIdx) => (
+                            <div key={uIdx} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={uStr}
+                                onChange={(e) => {
+                                  const newUrls = [...urlList];
+                                  newUrls[uIdx] = e.target.value;
+                                  const updated = {
+                                    ...formData,
+                                    magicplan: {
+                                      ...formData.magicplan,
+                                      urls: newUrls,
+                                      url: newUrls[0] || '',
+                                    },
+                                  };
+                                  setFormData(updated);
+                                  handleSave(updated);
+                                }}
+                                placeholder="https://intranet.company.local/plan/"
+                                className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-cyan-500 outline-none font-mono"
+                              />
+                              {urlList.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newUrls = urlList.filter((_, i) => i !== uIdx);
+                                    const updated = {
+                                      ...formData,
+                                      magicplan: {
+                                        ...formData.magicplan,
+                                        urls: newUrls,
+                                        url: newUrls[0] || '',
+                                      },
+                                    };
+                                    setFormData(updated);
+                                    handleSave(updated);
+                                  }}
+                                  className="w-[38px] h-[38px] rounded-full bg-white/[0.03] hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition flex items-center justify-center cursor-pointer shrink-0"
+                                  title="Odebrat tento plán"
+                                >
+                                  <span className="material-symbols-outlined text-base leading-none select-none">delete</span>
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const currentUrls = formData.magicplan?.urls && formData.magicplan.urls.length > 0
+                                ? [...formData.magicplan.urls, '']
+                                : [formData.magicplan?.url || '', ''];
                               const updated = {
                                 ...formData,
                                 magicplan: {
                                   ...formData.magicplan,
-                                  urls: newUrls,
-                                  url: newUrls[0] || '',
+                                  urls: currentUrls,
+                                  url: currentUrls[0] || '',
                                 },
                               };
                               setFormData(updated);
                               handleSave(updated);
                             }}
-                            placeholder="https://intranet.company.local/plan/"
-                            className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-cyan-500 outline-none font-mono"
-                          />
-                          {urlList.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newUrls = urlList.filter((_, i) => i !== uIdx);
-                                const updated = {
-                                  ...formData,
-                                  magicplan: {
-                                    ...formData.magicplan,
-                                    urls: newUrls,
-                                    url: newUrls[0] || '',
-                                  },
-                                };
-                                setFormData(updated);
-                                handleSave(updated);
-                              }}
-                              className="w-[38px] h-[38px] rounded-full bg-white/[0.03] hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition flex items-center justify-center cursor-pointer shrink-0"
-                              title="Odebrat tento plán"
-                            >
-                              <span className="material-symbols-outlined text-base leading-none select-none">delete</span>
-                            </button>
-                          )}
+                            className="px-3 py-1.5 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer w-fit"
+                          >
+                            <span className="material-symbols-outlined text-sm">add</span>
+                            <span>Přidat plán</span>
+                          </button>
                         </div>
-                      ));
+                      );
                     })()}
                     <span className="text-[11px] text-gray-400 block">
                       Dotaz se provádí na všechny zadané URL s výchozími přihlašovacími údaji Windows (NTLM Integrated Authentication).
@@ -7018,31 +7645,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                   {/* Nastavení lidí (uživatelů) - vlastní celý řádek */}
                   <div className="space-y-2 md:col-span-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium text-gray-300">Sledované osoby (sloupce)</label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const currentUsers = formData.magicplan?.userColumns && formData.magicplan.userColumns.length > 0
-                            ? [...formData.magicplan.userColumns, '']
-                            : [formData.magicplan?.userColumn || '', ''];
-                          const updated = {
-                            ...formData,
-                            magicplan: {
-                              ...formData.magicplan,
-                              userColumns: currentUsers,
-                              userColumn: currentUsers[0] || '',
-                            },
-                          };
-                          setFormData(updated);
-                          handleSave(updated);
-                        }}
-                        className="px-2.5 py-1 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs font-medium flex items-center gap-1 transition cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-sm">add</span>
-                        <span>Přidat osobu</span>
-                      </button>
-                    </div>
+                    <label className="text-xs font-medium text-gray-300 block">Sledované osoby (sloupce)</label>
 
                     {(() => {
                       const userList = (formData.magicplan?.userColumns && formData.magicplan.userColumns.length > 0)
@@ -7066,132 +7669,176 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         handleSave(updated);
                       };
 
-                      return userList.map((uVal, uIdx) => {
-                        const isCurrentUser = Boolean(
-                          uVal &&
-                          formData.magicplan?.currentUserColumn &&
-                          formData.magicplan.currentUserColumn.trim().toLowerCase() === uVal.trim().toLowerCase()
-                        );
+                      return (
+                        <div className="space-y-2">
+                          {userList.map((uVal, uIdx) => {
+                            const uStr = uVal !== undefined && uVal !== null ? String(uVal).trim() : '';
+                            const curUserStr = formData.magicplan?.currentUserColumn !== undefined && formData.magicplan?.currentUserColumn !== null
+                              ? String(formData.magicplan.currentUserColumn).trim()
+                              : '';
+                            const isCurrentUser = Boolean(uStr && curUserStr && curUserStr.toLowerCase() === uStr.toLowerCase());
 
-                        return (
-                          <div key={uIdx} className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={uVal}
-                              onChange={(e) => {
-                                const newUsers = [...userList];
-                                const oldVal = newUsers[uIdx];
-                                newUsers[uIdx] = e.target.value;
-                                const isCur = formData.magicplan?.currentUserColumn === oldVal;
-                                const updated = {
-                                  ...formData,
-                                  magicplan: {
-                                    ...formData.magicplan,
-                                    userColumns: newUsers,
-                                    userColumn: newUsers[0] || '',
-                                    currentUserColumn: isCur ? e.target.value : formData.magicplan?.currentUserColumn,
-                                  },
-                                };
-                                setFormData(updated);
-                                handleSave(updated);
-                              }}
-                              placeholder="např. Novák Jan (nebo JNO či 1042)"
-                              className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-cyan-500 outline-none"
-                            />
+                            const availableForSelect = allAvailablePersons.filter(
+                              (p) => String(p.id) === uStr || !userList.map((x) => String(x).trim()).includes(String(p.id))
+                            );
+                            const hasCurrentOption = !uStr || availableForSelect.some((p) => String(p.id) === uStr);
 
-                            {/* Reordering buttons */}
-                            {userList.length > 1 && (
-                              <div className="flex items-center gap-1 shrink-0">
+                            return (
+                              <div key={uIdx} className="flex items-center gap-2">
+                                <select
+                                  value={uStr}
+                                  onChange={(e) => {
+                                    const newUsers = [...userList];
+                                    const oldVal = newUsers[uIdx];
+                                    const selectedId = e.target.value;
+                                    newUsers[uIdx] = selectedId;
+                                    const isCur = String(formData.magicplan?.currentUserColumn || '').trim() === String(oldVal || '').trim();
+                                    const updated = {
+                                      ...formData,
+                                      magicplan: {
+                                        ...formData.magicplan,
+                                        userColumns: newUsers,
+                                        userColumn: newUsers[0] || '',
+                                        currentUserColumn: isCur ? selectedId : formData.magicplan?.currentUserColumn,
+                                      },
+                                    };
+                                    setFormData(updated);
+                                    handleSave(updated);
+                                  }}
+                                  className="flex-1 h-[38px] bg-black/30 border border-white/10 rounded-xl px-3.5 text-sm text-white focus:border-cyan-500 outline-none cursor-pointer"
+                                >
+                                  <option value="" disabled className="bg-[#181920] text-gray-400">
+                                    -- Vyberte osobu z plánu --
+                                  </option>
+                                  {!hasCurrentOption && uStr && (
+                                    <option value={uStr} className="bg-[#181920] text-white">
+                                      {uStr}
+                                    </option>
+                                  )}
+                                  {availableForSelect.map((p) => (
+                                    <option key={p.id} value={p.id} className="bg-[#181920] text-white">
+                                      {p.name && p.name !== p.id ? `${p.name} (${p.id})` : `Osoba ${p.id}`}
+                                    </option>
+                                  ))}
+                                </select>
+
+                                {/* Reordering buttons */}
+                                {userList.length > 1 && (
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <button
+                                      type="button"
+                                      disabled={uIdx === 0}
+                                      onClick={() => moveUser(uIdx, uIdx - 1)}
+                                      className="w-[38px] h-[38px] rounded-full bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 hover:text-white disabled:opacity-20 disabled:pointer-events-none transition flex items-center justify-center cursor-pointer shrink-0"
+                                      title="Posunout osobu nahoru"
+                                    >
+                                      <span className="material-symbols-outlined text-base leading-none select-none">arrow_upward</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={uIdx === userList.length - 1}
+                                      onClick={() => moveUser(uIdx, uIdx + 1)}
+                                      className="w-[38px] h-[38px] rounded-full bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 hover:text-white disabled:opacity-20 disabled:pointer-events-none transition flex items-center justify-center cursor-pointer shrink-0"
+                                      title="Posunout osobu dolů"
+                                    >
+                                      <span className="material-symbols-outlined text-base leading-none select-none">arrow_downward</span>
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* "Já" toggle switch (stable size and wording in both states) */}
                                 <button
                                   type="button"
-                                  disabled={uIdx === 0}
-                                  onClick={() => moveUser(uIdx, uIdx - 1)}
-                                  className="w-[32px] h-[32px] rounded-full bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 hover:text-white disabled:opacity-20 disabled:pointer-events-none transition flex items-center justify-center cursor-pointer shrink-0"
-                                  title="Posunout osobu nahoru"
+                                  onClick={() => {
+                                    if (!uStr) return;
+                                    const newCurrentUser = isCurrentUser ? undefined : uStr;
+                                    const updated = {
+                                      ...formData,
+                                      magicplan: {
+                                        ...formData.magicplan,
+                                        currentUserColumn: newCurrentUser,
+                                      },
+                                    };
+                                    setFormData(updated);
+                                    handleSave(updated);
+                                  }}
+                                  className={`h-[36px] my-auto px-3.5 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer select-none shrink-0 ${
+                                    isCurrentUser
+                                      ? 'bg-cyan-500 text-white shadow-sm'
+                                      : 'bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-gray-200'
+                                  }`}
+                                  title={isCurrentUser ? 'Vy jste tato osoba (kliknutím zrušíte)' : 'Označit tuto osobu jako sebe'}
                                 >
-                                  <span className="material-symbols-outlined text-base leading-none select-none">arrow_upward</span>
+                                  <span className="material-symbols-outlined text-sm leading-none select-none">
+                                    {isCurrentUser ? 'person_check' : 'person'}
+                                  </span>
+                                  <span>Já</span>
                                 </button>
-                                <button
-                                  type="button"
-                                  disabled={uIdx === userList.length - 1}
-                                  onClick={() => moveUser(uIdx, uIdx + 1)}
-                                  className="w-[32px] h-[32px] rounded-full bg-white/[0.03] hover:bg-white/[0.08] text-gray-400 hover:text-white disabled:opacity-20 disabled:pointer-events-none transition flex items-center justify-center cursor-pointer shrink-0"
-                                  title="Posunout osobu dolů"
-                                >
-                                  <span className="material-symbols-outlined text-base leading-none select-none">arrow_downward</span>
-                                </button>
+
+                                {userList.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const deletedVal = String(userList[uIdx] || '').trim();
+                                      const newUsers = userList.filter((_, i) => i !== uIdx);
+                                      const updated = {
+                                        ...formData,
+                                        magicplan: {
+                                          ...formData.magicplan,
+                                          userColumns: newUsers,
+                                          userColumn: newUsers[0] || '',
+                                          currentUserColumn:
+                                            String(formData.magicplan?.currentUserColumn || '').trim() === deletedVal
+                                              ? undefined
+                                              : formData.magicplan?.currentUserColumn,
+                                        },
+                                      };
+                                      setFormData(updated);
+                                      handleSave(updated);
+                                    }}
+                                    className="w-[38px] h-[38px] rounded-full bg-white/[0.03] hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition flex items-center justify-center cursor-pointer shrink-0"
+                                    title="Odebrat tuto osobu"
+                                  >
+                                    <span className="material-symbols-outlined text-base leading-none select-none">delete</span>
+                                  </button>
+                                )}
                               </div>
-                            )}
-
-                            {/* "Já" toggle switch (stable size and wording in both states) */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newCurrentUser = isCurrentUser ? undefined : uVal.trim();
-                                const updated = {
-                                  ...formData,
-                                  magicplan: {
-                                    ...formData.magicplan,
-                                    currentUserColumn: newCurrentUser,
-                                  },
-                                };
-                                setFormData(updated);
-                                handleSave(updated);
-                              }}
-                              className={`h-[38px] px-3.5 rounded-full text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer select-none shrink-0 ${
-                                isCurrentUser
-                                  ? 'bg-cyan-500 text-white shadow-sm'
-                                  : 'bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-gray-200'
-                              }`}
-                              title={isCurrentUser ? 'Vy jste tato osoba (kliknutím zrušíte)' : 'Označit tuto osobu jako sebe'}
-                            >
-                              <span className="material-symbols-outlined text-sm leading-none select-none">
-                                {isCurrentUser ? 'person_check' : 'person'}
-                              </span>
-                              <span>Já</span>
-                            </button>
-
-                            {userList.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const deletedVal = userList[uIdx];
-                                  const newUsers = userList.filter((_, i) => i !== uIdx);
-                                  const updated = {
-                                    ...formData,
-                                    magicplan: {
-                                      ...formData.magicplan,
-                                      userColumns: newUsers,
-                                      userColumn: newUsers[0] || '',
-                                      currentUserColumn:
-                                        formData.magicplan?.currentUserColumn === deletedVal
-                                          ? undefined
-                                          : formData.magicplan?.currentUserColumn,
-                                    },
-                                  };
-                                  setFormData(updated);
-                                  handleSave(updated);
-                                }}
-                                className="w-[38px] h-[38px] rounded-full bg-white/[0.03] hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition flex items-center justify-center cursor-pointer shrink-0"
-                                title="Odebrat tuto osobu"
-                              >
-                                <span className="material-symbols-outlined text-base leading-none select-none">delete</span>
-                              </button>
-                            )}
-                          </div>
-                        );
-                      });
+                            );
+                          })}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const currentUsers = formData.magicplan?.userColumns && formData.magicplan.userColumns.length > 0
+                                ? [...formData.magicplan.userColumns, '']
+                                : [formData.magicplan?.userColumn || '', ''];
+                              const updated = {
+                                ...formData,
+                                magicplan: {
+                                  ...formData.magicplan,
+                                  userColumns: currentUsers,
+                                  userColumn: currentUsers[0] || '',
+                                },
+                              };
+                              setFormData(updated);
+                              handleSave(updated);
+                            }}
+                            className="px-3 py-1.5 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer w-fit"
+                          >
+                            <span className="material-symbols-outlined text-sm">add</span>
+                            <span>Přidat osobu</span>
+                          </button>
+                        </div>
+                      );
                     })()}
                     <span className="text-[11px] text-gray-400 block">
-                      Text pro vyhledání v záhlaví plánu (např. <code>Novák Jan</code>, <code>JNO</code> nebo ID <code>1042</code>).
+                      Sledované osoby v plánu práce identifikované pomocí ID. Vlastní sloupec označte tlačítkem „Já“.
                     </span>
                   </div>
 
                   {/* Sloupec nezařazených úkolů (Fronta) - vlastní celý řádek */}
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-xs font-medium text-gray-300 block">Sloupec nezařazených úkolů (Fronta)</label>
-                    <input
-                      type="text"
+                    <select
                       value={formData.magicplan?.unassignedColumn ?? ''}
                       onChange={(e) => {
                         const updated = {
@@ -7204,11 +7851,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         setFormData(updated);
                         handleSave(updated);
                       }}
-                      placeholder="např. Fronta úkolů (nebo FRONTA či 100)"
-                      className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-cyan-500 outline-none"
-                    />
+                      className="w-full h-[38px] bg-black/30 border border-white/10 rounded-xl px-3.5 text-sm text-white focus:border-cyan-500 outline-none cursor-pointer"
+                    >
+                      <option value="" className="bg-[#181920] text-gray-400">
+                        -- Žádný (fronta vypnuta) --
+                      </option>
+                      {Boolean(
+                        formData.magicplan?.unassignedColumn &&
+                        !allAvailablePersons.some((p) => String(p.id) === String(formData.magicplan?.unassignedColumn))
+                      ) && (
+                        <option value={formData.magicplan?.unassignedColumn} className="bg-[#181920] text-white">
+                          Sloupec {formData.magicplan?.unassignedColumn}
+                        </option>
+                      )}
+                      {allAvailablePersons.map((p) => (
+                        <option key={p.id} value={p.id} className="bg-[#181920] text-white">
+                          {p.name && p.name !== p.id ? `${p.name} (${p.id})` : `Sloupec ${p.id}`}
+                        </option>
+                      ))}
+                    </select>
                     <span className="text-[11px] text-gray-400 block">
-                      Zásobník volných úkolů (např. <code>Fronta úkolů</code>, <code>FRONTA</code> nebo ID <code>100</code>).
+                      Zásobník volných nezařazených úkolů z plánu práce. Nezařazená fronta je fiktivní uživatel identifikovaný svým ID.
                     </span>
                   </div>
 
@@ -7357,7 +8020,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               setFormData(updated);
                               handleSave(updated);
                             }}
-                            className="bg-black/30 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-cyan-500 transition font-mono"
+                            className="bg-black/30 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-cyan-500 transition font-mono [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                           />
                         </div>
 
@@ -7377,11 +8040,42 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               setFormData(updated);
                               handleSave(updated);
                             }}
-                            className="bg-black/30 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-cyan-500 transition font-mono"
+                            className="bg-black/30 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-cyan-500 transition font-mono [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                           />
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  {/* Kompaktní zobrazení denního plánu */}
+                  <div className="flex items-center justify-between gap-4 p-4 bg-white/[0.02] border border-white/[0.04] rounded-2xl">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-semibold text-white block">
+                        Kompaktní zobrazení denního plánu
+                      </span>
+                      <span className="text-[11px] text-gray-400">
+                        Zmenší výšku karet úkolů v denním rozvrhu pro přehlednější a úspornější zobrazení
+                      </span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={formData.magicplan?.compactDayView === true}
+                        onChange={(e) => {
+                          const updated = {
+                            ...formData,
+                            magicplan: {
+                              ...formData.magicplan,
+                              compactDayView: e.target.checked,
+                            },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
+                    </label>
                   </div>
                 </div>
 
@@ -7409,31 +8103,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   )}
                 </div>
               </div>
-
-              {/* Odkaz na nastavení notifikací */}
-              <div className="p-4 bg-white/[0.02] border border-white/[0.05] rounded-2xl flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-lg text-cyan-400">notifications</span>
-                  <div>
-                    <span className="text-xs font-semibold text-white block">Toast notifikace změn v plánu</span>
-                    <span className="text-[11px] text-gray-400">Nastavení jednotlivých událostí a testování notifikací najdete v záložce Notifikace.</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('notifications')}
-                  className="px-3.5 py-1.5 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/20 text-xs font-semibold transition cursor-pointer select-none shrink-0 flex items-center gap-1.5"
-                >
-                  <span>Přejít na Notifikace</span>
-                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                </button>
-              </div>
             </div>
           )}
 
           {/* TAB: DonkeyTools */}
           {activeTab === 'donkey-tools' && (
-            <div className="space-y-6 animate-fade-in max-w-4xl">
+            <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
               <div>
                 <h3 className="font-semibold text-white text-base flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-rose-400">construction</span>
@@ -8609,7 +9284,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB: Snippets */}
           {activeTab === 'snippets' && (
-            <div className="space-y-8 animate-fade-in max-w-4xl">
+            <div className="space-y-8 animate-fade-in max-w-4xl mx-auto">
               {/* SECTION 1: Vlastní snippety */}
               <div className="space-y-4">
                 <div>
@@ -9016,7 +9691,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB 3: General & Updates */}
           {activeTab === 'general' && (
-            <div className="space-y-6 animate-fade-in max-w-4xl">
+            <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
               {/* Hotkey Section */}
               <div className="space-y-3 bg-white/[0.03] p-4 rounded-2xl shadow-sm">
                 <div>
@@ -9201,7 +9876,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB: Dedicated Notifications */}
           {activeTab === 'notifications' && (
-            <div className="space-y-6 animate-fade-in max-w-4xl">
+            <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
               <div>
                 <h3 className="font-semibold text-white text-base flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-indigo-400">notifications</span>
@@ -9282,17 +9957,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        {isDevelop && (
-                          <button
-                            type="button"
-                            onClick={() => handleTestNotification('quickCap')}
-                            className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition cursor-pointer select-none shrink-0"
-                            title="Otestovat notifikaci QuickCap"
-                          >
-                            <span className="material-symbols-outlined text-sm leading-none">notifications_active</span>
-                            <span>TEST</span>
-                          </button>
-                        )}
+                        {isDevelop && (() => {
+                          const status = systemNotifTestStatus['quickCap'];
+                          let btnClasses = "w-8 h-8 rounded-full bg-white/[0.05] hover:bg-white/[0.10] text-amber-400";
+                          let icon = "notifications_active";
+                          if (status === 'success') {
+                            btnClasses = "w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-400";
+                            icon = "check";
+                          } else if (status === 'blocked') {
+                            btnClasses = "w-8 h-8 rounded-full bg-rose-500/15 text-rose-400";
+                            icon = "close";
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => handleTestSystemNotification('quickCap')}
+                              className={`${btnClasses} transition-all duration-200 flex items-center justify-center cursor-pointer select-none shrink-0`}
+                              title="Otestovat notifikaci QuickCap"
+                            >
+                              <span className="material-symbols-outlined text-base leading-none">{icon}</span>
+                            </button>
+                          );
+                        })()}
                         <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
                           <input
                             type="checkbox"
@@ -9326,17 +10012,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        {isDevelop && (
-                          <button
-                            type="button"
-                            onClick={() => handleTestNotification('colorMaster')}
-                            className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition cursor-pointer select-none shrink-0"
-                            title="Otestovat notifikaci ColorMaster"
-                          >
-                            <span className="material-symbols-outlined text-sm leading-none">notifications_active</span>
-                            <span>TEST</span>
-                          </button>
-                        )}
+                        {isDevelop && (() => {
+                          const status = systemNotifTestStatus['colorMaster'];
+                          let btnClasses = "w-8 h-8 rounded-full bg-white/[0.05] hover:bg-white/[0.10] text-amber-400";
+                          let icon = "notifications_active";
+                          if (status === 'success') {
+                            btnClasses = "w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-400";
+                            icon = "check";
+                          } else if (status === 'blocked') {
+                            btnClasses = "w-8 h-8 rounded-full bg-rose-500/15 text-rose-400";
+                            icon = "close";
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => handleTestSystemNotification('colorMaster')}
+                              className={`${btnClasses} transition-all duration-200 flex items-center justify-center cursor-pointer select-none shrink-0`}
+                              title="Otestovat notifikaci ColorMaster"
+                            >
+                              <span className="material-symbols-outlined text-base leading-none">{icon}</span>
+                            </button>
+                          );
+                        })()}
                         <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
                           <input
                             type="checkbox"
@@ -9370,17 +10067,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        {isDevelop && (
-                          <button
-                            type="button"
-                            onClick={() => handleTestNotification('syncComplete')}
-                            className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition cursor-pointer select-none shrink-0"
-                            title="Otestovat notifikaci synchronizace"
-                          >
-                            <span className="material-symbols-outlined text-sm leading-none">notifications_active</span>
-                            <span>TEST</span>
-                          </button>
-                        )}
+                        {isDevelop && (() => {
+                          const status = systemNotifTestStatus['syncComplete'];
+                          let btnClasses = "w-8 h-8 rounded-full bg-white/[0.05] hover:bg-white/[0.10] text-amber-400";
+                          let icon = "notifications_active";
+                          if (status === 'success') {
+                            btnClasses = "w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-400";
+                            icon = "check";
+                          } else if (status === 'blocked') {
+                            btnClasses = "w-8 h-8 rounded-full bg-rose-500/15 text-rose-400";
+                            icon = "close";
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => handleTestSystemNotification('syncComplete')}
+                              className={`${btnClasses} transition-all duration-200 flex items-center justify-center cursor-pointer select-none shrink-0`}
+                              title="Otestovat notifikaci synchronizace"
+                            >
+                              <span className="material-symbols-outlined text-base leading-none">{icon}</span>
+                            </button>
+                          );
+                        })()}
                         <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
                           <input
                             type="checkbox"
@@ -9414,17 +10122,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        {isDevelop && (
-                          <button
-                            type="button"
-                            onClick={() => handleTestNotification('update')}
-                            className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition cursor-pointer select-none shrink-0"
-                            title="Otestovat notifikaci aktualizace"
-                          >
-                            <span className="material-symbols-outlined text-sm leading-none">notifications_active</span>
-                            <span>TEST</span>
-                          </button>
-                        )}
+                        {isDevelop && (() => {
+                          const status = systemNotifTestStatus['update'];
+                          let btnClasses = "w-8 h-8 rounded-full bg-white/[0.05] hover:bg-white/[0.10] text-amber-400";
+                          let icon = "notifications_active";
+                          if (status === 'success') {
+                            btnClasses = "w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-400";
+                            icon = "check";
+                          } else if (status === 'blocked') {
+                            btnClasses = "w-8 h-8 rounded-full bg-rose-500/15 text-rose-400";
+                            icon = "close";
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => handleTestSystemNotification('update')}
+                              className={`${btnClasses} transition-all duration-200 flex items-center justify-center cursor-pointer select-none shrink-0`}
+                              title="Otestovat notifikaci aktualizace"
+                            >
+                              <span className="material-symbols-outlined text-base leading-none">{icon}</span>
+                            </button>
+                          );
+                        })()}
                         <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
                           <input
                             type="checkbox"
@@ -9458,17 +10177,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        {isDevelop && (
-                          <button
-                            type="button"
-                            onClick={() => handleTestNotification('clipboard')}
-                            className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition cursor-pointer select-none shrink-0"
-                            title="Otestovat notifikaci schránky"
-                          >
-                            <span className="material-symbols-outlined text-sm leading-none">notifications_active</span>
-                            <span>TEST</span>
-                          </button>
-                        )}
+                        {isDevelop && (() => {
+                          const status = systemNotifTestStatus['clipboard'];
+                          let btnClasses = "w-8 h-8 rounded-full bg-white/[0.05] hover:bg-white/[0.10] text-amber-400";
+                          let icon = "notifications_active";
+                          if (status === 'success') {
+                            btnClasses = "w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-400";
+                            icon = "check";
+                          } else if (status === 'blocked') {
+                            btnClasses = "w-8 h-8 rounded-full bg-rose-500/15 text-rose-400";
+                            icon = "close";
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => handleTestSystemNotification('clipboard')}
+                              className={`${btnClasses} transition-all duration-200 flex items-center justify-center cursor-pointer select-none shrink-0`}
+                              title="Otestovat notifikaci schránky"
+                            >
+                              <span className="material-symbols-outlined text-base leading-none">{icon}</span>
+                            </button>
+                          );
+                        })()}
                         <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
                           <input
                             type="checkbox"
@@ -9502,17 +10232,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        {isDevelop && (
-                          <button
-                            type="button"
-                            onClick={() => handleTestNotification('error')}
-                            className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition cursor-pointer select-none shrink-0"
-                            title="Otestovat chybovou notifikaci"
-                          >
-                            <span className="material-symbols-outlined text-sm leading-none">notifications_active</span>
-                            <span>TEST</span>
-                          </button>
-                        )}
+                        {isDevelop && (() => {
+                          const status = systemNotifTestStatus['error'];
+                          let btnClasses = "w-8 h-8 rounded-full bg-white/[0.05] hover:bg-white/[0.10] text-amber-400";
+                          let icon = "notifications_active";
+                          if (status === 'success') {
+                            btnClasses = "w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-400";
+                            icon = "check";
+                          } else if (status === 'blocked') {
+                            btnClasses = "w-8 h-8 rounded-full bg-rose-500/15 text-rose-400";
+                            icon = "close";
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => handleTestSystemNotification('error')}
+                              className={`${btnClasses} transition-all duration-200 flex items-center justify-center cursor-pointer select-none shrink-0`}
+                              title="Otestovat chybovou notifikaci"
+                            >
+                              <span className="material-symbols-outlined text-base leading-none">{icon}</span>
+                            </button>
+                          );
+                        })()}
                         <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
                           <input
                             type="checkbox"
@@ -9570,166 +10311,284 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
 
                   {formData.notifications?.magicplan !== false && (
-                    <div className="space-y-2 pt-1">
-                      {/* Nový požadavek v plánu */}
+                    <div className="space-y-3 pt-1">
+                      {/* 1. Nové úkoly */}
                       <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors">
                         <div className="flex items-center gap-3">
-                          <span className="material-symbols-outlined text-base text-cyan-400">code</span>
+                          <span className="material-symbols-outlined text-base text-cyan-400">add_task</span>
                           <div>
-                            <span className="text-xs font-medium text-gray-200 block">Nový požadavek v plánu</span>
-                            <span className="text-[11px] text-gray-400">Upozornění při přiřazení nového úkolu do vašeho sloupce</span>
+                            <span className="text-xs font-medium text-gray-200 block">Nové úkoly</span>
+                            <span className="text-[11px] text-gray-400">Nové úkoly ve frontě nástěnky a nově přiřazené úkoly do vašeho sloupce (i z fronty)</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          {isDevelop && (
-                            <button
-                              type="button"
-                              onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'dev', title: 'Nový požadavek v plánu', body: '[R9001 / T1002] Implementace platební brány (8h)' })}
-                              className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition cursor-pointer select-none shrink-0"
-                              title="Otestovat notifikaci nového požadavku"
-                            >
-                              <span className="material-symbols-outlined text-sm leading-none">notifications_active</span>
-                              <span>TEST</span>
-                            </button>
-                          )}
-                          <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
-                            <input
-                              type="checkbox"
-                              checked={formData.magicplan?.notifyNewTasks !== false}
-                              onChange={(e) => {
-                                const updated = {
-                                  ...formData,
-                                  magicplan: { ...formData.magicplan, notifyNewTasks: e.target.checked },
-                                };
-                                setFormData(updated);
-                                handleSave(updated);
-                              }}
-                              className="sr-only peer"
-                            />
-                            <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
-                          </label>
-                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={formData.magicplan?.notifyNewTasks !== false}
+                            onChange={(e) => {
+                              const updated = {
+                                ...formData,
+                                magicplan: { ...formData.magicplan, notifyNewTasks: e.target.checked },
+                              };
+                              setFormData(updated);
+                              handleSave(updated);
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
+                        </label>
                       </div>
 
-                      {/* Nový úkol ve frontě (nástěnka) */}
+                      {/* 2. Změny v úkolech */}
                       <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors">
                         <div className="flex items-center gap-3">
-                          <span className="material-symbols-outlined text-base text-amber-400">inbox</span>
+                          <span className="material-symbols-outlined text-base text-cyan-400">edit</span>
                           <div>
-                            <span className="text-xs font-medium text-gray-200 block">Nový úkol ve frontě (nástěnka)</span>
-                            <span className="text-[11px] text-gray-400">Upozornění při přidání nového nezařazeného úkolu do fronty</span>
+                            <span className="text-xs font-medium text-gray-200 block">Změny v úkolech</span>
+                            <span className="text-[11px] text-gray-400">Změna odhadu času (zvýšení/snížení), přepnutí na kritický nebo běžný úkol</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          {isDevelop && (
-                            <button
-                              type="button"
-                              onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'queue', title: 'Nový úkol ve frontě (Nástěnka)', body: '[R9002 / T1003] Úprava validačních hlášek formuláře (2h)' })}
-                              className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition cursor-pointer select-none shrink-0"
-                              title="Otestovat notifikaci úkolu ve frontě"
-                            >
-                              <span className="material-symbols-outlined text-sm leading-none">notifications_active</span>
-                              <span>TEST</span>
-                            </button>
-                          )}
-                          <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
-                            <input
-                              type="checkbox"
-                              checked={formData.magicplan?.notifyQueueTasks !== false}
-                              onChange={(e) => {
-                                const updated = {
-                                  ...formData,
-                                  magicplan: { ...formData.magicplan, notifyQueueTasks: e.target.checked },
-                                };
-                                setFormData(updated);
-                                handleSave(updated);
-                              }}
-                              className="sr-only peer"
-                            />
-                            <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
-                          </label>
-                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={formData.magicplan?.notifyTaskChanges !== false}
+                            onChange={(e) => {
+                              const updated = {
+                                ...formData,
+                                magicplan: { ...formData.magicplan, notifyTaskChanges: e.target.checked },
+                              };
+                              setFormData(updated);
+                              handleSave(updated);
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
+                        </label>
                       </div>
 
-                      {/* Dokončený úkol */}
+                      {/* 3. Moji kolegové */}
                       <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors">
                         <div className="flex items-center gap-3">
-                          <span className="material-symbols-outlined text-base text-emerald-400">check_circle</span>
+                          <span className="material-symbols-outlined text-base text-cyan-400">group</span>
                           <div>
-                            <span className="text-xs font-medium text-gray-200 block">Úkol v plánu úspěšně zpracován</span>
-                            <span className="text-[11px] text-gray-400">Upozornění při odbavení nebo odebrání úkolu z vašeho sloupce</span>
+                            <span className="text-xs font-medium text-gray-200 block">Moji kolegové</span>
+                            <span className="text-[11px] text-gray-400">Úkoly přiřazené kolegům a přesuny mezi kolegy (při vypnutí se úkol od kolegy k vám chová jako z fronty)</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          {isDevelop && (
-                            <button
-                              type="button"
-                              onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'completed', title: 'Úkol v plánu splněn', body: '[R9003 / T1004] Refaktoring API a optimalizace dotazů' })}
-                              className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition cursor-pointer select-none shrink-0"
-                              title="Otestovat notifikaci splněného úkolu"
-                            >
-                              <span className="material-symbols-outlined text-sm leading-none">notifications_active</span>
-                              <span>TEST</span>
-                            </button>
-                          )}
-                          <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
-                            <input
-                              type="checkbox"
-                              checked={formData.magicplan?.notifyCompletedTasks !== false}
-                              onChange={(e) => {
-                                const updated = {
-                                  ...formData,
-                                  magicplan: { ...formData.magicplan, notifyCompletedTasks: e.target.checked },
-                                };
-                                setFormData(updated);
-                                handleSave(updated);
-                              }}
-                              className="sr-only peer"
-                            />
-                            <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
-                          </label>
-                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={formData.magicplan?.notifyColleagueTasks !== false}
+                            onChange={(e) => {
+                              const updated = {
+                                ...formData,
+                                magicplan: { ...formData.magicplan, notifyColleagueTasks: e.target.checked },
+                              };
+                              setFormData(updated);
+                              handleSave(updated);
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
+                        </label>
                       </div>
 
-                      {/* Změna hodin */}
+                      {/* 4. Dokončené a uzavřené úkoly */}
                       <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors">
                         <div className="flex items-center gap-3">
-                          <span className="material-symbols-outlined text-base text-rose-400">warning</span>
+                          <span className="material-symbols-outlined text-base text-cyan-400">task_alt</span>
                           <div>
-                            <span className="text-xs font-medium text-gray-200 block">Změna v rozvrhu nebo hodinách</span>
-                            <span className="text-[11px] text-gray-400">Upozornění při úpravě alokace hodin nebo posunu termínu</span>
+                            <span className="text-xs font-medium text-gray-200 block">Dokončené a uzavřené úkoly</span>
+                            <span className="text-[11px] text-gray-400">Úkoly vyřešené nebo smazané z plánu (u vás i sledovaných kolegů)</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          {isDevelop && (
+                        <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={formData.magicplan?.notifyCompletedTasks !== false}
+                            onChange={(e) => {
+                              const updated = {
+                                ...formData,
+                                magicplan: { ...formData.magicplan, notifyCompletedTasks: e.target.checked },
+                              };
+                              setFormData(updated);
+                              handleSave(updated);
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
+                        </label>
+                      </div>
+
+                      {/* Vývojářský test notifikací MagicPlan */}
+                      {isDevelop && (
+                        <div className="mt-4 p-4 rounded-xl bg-white/[0.03] space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="material-symbols-outlined text-base text-amber-400">build</span>
+                              <span className="text-xs font-semibold text-amber-300">
+                                Vývojářský test notifikací MagicPlan
+                              </span>
+                            </div>
+                            <span className="px-2 py-0.5 text-[10px] font-mono font-medium rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/20">
+                              DEV MODE
+                            </span>
+                          </div>
+
+                          {/* 3 Nastavení bez labelů: Typ požadavku, Priorita úkolu, Typ notifikace */}
+                          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                            {/* 1. Typ požadavku: Dev vs Service */}
+                            <div className="sm:col-span-3">
+                              <div className="flex rounded-full bg-black/40 p-1 border border-white/10">
+                                <button
+                                  type="button"
+                                  onClick={() => setTestTaskType('dev')}
+                                  className={`flex-1 py-1.5 text-xs font-medium rounded-full transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                    testTaskType === 'dev'
+                                      ? 'bg-amber-400 text-gray-950 font-semibold shadow-sm'
+                                      : 'text-gray-400 hover:text-gray-200'
+                                  }`}
+                                >
+                                  <span className="material-symbols-outlined text-sm">code</span>
+                                  <span>Dev</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setTestTaskType('service')}
+                                  className={`flex-1 py-1.5 text-xs font-medium rounded-full transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                    testTaskType === 'service'
+                                      ? 'bg-amber-400 text-gray-950 font-semibold shadow-sm'
+                                      : 'text-gray-400 hover:text-gray-200'
+                                  }`}
+                                >
+                                  <span className="material-symbols-outlined text-sm">build</span>
+                                  <span>Service</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* 2. Switch na kritickou (stejný 2-tlačítkový přepínač jako Dev / Service) */}
+                            <div className="sm:col-span-3">
+                              <div className="flex rounded-full bg-black/40 p-1 border border-white/10">
+                                <button
+                                  type="button"
+                                  onClick={() => setTestIsCritical(false)}
+                                  className={`flex-1 py-1.5 text-xs font-medium rounded-full transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                    !testIsCritical
+                                      ? 'bg-amber-400 text-gray-950 font-semibold shadow-sm'
+                                      : 'text-gray-400 hover:text-gray-200'
+                                  }`}
+                                >
+                                  <span className="material-symbols-outlined text-sm">schedule</span>
+                                  <span>Běžný</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setTestIsCritical(true)}
+                                  className={`flex-1 py-1.5 text-xs font-medium rounded-full transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                    testIsCritical
+                                      ? 'bg-amber-400 text-gray-950 font-semibold shadow-sm'
+                                      : 'text-gray-400 hover:text-gray-200'
+                                  }`}
+                                >
+                                  <span className="material-symbols-outlined text-sm">priority_high</span>
+                                  <span>Kritická</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* 3. Dropdown typu notifikace */}
+                            <div className="sm:col-span-6 relative" data-notif-dropdown>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setOpenNotifDropdown(
+                                    openNotifDropdown === 'mp-dev-test' ? null : 'mp-dev-test'
+                                  )
+                                }
+                                className="w-full h-[38px] flex items-center justify-between px-3 rounded-lg bg-black/40 border border-white/10 hover:border-white/20 text-left transition-colors cursor-pointer"
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <span className="material-symbols-outlined text-sm text-cyan-400 shrink-0">
+                                    {magicPlanSituationsList.find((s) => s.id === testSituationId)?.icon || 'notifications'}
+                                  </span>
+                                  <span className="text-xs text-gray-200 font-medium truncate">
+                                    {magicPlanSituationsList.find((s) => s.id === testSituationId)?.name}
+                                  </span>
+                                </div>
+                                <span className="material-symbols-outlined text-sm text-gray-400 ml-1 shrink-0">
+                                  arrow_drop_down
+                                </span>
+                              </button>
+
+                              {openNotifDropdown === 'mp-dev-test' && (
+                                <div className="absolute z-50 bottom-full mb-1 left-0 right-0 max-h-72 overflow-y-auto rounded-xl bg-[#181920] border border-white/10 shadow-2xl p-1.5 space-y-0.5">
+                                  {magicPlanSituationsList.map((sit) => {
+                                    const isSelected = sit.id === testSituationId;
+                                    return (
+                                      <button
+                                        key={sit.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setTestSituationId(sit.id);
+                                          setOpenNotifDropdown(null);
+                                        }}
+                                        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left text-xs transition-colors cursor-pointer ${
+                                          isSelected
+                                            ? 'bg-cyan-500/15 text-cyan-200 font-medium'
+                                            : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                                        }`}
+                                      >
+                                        <span className="material-symbols-outlined text-sm shrink-0 text-cyan-400">
+                                          {sit.icon}
+                                        </span>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="truncate">{sit.name}</span>
+                                            <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-white/5 text-gray-400 shrink-0">
+                                              {sit.badge}
+                                            </span>
+                                          </div>
+                                          <p className="text-[10px] text-gray-400 truncate mt-0.5">{sit.desc}</p>
+                                        </div>
+                                        {isSelected && (
+                                          <span className="material-symbols-outlined text-xs text-cyan-400 shrink-0">
+                                            check
+                                          </span>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Tlačítko Odeslat test a zpráva o stavu */}
+                          <div className="flex justify-end pt-1">
                             <button
                               type="button"
-                              onClick={() => handleTestNotification({ type: 'magicPlan', subType: 'critical', title: 'Kritický požadavek!', body: '[R9004 / T1005] Výpadek synchronizace služeb (4h)' })}
-                              className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition cursor-pointer select-none shrink-0"
-                              title="Otestovat notifikaci kritického úkolu"
+                              onClick={() => handleSendMagicPlanTestNotification(testSituationId, testTaskType, testIsCritical)}
+                              disabled={testingNotificationVariant !== null}
+                              className="px-4 py-2 rounded-full font-semibold text-xs transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-300 text-gray-950 cursor-pointer"
                             >
-                              <span className="material-symbols-outlined text-sm leading-none">notifications_active</span>
-                              <span>TEST</span>
+                              <span className="material-symbols-outlined text-sm">notifications_active</span>
+                              <span>Odeslat testovací notifikaci</span>
                             </button>
+                          </div>
+
+                          {testNotificationFeedback && (
+                            <div className={`p-2.5 rounded-lg text-xs flex items-center gap-2 animate-fade-in ${
+                              testNotificationFeedback.type === 'error' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            }`}>
+                              <span className="material-symbols-outlined text-sm shrink-0">
+                                {testNotificationFeedback.type === 'error' ? 'error' : 'check_circle'}
+                              </span>
+                              <span>{testNotificationFeedback.message}</span>
+                            </div>
                           )}
-                          <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
-                            <input
-                              type="checkbox"
-                              checked={formData.magicplan?.notifyTaskChanges !== false}
-                              onChange={(e) => {
-                                const updated = {
-                                  ...formData,
-                                  magicplan: { ...formData.magicplan, notifyTaskChanges: e.target.checked },
-                                };
-                                setFormData(updated);
-                                handleSave(updated);
-                              }}
-                              className="sr-only peer"
-                            />
-                            <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
-                          </label>
                         </div>
-                      </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -9739,7 +10598,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB: Dedicated System & Updates */}
           {(activeTab === 'system' || activeTab === 'updates') && (
-            <div className="space-y-6 animate-fade-in max-w-4xl">
+            <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
               <div>
                 <h3 className="font-semibold text-white text-base flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-indigo-400">dns</span>
@@ -9976,7 +10835,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB 4: Help & Shortcuts */}
           {activeTab === 'help' && (
-            <div className="space-y-6 animate-fade-in max-w-4xl">
+            <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
               {/* Top Banner / Button: Jak na zdroje dat */}
               <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
                 <div className="flex items-start gap-3.5">
@@ -10352,7 +11211,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB: Developer Mode */}
           {activeTab === 'develop' && isDevelop && (
-            <div className="space-y-6 animate-fade-in max-w-4xl">
+            <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
               {/* Header card with status & disable button */}
               <div className="p-5 bg-white/[0.03] hover:bg-white/[0.05] rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
                 <div className="flex items-start gap-3.5">

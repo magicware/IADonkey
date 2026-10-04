@@ -238,6 +238,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('log-action', entry),
   exportCrashReport: (fileName: string): Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }> =>
     ipcRenderer.invoke('export-crash-report', fileName),
+  recordCrash: (action: string, error: any, context?: any): Promise<string> =>
+    ipcRenderer.invoke('record-crash', action, error, context),
   simulateTestCrash: (): Promise<string> => ipcRenderer.invoke('simulate-test-crash'),
   openDevTools: (): Promise<void> => ipcRenderer.invoke('open-dev-tools'),
 
