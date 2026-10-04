@@ -60,6 +60,7 @@ export class WindowManager {
   private shouldRestoreSpotlightOnCloneClose = true;
   private shouldRestoreSpotlightOnCmsDownloadClose = true;
   private shouldResetSpotlightOnCloneClose = false;
+  private shouldResetSpotlightOnCmsDownloadClose = false;
   private registerCrashHandlers(win: BrowserWindow, windowName: string): void {
     win.webContents.on('render-process-gone', (_event, details) => {
       diagnosticsService.recordCrash(`Pád procesu okna ${windowName} (${details.reason})`, new Error(details.reason), {

@@ -4,6 +4,16 @@ Všechny důležité změny v této aplikaci jsou dokumentovány v tomto souboru
 
 ---
 
+## [2.1.2] - 4. 10. 2026
+### MagicPlan inline správa osob a kontextové menu, kompaktní režim, sjednocení přepínačů a vyladění Nastavení
+- **MagicPlan – Inline správa osob a kontextové menu v timeline**: Možnost přidávat i odebírat osoby přímo v časové ose, kontextové menu pro posun uživatelů nahoru/dolů, označení „To jsem já / To nejsem já“ a vymazání ukotvené bezprostředně u avataru s inteligentním otevíráním dle volného prostoru.
+- **MagicPlan – Kompaktní režim denního plánu**: Efektivní jednořádkový layout karet s vertikálním centrováním ikon a zadavatele, přehledné zobrazení detailů po najetí myši, jednotná výška 46 px a sladěný borderless poloměr.
+- **MagicPlan – Týdenní plán a indikátor aktuálního dne**: Zmenšená výška řádků, čisté zobrazení bez zbytečných chipů pro Servis/Vývoj, zelené zvýraznění splněných úkolů, název projektu těsně pod názvem úkolu v tooltipu a přejmenování dnešního indikátoru na „Nyní“.
+- **MagicPlan – Přepínač „Všechny úkoly“ a celkové hodiny**: Ikonové tlačítko ve stálém primárním surface s přehlednou ikonou 2 uživatelů (group), okamžitá synchronizace zobrazení i konfigurace bez nutnosti refreshu a přesný výpočet celkových hodin v patičce s vyloučením absencí a volna.
+- **MagicPlan – Odlišení a chytré filtrování avatarů**: Neutrální kruhové avatary pro ostatní kolegy a primární barva pro přihlášeného uživatele; automatické skrytí avataru při zobrazení pouze vlastních úkolů napříč všemi pohledy.
+- **Nastavení – Borderless boční panel a sbalování rozšíření**: Odstranění pravého divideru z postranního panelu pro čistý borderless styl a automatické sbalování podpoložek rozšíření (zobrazují se pouze při aktivní sekci Rozšíření nebo daného doplňku).
+- **Nastavení – Sjednocení barvy ve vývojářském testu notifikací**: Ikona i aktivní výběr v dropdownu situací u vývojářského testu MagicPlan notifikací sladěny do žluté vývojářské barvy (amber).
+
 ## [2.1.1] - 3. 10. 2026
 ### MagicPlan detekce nového dne a responzivní mřížka, centralizace notifikací a ochrana MagicGate akcí
 - **MagicPlan – Automatická detekce nového dne po půlnoci a při probuzení**: Okamžitá aktualizace časové osy a vybraného dne po půlnoci i při obnovení okna. Během víkendu (sobota i neděle) zůstává aktivní pátek s přepnutím na pondělí nového týdne až po nedělní půlnoci, v týdenním přehledu zjednodušen zápis nevyužité kapacity.

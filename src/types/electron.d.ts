@@ -195,7 +195,7 @@ declare global {
       openDevTools?: () => Promise<void>;
 
       // Systémové notifikace
-      sendTestNotification?: (variant?: 'success' | 'error') => Promise<boolean>;
+      sendTestNotification?: (variant?: 'success' | 'error' | string) => Promise<boolean>;
       copyToClipboard?: (text: string, options?: { title?: string; body?: string }) => Promise<boolean>;
 
       // QuickCap (dříve FastSnap) API

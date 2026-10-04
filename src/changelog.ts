@@ -5,12 +5,26 @@ export interface VersionEntry {
   highlights: string[];
 }
 
-export const CURRENT_APP_VERSION = '2.1.1';
+export const CURRENT_APP_VERSION = '2.1.2';
 
 /**
  * Uživatelsky přívětivá historie verzí (ne technický žargon, ale přehled reálných funkcí pro uživatele).
  */
 export const CHANGELOG_HISTORY: VersionEntry[] = [
+  {
+    version: '2.1.2',
+    date: '4. 10. 2026',
+    title: 'MagicPlan inline správa osob a kontextové menu, kompaktní režim, sjednocení přepínačů a vyladění Nastavení',
+    highlights: [
+      'MagicPlan – Inline správa osob a kontextové menu v timeline: Možnost přidávat i odebírat osoby přímo v časové ose, kontextové menu pro posun uživatelů nahoru/dolů, označení „To jsem já / To nejsem já“ a vymazání ukotvené bezprostředně u avataru s inteligentním otevíráním dle volného prostoru.',
+      'MagicPlan – Kompaktní režim denního plánu: Efektivní jednořádkový layout karet s vertikálním centrováním ikon a zadavatele, přehledné zobrazení detailů po najetí myši, jednotná výška 46 px a sladěný borderless poloměr.',
+      'MagicPlan – Týdenní plán a indikátor aktuálního dne: Zmenšená výška řádků, čisté zobrazení bez zbytečných chipů pro Servis/Vývoj, zelené zvýraznění splněných úkolů, název projektu těsně pod názvem úkolu v tooltipu a přejmenování dnešního indikátoru na „Nyní“.',
+      'MagicPlan – Přepínač „Všechny úkoly“ a celkové hodiny: Ikonové tlačítko ve stálém primárním surface s přehlednou ikonou 2 uživatelů (group), okamžitá synchronizace zobrazení i konfigurace bez nutnosti refreshu a přesný výpočet celkových hodin v patičce s vyloučením absencí a volna.',
+      'MagicPlan – Odlišení a chytré filtrování avatarů: Neutrální kruhové avatary pro ostatní kolegy a primární barva pro přihlášeného uživatele; automatické skrytí avataru při zobrazení pouze vlastních úkolů napříč všemi pohledy.',
+      'Nastavení – Borderless boční panel a sbalování rozšíření: Odstranění pravého divideru z postranního panelu pro čistý borderless styl a automatické sbalování podpoložek rozšíření (zobrazují se pouze při aktivní sekci Rozšíření nebo daného doplňku).',
+      'Nastavení – Sjednocení barvy ve vývojářském testu notifikací: Ikona i aktivní výběr v dropdownu situací u vývojářského testu MagicPlan notifikací sladěny do žluté vývojářské barvy (amber).',
+    ],
+  },
   {
     version: '2.1.1',
     date: '3. 10. 2026',

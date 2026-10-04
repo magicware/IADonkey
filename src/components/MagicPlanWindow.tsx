@@ -739,7 +739,7 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
   // Dynamically recalculate plan hours based on 'showOnlyMyTasks' toggle
   const totalDisplayPlanHours = useMemo(() => {
     return userFilteredMyTasks
-      .filter((t) => !t.isNotAvailable && t.taskType !== 'absence')
+      .filter((t) => !t.isNotAvailable)
       .reduce((sum, t) => sum + (t.totalHours || 0), 0);
   }, [userFilteredMyTasks]);
 

@@ -1,6 +1,6 @@
 {
-  "version": "2.1.1",
-  "releaseNotes": "• MagicPlan: Automatická detekce nového dne po půlnoci i při probuzení (včetně zachování pátku o víkendu) a responzivní mřížka přetékajících úkolů (až 5 sloupců pro monitory od 1921 px).\n• Notifikace: Centralizované nastavení notifikací MagicPlanu s granulárními přepínači všech 4 typů událostí, vizuálním odlišením vnoření a kompletní sadou testovacích tlačítek.\n• Spotlight & MagicGate: Zabezpečení přechodu do akcí a informací podmíněné aktivním rozšířením GitHub a dynamická akční barva u klonování repozitářů.",
-  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v2.1.1/IADonkey-Setup-2.1.1.exe",
-  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v2.1.1/IADonkey-2.1.1.zip"
+  "version": "2.1.2",
+  "releaseNotes": "• MagicPlan: Inline správa osob a kontextové menu v časové ose, kompaktní denní režim s 46px kartami a přejmenování dnešního chipu na „Nyní“.\n• MagicPlan: Přepínač „Všechny úkoly“ v primárním surface s ikonou 2 uživatelů, přesný přepočet celkových hodin bez volna a barevné odlišení avatarů.\n• Nastavení: Čistý borderless boční panel bez divideru, automatické sbalování podpoložek rozšíření a žlutá barva ikony ve vývojářském testu notifikací.",
+  "downloadUrl": "https://github.com/magicware/IADonkey/releases/download/v2.1.2/IADonkey-Setup-2.1.2.exe",
+  "zipUrl": "https://github.com/magicware/IADonkey/releases/download/v2.1.2/IADonkey-2.1.2.zip"
 }
