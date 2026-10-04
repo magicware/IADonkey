@@ -738,7 +738,9 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
 
   // Dynamically recalculate plan hours based on 'showOnlyMyTasks' toggle
   const totalDisplayPlanHours = useMemo(() => {
-    return userFilteredMyTasks.reduce((sum, t) => sum + (t.totalHours || 0), 0);
+    return userFilteredMyTasks
+      .filter((t) => !t.isNotAvailable && t.taskType !== 'absence')
+      .reduce((sum, t) => sum + (t.totalHours || 0), 0);
   }, [userFilteredMyTasks]);
 
   const totalBoardHours = useMemo(() => {
@@ -866,11 +868,7 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
                 <button
                   type="button"
                   onClick={handleToggleShowAllTasks}
-                  className={`w-[38px] h-[38px] rounded-full flex items-center justify-center transition cursor-pointer ${
-                    !showOnlyMyTasks
-                      ? 'bg-indigo-500/25 text-indigo-300 ring-1 ring-indigo-400/40 shadow-sm'
-                      : 'bg-white/[0.04] hover:bg-white/[0.08] text-gray-300 hover:text-white'
-                  }`}
+                  className="w-[38px] h-[38px] rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-gray-300 hover:text-white flex items-center justify-center transition cursor-pointer"
                   title={
                     !showOnlyMyTasks
                       ? 'Zobrazují se úkoly všech osob (aktivní) – kliknutím přepnout na pouze moje úkoly'
@@ -878,7 +876,7 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
                   }
                 >
                   <span className="material-symbols-outlined text-base">
-                    {!showOnlyMyTasks ? 'groups' : 'person'}
+                    {!showOnlyMyTasks ? 'group' : 'person'}
                   </span>
                 </button>
               )}
@@ -1007,6 +1005,8 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
             myTasks={activeMyTasks}
             completedTasks={completedTasks}
             hasMultipleUsers={hasMultipleUsers}
+            currentUser={currentUser}
+            availablePersons={availablePersons}
             userDisplay={userDisplay}
             devHours={devHours}
             serviceHours={serviceHours}
@@ -1048,6 +1048,8 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
           <ListView
             tasks={filteredMyTasks}
             hasMultipleUsers={hasMultipleUsers}
+            currentUser={currentUser}
+            availablePersons={availablePersons}
             onOpenTask={handleOpenTask}
             onOpenCodeLink={handleOpenCodeLink}
             getTaskManagerUrl={getTaskManagerUrl}
@@ -1092,6 +1094,8 @@ interface BoardViewProps {
   myTasks: PlanTaskItem[];
   completedTasks: PlanTaskItem[];
   hasMultipleUsers?: boolean;
+  currentUser?: string;
+  availablePersons?: PlanPersonInfo[];
   userDisplay?: string;
   devHours?: number;
   serviceHours?: number;
@@ -1108,6 +1112,8 @@ const BoardView: React.FC<BoardViewProps> = ({
   myTasks,
   completedTasks,
   hasMultipleUsers,
+  currentUser,
+  availablePersons,
   userDisplay,
   devHours,
   serviceHours,
@@ -1197,7 +1203,9 @@ const BoardView: React.FC<BoardViewProps> = ({
                   onOpenCodeLink={onOpenCodeLink}
                   getTaskManagerUrl={getTaskManagerUrl}
                   isCopied={copiedId === task.taskId}
-                  showAssignee={true}
+                  showAssignee={hasMultipleUsers}
+                  currentUser={currentUser}
+                  availablePersons={availablePersons}
                 />
               ))
             )}
@@ -1231,6 +1239,8 @@ const BoardView: React.FC<BoardViewProps> = ({
                   getTaskManagerUrl={getTaskManagerUrl}
                   isCopied={copiedId === task.taskId}
                   showAssignee={hasMultipleUsers}
+                  currentUser={currentUser}
+                  availablePersons={availablePersons}
                 />
               ))
             )}
@@ -1264,6 +1274,8 @@ const BoardView: React.FC<BoardViewProps> = ({
                   getTaskManagerUrl={getTaskManagerUrl}
                   isCopied={copiedId === task.taskId}
                   showAssignee={hasMultipleUsers}
+                  currentUser={currentUser}
+                  availablePersons={availablePersons}
                 />
               ))
             )}
@@ -1298,6 +1310,8 @@ const BoardView: React.FC<BoardViewProps> = ({
                   isCopied={copiedId === task.taskId}
                   isCompletedView={true}
                   showAssignee={hasMultipleUsers}
+                  currentUser={currentUser}
+                  availablePersons={availablePersons}
                 />
               ))
             )}
@@ -3396,12 +3410,12 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                     </span>
                   )}
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    className={`text-[10px] font-bold uppercase tracking-wider ${
                       hoveredTask.block.isCompleted
-                        ? 'bg-emerald-500/20 text-emerald-300'
+                        ? 'text-emerald-400'
                         : hoveredTask.block.isService
-                        ? 'bg-purple-500/20 text-purple-300'
-                        : 'bg-indigo-500/20 text-indigo-300'
+                        ? 'text-purple-300'
+                        : 'text-indigo-300'
                     }`}
                   >
                     {hoveredTask.block.isCompleted
@@ -3429,6 +3443,13 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                 {hoveredTask.block.task.customName || hoveredTask.block.task.title}
               </div>
 
+              {/* Project name on own row */}
+              {hoveredTask.block.task.project && (
+                <div className="text-[11px] text-gray-400 truncate" title={hoveredTask.block.task.project}>
+                  {hoveredTask.block.task.project}
+                </div>
+              )}
+
               {/* Codes & Author */}
               <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-gray-400 font-mono">
                 {hoveredTask.block.task.taskIdentifier && (
@@ -3452,11 +3473,6 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                 {hoveredTask.block.task.author && (
                   <span className="px-2 py-0.5 rounded-full bg-white/10 text-gray-200 font-bold">
                     {hoveredTask.block.task.author}
-                  </span>
-                )}
-                {hoveredTask.block.task.project && (
-                  <span className="truncate max-w-[140px] text-gray-400 font-sans">
-                    {hoveredTask.block.task.project}
                   </span>
                 )}
               </div>
@@ -3484,7 +3500,9 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                 onOpenCodeLink={onOpenCodeLink}
                 getTaskManagerUrl={getTaskManagerUrl}
                 isCopied={copiedId === task.taskId}
-                showAssignee={hasMultipleUsers}
+                showAssignee={hasMultipleUsers && !showOnlyMyTasks}
+                currentUser={currentUser}
+                availablePersons={availablePersons}
               />
             ))}
           </div>
@@ -3565,6 +3583,8 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
 interface ListViewProps {
   tasks: PlanTaskItem[];
   hasMultipleUsers?: boolean;
+  currentUser?: string;
+  availablePersons?: PlanPersonInfo[];
   onOpenTask: (task: PlanTaskItem) => void;
   onOpenCodeLink: (code: string, task: PlanTaskItem, e?: React.MouseEvent) => void;
   getTaskManagerUrl: (code?: string) => string | null;
@@ -3574,6 +3594,8 @@ interface ListViewProps {
 const ListView: React.FC<ListViewProps> = ({
   tasks,
   hasMultipleUsers,
+  currentUser,
+  availablePersons,
   onOpenTask,
   onOpenCodeLink,
   getTaskManagerUrl,
@@ -3615,6 +3637,11 @@ const ListView: React.FC<ListViewProps> = ({
           const isDev = task.taskType === 'dev';
           const isCrit = Boolean(task.isCritical);
           const isCompleted = Boolean(task.isCompleted || task.isSolved);
+          const isMe = Boolean(
+            currentUser &&
+            task.userName &&
+            isTaskForUser(task.userName, currentUser, availablePersons)
+          );
           return (
             <div
               key={task.taskId}
@@ -3629,10 +3656,14 @@ const ListView: React.FC<ListViewProps> = ({
               {hasMultipleUsers && (
                 <div className="flex items-center justify-center">
                   <span
-                    className="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-300 font-mono text-[11px] font-bold flex items-center justify-center text-center shadow-sm select-none"
-                    title={`Přiřazeno: ${formatUserDisplayName(task.userName) || '–'}`}
+                    className={`w-7 h-7 rounded-full font-mono text-[11px] font-bold flex items-center justify-center text-center shadow-sm select-none ${
+                      isMe
+                        ? 'bg-indigo-500/20 text-indigo-300'
+                        : 'bg-white/[0.08] text-gray-300'
+                    }`}
+                    title={`Přiřazeno: ${formatUserDisplayName(task.userName, availablePersons) || '–'}${isMe ? ' (Vy)' : ''}`}
                   >
-                    {getUserInitials(task.userName)}
+                    {getUserInitials(task.userName, availablePersons)}
                   </span>
                 </div>
               )}
@@ -3778,6 +3809,8 @@ interface TaskCardProps {
   isCopied?: boolean;
   showAssignee?: boolean;
   isCompletedView?: boolean;
+  currentUser?: string;
+  availablePersons?: PlanPersonInfo[];
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({
@@ -3787,10 +3820,17 @@ const TaskCard: React.FC<TaskCardProps> = ({
   getTaskManagerUrl,
   showAssignee,
   isCompletedView,
+  currentUser,
+  availablePersons,
 }) => {
   const isDev = task.taskType === 'dev';
   const isService = task.taskType === 'service';
   const isCrit = Boolean(task.isCritical);
+  const isMe = Boolean(
+    currentUser &&
+    task.userName &&
+    isTaskForUser(task.userName, currentUser, availablePersons)
+  );
 
   return (
     <div
@@ -3902,13 +3942,13 @@ const TaskCard: React.FC<TaskCardProps> = ({
         {showAssignee && task.userName && (
           <div
             className={`w-6 h-6 rounded-full font-mono text-[10px] font-bold flex items-center justify-center text-center shadow-sm select-none shrink-0 ml-auto ${
-              isCompletedView
-                ? 'bg-emerald-500/20 text-emerald-300'
-                : 'bg-indigo-500/20 text-indigo-300'
+              isMe
+                ? 'bg-indigo-500/20 text-indigo-300'
+                : 'bg-white/[0.08] text-gray-300'
             }`}
-            title={`Přiřazeno: ${formatUserDisplayName(task.userName)}`}
+            title={`Přiřazeno: ${formatUserDisplayName(task.userName, availablePersons)}${isMe ? ' (Vy)' : ''}`}
           >
-            {getUserInitials(task.userName)}
+            {getUserInitials(task.userName, availablePersons)}
           </div>
         )}
       </div>
