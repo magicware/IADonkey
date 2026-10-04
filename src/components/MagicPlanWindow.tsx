@@ -33,7 +33,7 @@ export const getUserInitials = (name?: string, availablePersons?: PlanPersonInfo
   // 2. Závorka např. "Kulhánek Petr (PKU)" -> zkratka je ze závorky PKU
   const parenMatch = clean.match(/\(([^)]+)\)/);
   if (parenMatch) {
-    return parenMatch[1].trim().toUpperCase();
+    return parenMatch[1].trim().slice(0, 3).toUpperCase();
   }
 
   // 3. Fallback: odstranit závorky a vzít iniciály ze jména
@@ -1918,22 +1918,32 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
   const serviceColor = hexToRgba(actionsColor, '#a855f7', 0.7);
   const isCompact = Boolean(planSettings?.compactDayView);
 
-  const [openUserMenuIdx, setOpenUserMenuIdx] = useState<number | null>(null);
-  const [menuOpenUpward, setMenuOpenUpward] = useState<boolean>(false);
+  const [userMenuState, setUserMenuState] = useState<{
+    uIdx: number;
+    userName: string;
+    isMe: boolean;
+    top: number;
+    left: number;
+    openUpward: boolean;
+  } | null>(null);
   const [isAddingPerson, setIsAddingPerson] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setOpenUserMenuIdx(null);
+        setUserMenuState(null);
       }
     };
-    if (openUserMenuIdx !== null) {
+    if (userMenuState !== null) {
       document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      window.addEventListener('scroll', () => setUserMenuState(null), true);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        window.removeEventListener('scroll', () => setUserMenuState(null), true);
+      };
     }
-  }, [openUserMenuIdx]);
+  }, [userMenuState]);
 
   // Mode switcher: 'day' (výsek na vybraný den na celou šířku) vs 'week' (celý týden)
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
@@ -2352,7 +2362,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
               <div
                 className="absolute top-0 bottom-0 pointer-events-none z-40 outline-none"
                 style={{
-                  left: hasMultipleUsers ? '40px' : '0px',
+                  left: hasMultipleUsers ? '52px' : '0px',
                   right: '0px',
                 }}
               >
@@ -2387,7 +2397,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
               <div className="w-full">
                 {/* Column Hour Sub-Markers Header Row */}
             <div className="flex items-center gap-2 pb-3 mb-2 border-b border-white/[0.06]">
-              {hasMultipleUsers && <div className="w-8 shrink-0" />}
+              {hasMultipleUsers && <div className="w-11 shrink-0" />}
               <div
                 className="flex-1 grid text-xs text-gray-400 font-mono text-center items-center"
                 style={{ gridTemplateColumns: `repeat(${totalDayHours}, minmax(0, 1fr))` }}
@@ -2502,93 +2512,56 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                 return (
                   <div key={uSched.userName || 'single'} className="flex items-center gap-2">
                     {hasMultipleUsers && (
-                      <div className="w-8 shrink-0 flex items-center justify-center relative">
+                      <div className="w-11 shrink-0 flex items-center justify-center relative">
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (openUserMenuIdx === uIdx) {
-                              setOpenUserMenuIdx(null);
+                            if (userMenuState?.uIdx === uIdx) {
+                              setUserMenuState(null);
                             } else {
-                              const targetRect = e.currentTarget.getBoundingClientRect();
-                              const spaceBelow = window.innerHeight - targetRect.bottom;
-                              setMenuOpenUpward(spaceBelow < 200);
-                              setOpenUserMenuIdx(uIdx);
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const menuHeight = 180;
+                              const spaceBelow = window.innerHeight - rect.bottom;
+                              const spaceAbove = rect.top;
+                              const openUpward = spaceBelow < menuHeight && spaceAbove > menuHeight;
+                              setUserMenuState({
+                                uIdx,
+                                userName: uSched.userName,
+                                isMe,
+                                top: openUpward ? rect.top - 6 : rect.bottom + 6,
+                                left: Math.max(10, Math.min(window.innerWidth - 190, rect.left)),
+                                openUpward,
+                              });
                             }
                           }}
-                          className={`group relative w-8 h-8 rounded-full font-mono font-bold text-xs flex items-center justify-center text-center select-none cursor-pointer transition-all hover:ring-2 hover:ring-indigo-400/50 ${
+                          className={`group relative w-8 h-8 rounded-full font-mono font-bold text-[11px] flex items-center justify-center text-center select-none cursor-pointer transition-all hover:ring-2 hover:ring-indigo-400/50 ${
                             isMe
                               ? 'bg-indigo-500/20 text-indigo-400 font-bold hover:bg-indigo-500/30'
                               : 'bg-white/[0.08] text-gray-300 hover:bg-white/[0.16] hover:text-white'
                           }`}
                           title={isMe ? `${formatUserDisplayName(uSched.userName, availablePersons)} (To jste vy) – Možnosti` : `Uživatel: ${formatUserDisplayName(uSched.userName, availablePersons)} – Možnosti`}
                         >
-                          <span className="group-hover:opacity-0 transition-opacity">
+                          <span className="group-hover:opacity-0 transition-opacity truncate max-w-[28px] text-center">
                             {uSched.initials}
                           </span>
-                          <span className="material-symbols-outlined text-base absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity bg-black/40 rounded-full leading-none">
-                            more_vert
-                          </span>
+                          <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            <span
+                              className="material-symbols-outlined text-white text-[18px] select-none"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '100%',
+                                height: '100%',
+                                lineHeight: 1,
+                              }}
+                            >
+                              more_horiz
+                            </span>
+                          </div>
                         </div>
-                        {openUserMenuIdx === uIdx && (
-                          <div
-                            ref={userMenuRef}
-                            className={`absolute left-0 ${menuOpenUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-44 bg-[#1e2029] border border-white/10 rounded-xl shadow-2xl py-1 z-50 animate-fade-in text-xs select-none`}
-                          >
-                              {uIdx > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleMoveUser(uIdx, uIdx - 1);
-                                    setOpenUserMenuIdx(null);
-                                  }}
-                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-300 hover:text-white hover:bg-white/5 transition text-left cursor-pointer"
-                                >
-                                  <span className="material-symbols-outlined text-sm text-gray-400">arrow_upward</span>
-                                  <span>Posunout nahoru</span>
-                                </button>
-                              )}
-                              {uIdx < userSchedules.length - 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleMoveUser(uIdx, uIdx + 1);
-                                    setOpenUserMenuIdx(null);
-                                  }}
-                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-300 hover:text-white hover:bg-white/5 transition text-left cursor-pointer"
-                                >
-                                  <span className="material-symbols-outlined text-sm text-gray-400">arrow_downward</span>
-                                  <span>Posunout dolů</span>
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleToggleMe(uIdx, isMe, uSched.userName);
-                                  setOpenUserMenuIdx(null);
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-300 hover:text-white hover:bg-white/5 transition text-left cursor-pointer"
-                              >
-                                <span className={`material-symbols-outlined text-sm ${isMe ? 'text-amber-400' : 'text-indigo-400'}`}>
-                                  {isMe ? 'person_cancel' : 'person'}
-                                </span>
-                                <span>{isMe ? 'To nejsem já' : 'To jsem já'}</span>
-                              </button>
-                              <div className="h-px bg-white/10 my-1" />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleRemoveUser(uIdx, uSched.userName);
-                                  setOpenUserMenuIdx(null);
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition text-left cursor-pointer"
-                              >
-                                <span className="material-symbols-outlined text-sm">delete</span>
-                                <span>Vymazat</span>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      </div>
+                    )}
 
                     <div className="flex-1 relative w-full py-1">
                       {/* Background Column Lines */}
@@ -2665,10 +2638,10 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                       gridRow: 1,
                                       opacity: isNaMuted ? 0.1 : 1,
                                     }}
-                                    className={`rounded-2xl mx-[2.5px] transition-all duration-200 select-none overflow-hidden min-w-0 timeline-task-unavailable text-zinc-300 cursor-default ${
+                                    className={`mx-[2.5px] transition-all duration-200 select-none overflow-hidden min-w-0 timeline-task-unavailable text-zinc-300 cursor-default ${
                                       isCompact
-                                        ? 'h-[60px] px-3 py-1.5 flex items-center justify-between'
-                                        : 'h-[112px] p-2.5 flex flex-col justify-between gap-1'
+                                        ? 'rounded-lg h-[46px] px-3 py-1 flex items-center justify-between'
+                                        : 'rounded-2xl h-[112px] p-2.5 flex flex-col justify-between gap-1'
                                     } ${isNaMuted ? 'pointer-events-none' : ''}`}
                                   >
                                     {isCompact ? (
@@ -2722,10 +2695,11 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                 ? serviceColor
                                 : devColor;
 
+                              const cardRadius = isCompact ? '8px' : '16px';
                               const blockStyle: React.CSSProperties = {
                                 gridColumn: `${dayColStart} / span ${spanCols}`,
                                 gridRow: 1,
-                                borderRadius: `${isCutLeft ? '0px' : '16px'} ${isCutRight ? '0px' : '16px'} ${isCutRight ? '0px' : '16px'} ${isCutLeft ? '0px' : '16px'}`,
+                                borderRadius: `${isCutLeft ? '0px' : cardRadius} ${isCutRight ? '0px' : cardRadius} ${isCutRight ? '0px' : cardRadius} ${isCutLeft ? '0px' : cardRadius}`,
                                 opacity: isMuted ? 0.1 : 1,
                                 backgroundColor: taskBackgroundColor,
                               };
@@ -2737,14 +2711,14 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                   onClick={isMuted ? undefined : () => onOpenTask(task)}
                                   className={`timeline-task-card group mx-[2.5px] transition-all duration-200 select-none overflow-hidden min-w-0 text-white ${
                                     isCompact
-                                      ? 'h-[60px] px-3 py-1.5 flex items-center justify-between'
+                                      ? 'h-[46px] px-2.5 py-1 flex items-center justify-between'
                                       : 'h-[112px] p-2.5 flex flex-col justify-between gap-1'
                                   } ${isMuted ? 'pointer-events-none' : 'cursor-pointer'}`}
                                 >
                                   {isCompact ? (
                                     <div className="relative w-full h-full flex items-center min-w-0 overflow-hidden">
-                                      {/* Základní stav: Ikona na střed, Název + Projekt na střed s nulovou mezerou, Zadavatel na střed vpravo */}
-                                      <div className="flex items-center gap-2.5 min-w-0 w-full h-full group-hover:hidden select-none">
+                                      {/* Základní stav: Ikona na střed, Název + Projekt na střed s nulovou mezerou, Zadavatel na střed vpravo (u 0.5h se nezobrazuje) */}
+                                      <div className="flex items-center gap-2 min-w-0 w-full h-full group-hover:hidden select-none">
                                         <div className="relative flex items-center justify-center shrink-0">
                                           <span className="material-symbols-outlined text-lg opacity-90 text-white">
                                             {isCompleted ? 'check_circle' : isService ? 'build' : 'code'}
@@ -2768,7 +2742,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                           </span>
                                         </div>
 
-                                        {task.author && (
+                                        {task.author && chunkHours > 0.5 && (
                                           <span
                                             className="px-2 py-0.5 rounded-full font-mono font-bold text-[9.5px] bg-white/20 text-white shrink-0 shadow-sm self-center"
                                             title={`Zadavatel: ${task.author}`}
@@ -2778,9 +2752,9 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                         )}
                                       </div>
 
-                                      {/* Hover stav (při najetí myši skryje původní info a zobrazí): Díl (full-rounded) | Počet hodin (text, ne chip) | úkol Txxxxx */}
+                                      {/* Hover stav (při najetí myši skryje původní info a zobrazí): Díl (full-rounded) | Počet hodin (text, ne chip) | úkol Txxxxx (u 0.5h úkolů se hodiny i díl vynechají) */}
                                       <div className="hidden group-hover:flex items-center gap-2 min-w-0 w-full h-full text-xs text-white select-none animate-fade-in">
-                                        {isSplit && (
+                                        {isSplit && chunkHours > 0.5 && (
                                           <span
                                             className="font-mono font-bold shrink-0 text-white bg-white/25 px-2 py-0.5 rounded-full text-[10px]"
                                             title={`Část ${partIndex} z ${totalParts}`}
@@ -2789,13 +2763,15 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                           </span>
                                         )}
 
-                                        <span className="font-mono font-bold shrink-0 text-white text-xs">
-                                          {isSplit ? `${chunkHours}h (${totalHours}h)` : `${chunkHours}h`}
-                                        </span>
+                                        {chunkHours > 0.5 && (
+                                          <span className="font-mono font-bold shrink-0 text-white text-xs">
+                                            {isSplit ? `${chunkHours}h (${totalHours}h)` : `${chunkHours}h`}
+                                          </span>
+                                        )}
 
                                         {displayCode && displayCode !== 'R0' && (
                                           <>
-                                            <span className="text-white/40 shrink-0 font-bold">•</span>
+                                            {chunkHours > 0.5 && <span className="text-white/40 shrink-0 font-bold">•</span>}
                                             {isGoddayTask(task) ? (
                                               <span
                                                 onClick={(e) => {
@@ -2936,9 +2912,9 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                 gridColumn: `${((dayFree.startCol - 1) % totalDaySlots) + 1} / span ${dayFree.spanCols}`,
                                 gridRow: 1,
                               }}
-                              className={`rounded-2xl mx-[2.5px] border border-dashed border-white/10 bg-white/[0.015] hover:bg-white/[0.03] text-gray-500 text-xs flex items-center justify-center gap-2 transition select-none ${
-                                isCompact ? 'h-[60px] px-3 py-1.5' : 'h-[112px] p-4'
-                              }`}
+                              className={`${
+                                isCompact ? 'rounded-lg h-[46px] px-3 py-1' : 'rounded-2xl h-[112px] p-4'
+                              } mx-[2.5px] border border-dashed border-white/10 bg-white/[0.015] hover:bg-white/[0.03] text-gray-500 text-xs flex items-center justify-center gap-2 transition select-none`}
                             >
                               <span className="material-symbols-outlined text-base opacity-60">
                                 {selectedDayIndex < todayIdx ? 'history' : 'hourglass_empty'}
@@ -3011,7 +2987,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
           <div className="w-full">
             {/* 5 Day Headers (Po, Út, St, Čt, Pá) */}
             <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3 mb-2">
-              {hasMultipleUsers && <div className="w-8 shrink-0" />}
+              {hasMultipleUsers && <div className="w-11 shrink-0" />}
               <div className="flex-1 px-[2px] grid grid-cols-5 gap-0">
                 {days.slice(0, 5).map((day, dIdx) => {
                   const dayBlocks = userSchedules.flatMap((u) =>
@@ -3077,93 +3053,56 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                 return (
                   <div key={uSched.userName || 'single'} className="flex items-center gap-2">
                     {hasMultipleUsers && (
-                      <div className="w-8 shrink-0 flex items-center justify-center relative">
+                      <div className="w-11 shrink-0 flex items-center justify-center relative">
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (openUserMenuIdx === uIdx) {
-                              setOpenUserMenuIdx(null);
+                            if (userMenuState?.uIdx === uIdx) {
+                              setUserMenuState(null);
                             } else {
-                              const targetRect = e.currentTarget.getBoundingClientRect();
-                              const spaceBelow = window.innerHeight - targetRect.bottom;
-                              setMenuOpenUpward(spaceBelow < 200);
-                              setOpenUserMenuIdx(uIdx);
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const menuHeight = 180;
+                              const spaceBelow = window.innerHeight - rect.bottom;
+                              const spaceAbove = rect.top;
+                              const openUpward = spaceBelow < menuHeight && spaceAbove > menuHeight;
+                              setUserMenuState({
+                                uIdx,
+                                userName: uSched.userName,
+                                isMe,
+                                top: openUpward ? rect.top - 6 : rect.bottom + 6,
+                                left: Math.max(10, Math.min(window.innerWidth - 190, rect.left)),
+                                openUpward,
+                              });
                             }
                           }}
-                          className={`group relative w-8 h-8 rounded-full font-mono font-bold text-xs flex items-center justify-center text-center select-none cursor-pointer transition-all hover:ring-2 hover:ring-indigo-400/50 ${
+                          className={`group relative w-8 h-8 rounded-full font-mono font-bold text-[11px] flex items-center justify-center text-center select-none cursor-pointer transition-all hover:ring-2 hover:ring-indigo-400/50 ${
                             isMe
                               ? 'bg-indigo-500/20 text-indigo-400 font-bold hover:bg-indigo-500/30'
                               : 'bg-white/[0.08] text-gray-300 hover:bg-white/[0.16] hover:text-white'
                           }`}
                           title={isMe ? `${formatUserDisplayName(uSched.userName, availablePersons)} (To jste vy) – Možnosti` : `Uživatel: ${formatUserDisplayName(uSched.userName, availablePersons)} – Možnosti`}
                         >
-                          <span className="group-hover:opacity-0 transition-opacity">
+                          <span className="group-hover:opacity-0 transition-opacity truncate max-w-[28px] text-center">
                             {uSched.initials}
                           </span>
-                          <span className="material-symbols-outlined text-base absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity bg-black/40 rounded-full leading-none">
-                            more_vert
-                          </span>
+                          <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            <span
+                              className="material-symbols-outlined text-white text-[18px] select-none"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '100%',
+                                height: '100%',
+                                lineHeight: 1,
+                              }}
+                            >
+                              more_horiz
+                            </span>
+                          </div>
                         </div>
-                        {openUserMenuIdx === uIdx && (
-                          <div
-                            ref={userMenuRef}
-                            className={`absolute left-0 ${menuOpenUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-44 bg-[#1e2029] border border-white/10 rounded-xl shadow-2xl py-1 z-50 animate-fade-in text-xs select-none`}
-                          >
-                              {uIdx > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleMoveUser(uIdx, uIdx - 1);
-                                    setOpenUserMenuIdx(null);
-                                  }}
-                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-300 hover:text-white hover:bg-white/5 transition text-left cursor-pointer"
-                                >
-                                  <span className="material-symbols-outlined text-sm text-gray-400">arrow_upward</span>
-                                  <span>Posunout nahoru</span>
-                                </button>
-                              )}
-                              {uIdx < userSchedules.length - 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleMoveUser(uIdx, uIdx + 1);
-                                    setOpenUserMenuIdx(null);
-                                  }}
-                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-300 hover:text-white hover:bg-white/5 transition text-left cursor-pointer"
-                                >
-                                  <span className="material-symbols-outlined text-sm text-gray-400">arrow_downward</span>
-                                  <span>Posunout dolů</span>
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleToggleMe(uIdx, isMe, uSched.userName);
-                                  setOpenUserMenuIdx(null);
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-300 hover:text-white hover:bg-white/5 transition text-left cursor-pointer"
-                              >
-                                <span className={`material-symbols-outlined text-sm ${isMe ? 'text-amber-400' : 'text-indigo-400'}`}>
-                                  {isMe ? 'person_cancel' : 'person'}
-                                </span>
-                                <span>{isMe ? 'To nejsem já' : 'To jsem já'}</span>
-                              </button>
-                              <div className="h-px bg-white/10 my-1" />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleRemoveUser(uIdx, uSched.userName);
-                                  setOpenUserMenuIdx(null);
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition text-left cursor-pointer"
-                              >
-                                <span className="material-symbols-outlined text-sm">delete</span>
-                                <span>Vymazat</span>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      </div>
+                    )}
 
                     <div className="flex-1 relative w-full rounded-lg overflow-hidden py-1 px-[2px] h-[38px]">
                       {/* Background Column Lines */}
@@ -3526,6 +3465,71 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
               />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* User Context Menu (Fixed positioning so it NEVER gets cut off by overflow or window edges) */}
+      {userMenuState && (
+        <div
+          ref={userMenuRef}
+          className="fixed z-[9999] w-44 bg-[#1e2029] border border-white/10 rounded-xl shadow-2xl py-1 animate-fade-in text-xs select-none backdrop-blur-md"
+          style={{
+            top: `${userMenuState.top}px`,
+            left: `${userMenuState.left}px`,
+            transform: userMenuState.openUpward ? 'translateY(-100%)' : 'none',
+          }}
+        >
+          {userMenuState.uIdx > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                handleMoveUser(userMenuState.uIdx, userMenuState.uIdx - 1);
+                setUserMenuState(null);
+              }}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-300 hover:text-white hover:bg-white/5 transition text-left cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-sm text-gray-400">arrow_upward</span>
+              <span>Posunout nahoru</span>
+            </button>
+          )}
+          {userMenuState.uIdx < userSchedules.length - 1 && (
+            <button
+              type="button"
+              onClick={() => {
+                handleMoveUser(userMenuState.uIdx, userMenuState.uIdx + 1);
+                setUserMenuState(null);
+              }}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-300 hover:text-white hover:bg-white/5 transition text-left cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-sm text-gray-400">arrow_downward</span>
+              <span>Posunout dolů</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              handleToggleMe(userMenuState.uIdx, userMenuState.isMe, userMenuState.userName);
+              setUserMenuState(null);
+            }}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-gray-300 hover:text-white hover:bg-white/5 transition text-left cursor-pointer"
+          >
+            <span className={`material-symbols-outlined text-sm ${userMenuState.isMe ? 'text-amber-400' : 'text-indigo-400'}`}>
+              {userMenuState.isMe ? 'person_cancel' : 'person'}
+            </span>
+            <span>{userMenuState.isMe ? 'To nejsem já' : 'To jsem já'}</span>
+          </button>
+          <div className="h-px bg-white/10 my-1" />
+          <button
+            type="button"
+            onClick={() => {
+              handleRemoveUser(userMenuState.uIdx, userMenuState.userName);
+              setUserMenuState(null);
+            }}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition text-left cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-sm">delete</span>
+            <span>Vymazat</span>
+          </button>
         </div>
       )}
     </div>
