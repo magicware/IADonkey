@@ -2580,8 +2580,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                             </div>
                           )}
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     <div className="flex-1 relative w-full py-1">
                       {/* Background Column Lines */}
@@ -2609,21 +2608,32 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                 gridRow: 1,
                                 opacity: searchQuery?.trim() ? 0.1 : 1,
                               }}
-                              className={`rounded-2xl p-4 border border-dashed border-white/10 bg-white/[0.015] text-gray-500 text-xs flex items-center justify-center gap-3 select-none transition-all duration-200 ${
-                                isCompact ? 'h-[60px] !p-2' : 'h-[112px]'
+                              className={`rounded-2xl border border-dashed border-white/10 bg-white/[0.015] text-gray-500 text-xs flex items-center justify-center gap-3 select-none transition-all duration-200 ${
+                                isCompact ? 'h-[60px] px-3 py-1.5' : 'h-[112px] p-4'
                               }`}
                             >
                               <span className={`material-symbols-outlined opacity-40 ${isCompact ? 'text-lg' : 'text-2xl'}`}>
                                 {selectedDayIndex < todayIdx ? 'history_toggle_off' : 'weekend'}
                               </span>
-                              <div className="flex flex-col">
-                                <span className="font-medium text-gray-400">
-                                  {selectedDayIndex < todayIdx ? 'Žádné záznamy v historii' : 'Žádné úkoly pro tento den'}
-                                </span>
-                                <span className="text-[11px] text-gray-600">
-                                  {totalDayHours} hodin {selectedDayIndex < todayIdx ? 'nevyužité kapacity' : 'volné kapacity'}
-                                </span>
-                              </div>
+                              {isCompact ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-gray-400">
+                                    {selectedDayIndex < todayIdx ? 'Žádné záznamy v historii' : 'Žádné úkoly pro tento den'}
+                                  </span>
+                                  <span className="text-[11px] text-gray-600 font-mono">
+                                    • {totalDayHours}h {selectedDayIndex < todayIdx ? 'nevyužito' : 'volno'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col">
+                                  <span className="font-medium text-gray-400">
+                                    {selectedDayIndex < todayIdx ? 'Žádné záznamy v historii' : 'Žádné úkoly pro tento den'}
+                                  </span>
+                                  <span className="text-[11px] text-gray-600">
+                                    {totalDayHours} hodin {selectedDayIndex < todayIdx ? 'nevyužité kapacity' : 'volné kapacity'}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           ) : (
                             dayItems.map((block) => {
@@ -2764,8 +2774,17 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                         </div>
                                       </div>
 
-                                      {/* Hover stav (při najetí myši skryje původní info a zobrazí): Počet hodin | Projekt | úkol Txxxxx */}
+                                      {/* Hover stav (při najetí myši skryje původní info a zobrazí): Díl | Počet hodin | Projekt | úkol Txxxxx */}
                                       <div className="hidden group-hover:flex items-center gap-2 min-w-0 w-full h-full text-xs text-white select-none animate-fade-in">
+                                        {isSplit && (
+                                          <span
+                                            className="font-mono font-bold shrink-0 text-white bg-white/25 px-1.5 py-0.5 rounded text-[10px]"
+                                            title={`Část ${partIndex} z ${totalParts}`}
+                                          >
+                                            {partIndex}/{totalParts}
+                                          </span>
+                                        )}
+
                                         <span className="font-mono font-bold shrink-0 text-white bg-white/15 px-2 py-0.5 rounded-full text-[11px]">
                                           {isSplit ? `${chunkHours}h (${totalHours}h)` : `${chunkHours}h`}
                                         </span>
@@ -2919,8 +2938,8 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                 gridColumn: `${((dayFree.startCol - 1) % totalDaySlots) + 1} / span ${dayFree.spanCols}`,
                                 gridRow: 1,
                               }}
-                              className={`rounded-2xl p-4 border border-dashed border-white/10 bg-white/[0.015] hover:bg-white/[0.03] text-gray-500 text-xs flex items-center justify-center gap-2 transition select-none ${
-                                isCompact ? 'h-[72px] !p-2' : 'h-[112px]'
+                              className={`rounded-2xl border border-dashed border-white/10 bg-white/[0.015] hover:bg-white/[0.03] text-gray-500 text-xs flex items-center justify-center gap-2 transition select-none ${
+                                isCompact ? 'h-[60px] px-3 py-1.5' : 'h-[112px] p-4'
                               }`}
                             >
                               <span className="material-symbols-outlined text-base opacity-60">
@@ -3140,8 +3159,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                             </div>
                           )}
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     <div className="flex-1 relative w-full rounded-lg overflow-hidden py-1 px-[2px] h-[38px]">
                       {/* Background Column Lines */}
