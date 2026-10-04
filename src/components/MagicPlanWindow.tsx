@@ -555,6 +555,14 @@ export const MagicPlanWindow: React.FC<MagicPlanWindowProps> = ({ config, onSave
     return Boolean(currentUser);
   });
 
+  // Sync showOnlyMyTasks whenever showAllTasks in config changes (e.g. from Settings modal)
+  useEffect(() => {
+    const activeCfg = currentConfig || config;
+    if (activeCfg.magicplan?.showAllTasks !== undefined) {
+      setShowOnlyMyTasks(!activeCfg.magicplan.showAllTasks);
+    }
+  }, [config.magicplan?.showAllTasks, currentConfig?.magicplan?.showAllTasks]);
+
   const availablePersons: PlanPersonInfo[] = useMemo(() => {
     return data?.availablePersons || [];
   }, [data]);
@@ -2493,30 +2501,27 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                 return (
                   <div key={uSched.userName || 'single'} className="flex items-center gap-3">
                     {hasMultipleUsers && (
-                      <div className="w-14 shrink-0 flex items-center justify-between gap-1 relative">
+                      <div className="w-14 shrink-0 flex items-center justify-center relative">
                         <div
-                          className={`w-8 h-8 rounded-full font-mono font-bold text-xs flex items-center justify-center text-center select-none transition-all ${
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenUserMenuIdx(openUserMenuIdx === uIdx ? null : uIdx);
+                          }}
+                          className={`group relative w-8 h-8 rounded-full font-mono font-bold text-xs flex items-center justify-center text-center select-none cursor-pointer transition-all ${
                             isMe
-                              ? 'bg-indigo-500/20 text-indigo-400 font-bold'
-                              : 'bg-white/[0.08] text-gray-300'
+                              ? 'bg-indigo-500/20 text-indigo-400 font-bold hover:bg-indigo-500/30'
+                              : 'bg-white/[0.08] text-gray-300 hover:bg-white/[0.16] hover:text-white'
                           }`}
                           title={isMe ? `${formatUserDisplayName(uSched.userName, availablePersons)} (To jste vy)` : `Uživatel: ${formatUserDisplayName(uSched.userName, availablePersons)}`}
                         >
-                          {uSched.initials}
+                          <span className="group-hover:opacity-0 transition-opacity">
+                            {uSched.initials}
+                          </span>
+                          <span className="material-symbols-outlined text-base absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                            more_vert
+                          </span>
                         </div>
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenUserMenuIdx(openUserMenuIdx === uIdx ? null : uIdx);
-                            }}
-                            className="w-5 h-5 rounded-full text-gray-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition cursor-pointer"
-                            title="Možnosti osoby"
-                          >
-                            <span className="material-symbols-outlined text-sm">more_vert</span>
-                          </button>
-                          {openUserMenuIdx === uIdx && (
+                        {openUserMenuIdx === uIdx && (
                             <div
                               ref={userMenuRef}
                               className="absolute left-0 top-full mt-1 w-44 bg-[#1e2029] border border-white/10 rounded-xl shadow-2xl py-1 z-50 animate-fade-in text-xs select-none"
@@ -2714,51 +2719,60 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                   onClick={isMuted ? undefined : () => onOpenTask(task)}
                                   className={`timeline-task-card group transition-all duration-200 select-none overflow-hidden min-w-0 text-white ${
                                     isCompact
-                                      ? 'h-[60px] px-3 py-2 flex items-center justify-between'
+                                      ? 'h-[60px] px-3 py-1.5 flex items-center justify-between'
                                       : 'h-[112px] p-2.5 flex flex-col justify-between gap-1'
                                   } ${isMuted ? 'pointer-events-none' : 'cursor-pointer'}`}
                                 >
                                   {isCompact ? (
-                                    <div className="relative w-full h-full flex items-center min-w-0 overflow-hidden">
-                                      {/* Základní jednořádkový stav: [ikona typ velká + kritická] Název [chip zadavatele] */}
-                                      <div className="flex items-center gap-2 min-w-0 w-full group-hover:hidden select-none">
-                                        <div className="relative flex items-center shrink-0">
-                                          <span className="material-symbols-outlined text-xl opacity-90 text-white">
-                                            {isCompleted ? 'check_circle' : isService ? 'build' : 'code'}
+                                    <div className="relative w-full h-full flex flex-col justify-center min-w-0 overflow-hidden">
+                                      {/* Základní stav: 1. řádek [ikona + kritická] Název (odsazený, text-[11px]) [chip zadavatele], 2. řádek Projekt */}
+                                      <div className="flex flex-col justify-center min-w-0 w-full h-full group-hover:hidden select-none gap-0.5">
+                                        <div className="flex items-center gap-2.5 min-w-0 w-full">
+                                          <div className="relative flex items-center shrink-0">
+                                            <span className="material-symbols-outlined text-lg opacity-90 text-white">
+                                              {isCompleted ? 'check_circle' : isService ? 'build' : 'code'}
+                                            </span>
+                                            {isCrit && (
+                                              <span
+                                                className="material-symbols-outlined text-[13px] text-red-400 absolute -top-1.5 -right-1.5 drop-shadow"
+                                                title="Kritická priorita"
+                                              >
+                                                warning
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          <span className="font-semibold text-[11px] text-white truncate min-w-0 flex-1 leading-tight">
+                                            {task.customName || task.title}
                                           </span>
-                                          {isCrit && (
+
+                                          {task.author && (
                                             <span
-                                              className="material-symbols-outlined text-[13px] text-red-400 absolute -top-1.5 -right-1.5 drop-shadow"
-                                              title="Kritická priorita"
+                                              className="px-2 py-0.5 rounded-full font-mono font-bold text-[9.5px] bg-white/20 text-white shrink-0 shadow-sm"
+                                              title={`Zadavatel: ${task.author}`}
                                             >
-                                              warning
+                                              {task.author}
                                             </span>
                                           )}
                                         </div>
 
-                                        <span className="font-bold text-xs text-white truncate min-w-0 flex-1 leading-snug">
-                                          {task.customName || task.title}
-                                        </span>
-
-                                        {task.author && (
-                                          <span
-                                            className="px-2 py-0.5 rounded-full font-mono font-bold text-[10px] bg-white/20 text-white shrink-0 shadow-sm"
-                                            title={`Zadavatel: ${task.author}`}
-                                          >
-                                            {task.author}
+                                        {/* 2. řádek: Název projektu pod názvem úkolu */}
+                                        <div className="flex items-center min-w-0 pl-[27px] text-[10px] text-white/70 truncate">
+                                          <span className="truncate" title={task.project || 'Bez projektu'}>
+                                            {task.project || '–'}
                                           </span>
-                                        )}
+                                        </div>
                                       </div>
 
                                       {/* Hover stav (při najetí myši skryje původní info a zobrazí): Počet hodin | Projekt | úkol Txxxxx */}
-                                      <div className="hidden group-hover:flex items-center gap-2 min-w-0 w-full text-xs text-white select-none animate-fade-in">
-                                        <span className="font-mono font-bold shrink-0 text-white bg-white/15 px-2 py-0.5 rounded-full">
+                                      <div className="hidden group-hover:flex items-center gap-2 min-w-0 w-full h-full text-xs text-white select-none animate-fade-in">
+                                        <span className="font-mono font-bold shrink-0 text-white bg-white/15 px-2 py-0.5 rounded-full text-[11px]">
                                           {isSplit ? `${chunkHours}h (${totalHours}h)` : `${chunkHours}h`}
                                         </span>
 
                                         <span className="text-white/40 shrink-0 font-bold">•</span>
 
-                                        <span className="truncate min-w-0 font-medium text-white/90" title={task.project || 'Bez projektu'}>
+                                        <span className="truncate min-w-0 font-medium text-white/90 text-[11px]" title={task.project || 'Bez projektu'}>
                                           {task.project || '–'}
                                         </span>
 
@@ -3047,30 +3061,27 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                 return (
                   <div key={uSched.userName || 'single'} className="flex items-center gap-3">
                     {hasMultipleUsers && (
-                      <div className="w-14 shrink-0 flex items-center justify-between gap-1 relative">
+                      <div className="w-14 shrink-0 flex items-center justify-center relative">
                         <div
-                          className={`w-8 h-8 rounded-full font-mono font-bold text-xs flex items-center justify-center text-center select-none transition-all ${
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenUserMenuIdx(openUserMenuIdx === uIdx ? null : uIdx);
+                          }}
+                          className={`group relative w-8 h-8 rounded-full font-mono font-bold text-xs flex items-center justify-center text-center select-none cursor-pointer transition-all ${
                             isMe
-                              ? 'bg-indigo-500/20 text-indigo-400 font-bold'
-                              : 'bg-white/[0.08] text-gray-300'
+                              ? 'bg-indigo-500/20 text-indigo-400 font-bold hover:bg-indigo-500/30'
+                              : 'bg-white/[0.08] text-gray-300 hover:bg-white/[0.16] hover:text-white'
                           }`}
                           title={isMe ? `${formatUserDisplayName(uSched.userName, availablePersons)} (To jste vy)` : `Uživatel: ${formatUserDisplayName(uSched.userName, availablePersons)}`}
                         >
-                          {uSched.initials}
+                          <span className="group-hover:opacity-0 transition-opacity">
+                            {uSched.initials}
+                          </span>
+                          <span className="material-symbols-outlined text-base absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                            more_vert
+                          </span>
                         </div>
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenUserMenuIdx(openUserMenuIdx === uIdx ? null : uIdx);
-                            }}
-                            className="w-5 h-5 rounded-full text-gray-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition cursor-pointer"
-                            title="Možnosti osoby"
-                          >
-                            <span className="material-symbols-outlined text-sm">more_vert</span>
-                          </button>
-                          {openUserMenuIdx === uIdx && (
+                        {openUserMenuIdx === uIdx && (
                             <div
                               ref={userMenuRef}
                               className="absolute left-0 top-full mt-1 w-44 bg-[#1e2029] border border-white/10 rounded-xl shadow-2xl py-1 z-50 animate-fade-in text-xs select-none"

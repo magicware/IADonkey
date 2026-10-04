@@ -7900,6 +7900,82 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </select>
                   </div>
 
+                  {/* Kompaktní zobrazení denního plánu */}
+                  <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-white/[0.02] md:col-span-2">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-semibold text-white block">
+                        Kompaktní zobrazení denního plánu
+                      </span>
+                      <span className="text-[11px] text-gray-400">
+                        Zmenší výšku karet úkolů v denním rozvrhu pro přehlednější a úspornější zobrazení
+                      </span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={formData.magicplan?.compactDayView === true}
+                        onChange={(e) => {
+                          const updated = {
+                            ...formData,
+                            magicplan: {
+                              ...formData.magicplan,
+                              compactDayView: e.target.checked,
+                            },
+                          };
+                          setFormData(updated);
+                          handleSave(updated);
+                        }}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600" />
+                    </label>
+                  </div>
+
+                  {/* Trvalé zobrazení všech úkolů (zobrazí se pouze pokud je moje osoba mezi sledovanými osobami) */}
+                  {(() => {
+                    const userList = (formData.magicplan?.userColumns && formData.magicplan.userColumns.length > 0)
+                      ? formData.magicplan.userColumns
+                      : (formData.magicplan?.userColumn ? [formData.magicplan.userColumn] : []);
+                    const currentUserCol = formData.magicplan?.currentUserColumn ? String(formData.magicplan.currentUserColumn).trim().toLowerCase() : '';
+                    const isCurrentUserPresent = Boolean(
+                      currentUserCol && userList.some((u: string) => u && String(u).trim().toLowerCase() === currentUserCol)
+                    );
+
+                    if (!isCurrentUserPresent) return null;
+
+                    return (
+                      <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-white/[0.02] md:col-span-2">
+                        <div className="space-y-0.5">
+                          <span className="text-xs font-semibold text-white block">
+                            Zobrazit úkoly všech osob
+                          </span>
+                          <span className="text-[11px] text-gray-400">
+                            Při otevření MagicPlanu se výchozivě zobrazí úkoly všech sledovaných osob namísto pouze vašich
+                          </span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={formData.magicplan?.showAllTasks === true}
+                            onChange={(e) => {
+                              const updated = {
+                                ...formData,
+                                magicplan: {
+                                  ...formData.magicplan,
+                                  showAllTasks: e.target.checked,
+                                },
+                              };
+                              setFormData(updated);
+                              handleSave(updated);
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600" />
+                        </label>
+                      </div>
+                    );
+                  })()}
+
                   {/* Propojení s rozšířením TaskManager (MLog) */}
                   <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-white/[0.02] md:col-span-2">
                     <div>
@@ -8045,68 +8121,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
                       </div>
                     )}
-                  </div>
-
-                  {/* Kompaktní zobrazení denního plánu */}
-                  <div className="flex items-center justify-between gap-4 p-4 bg-white/[0.02] border border-white/[0.04] rounded-2xl">
-                    <div className="space-y-0.5">
-                      <span className="text-xs font-semibold text-white block">
-                        Kompaktní zobrazení denního plánu
-                      </span>
-                      <span className="text-[11px] text-gray-400">
-                        Zmenší výšku karet úkolů v denním rozvrhu pro přehlednější a úspornější zobrazení
-                      </span>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
-                      <input
-                        type="checkbox"
-                        checked={formData.magicplan?.compactDayView === true}
-                        onChange={(e) => {
-                          const updated = {
-                            ...formData,
-                            magicplan: {
-                              ...formData.magicplan,
-                              compactDayView: e.target.checked,
-                            },
-                          };
-                          setFormData(updated);
-                          handleSave(updated);
-                        }}
-                        className="sr-only peer"
-                      />
-                      <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
-                    </label>
-                  </div>
-
-                  {/* Trvalé zobrazení všech úkolů */}
-                  <div className="flex items-center justify-between gap-4 p-4 bg-white/[0.02] border border-white/[0.04] rounded-2xl">
-                    <div className="space-y-0.5">
-                      <span className="text-xs font-semibold text-white block">
-                        Zobrazit úkoly všech osob
-                      </span>
-                      <span className="text-[11px] text-gray-400">
-                        Při otevření MagicPlanu se výchozivě zobrazí úkoly všech sledovaných osob namísto pouze vašich
-                      </span>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
-                      <input
-                        type="checkbox"
-                        checked={formData.magicplan?.showAllTasks === true}
-                        onChange={(e) => {
-                          const updated = {
-                            ...formData,
-                            magicplan: {
-                              ...formData.magicplan,
-                              showAllTasks: e.target.checked,
-                            },
-                          };
-                          setFormData(updated);
-                          handleSave(updated);
-                        }}
-                        className="sr-only peer"
-                      />
-                      <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-cyan-600" />
-                    </label>
                   </div>
                 </div>
 
