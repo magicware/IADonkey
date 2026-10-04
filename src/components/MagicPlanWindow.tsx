@@ -2523,16 +2523,16 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                               setUserMenuState(null);
                             } else {
                               const rect = e.currentTarget.getBoundingClientRect();
-                              const menuHeight = 180;
+                              const menuHeight = 125;
                               const spaceBelow = window.innerHeight - rect.bottom;
                               const spaceAbove = rect.top;
-                              const openUpward = spaceBelow < menuHeight && spaceAbove > menuHeight;
+                              const openUpward = spaceBelow < menuHeight && spaceAbove >= menuHeight;
                               setUserMenuState({
                                 uIdx,
                                 userName: uSched.userName,
                                 isMe,
-                                top: openUpward ? rect.top - 6 : rect.bottom + 6,
-                                left: Math.max(10, Math.min(window.innerWidth - 190, rect.left)),
+                                top: openUpward ? rect.top - 2 : rect.bottom + 2,
+                                left: Math.max(10, Math.min(window.innerWidth - 185, rect.left)),
                                 openUpward,
                               });
                             }
@@ -3081,16 +3081,16 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                               setUserMenuState(null);
                             } else {
                               const rect = e.currentTarget.getBoundingClientRect();
-                              const menuHeight = 180;
+                              const menuHeight = 125;
                               const spaceBelow = window.innerHeight - rect.bottom;
                               const spaceAbove = rect.top;
-                              const openUpward = spaceBelow < menuHeight && spaceAbove > menuHeight;
+                              const openUpward = spaceBelow < menuHeight && spaceAbove >= menuHeight;
                               setUserMenuState({
                                 uIdx,
                                 userName: uSched.userName,
                                 isMe,
-                                top: openUpward ? rect.top - 6 : rect.bottom + 6,
-                                left: Math.max(10, Math.min(window.innerWidth - 190, rect.left)),
+                                top: openUpward ? rect.top - 2 : rect.bottom + 2,
+                                left: Math.max(10, Math.min(window.innerWidth - 185, rect.left)),
                                 openUpward,
                               });
                             }
