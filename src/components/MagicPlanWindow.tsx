@@ -1919,6 +1919,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
   const isCompact = Boolean(planSettings?.compactDayView);
 
   const [openUserMenuIdx, setOpenUserMenuIdx] = useState<number | null>(null);
+  const [menuOpenUpward, setMenuOpenUpward] = useState<boolean>(false);
   const [isAddingPerson, setIsAddingPerson] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -2351,8 +2352,8 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
               <div
                 className="absolute top-0 bottom-0 pointer-events-none z-40 outline-none"
                 style={{
-                  left: hasMultipleUsers ? 'calc(52px + 2px)' : '2px',
-                  right: '2px',
+                  left: hasMultipleUsers ? '68px' : '0px',
+                  right: '0px',
                 }}
               >
                 <div
@@ -2386,9 +2387,9 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
               <div className="w-full">
                 {/* Column Hour Sub-Markers Header Row */}
             <div className="flex items-center gap-3 pb-3 mb-2 border-b border-white/[0.06]">
-              {hasMultipleUsers && <div className="w-10 shrink-0" />}
+              {hasMultipleUsers && <div className="w-14 shrink-0" />}
               <div
-                className="flex-1 px-[2px] grid gap-1 text-xs text-gray-400 font-mono text-center items-center"
+                className="flex-1 grid text-xs text-gray-400 font-mono text-center items-center"
                 style={{ gridTemplateColumns: `repeat(${totalDayHours}, minmax(0, 1fr))` }}
               >
                 {daySlotMarkers.map((slot, i) => {
@@ -2505,27 +2506,34 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
-                            setOpenUserMenuIdx(openUserMenuIdx === uIdx ? null : uIdx);
+                            if (openUserMenuIdx === uIdx) {
+                              setOpenUserMenuIdx(null);
+                            } else {
+                              const targetRect = e.currentTarget.getBoundingClientRect();
+                              const spaceBelow = window.innerHeight - targetRect.bottom;
+                              setMenuOpenUpward(spaceBelow < 200);
+                              setOpenUserMenuIdx(uIdx);
+                            }
                           }}
-                          className={`group relative w-8 h-8 rounded-full font-mono font-bold text-xs flex items-center justify-center text-center select-none cursor-pointer transition-all ${
+                          className={`group relative w-8 h-8 rounded-full font-mono font-bold text-xs flex items-center justify-center text-center select-none cursor-pointer transition-all hover:ring-2 hover:ring-indigo-400/50 ${
                             isMe
                               ? 'bg-indigo-500/20 text-indigo-400 font-bold hover:bg-indigo-500/30'
                               : 'bg-white/[0.08] text-gray-300 hover:bg-white/[0.16] hover:text-white'
                           }`}
-                          title={isMe ? `${formatUserDisplayName(uSched.userName, availablePersons)} (To jste vy)` : `Uživatel: ${formatUserDisplayName(uSched.userName, availablePersons)}`}
+                          title={isMe ? `${formatUserDisplayName(uSched.userName, availablePersons)} (To jste vy) – Možnosti` : `Uživatel: ${formatUserDisplayName(uSched.userName, availablePersons)} – Možnosti`}
                         >
                           <span className="group-hover:opacity-0 transition-opacity">
                             {uSched.initials}
                           </span>
-                          <span className="material-symbols-outlined text-base absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                          <span className="material-symbols-outlined text-base absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity bg-black/40 rounded-full leading-none">
                             more_vert
                           </span>
                         </div>
                         {openUserMenuIdx === uIdx && (
-                            <div
-                              ref={userMenuRef}
-                              className="absolute left-0 top-full mt-1 w-44 bg-[#1e2029] border border-white/10 rounded-xl shadow-2xl py-1 z-50 animate-fade-in text-xs select-none"
-                            >
+                          <div
+                            ref={userMenuRef}
+                            className={`absolute left-0 ${menuOpenUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-44 bg-[#1e2029] border border-white/10 rounded-xl shadow-2xl py-1 z-50 animate-fade-in text-xs select-none`}
+                          >
                               {uIdx > 0 && (
                                 <button
                                   type="button"
@@ -2598,7 +2606,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
 
                         {/* Day Scheduled Tasks (Neutral borderless cards with shadows) */}
                         <div
-                          className="relative z-10 gap-2 items-stretch"
+                          className="relative z-10 items-stretch"
                           style={{ display: 'grid', gridTemplateColumns: `repeat(${totalDaySlots}, minmax(0, 1fr))` }}
                         >
                           {dayItems.length === 0 ? (
@@ -2657,9 +2665,9 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                       gridRow: 1,
                                       opacity: isNaMuted ? 0.1 : 1,
                                     }}
-                                    className={`rounded-2xl transition-all duration-200 select-none overflow-hidden min-w-0 timeline-task-unavailable text-zinc-300 cursor-default ${
+                                    className={`rounded-2xl mx-[1px] transition-all duration-200 select-none overflow-hidden min-w-0 timeline-task-unavailable text-zinc-300 cursor-default ${
                                       isCompact
-                                        ? 'h-[60px] px-3 py-2 flex items-center justify-between'
+                                        ? 'h-[60px] px-3 py-1.5 flex items-center justify-between'
                                         : 'h-[112px] p-2.5 flex flex-col justify-between gap-1'
                                     } ${isNaMuted ? 'pointer-events-none' : ''}`}
                                   >
@@ -2727,72 +2735,62 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                   key={block.id}
                                   style={blockStyle}
                                   onClick={isMuted ? undefined : () => onOpenTask(task)}
-                                  className={`timeline-task-card group transition-all duration-200 select-none overflow-hidden min-w-0 text-white ${
+                                  className={`timeline-task-card group mx-[1px] transition-all duration-200 select-none overflow-hidden min-w-0 text-white ${
                                     isCompact
                                       ? 'h-[60px] px-3 py-1.5 flex items-center justify-between'
                                       : 'h-[112px] p-2.5 flex flex-col justify-between gap-1'
                                   } ${isMuted ? 'pointer-events-none' : 'cursor-pointer'}`}
                                 >
                                   {isCompact ? (
-                                    <div className="relative w-full h-full flex flex-col justify-center min-w-0 overflow-hidden">
-                                      {/* Základní stav: 1. řádek [ikona + kritická] Název (odsazený, text-[11px]) [chip zadavatele], 2. řádek Projekt */}
-                                      <div className="flex flex-col justify-center min-w-0 w-full h-full group-hover:hidden select-none gap-0.5">
-                                        <div className="flex items-center gap-2.5 min-w-0 w-full">
-                                          <div className="relative flex items-center shrink-0">
-                                            <span className="material-symbols-outlined text-lg opacity-90 text-white">
-                                              {isCompleted ? 'check_circle' : isService ? 'build' : 'code'}
-                                            </span>
-                                            {isCrit && (
-                                              <span
-                                                className="material-symbols-outlined text-[13px] text-red-400 absolute -top-1.5 -right-1.5 drop-shadow"
-                                                title="Kritická priorita"
-                                              >
-                                                warning
-                                              </span>
-                                            )}
-                                          </div>
-
-                                          <span className="font-semibold text-[11px] text-white truncate min-w-0 flex-1 leading-tight">
-                                            {task.customName || task.title}
+                                    <div className="relative w-full h-full flex items-center min-w-0 overflow-hidden">
+                                      {/* Základní stav: Ikona na střed, Název + Projekt na střed s nulovou mezerou, Zadavatel na střed vpravo */}
+                                      <div className="flex items-center gap-2.5 min-w-0 w-full h-full group-hover:hidden select-none">
+                                        <div className="relative flex items-center justify-center shrink-0">
+                                          <span className="material-symbols-outlined text-lg opacity-90 text-white">
+                                            {isCompleted ? 'check_circle' : isService ? 'build' : 'code'}
                                           </span>
-
-                                          {task.author && (
+                                          {isCrit && (
                                             <span
-                                              className="px-2 py-0.5 rounded-full font-mono font-bold text-[9.5px] bg-white/20 text-white shrink-0 shadow-sm"
-                                              title={`Zadavatel: ${task.author}`}
+                                              className="material-symbols-outlined text-[13px] text-red-400 absolute -top-1.5 -right-1.5 drop-shadow"
+                                              title="Kritická priorita"
                                             >
-                                              {task.author}
+                                              warning
                                             </span>
                                           )}
                                         </div>
 
-                                        {/* 2. řádek: Název projektu pod názvem úkolu */}
-                                        <div className="flex items-center min-w-0 pl-[27px] text-[10px] text-white/70 truncate">
-                                          <span className="truncate" title={task.project || 'Bez projektu'}>
+                                        <div className="flex flex-col justify-center min-w-0 flex-1 gap-0">
+                                          <span className="font-semibold text-[11px] text-white truncate leading-tight">
+                                            {task.customName || task.title}
+                                          </span>
+                                          <span className="text-[10px] text-white/70 truncate leading-tight" title={task.project || 'Bez projektu'}>
                                             {task.project || '–'}
                                           </span>
                                         </div>
+
+                                        {task.author && (
+                                          <span
+                                            className="px-2 py-0.5 rounded-full font-mono font-bold text-[9.5px] bg-white/20 text-white shrink-0 shadow-sm self-center"
+                                            title={`Zadavatel: ${task.author}`}
+                                          >
+                                            {task.author}
+                                          </span>
+                                        )}
                                       </div>
 
-                                      {/* Hover stav (při najetí myši skryje původní info a zobrazí): Díl | Počet hodin | Projekt | úkol Txxxxx */}
+                                      {/* Hover stav (při najetí myši skryje původní info a zobrazí): Díl (full-rounded) | Počet hodin (text, ne chip) | úkol Txxxxx */}
                                       <div className="hidden group-hover:flex items-center gap-2 min-w-0 w-full h-full text-xs text-white select-none animate-fade-in">
                                         {isSplit && (
                                           <span
-                                            className="font-mono font-bold shrink-0 text-white bg-white/25 px-1.5 py-0.5 rounded text-[10px]"
+                                            className="font-mono font-bold shrink-0 text-white bg-white/25 px-2 py-0.5 rounded-full text-[10px]"
                                             title={`Část ${partIndex} z ${totalParts}`}
                                           >
                                             {partIndex}/{totalParts}
                                           </span>
                                         )}
 
-                                        <span className="font-mono font-bold shrink-0 text-white bg-white/15 px-2 py-0.5 rounded-full text-[11px]">
+                                        <span className="font-mono font-bold shrink-0 text-white text-xs">
                                           {isSplit ? `${chunkHours}h (${totalHours}h)` : `${chunkHours}h`}
-                                        </span>
-
-                                        <span className="text-white/40 shrink-0 font-bold">•</span>
-
-                                        <span className="truncate min-w-0 font-medium text-white/90 text-[11px]" title={task.project || 'Bez projektu'}>
-                                          {task.project || '–'}
                                         </span>
 
                                         {displayCode && displayCode !== 'R0' && (
@@ -2938,7 +2936,7 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                                 gridColumn: `${((dayFree.startCol - 1) % totalDaySlots) + 1} / span ${dayFree.spanCols}`,
                                 gridRow: 1,
                               }}
-                              className={`rounded-2xl border border-dashed border-white/10 bg-white/[0.015] hover:bg-white/[0.03] text-gray-500 text-xs flex items-center justify-center gap-2 transition select-none ${
+                              className={`rounded-2xl mx-[1px] border border-dashed border-white/10 bg-white/[0.015] hover:bg-white/[0.03] text-gray-500 text-xs flex items-center justify-center gap-2 transition select-none ${
                                 isCompact ? 'h-[60px] px-3 py-1.5' : 'h-[112px] p-4'
                               }`}
                             >
@@ -3084,27 +3082,34 @@ const TimelineGridView: React.FC<TimelineGridViewProps> = ({
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
-                            setOpenUserMenuIdx(openUserMenuIdx === uIdx ? null : uIdx);
+                            if (openUserMenuIdx === uIdx) {
+                              setOpenUserMenuIdx(null);
+                            } else {
+                              const targetRect = e.currentTarget.getBoundingClientRect();
+                              const spaceBelow = window.innerHeight - targetRect.bottom;
+                              setMenuOpenUpward(spaceBelow < 200);
+                              setOpenUserMenuIdx(uIdx);
+                            }
                           }}
-                          className={`group relative w-8 h-8 rounded-full font-mono font-bold text-xs flex items-center justify-center text-center select-none cursor-pointer transition-all ${
+                          className={`group relative w-8 h-8 rounded-full font-mono font-bold text-xs flex items-center justify-center text-center select-none cursor-pointer transition-all hover:ring-2 hover:ring-indigo-400/50 ${
                             isMe
                               ? 'bg-indigo-500/20 text-indigo-400 font-bold hover:bg-indigo-500/30'
                               : 'bg-white/[0.08] text-gray-300 hover:bg-white/[0.16] hover:text-white'
                           }`}
-                          title={isMe ? `${formatUserDisplayName(uSched.userName, availablePersons)} (To jste vy)` : `Uživatel: ${formatUserDisplayName(uSched.userName, availablePersons)}`}
+                          title={isMe ? `${formatUserDisplayName(uSched.userName, availablePersons)} (To jste vy) – Možnosti` : `Uživatel: ${formatUserDisplayName(uSched.userName, availablePersons)} – Možnosti`}
                         >
                           <span className="group-hover:opacity-0 transition-opacity">
                             {uSched.initials}
                           </span>
-                          <span className="material-symbols-outlined text-base absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                          <span className="material-symbols-outlined text-base absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity bg-black/40 rounded-full leading-none">
                             more_vert
                           </span>
                         </div>
                         {openUserMenuIdx === uIdx && (
-                            <div
-                              ref={userMenuRef}
-                              className="absolute left-0 top-full mt-1 w-44 bg-[#1e2029] border border-white/10 rounded-xl shadow-2xl py-1 z-50 animate-fade-in text-xs select-none"
-                            >
+                          <div
+                            ref={userMenuRef}
+                            className={`absolute left-0 ${menuOpenUpward ? 'bottom-full mb-1' : 'top-full mt-1'} w-44 bg-[#1e2029] border border-white/10 rounded-xl shadow-2xl py-1 z-50 animate-fade-in text-xs select-none`}
+                          >
                               {uIdx > 0 && (
                                 <button
                                   type="button"
