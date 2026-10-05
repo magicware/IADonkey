@@ -55,7 +55,10 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
 
 ## ✅ Dokončené úkoly (čekající na kontrolu / revizi)
 
-*(Všechny dokončené úkoly byly otestovány a schváleny v checklistu).*
+- [x] **1. GitHub OAuth klonování repozitářů bez externího vyskakovacího okna**
+  - Předání existujícího GitHub OAuth tokenu přímo do procesu `git clone` pomocí `-c http.<origin>/.extraheader="AUTHORIZATION: basic <token>"`.
+  - Zamezení vyskakování externího Git Credential Manageru, sanitizace výstupů a logů.
+
 
 
 
