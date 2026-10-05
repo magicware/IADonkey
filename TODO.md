@@ -59,6 +59,9 @@ Aktuální seznam úkolů projektu rozdělený na otevřené k realizaci s podro
   - Předání existujícího GitHub OAuth tokenu přímo do procesu `git clone` pomocí `-c http.<origin>/.extraheader="AUTHORIZATION: basic <token>"`.
   - Zamezení vyskakování externího Git Credential Manageru, sanitizace výstupů a logů.
 
+- [x] **2. Nastavení: Rozšíření výchozí šířky okna Nastavení (na 1100 px)**
+  - Výchozí šířka okna `settingsWindow` zvětšena z 960 px na 1100 px (minWidth 860 px) pro komfortnější zobrazení obsahu a karet.
+
 
 
 
